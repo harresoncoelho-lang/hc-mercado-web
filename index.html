@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HC Licitações - Inteligência de Mercado</title>
+<style>
+  :root {
+    --azul: #1a73e8;
+    --laranja: #e8710a;
+    --fundo: #0f1720;
+    --cartao: #182636;
+    --texto: #e7edf3;
+    --texto-fraco: #9fb0c3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--fundo);
+    color: var(--texto);
+    margin: 0;
+  }
+  header {
+    background: linear-gradient(90deg, var(--azul), #0d47a1);
+    padding: 22px 32px;
+  }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; color: #cfe0fb; font-size: 14px; }
+
+  nav {
+    display: flex;
+    gap: 8px;
+    padding: 0 32px;
+    background: #101c29;
+    border-bottom: 1px solid #223144;
+  }
+  nav button {
+    background: none;
+    border: none;
+    color: var(--texto-fraco);
+    padding: 14px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+  }
+  nav button.ativo {
+    color: #fff;
+    border-bottom: 3px solid var(--laranja);
+  }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 28px 24px 60px; }
+  section { display: none; }
+  section.ativa { display: block; }
+
+  .painel-filtros {
+    background: var(--cartao);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: flex-end;
+    margin-bottom: 24px;
+  }
+  .campo { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+  .campo label { font-size: 12px; color: var(--texto-fraco); text-transform: uppercase; }
+  .campo input, .campo select {
+    background: #0f1a26;
+    border: 1px solid #2a3c50;
+    color: var(--texto);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  .btn-buscar {
+    background: var(--laranja);
+    border: none;
+    color: #fff;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .btn-buscar:disabled { opacity: 0.6; cursor: wait; }
+
+  .cartoes { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+  .cartao {
+    flex: 1; min-width: 200px;
+    background: var(--cartao);
+    border-top: 4px solid var(--azul);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .cartao h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: var(--texto-fraco); }
+  .cartao .valor { font-size: 20px; font-weight: bold; color: var(--azul); }
+
+  h2 { color: var(--azul); border-bottom: 2px solid var(--laranja); padding-bottom: 6px; margin-top: 34px; }
+
+  .barra-item { margin-bottom: 16px; }
+  .barra-label { font-weight: bold; margin-bottom: 4px; font-size: 14px; }
+  .barra-label .cnpj { font-weight: normal; color: var(--texto-fraco); font-size: 12px; }
+  .barra-fundo { background: #0f1a26; border-radius: 4px; overflow: hidden; height: 24px; }
+  .barra-preenchida { background: var(--laranja); color: #fff; font-size: 12px; line-height: 24px; padding-left: 8px; white-space: nowrap; }
+  .barra-meta { font-size: 12px; color: var(--texto-fraco); margin-top: 3px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--cartao); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #223144; font-size: 13px; }
+  th { background: #0f1a26; color: var(--texto-fraco); text-transform: uppercase; font-size: 11px; }
+
+  .aviso {
+    background: #3a2b0f;
+    border: 1px solid var(--laranja);
+    color: #ffd9a0;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  .carregando { color: var(--texto-fraco); padding: 20px 0; }
+  .rodape { margin-top: 50px; font-size: 12px; color: var(--texto-fraco); text-align: center; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #0f2a4a; border: 1px solid var(--azul);
+    color: #cfe0fb; padding: 6px 10px; border-radius: 999px; font-size: 12px;
+  }
+  .chip button {
+    background: none; border: none; color: #cfe0fb; cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 0; opacity: 0.8;
+  }
+  .chip button:hover { opacity: 1; }
+
+  .barra-item { margin-bottom: 16px; cursor: pointer; padding: 6px; border-radius: 6px; transition: background 0.15s; }
+  .barra-item:hover { background: #10202f; }
+  .barra-item.selecionado { background: #10202f; outline: 1px solid var(--laranja); }
+  .barra-label small { color: var(--texto-fraco); font-weight: normal; }
+
+  .link-pncp { color: #6fa8f5; text-decoration: none; font-size: 12px; }
+  .link-pncp:hover { text-decoration: underline; }
+
+  .ficha-empresa {
+    background: var(--cartao); border-radius: 8px; padding: 20px; margin-bottom: 24px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;
+  }
+  .ficha-empresa .campo-ficha label { display:block; font-size: 11px; text-transform: uppercase; color: var(--texto-fraco); margin-bottom: 2px; }
+  .ficha-empresa .campo-ficha div { font-size: 14px; }
+  .situacao-ativa { color: #4caf50; font-weight: bold; }
+  .situacao-outra { color: #e8710a; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>HC Licitações — Inteligência de Mercado</h1>
+  <p>Alertas de licitações e diagnóstico de mercado, com dados do PNCP e do Portal da Transparência.</p>
+</header>
+
+<nav>
+  <button class="ativo" data-alvo="oportunidades">Alertas de Licitações</button>
+  <button data-alvo="diagnostico">Diagnóstico de Mercado</button>
+  <button data-alvo="empresa">Analisar Empresa</button>
+</nav>
+
+<main>
+
+  <section id="oportunidades" class="ativa">
+    <div class="painel-filtros">
+      <div class="campo">
+        <label>Estado (UF)</label>
+        <input id="op-uf" placeholder="Ex: AM" maxlength="2">
+      </div>
+      <div class="campo" style="flex:2">
+        <label>Palavras-chave (separadas por vírgula)</label>
+        <input id="op-palavras" placeholder="Ex: hospitalar, limpeza, informatica">
+      </div>
+      <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
+    </div>
+    <div id="op-resultado"></div>
+  </section>
+
+  <section id="diagnostico">
+    <div class="painel-filtros">
+      <div class="campo" style="flex:2">
+        <label>Segmento (palavras-chave, separadas por vírgula)</label>
+        <input id="dg-segmento" placeholder="Ex: fotovoltaic, energia solar">
+      </div>
+      <div class="campo">
+        <label>UF de referência</label>
+        <input id="dg-uf" placeholder="Ex: AM" maxlength="2">
+      </div>
+      <div class="campo">
+        <label>Período (dias)</label>
+        <select id="dg-dias">
+          <option value="1">1 dia</option>
+          <option value="2">2 dias</option>
+          <option value="3" selected>3 dias</option>
+          <option value="5">5 dias</option>
+          <option value="7">7 dias</option>
+        </select>
+      </div>
+      <button class="btn-buscar" id="dg-buscar">Gerar diagnóstico</button>
+    </div>
+    <div id="dg-chips" class="chips"></div>
+    <div id="dg-resultado"></div>
+    <div id="dg-detalhe"></div>
+  </section>
+
+  <section id="empresa">
+    <div class="painel-filtros">
+      <div class="campo">
+        <label>CNPJ da empresa</label>
+        <input id="emp-cnpj" placeholder="Ex: 12345678000199">
+      </div>
+      <div class="campo" style="flex:2">
+        <label>Segmento p/ cruzar histórico (opcional)</label>
+        <input id="emp-segmento" placeholder="Ex: hospitalar, limpeza">
+      </div>
+      <div class="campo">
+        <label>Período (dias)</label>
+        <select id="emp-dias">
+          <option value="1">1 dia</option>
+          <option value="3" selected>3 dias</option>
+          <option value="7">7 dias</option>
+          <option value="15">15 dias</option>
+        </select>
+      </div>
+      <button class="btn-buscar" id="emp-buscar">Analisar empresa</button>
+    </div>
+    <div id="emp-resultado"></div>
+  </section>
+
+</main>
+
+<div class="rodape">HC Licitações · dados públicos do PNCP e Portal da Transparência.</div>
+
+<script>
+  const botoesNav = document.querySelectorAll("nav button");
+  botoesNav.forEach((b) => {
+    b.addEventListener("click", () => {
+      botoesNav.forEach((x) => x.classList.remove("ativo"));
+      document.querySelectorAll("main section").forEach((s) => s.classList.remove("ativa"));
+      b.classList.add("ativo");
+      document.getElementById(b.dataset.alvo).classList.add("ativa");
+    });
+  });
+
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+
+  function normalizar(txt) {
+    if (!txt) return "";
+    return txt.toString().normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  }
+
+  function bateComSegmento(texto, palavras) {
+    const norm = normalizar(texto);
+    return palavras.some((p) => norm.includes(normalizar(p)));
+  }
+
+  function formatarValor(v) {
+    const n = Number(v) || 0;
+    return "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function extrairUf(registro) {
+    const caminhos = [
+      ["unidadeOrgao", "ufSigla"],
+      ["unidadeOrgaoSubrogado", "ufSigla"],
+      ["orgaoEntidade", "ufSigla"],
+      ["orgaoSubRogado", "ufSigla"],
+    ];
+    for (const [a, b] of caminhos) {
+      if (registro[a] && registro[a][b]) return registro[a][b];
+    }
+    return null;
+  }
+
+  // Monta o link público do processo no Portal PNCP a partir do numeroControlePNCP
+  // Formato: {cnpjOrgao}-{tipoInstrumento}-{sequencial}/{ano}
+  function linkPncp(numeroControlePNCP) {
+    if (!numeroControlePNCP) return null;
+    try {
+      const partes = numeroControlePNCP.split("-");
+      if (partes.length < 3) return null;
+      const cnpj = partes[0];
+      const seqAno = partes.slice(2).join("-"); // "000123/2024"
+      const [seq, ano] = seqAno.split("/");
+      if (!cnpj || !seq || !ano) return null;
+      return `https://pncp.gov.br/app/editais/${cnpj}/${ano}/${parseInt(seq, 10)}`;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function soDigitos(s) {
+    return (s || "").replace(/\D/g, "");
+  }
+
+  // Converte um registro de contrato — seja vindo direto da API do PNCP (formato bruto)
+  // ou do nosso cache diário em /data (formato já resumido) — para um formato único,
+  // usado em todo o resto do código. Assim, o site funciona igual não importa a origem.
+  function normalizarContrato(item) {
+    return {
+      objeto: item.objetoContrato || item.objetoCompra || item.objeto || "",
+      orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || item.orgao || "",
+      uf: extrairUf(item) || item.uf || "",
+      municipio: (item.unidadeOrgao && item.unidadeOrgao.municipioNome) || item.municipio || "",
+      cnpjFornecedor: item.niFornecedor || item.cnpjFornecedor || "sem-cnpj",
+      nomeFornecedor: item.nomeRazaoSocialFornecedor || item.nomeFornecedor || "",
+      valor: Number(item.valorGlobal || item.valorInicial || item.valor || 0),
+      dataAssinatura: item.dataAssinatura || item.dataVigenciaInicio || null,
+      numeroControlePNCP: item.numeroControlePNCP || null,
+    };
+  }
+
+  // Tenta carregar um arquivo de dados já coletados pelo nosso robô diário (GitHub Actions).
+  // Isso evita depender do PNCP ao vivo na hora da busca do usuário. Retorna null se o
+  // arquivo não existir ainda (robô nunca rodou) ou se der qualquer erro — nesse caso quem
+  // chamou deve cair de volta para a busca ao vivo no PNCP.
+  async function carregarCache(caminho) {
+    try {
+      const resp = await fetch(caminho, { cache: "no-store" });
+      if (!resp.ok) return null;
+      const dados = await resp.json();
+      if (!dados || !Array.isArray(dados.registros)) return null;
+      return dados;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Faz fetch com timeout próprio: a API do PNCP às vezes fica lenta e trava
+  // uma requisição por 60-70s+, o que sozinho já estoura o orçamento de tempo
+  // do escaneamento. Com isso, cada página desiste em no máx. `timeoutMs` e
+  // libera o restante do orçamento para as próximas páginas / avisos ao usuário.
+  async function fetchComTimeout(url, opts, timeoutMs) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...(opts || {}), signal: ctrl.signal });
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // Estado global para permitir aprofundar (drill-down) sem nova consulta à API
+  const estado = {
+    diagnostico: null, // { encontrados, palavras, uf, periodo, fornecedorSelecionado }
+  };
+
+  // Busca oportunidades ABERTAS agora no PNCP (direto do navegador, sem backend)
+  async function buscarOportunidadesAbertas(uf, palavras, maxPaginas) {
+    const dataFinal = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+      .toISOString().slice(0, 10).replace(/-/g, "");
+    const encontrados = [];
+    let pagina = 1;
+    let totalPaginas = 1;
+    let falhaConexao = false;
+    while (pagina <= totalPaginas && pagina <= maxPaginas) {
+      const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=50`;
+      let resp;
+      try {
+        resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
+      } catch (e) { falhaConexao = true; break; }
+      if (!resp.ok) { falhaConexao = true; break; }
+      const texto = await resp.text();
+      if (!texto) break;
+      const dados = JSON.parse(texto);
+      const itens = dados.data || [];
+      totalPaginas = dados.totalPaginas || 1;
+      for (const item of itens) {
+        const objeto = item.objetoCompra || item.objetoContrato || "";
+        if (bateComSegmento(objeto, palavras)) {
+          encontrados.push({
+            objeto,
+            orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Órgão não informado",
+            municipio: (item.unidadeOrgao && item.unidadeOrgao.municipioNome) || "",
+            encerramento: item.dataEncerramentoProposta || null,
+            numeroControlePNCP: item.numeroControlePNCP || null,
+            link: linkPncp(item.numeroControlePNCP),
+          });
+        }
+      }
+      pagina += 1;
+    }
+    return { encontrados, falhaConexao };
+  }
+
+  // Escaneia contratos históricos do PNCP filtrando por CNPJ do fornecedor (para a aba Analisar Empresa)
+  async function buscarContratosPorCnpj(dataInicial, dataFinal, cnpj, inicioMs, tempoLimiteMs) {
+    const encontrados = [];
+    let pagina = 1;
+    let totalPaginas = 1;
+    let paginasVarridas = 0;
+    let parcial = false;
+    let falhaConexao = false;
+
+    while (pagina <= totalPaginas) {
+      if (Date.now() - inicioMs > tempoLimiteMs) { parcial = true; break; }
+      const url = `https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`;
+      let resp;
+      try {
+        resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
+      } catch (e) { falhaConexao = true; break; }
+      if (!resp.ok) {
+        if (resp.status === 429) { await new Promise((r) => setTimeout(r, 500)); continue; }
+        falhaConexao = true;
+        break;
+      }
+      const texto = await resp.text();
+      if (!texto) break;
+      const dados = JSON.parse(texto);
+      const itens = dados.data || [];
+      totalPaginas = dados.totalPaginas || 1;
+      paginasVarridas += 1;
+      for (const item of itens) {
+        if (soDigitos(item.niFornecedor) === cnpj) encontrados.push(normalizarContrato(item));
+      }
+      pagina += 1;
+    }
+    return { encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao };
+  }
+
+  // Escaneia contratos históricos do PNCP dentro de um orçamento de tempo (navegador)
+  async function buscarContratos(dataInicial, dataFinal, palavras, inicioMs, tempoLimiteMs) {
+    const encontrados = [];
+    let pagina = 1;
+    let totalPaginas = 1;
+    let paginasVarridas = 0;
+    let parcial = false;
+    let falhaConexao = false;
+
+    while (pagina <= totalPaginas) {
+      if (Date.now() - inicioMs > tempoLimiteMs) { parcial = true; break; }
+      const url = `https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`;
+      let resp;
+      try {
+        resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
+      } catch (e) { falhaConexao = true; break; }
+      if (!resp.ok) {
+        if (resp.status === 429) { await new Promise((r) => setTimeout(r, 500)); continue; }
+        falhaConexao = true;
+        break;
+      }
+      const texto = await resp.text();
+      if (!texto) break;
+      const dados = JSON.parse(texto);
+      const itens = dados.data || [];
+      totalPaginas = dados.totalPaginas || 1;
+      paginasVarridas += 1;
+      for (const item of itens) {
+        const objeto = item.objetoContrato || item.objetoCompra || "";
+        if (bateComSegmento(objeto, palavras)) encontrados.push(normalizarContrato(item));
+      }
+      pagina += 1;
+    }
+    return { encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao };
+  }
+
+  // ---------- Oportunidades ----------
+  document.getElementById("op-buscar").addEventListener("click", async () => {
+    const uf = document.getElementById("op-uf").value.trim().toUpperCase();
+    const palavrasRaw = document.getElementById("op-palavras").value.trim();
+    const alvo = document.getElementById("op-resultado");
+    const btn = document.getElementById("op-buscar");
+
+    if (!uf || !palavrasRaw) {
+      alvo.innerHTML = '<div class="aviso">Preencha a UF e ao menos uma palavra-chave.</div>';
+      return;
+    }
+    const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
+
+    btn.disabled = true;
+    alvo.innerHTML = '<div class="carregando">Buscando oportunidades abertas...</div>';
+
+    try {
+      const cache = await carregarCache("data/oportunidades_abertas.json");
+      let resultados, falhaConexao, avisoFonte = "";
+
+      if (cache) {
+        resultados = cache.registros
+          .filter((r) => r.uf === uf && bateComSegmento(r.objeto, palavras))
+          .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
+        falhaConexao = false;
+        const dt = new Date(cache.atualizadoEm);
+        avisoFonte = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(dt.toLocaleString("pt-BR"))}.</div>`;
+      } else {
+        const resp = await buscarOportunidadesAbertas(uf, palavras, 20);
+        resultados = resp.encontrados;
+        falhaConexao = resp.falhaConexao;
+      }
+
+      let avisoConexao = avisoFonte;
+      if (falhaConexao) {
+        avisoConexao += '<div class="aviso">A API pública do PNCP não respondeu (está lenta ou fora do ar no momento). Os resultados abaixo podem estar incompletos — tente novamente em alguns instantes.</div>';
+      }
+
+      if (resultados.length === 0) {
+        alvo.innerHTML = avisoConexao + '<div class="aviso">Nenhuma oportunidade aberta encontrada agora para esse filtro.</div>';
+        return;
+      }
+
+      let html = avisoConexao + `<div class="cartoes"><div class="cartao"><h3>Oportunidades abertas</h3><div class="valor">${resultados.length}</div></div></div>`;
+      html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
+      for (const r of resultados) {
+        html += `<tr><td>${escapeHtml(r.objeto)}</td><td>${escapeHtml(r.orgao)}</td><td>${escapeHtml(r.encerramento || "-")}</td><td>${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
+      }
+      html += "</table>";
+      alvo.innerHTML = html;
+    } catch (e) {
+      alvo.innerHTML = `<div class="aviso">Erro ao buscar: ${escapeHtml(String(e))}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---------- Diagnóstico ----------
+
+  function calcularConcorrentes(encontrados) {
+    const fornecedores = {};
+    for (const c of encontrados) {
+      const valor = c.valor || 0;
+      const cnpj = c.cnpjFornecedor || "sem-cnpj";
+      const nome = c.nomeFornecedor || cnpj;
+      if (!fornecedores[cnpj]) fornecedores[cnpj] = { nome, cnpj, valor: 0, contratos: 0, ufs: new Set() };
+      fornecedores[cnpj].valor += valor;
+      fornecedores[cnpj].contratos += 1;
+      if (c.uf) fornecedores[cnpj].ufs.add(c.uf);
+    }
+    return Object.values(fornecedores)
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 10)
+      .map((f) => ({ ...f, ufs: Array.from(f.ufs), valorFormatado: formatarValor(f.valor) }));
+  }
+
+  function renderChipsDiagnostico() {
+    const chipsEl = document.getElementById("dg-chips");
+    const d = estado.diagnostico;
+    if (!d) { chipsEl.innerHTML = ""; return; }
+    let html = "";
+    html += `<div class="chip">Segmento: ${escapeHtml(d.palavras.join(", "))}</div>`;
+    if (d.uf) html += `<div class="chip">UF: ${escapeHtml(d.uf)}</div>`;
+    if (d.fornecedorSelecionado) {
+      html += `<div class="chip">Fornecedor: ${escapeHtml(d.fornecedorSelecionado.nome)} <button id="dg-chip-limpar" title="Remover filtro">✕</button></div>`;
+    }
+    chipsEl.innerHTML = html;
+    const btnLimpar = document.getElementById("dg-chip-limpar");
+    if (btnLimpar) {
+      btnLimpar.addEventListener("click", () => {
+        estado.diagnostico.fornecedorSelecionado = null;
+        document.getElementById("dg-detalhe").innerHTML = "";
+        renderChipsDiagnostico();
+        renderDiagnostico();
+      });
+    }
+  }
+
+  function renderDetalheFornecedor(cnpj) {
+    const d = estado.diagnostico;
+    const registros = d.encontrados.filter((c) => (c.cnpjFornecedor || "sem-cnpj") === cnpj);
+    const fornecedor = d.concorrentes.find((f) => f.cnpj === cnpj);
+    d.fornecedorSelecionado = fornecedor || { cnpj, nome: cnpj };
+    renderChipsDiagnostico();
+
+    let html = `<h2>Contratos individuais — ${escapeHtml(d.fornecedorSelecionado.nome)}</h2>`;
+    html += `<p><a class="link-pncp" href="#" id="dg-ir-empresa">→ Ver ficha cadastral e cruzar histórico completo na aba Analisar Empresa</a></p>`;
+    html += "<table><tr><th>Objeto</th><th>Órgão</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
+    for (const r of registros) {
+      const valor = formatarValor(r.valor);
+      const link = linkPncp(r.numeroControlePNCP);
+      html += `<tr>
+        <td>${escapeHtml(r.objeto || "-")}</td>
+        <td>${escapeHtml(r.orgao || "-")}</td>
+        <td>${escapeHtml(r.uf || "-")}</td>
+        <td>${escapeHtml(valor)}</td>
+        <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
+        <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+      </tr>`;
+    }
+    html += "</table>";
+    document.getElementById("dg-detalhe").innerHTML = html;
+    document.getElementById("dg-detalhe").scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const irEmpresa = document.getElementById("dg-ir-empresa");
+    if (irEmpresa) {
+      irEmpresa.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        document.querySelector('nav button[data-alvo="empresa"]').click();
+        document.getElementById("emp-cnpj").value = cnpj;
+      });
+    }
+  }
+
+  function renderDiagnostico() {
+    const d = estado.diagnostico;
+    const alvo = document.getElementById("dg-resultado");
+    if (!d) { alvo.innerHTML = ""; return; }
+
+    let html = "";
+
+    if (d.fonte && d.fonte.tipo === "cache") {
+      html += `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(new Date(d.fonte.atualizadoEm).toLocaleString("pt-BR"))} (robô coleta todo dia, últimos ${d.fonte.diasHistoricoCache} dias). Resposta instantânea, sem depender do PNCP ao vivo.</div>`;
+    }
+
+    if (d.amostra && d.amostra.falhaConexao) {
+      html += '<div class="aviso"><strong>A API pública do PNCP não respondeu direito nesta consulta</strong> (está lenta ou instável no momento). Os números abaixo podem estar zerados ou incompletos por causa disso — não significa necessariamente que não há mercado. Tente gerar o diagnóstico de novo em alguns instantes.</div>';
+    } else if (d.amostra && d.amostra.parcial) {
+      html += `<div class="aviso">Amostra parcial: o navegador escaneou ${d.amostra.paginasVarridas} de ${d.amostra.totalPaginasDisponiveis} páginas disponíveis no período, dentro do limite de tempo (45s) para não travar a página. Para um histórico mais completo, use a versão desktop ou reduza o período.</div>`;
+    }
+
+    let totalNacional = 0, totalRegional = 0;
+    for (const c of d.encontrados) {
+      const valor = c.valor || 0;
+      totalNacional += valor;
+      if (d.uf && c.uf === d.uf) totalRegional += valor;
+    }
+
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Mercado nacional (amostra, ${escapeHtml(String(d.periodo.dias))} dia(s))</h3><div class="valor">${escapeHtml(formatarValor(totalNacional))}</div></div>
+      <div class="cartao"><h3>Mercado em ${escapeHtml(d.uf || "-")}</h3><div class="valor">${escapeHtml(formatarValor(totalRegional))}</div></div>
+      <div class="cartao"><h3>Concorrentes identificados</h3><div class="valor">${d.concorrentes.length}</div></div>
+      <div class="cartao"><h3>Oportunidades abertas agora</h3><div class="valor">${d.oportunidadesAbertas.length}</div></div>
+    </div>`;
+
+    html += "<h2>Principais concorrentes (por valor contratado na amostra) — clique para ver os contratos</h2>";
+    if (d.concorrentes.length === 0) {
+      html += "<p>Nenhum contrato do segmento encontrado na amostra do período.</p>";
+    } else {
+      const max = d.concorrentes[0].valor || 1;
+      for (const c of d.concorrentes) {
+        const largura = Math.round((c.valor / max) * 100);
+        const selecionado = d.fornecedorSelecionado && d.fornecedorSelecionado.cnpj === c.cnpj;
+        html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-cnpj="${escapeHtml(c.cnpj)}">
+          <div class="barra-label">${escapeHtml(c.nome)} <span class="cnpj">(${escapeHtml(c.cnpj)})</span></div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(c.valorFormatado)}</div></div>
+          <div class="barra-meta">UFs: ${escapeHtml(c.ufs.join(", ") || "-")} · ${c.contratos} contrato(s) · <small>clique para detalhar</small></div>
+        </div>`;
+      }
+    }
+
+    html += "<h2>Oportunidades abertas agora " + (d.uf ? "em " + escapeHtml(d.uf) : "") + "</h2>";
+    if (d.oportunidadesAbertas.length === 0) {
+      html += "<p>Nenhuma oportunidade aberta encontrada no momento para esse segmento/UF.</p>";
+    } else {
+      html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
+      for (const o of d.oportunidadesAbertas) {
+        html += `<tr><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(o.encerramento || "-")}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
+      }
+      html += "</table>";
+    }
+
+    alvo.innerHTML = html;
+
+    alvo.querySelectorAll(".barra-item").forEach((el) => {
+      el.addEventListener("click", () => renderDetalheFornecedor(el.dataset.cnpj));
+    });
+  }
+
+  document.getElementById("dg-buscar").addEventListener("click", async () => {
+    const segmentoRaw = document.getElementById("dg-segmento").value.trim();
+    const uf = document.getElementById("dg-uf").value.trim().toUpperCase();
+    const dias = parseInt(document.getElementById("dg-dias").value, 10);
+    const alvo = document.getElementById("dg-resultado");
+    const btn = document.getElementById("dg-buscar");
+
+    if (!segmentoRaw) {
+      alvo.innerHTML = '<div class="aviso">Informe ao menos uma palavra-chave de segmento.</div>';
+      return;
+    }
+    const palavras = segmentoRaw.split(",").map((p) => p.trim()).filter(Boolean);
+
+    btn.disabled = true;
+    document.getElementById("dg-chips").innerHTML = "";
+    document.getElementById("dg-detalhe").innerHTML = "";
+    alvo.innerHTML = '<div class="carregando">Carregando diagnóstico...</div>';
+
+    try {
+      let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
+
+      const cacheContratos = await carregarCache("data/contratos_recentes.json");
+      if (cacheContratos) {
+        const limiteData = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+        encontrados = cacheContratos.registros.filter((r) => {
+          if (!bateComSegmento(r.objeto, palavras)) return false;
+          if (r.dataAssinatura) {
+            const d = new Date(r.dataAssinatura);
+            if (!isNaN(d) && d < limiteData) return false;
+          }
+          return true;
+        });
+        paginasVarridas = cacheContratos.paginasVarridas;
+        totalPaginas = cacheContratos.totalPaginasDisponiveis;
+        parcial = cacheContratos.parcial;
+        falhaConexao = false;
+        fonte = {
+          tipo: "cache",
+          atualizadoEm: cacheContratos.atualizadoEm,
+          diasHistoricoCache: cacheContratos.diasHistorico,
+        };
+      } else {
+        alvo.innerHTML = '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador (isso pode levar até 1 minuto)...</div>';
+        const inicioMs = Date.now();
+        const tempoLimiteMs = 45000;
+        const hoje = new Date();
+        const inicio = new Date(hoje.getTime() - dias * 24 * 60 * 60 * 1000);
+        const fmt = (dt) => dt.toISOString().slice(0, 10).replace(/-/g, "");
+        const resCont = await buscarContratos(fmt(inicio), fmt(hoje), palavras, inicioMs, tempoLimiteMs);
+        encontrados = resCont.encontrados;
+        paginasVarridas = resCont.paginasVarridas;
+        totalPaginas = resCont.totalPaginas;
+        parcial = resCont.parcial;
+        falhaConexao = resCont.falhaConexao;
+        fonte = { tipo: "ao_vivo" };
+      }
+
+      const concorrentes = calcularConcorrentes(encontrados);
+      let oportunidadesAbertas = [];
+      let falhaConexaoOportunidades = false;
+      if (uf) {
+        const cacheOp = await carregarCache("data/oportunidades_abertas.json");
+        if (cacheOp) {
+          oportunidadesAbertas = cacheOp.registros
+            .filter((r) => r.uf === uf && bateComSegmento(r.objeto, palavras))
+            .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
+        } else {
+          const resOp = await buscarOportunidadesAbertas(uf, palavras, 10);
+          oportunidadesAbertas = resOp.encontrados;
+          falhaConexaoOportunidades = resOp.falhaConexao;
+        }
+      }
+
+      estado.diagnostico = {
+        encontrados,
+        palavras,
+        uf: uf || null,
+        periodo: { dias },
+        amostra: {
+          parcial,
+          paginasVarridas,
+          totalPaginasDisponiveis: totalPaginas,
+          falhaConexao: falhaConexao || falhaConexaoOportunidades,
+        },
+        fonte,
+        concorrentes,
+        oportunidadesAbertas,
+        fornecedorSelecionado: null,
+      };
+
+      renderChipsDiagnostico();
+      renderDiagnostico();
+    } catch (e) {
+      alvo.innerHTML = `<div class="aviso">Erro ao gerar diagnóstico: ${escapeHtml(String(e))}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---------- Analisar Empresa ----------
+  document.getElementById("emp-buscar").addEventListener("click", async () => {
+    const cnpj = soDigitos(document.getElementById("emp-cnpj").value);
+    const segmentoRaw = document.getElementById("emp-segmento").value.trim();
+    const dias = parseInt(document.getElementById("emp-dias").value, 10);
+    const alvo = document.getElementById("emp-resultado");
+    const btn = document.getElementById("emp-buscar");
+
+    if (!cnpj || cnpj.length !== 14) {
+      alvo.innerHTML = '<div class="aviso">Informe um CNPJ válido (14 dígitos, com ou sem pontuação).</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    alvo.innerHTML = '<div class="carregando">Consultando dados cadastrais e histórico de contratos...</div>';
+
+    try {
+      let ficha = null;
+      let erroFicha = null;
+      try {
+        const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        if (resp.ok) ficha = await resp.json();
+        else erroFicha = "Não foi possível obter os dados cadastrais desse CNPJ (verifique o número).";
+      } catch (e) {
+        erroFicha = "Erro ao consultar dados cadastrais: " + String(e);
+      }
+
+      let html = "";
+
+      if (ficha) {
+        const ativa = (ficha.descricao_situacao_cadastral || "").toUpperCase() === "ATIVA";
+        html += `<div class="ficha-empresa">
+          <div class="campo-ficha"><label>Razão social</label><div>${escapeHtml(ficha.razao_social || "-")}</div></div>
+          <div class="campo-ficha"><label>Nome fantasia</label><div>${escapeHtml(ficha.nome_fantasia || "-")}</div></div>
+          <div class="campo-ficha"><label>Situação cadastral</label><div class="${ativa ? "situacao-ativa" : "situacao-outra"}">${escapeHtml(ficha.descricao_situacao_cadastral || "-")}</div></div>
+          <div class="campo-ficha"><label>Porte</label><div>${escapeHtml(ficha.porte || "-")}</div></div>
+          <div class="campo-ficha"><label>Data de abertura</label><div>${escapeHtml(ficha.data_inicio_atividade || "-")}</div></div>
+          <div class="campo-ficha"><label>CNAE principal</label><div>${escapeHtml((ficha.cnae_fiscal_descricao || "-"))}</div></div>
+          <div class="campo-ficha"><label>Município/UF</label><div>${escapeHtml((ficha.municipio || "-") + " / " + (ficha.uf || "-"))}</div></div>
+          <div class="campo-ficha"><label>Capital social</label><div>${escapeHtml(formatarValor(ficha.capital_social || 0))}</div></div>
+        </div>`;
+      } else {
+        html += `<div class="aviso">${escapeHtml(erroFicha || "Dados cadastrais indisponíveis.")}</div>`;
+      }
+
+      alvo.innerHTML = html + '<div class="carregando">Cruzando com contratos no PNCP...</div>';
+
+      const palavras = segmentoRaw ? segmentoRaw.split(",").map((p) => p.trim()).filter(Boolean) : null;
+
+      let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
+      const cacheContratos = await carregarCache("data/contratos_recentes.json");
+      if (cacheContratos) {
+        const limiteData = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+        encontrados = cacheContratos.registros.filter((r) => {
+          if (soDigitos(r.cnpjFornecedor) !== cnpj) return false;
+          if (r.dataAssinatura) {
+            const d = new Date(r.dataAssinatura);
+            if (!isNaN(d) && d < limiteData) return false;
+          }
+          return true;
+        });
+        paginasVarridas = cacheContratos.paginasVarridas;
+        totalPaginas = cacheContratos.totalPaginasDisponiveis;
+        parcial = cacheContratos.parcial;
+        falhaConexao = false;
+        fonte = { tipo: "cache", atualizadoEm: cacheContratos.atualizadoEm };
+      } else {
+        alvo.innerHTML = html + '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador...</div>';
+        const inicioMs = Date.now();
+        const tempoLimiteMs = 40000;
+        const hoje = new Date();
+        const inicio = new Date(hoje.getTime() - dias * 24 * 60 * 60 * 1000);
+        const fmt = (dt) => dt.toISOString().slice(0, 10).replace(/-/g, "");
+        const res = await buscarContratosPorCnpj(fmt(inicio), fmt(hoje), cnpj, inicioMs, tempoLimiteMs);
+        encontrados = res.encontrados;
+        paginasVarridas = res.paginasVarridas;
+        totalPaginas = res.totalPaginas;
+        parcial = res.parcial;
+        falhaConexao = res.falhaConexao;
+        fonte = { tipo: "ao_vivo" };
+      }
+
+      const registrosFiltrados = palavras
+        ? encontrados.filter((c) => bateComSegmento(c.objeto, palavras))
+        : encontrados;
+
+      let totalContratado = 0;
+      const ufsAtuacao = new Set();
+      for (const c of registrosFiltrados) {
+        totalContratado += c.valor || 0;
+        if (c.uf) ufsAtuacao.add(c.uf);
+      }
+
+      let html2 = "";
+      if (fonte.tipo === "cache") {
+        html2 += `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(new Date(fonte.atualizadoEm).toLocaleString("pt-BR"))}.</div>`;
+      }
+      if (falhaConexao) {
+        html2 += '<div class="aviso"><strong>A API pública do PNCP não respondeu direito nesta consulta</strong> (está lenta ou instável no momento). O histórico abaixo pode estar incompleto por causa disso. Tente novamente em alguns instantes.</div>';
+      } else if (parcial) {
+        html2 += `<div class="aviso">Amostra parcial: escaneadas ${paginasVarridas} de ${totalPaginas} páginas do período, dentro do limite de tempo. Aumente o período com cautela (buscas maiores demoram mais).</div>`;
+      }
+
+      html2 += `<div class="cartoes">
+        <div class="cartao"><h3>Contratos encontrados (amostra, ${escapeHtml(String(dias))} dia(s))</h3><div class="valor">${registrosFiltrados.length}</div></div>
+        <div class="cartao"><h3>Valor total contratado (amostra)</h3><div class="valor">${escapeHtml(formatarValor(totalContratado))}</div></div>
+        <div class="cartao"><h3>UFs onde atuou</h3><div class="valor">${ufsAtuacao.size ? escapeHtml(Array.from(ufsAtuacao).join(", ")) : "-"}</div></div>
+      </div>`;
+
+      html2 += "<h2>Contratos encontrados no período</h2>";
+      if (registrosFiltrados.length === 0) {
+        html2 += "<p>Nenhum contrato desse CNPJ encontrado no PNCP dentro da amostra do período selecionado. Tente aumentar o período.</p>";
+      } else {
+        html2 += "<table><tr><th>Objeto</th><th>Órgão</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
+        for (const r of registrosFiltrados) {
+          const link = linkPncp(r.numeroControlePNCP);
+          html2 += `<tr>
+            <td>${escapeHtml(r.objeto || "-")}</td>
+            <td>${escapeHtml(r.orgao || "-")}</td>
+            <td>${escapeHtml(r.uf || "-")}</td>
+            <td>${escapeHtml(formatarValor(r.valor))}</td>
+            <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
+            <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+          </tr>`;
+        }
+        html2 += "</table>";
+      }
+
+      alvo.innerHTML = html + html2;
+    } catch (e) {
+      alvo.innerHTML = `<div class="aviso">Erro ao analisar empresa: ${escapeHtml(String(e))}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
