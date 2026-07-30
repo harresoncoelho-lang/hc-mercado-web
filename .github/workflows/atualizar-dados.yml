@@ -1,0 +1,41 @@
+name: Atualizar dados do PNCP
+
+on:
+  schedule:
+    # 09:00 UTC = 06:00 no horario de Brasilia (sem horario de verao)
+    - cron: "0 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rodar robo de coleta
+        env:
+          DIAS_HISTORICO: "15"
+          LIMITE_MINUTOS: "25"
+        run: node scripts/atualizar_dados.js
+
+      - name: Commitar e enviar dados atualizados
+        run: |
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca nos dados hoje."
+          else
+            git commit -m "Atualizacao automatica de dados do PNCP"
+            git push
+          fi
