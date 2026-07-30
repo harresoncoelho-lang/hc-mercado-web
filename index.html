@@ -609,8 +609,14 @@
 
     if (d.amostra && d.amostra.falhaConexao) {
       html += '<div class="aviso"><strong>A API pública do PNCP não respondeu direito nesta consulta</strong> (está lenta ou instável no momento). Os números abaixo podem estar zerados ou incompletos por causa disso — não significa necessariamente que não há mercado. Tente gerar o diagnóstico de novo em alguns instantes.</div>';
+    } else if (d.amostra && d.amostra.parcial && d.fonte && d.fonte.tipo === "cache") {
+      html += `<div class="aviso">Coleta diária incompleta: o robô conseguiu varrer apenas ${d.amostra.paginasVarridas} de ${d.amostra.totalPaginasDisponiveis} página(s) disponíveis nesta última execução (o PNCP ficou instável/fora do ar durante parte da coleta). Isso está sendo repetido automaticamente todo dia — os números abaixo tendem a ficar mais completos nas próximas atualizações.</div>`;
     } else if (d.amostra && d.amostra.parcial) {
       html += `<div class="aviso">Amostra parcial: o navegador escaneou ${d.amostra.paginasVarridas} de ${d.amostra.totalPaginasDisponiveis} páginas disponíveis no período, dentro do limite de tempo (45s) para não travar a página. Para um histórico mais completo, use a versão desktop ou reduza o período.</div>`;
+    }
+
+    if (d.amostra && d.amostra.ufOportunidadesFalhouHoje) {
+      html += `<div class="aviso">A coleta de oportunidades abertas para ${escapeHtml(d.uf || "")} falhou na última execução do robô (o PNCP não respondeu para esse estado). Ela será tentada novamente na próxima atualização diária.</div>`;
     }
 
     let totalNacional = 0, totalRegional = 0;
@@ -721,12 +727,14 @@
       const concorrentes = calcularConcorrentes(encontrados);
       let oportunidadesAbertas = [];
       let falhaConexaoOportunidades = false;
+      let ufOportunidadesFalhouHoje = false;
       if (uf) {
         const cacheOp = await carregarCache("data/oportunidades_abertas.json");
         if (cacheOp) {
           oportunidadesAbertas = cacheOp.registros
             .filter((r) => r.uf === uf && bateComSegmento(r.objeto, palavras))
             .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
+          ufOportunidadesFalhouHoje = Array.isArray(cacheOp.ufsComFalha) && cacheOp.ufsComFalha.includes(uf);
         } else {
           const resOp = await buscarOportunidadesAbertas(uf, palavras, 10);
           oportunidadesAbertas = resOp.encontrados;
@@ -744,6 +752,7 @@
           paginasVarridas,
           totalPaginasDisponiveis: totalPaginas,
           falhaConexao: falhaConexao || falhaConexaoOportunidades,
+          ufOportunidadesFalhouHoje,
         },
         fonte,
         concorrentes,
