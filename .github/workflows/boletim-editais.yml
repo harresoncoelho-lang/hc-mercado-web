@@ -1,0 +1,41 @@
+name: Boletim diario de editais
+
+on:
+  schedule:
+    # 13:00 UTC = 10:00 no horario de Brasilia (sem horario de verao)
+    - cron: "0 13 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  boletim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Rodar boletim de editais
+        env:
+          EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+        run: python scripts/boletim_editais.py
+
+      - name: Commitar historico de editais ja enviados
+        run: |
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add data/editais_vistos.json
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca no historico hoje."
+          else
+            git commit -m "Atualiza historico do boletim de editais"
+            git push
+          fi
