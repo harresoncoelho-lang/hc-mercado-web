@@ -1,14 +1,14 @@
-// Robo de coleta diaria do PNCP para o HC Licitacoes.
-// Roda no GitHub Actions (cron diario) e grava arquivos JSON estaticos em /data,
-// que o site (index.html) le diretamente - sem precisar consultar o PNCP na hora
-// que o usuario faz uma busca.
+// Robô de coleta diária do PNCP para o HC Licitações.
+// Roda no GitHub Actions (cron diário) e grava arquivos JSON estáticos em /data,
+// que o site (index.html) lê diretamente — sem precisar consultar o PNCP na hora
+// que o usuário faz uma busca.
 //
 // Uso: node scripts/atualizar_dados.js
-// Variaveis de ambiente opcionais:
-//   DIAS_HISTORICO=15          -> quantos dias de contratos historicos varrer (padrao 15)
-//   LIMITE_MINUTOS=25          -> orcamento de tempo total do robo (padrao 25 min)
+// Variáveis de ambiente opcionais:
+//   DIAS_HISTORICO=30          -> quantos dias de contratos históricos varrer (padrão 30)
+//   LIMITE_MINUTOS=25          -> orçamento de tempo total do robô (padrão 25 min)
 
-const DIAS_HISTORICO = parseInt(process.env.DIAS_HISTORICO || "15", 10);
+const DIAS_HISTORICO = parseInt(process.env.DIAS_HISTORICO || "30", 10);
 const LIMITE_MINUTOS = parseFloat(process.env.LIMITE_MINUTOS || "25");
 const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
 const TAMANHO_PAGINA = 100;
@@ -55,7 +55,7 @@ async function fetchComRetentativa(url, tentativas = 3) {
   return null;
 }
 
-// ---------- Contratos historicos (nacional, ultimos N dias) ----------
+// ---------- Contratos históricos (nacional, últimos N dias) ----------
 async function coletarContratos() {
   const hoje = new Date();
   const inicio = new Date(hoje.getTime() - DIAS_HISTORICO * 24 * 60 * 60 * 1000);
@@ -71,13 +71,13 @@ async function coletarContratos() {
   while (pagina <= totalPaginas) {
     if (tempoRestanteMs() < 15000) {
       parcial = true;
-      console.log(`[contratos] Orcamento de tempo esgotado na pagina ${pagina}/${totalPaginas}.`);
+      console.log(`[contratos] Orçamento de tempo esgotado na página ${pagina}/${totalPaginas}.`);
       break;
     }
     const url = `https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=${TAMANHO_PAGINA}`;
     const dados = await fetchComRetentativa(url);
     if (!dados) {
-      console.log(`[contratos] Falha ao buscar pagina ${pagina}, parando (parcial).`);
+      console.log(`[contratos] Falha ao buscar página ${pagina}, parando (parcial).`);
       parcial = true;
       break;
     }
@@ -100,12 +100,12 @@ async function coletarContratos() {
     }
 
     if (pagina % 20 === 0) {
-      console.log(`[contratos] ${pagina}/${totalPaginas} paginas, ${registros.length} registros ate agora...`);
+      console.log(`[contratos] ${pagina}/${totalPaginas} páginas, ${registros.length} registros até agora...`);
     }
     pagina += 1;
   }
 
-  console.log(`[contratos] Concluido: ${registros.length} registros, ${paginasVarridas} paginas varridas de ${totalPaginas}, parcial=${parcial}.`);
+  console.log(`[contratos] Concluído: ${registros.length} registros, ${paginasVarridas} páginas varridas de ${totalPaginas}, parcial=${parcial}.`);
 
   return {
     atualizadoEm: new Date().toISOString(),
@@ -128,7 +128,7 @@ async function coletarOportunidadesAbertas() {
 
   for (const uf of UFS) {
     if (tempoRestanteMs() < 10000) {
-      console.log(`[oportunidades] Orcamento de tempo esgotado antes de terminar todas as UFs (parou em ${uf}).`);
+      console.log(`[oportunidades] Orçamento de tempo esgotado antes de terminar todas as UFs (parou em ${uf}).`);
       break;
     }
     let pagina = 1;
@@ -145,7 +145,7 @@ async function coletarOportunidadesAbertas() {
       for (const item of itens) {
         todas.push({
           objeto: item.objetoCompra || item.objetoContrato || "",
-          orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Orgao nao informado",
+          orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Órgão não informado",
           uf,
           municipio: (item.unidadeOrgao && item.unidadeOrgao.municipioNome) || "",
           encerramento: item.dataEncerramentoProposta || null,
@@ -158,7 +158,7 @@ async function coletarOportunidadesAbertas() {
     console.log(`[oportunidades] ${uf}: ok (${todas.length} acumuladas)`);
   }
 
-  console.log(`[oportunidades] Concluido: ${todas.length} oportunidades abertas, falhas em: ${ufsComFalha.join(", ") || "nenhuma"}.`);
+  console.log(`[oportunidades] Concluído: ${todas.length} oportunidades abertas, falhas em: ${ufsComFalha.join(", ") || "nenhuma"}.`);
 
   return {
     atualizadoEm: new Date().toISOString(),
@@ -175,7 +175,7 @@ async function main() {
   const dirDados = path.join(process.cwd(), "data");
   await fs.mkdir(dirDados, { recursive: true });
 
-  console.log(`Iniciando coleta. Historico: ${DIAS_HISTORICO} dias. Orcamento: ${LIMITE_MINUTOS} min.`);
+  console.log(`Iniciando coleta. Histórico: ${DIAS_HISTORICO} dias. Orçamento: ${LIMITE_MINUTOS} min.`);
 
   const contratos = await coletarContratos();
   await fs.writeFile(
@@ -197,6 +197,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error("Erro fatal no robo de coleta:", e);
+  console.error("Erro fatal no robô de coleta:", e);
   process.exit(1);
 });
