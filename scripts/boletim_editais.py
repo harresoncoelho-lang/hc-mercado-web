@@ -96,10 +96,18 @@ def salvar_historico(vistos):
         json.dump(vistos, f, ensure_ascii=False, indent=2)
 
 
+def data_final_busca():
+    # dataFinal filtra pelo prazo de encerramento da proposta (nao pela data de hoje).
+    # Usar so a data de hoje faz a API devolver apenas editais que encerram HOJE.
+    # Estendendo a janela pegamos todos os editais com proposta aberta atualmente.
+    from datetime import timedelta
+    return (date.today() + timedelta(days=365)).strftime("%Y%m%d")
+
+
 def buscar_pagina(uf, pagina):
     params = {
         "uf": uf,
-        "dataFinal": date.today().strftime("%Y%m%d"),
+        "dataFinal": data_final_busca(),
         "pagina": pagina,
         "tamanhoPagina": 50,
     }
