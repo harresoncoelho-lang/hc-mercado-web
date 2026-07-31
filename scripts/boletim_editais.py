@@ -20,7 +20,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from email.header import Header
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 PASTA_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR_DADOS = os.path.join(PASTA_REPO, "data")
@@ -184,6 +184,31 @@ def filtrar_por_palavra_chave(editais, palavras):
     return resultado
 
 
+# O boletim diario deve trazer so os editais publicados recentemente
+# (nao todos os que ainda estao com proposta aberta, que pode incluir
+# coisa publicada semanas atras). A busca no PNCP usa uma janela grande
+# de dataFinal so para conseguir enxergar tudo que esta aberto; aqui a
+# gente filtra pela data de publicacao para o e-mail ficar so com o que
+# e novidade de fato.
+DIAS_PUBLICACAO_BOLETIM = 2
+
+
+def filtrar_por_publicacao_recente(editais, dias=DIAS_PUBLICACAO_BOLETIM):
+    limite = datetime.now() - timedelta(days=dias)
+    resultado = []
+    for e in editais:
+        data_str = e.get("dataPublicacaoPncp") or e.get("dataInclusao")
+        if not data_str:
+            continue
+        try:
+            data_pub = datetime.fromisoformat(data_str.replace("Z", ""))
+        except ValueError:
+            continue
+        if data_pub >= limite:
+            resultado.append(e)
+    return resultado
+
+
 def montar_link_pncp(e):
     m = re.match(r"^(\d{14})-\d+-(\d+)/(\d{4})$", e.get("numeroControlePNCP") or "")
     if m:
@@ -333,7 +358,8 @@ def main():
                 for uf in d["ufs"]:
                     editais.extend(pool.get(uf, []))
 
-            filtrados = filtrar_por_palavra_chave(editais, d["palavras_chave"])
+            editais_recentes = filtrar_por_publicacao_recente(editais)
+            filtrados = filtrar_por_palavra_chave(editais_recentes, d["palavras_chave"])
 
             vistos_deste = set(historico.get(d["email"], []))
             novos = [e for e in filtrados if e.get("numeroControlePNCP") not in vistos_deste]
