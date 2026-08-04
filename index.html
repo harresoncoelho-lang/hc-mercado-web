@@ -562,7 +562,7 @@
     <div class="painel-filtros" id="bol-config-painel" style="display:none;">
       <div class="campo">
         <label>Estado (UF)</label>
-        <input id="bol-uf" placeholder="Ex: AM" maxlength="2">
+        <select id="bol-uf" class="select-uf"></select>
       </div>
       <div class="campo" style="flex:2">
         <label>Palavras-chave (separadas por vírgula)</label>
@@ -578,7 +578,7 @@
     <div class="painel-filtros">
       <div class="campo">
         <label>Estado (UF) — opcional</label>
-        <input id="op-uf" placeholder="Ex: AM (deixe em branco p/ todo o Brasil)" maxlength="2">
+        <select id="op-uf" class="select-uf"></select>
       </div>
       <div class="campo">
         <label>Município contém</label>
@@ -608,7 +608,7 @@
         </div>
         <div class="campo">
           <label>UF de referência</label>
-          <input id="dg-uf" placeholder="Ex: AM" maxlength="2">
+          <select id="dg-uf" class="select-uf"></select>
         </div>
         <div class="campo">
           <label>Município contém</label>
@@ -704,6 +704,32 @@
   document.querySelectorAll(".btn-imprimir:not(.btn-config-boletim)").forEach((btn) => {
     btn.addEventListener("click", () => window.print());
   });
+
+  // Lista dos 27 estados brasileiros (sigla + nome), usada pra popular todo select de UF do
+  // site — assim o usuário escolhe clicando em vez de digitar a sigla de cabeça.
+  const ESTADOS_BR = [
+    ["AC", "Acre"], ["AL", "Alagoas"], ["AP", "Amapá"], ["AM", "Amazonas"],
+    ["BA", "Bahia"], ["CE", "Ceará"], ["DF", "Distrito Federal"], ["ES", "Espírito Santo"],
+    ["GO", "Goiás"], ["MA", "Maranhão"], ["MT", "Mato Grosso"], ["MS", "Mato Grosso do Sul"],
+    ["MG", "Minas Gerais"], ["PA", "Pará"], ["PB", "Paraíba"], ["PR", "Paraná"],
+    ["PE", "Pernambuco"], ["PI", "Piauí"], ["RJ", "Rio de Janeiro"], ["RN", "Rio Grande do Norte"],
+    ["RS", "Rio Grande do Sul"], ["RO", "Rondônia"], ["RR", "Roraima"], ["SC", "Santa Catarina"],
+    ["SP", "São Paulo"], ["SE", "Sergipe"], ["TO", "Tocantins"],
+  ];
+
+  // Popula todos os <select class="select-uf"> da página com os 27 estados + opção "Todos".
+  function popularSelectsUf() {
+    document.querySelectorAll("select.select-uf").forEach((sel) => {
+      if (sel.dataset.populado === "1") return;
+      let opcoes = '<option value="">Todos os estados</option>';
+      for (const [sigla, nome] of ESTADOS_BR) {
+        opcoes += `<option value="${sigla}">${sigla} — ${nome}</option>`;
+      }
+      sel.innerHTML = opcoes;
+      sel.dataset.populado = "1";
+    });
+  }
+  popularSelectsUf();
 
   function escapeHtml(s) {
     return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -2034,6 +2060,7 @@
             detalhe.className = "detalhe-drilldown";
             detalhe.innerHTML = `<dl>
               <div><dt>Objeto completo</dt><dd>${escapeHtml(r.objeto || "-")}</dd></div>
+              <div><dt>Órgão
               <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
               <div><dt>Município/UF</dt><dd>${escapeHtml((r.municipio || "-") + " / " + (r.uf || "-"))}</dd></div>
               <div><dt>Valor</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
