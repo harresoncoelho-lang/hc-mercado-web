@@ -233,6 +233,24 @@
   .ficha-lista li:last-child { border-bottom: none; }
   .ficha-lista .socio-qualif, .ficha-lista .cnae-codigo { color: var(--texto-fraco); font-size: 12px; }
   .ficha-rapida-cnpj { margin-top: 12px; }
+
+  /* ---- Acordeão de painéis (Análise administrativa / Participações / Sanções / Aspectos estratégicos) ---- */
+  .acc { border: 1px solid #223144; border-radius: 8px; margin-bottom: 12px; overflow: hidden; background: #101c2b; }
+  .acc-cab {
+    display: flex; align-items: center; justify-content: space-between; padding: 14px 16px;
+    cursor: pointer; background: #152232; user-select: none;
+  }
+  .acc-cab:hover { background: #1b2c3f; }
+  .acc-titulo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .acc-icone { font-size: 16px; }
+  .acc-contagem {
+    font-size: 11px; font-weight: 700; color: #0d1622; background: var(--laranja);
+    border-radius: 10px; padding: 1px 8px; margin-left: 6px;
+  }
+  .acc-seta { transition: transform 0.2s; color: var(--texto-fraco); }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 16px; }
+  .acc.aberto .acc-corpo { display: block; }
 </style>
 </head>
 <body>
@@ -372,6 +390,33 @@
   // Monta o HTML de uma ficha cadastral completa a partir da resposta da BrasilAPI
   // (endpoint /api/cnpj/v1/{cnpj}). Inspirado no modal "Concorrente" do ConLicitação:
   // dados básicos + endereço/contato + sócios (QSA) + CNAEs secundários (segmentos de atuação).
+  // Componente de acordeão (inspirado nos painéis clicáveis "Análise administrativa /
+  // Participações / Sanções / Aspectos estratégicos" do ConLicitação). idAcc precisa ser
+  // único dentro do container onde o acordeão for inserido.
+  function montarAcordeon(idAcc, icone, titulo, corpoHtml, opcoes) {
+    opcoes = opcoes || {};
+    const aberto = !!opcoes.aberto;
+    const contagem = opcoes.contagem !== undefined && opcoes.contagem !== null
+      ? `<span class="acc-contagem">${escapeHtml(String(opcoes.contagem))}</span>`
+      : "";
+    return `<div class="acc${aberto ? " aberto" : ""}" data-acc="${escapeHtml(idAcc)}">
+      <div class="acc-cab">
+        <div class="acc-titulo"><span class="acc-icone">${icone}</span> ${escapeHtml(titulo)}${contagem}</div>
+        <div class="acc-seta">▾</div>
+      </div>
+      <div class="acc-corpo">${corpoHtml}</div>
+    </div>`;
+  }
+
+  // Liga o clique de abrir/fechar em todos os acordeões dentro de um container.
+  function ligarAcordeons(container) {
+    container.querySelectorAll(".acc > .acc-cab").forEach((cab) => {
+      cab.addEventListener("click", () => {
+        cab.parentElement.classList.toggle("aberto");
+      });
+    });
+  }
+
   function montarFichaCadastral(ficha) {
     const ativa = (ficha.descricao_situacao_cadastral || "").toUpperCase() === "ATIVA";
     const endereco = [
@@ -426,26 +471,57 @@
     }
   }
 
+  // Monta o link direto pro registro oficial da sanção no Portal da Transparência
+  // (mesma fonte primária que o ConLicitação usa pra gerar o PDF "Sanção Aplicada").
+  function linkSancaoOficial(id) {
+    if (!id) return null;
+    return `https://portaldatransparencia.gov.br/sancoes/consulta/${id}`;
+  }
+
   function montarHtmlSancoes(sancoes) {
     if (!sancoes) {
-      return '<div class="ficha-secao"><h4>Sanções</h4><p style="color:var(--texto-fraco);font-size:13px;">Consulta de sanções indisponível no momento.</p></div>';
+      return '<p style="color:var(--texto-fraco);font-size:13px;">Consulta de sanções indisponível no momento.</p>';
     }
     if (sancoes.erro) {
-      return `<div class="ficha-secao"><h4>Sanções</h4><div class="aviso">${escapeHtml(sancoes.erro)}</div></div>`;
+      return `<div class="aviso">${escapeHtml(sancoes.erro)}</div>`;
     }
     if (!sancoes.temSancao) {
-      return '<div class="ficha-secao"><h4>Sanções</h4><p style="color:var(--verde);font-size:13px;">Nenhuma sanção encontrada para este CNPJ no CEIS/CNEP (Portal da Transparência).</p></div>';
+      return '<p style="color:var(--verde);font-size:13px;">Nenhuma sanção encontrada para este CNPJ no CEIS/CNEP (Portal da Transparência).</p>';
     }
-    let html = '<div class="ficha-secao"><h4>Sanções encontradas</h4><ul class="ficha-lista">';
+    let html = '<table><tr><th>Órgão sancionador</th><th>Sanção</th><th>Início</th><th>Fim</th><th>Registro oficial</th></tr>';
     for (const s of [...sancoes.ceis, ...sancoes.cnep]) {
       const tipo = s.tipoSancao && s.tipoSancao.descricaoResumida || s.categoriaSancao || "Sanção";
       const orgao = s.orgaoSancionador && s.orgaoSancionador.nome || "-";
       const inicio = s.dataInicioSancao || "-";
       const fim = s.dataFimSancao || "-";
-      html += `<li><strong style="color:var(--vermelho)">${escapeHtml(tipo)}</strong> <span class="socio-qualif">— ${escapeHtml(orgao)} · início ${escapeHtml(inicio)} · término ${escapeHtml(fim)}</span></li>`;
+      const link = linkSancaoOficial(s.id);
+      html += `<tr>
+        <td>${escapeHtml(orgao)}</td>
+        <td style="color:var(--vermelho)">${escapeHtml(tipo)}</td>
+        <td>${escapeHtml(inicio)}</td>
+        <td>${escapeHtml(fim)}</td>
+        <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no Portal da Transparência ↗</a>` : "-"}</td>
+      </tr>`;
     }
-    html += "</ul></div>";
+    html += "</table>";
     return html;
+  }
+
+  // "Aspectos estratégicos" (desclassificações/inabilitações item a item, com motivo) é um
+  // painel que o ConLicitação mostra porque eles mantêm um rastreador próprio, item por item,
+  // de resultados de disputa em vários portais (ComprasNet etc.) — dado que não existe pronto
+  // em nenhuma API pública gratuita que encontramos até agora. O PNCP até publica resultado por
+  // item (endpoint /itens/{n}/resultados), mas não tem busca por CNPJ: seria preciso varrer
+  // item a item de todas as compras publicadas pra achar as que essa empresa participou, o que
+  // é um robô novo e bem mais pesado que o que já roda hoje (que só olha contratos assinados).
+  function montarHtmlAspectosEstrategicos() {
+    return `<p style="color:var(--texto-fraco);font-size:13px;">
+      Ainda não temos esse dado. O painel "Participações" acima já mostra os contratos
+      efetivamente ganhos no PNCP. Já as desclassificações e inabilitações item a item
+      (com o motivo de cada uma) exigiriam varrer o resultado de cada item de cada edital —
+      um robô novo, bem mais pesado que o que já coleta os contratos hoje. Avise se quiser
+      que a gente avalie construir isso.
+    </p>`;
   }
 
   function extrairUf(registro) {
@@ -844,10 +920,10 @@
         return;
       }
       const ficha = await resp.json();
-      alvoFicha.innerHTML = montarFichaCadastral(ficha) + '<div class="ficha-secao"><p class="carregando">Consultando sanções (CEIS/CNEP)...</p></div>';
+      alvoFicha.innerHTML = montarFichaCadastral(ficha) + '<div class="ficha-secao" id="dg-sancoes-secao"><h4>Sanções</h4><p class="carregando">Consultando sanções (CEIS/CNEP)...</p></div>';
       const sancoes = await carregarSancoes(soDigitos(cnpj));
-      const painelSancoes = alvoFicha.querySelector(".ficha-secao:last-child");
-      if (painelSancoes) painelSancoes.outerHTML = montarHtmlSancoes(sancoes);
+      const painelSancoes = document.getElementById("dg-sancoes-secao");
+      if (painelSancoes) painelSancoes.innerHTML = "<h4>Sanções</h4>" + montarHtmlSancoes(sancoes);
     } catch (e) {
       alvoFicha.innerHTML = '<div class="aviso">Erro ao consultar dados cadastrais deste CNPJ.</div>';
     }
@@ -1124,15 +1200,28 @@
         erroFicha = "Erro ao consultar dados cadastrais: " + String(e);
       }
 
-      let html = "";
+      const htmlFicha = ficha
+        ? montarFichaCadastral(ficha)
+        : `<div class="aviso">${escapeHtml(erroFicha || "Dados cadastrais indisponíveis.")}</div>`;
+
+      alvo.innerHTML =
+        montarAcordeon("emp-adm", "📋", "Análise administrativa", htmlFicha, { aberto: true }) +
+        montarAcordeon("emp-sanc", "⚠️", "Sanções / Penalizações", '<p class="carregando">Consultando sanções (CEIS/CNEP)...</p>', { aberto: false }) +
+        montarAcordeon("emp-part", "📊", "Participações", '<div class="carregando">Cruzando com contratos no PNCP...</div>', { aberto: true }) +
+        montarAcordeon("emp-aspec", "📈", "Aspectos estratégicos", montarHtmlAspectosEstrategicos(), { aberto: false });
+      ligarAcordeons(alvo);
 
       if (ficha) {
-        html += montarFichaCadastral(ficha) + '<div id="emp-sancoes"><p class="carregando">Consultando sanções (CEIS/CNEP)...</p></div>';
+        carregarSancoes(cnpj).then((sancoes) => {
+          const painel = alvo.querySelector('.acc[data-acc="emp-sanc"]');
+          if (!painel) return;
+          painel.querySelector(".acc-corpo").innerHTML = montarHtmlSancoes(sancoes);
+          if (sancoes && sancoes.temSancao) painel.classList.add("aberto");
+        });
       } else {
-        html += `<div class="aviso">${escapeHtml(erroFicha || "Dados cadastrais indisponíveis.")}</div>`;
+        const painel = alvo.querySelector('.acc[data-acc="emp-sanc"]');
+        if (painel) painel.querySelector(".acc-corpo").innerHTML = '<p style="color:var(--texto-fraco);font-size:13px;">Informe um CNPJ válido para consultar sanções.</p>';
       }
-
-      alvo.innerHTML = html + '<div class="carregando">Cruzando com contratos no PNCP...</div>';
 
       const palavras = segmentoRaw ? segmentoRaw.split(",").map((p) => p.trim()).filter(Boolean) : null;
 
@@ -1154,7 +1243,8 @@
         falhaConexao = false;
         fonte = { tipo: "cache", atualizadoEm: cacheContratos.atualizadoEm };
       } else {
-        alvo.innerHTML = html + '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador...</div>';
+        const painelPart = alvo.querySelector('.acc[data-acc="emp-part"] .acc-corpo');
+        if (painelPart) painelPart.innerHTML = '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador...</div>';
         const inicioMs = Date.now();
         const tempoLimiteMs = 40000;
         const hoje = new Date();
@@ -1238,12 +1328,16 @@
         html2 += '<div class="dica-clique">Clique numa linha para ver todos os detalhes desse contrato.</div>';
       }
 
-      alvo.innerHTML = html + html2;
-
-      if (ficha) {
-        const sancoes = await carregarSancoes(cnpj);
-        const alvoSancoes = document.getElementById("emp-sancoes");
-        if (alvoSancoes) alvoSancoes.outerHTML = montarHtmlSancoes(sancoes);
+      const painelPartFinal = alvo.querySelector('.acc[data-acc="emp-part"]');
+      if (painelPartFinal) {
+        painelPartFinal.querySelector(".acc-corpo").innerHTML = html2;
+        const contagem = painelPartFinal.querySelector(".acc-contagem");
+        const titulo = painelPartFinal.querySelector(".acc-titulo");
+        if (titulo && !contagem) {
+          titulo.insertAdjacentHTML("beforeend", `<span class="acc-contagem">${escapeHtml(String(registrosFiltrados.length))}</span>`);
+        } else if (contagem) {
+          contagem.textContent = String(registrosFiltrados.length);
+        }
       }
 
       if (registrosFiltrados.length > 0) {
