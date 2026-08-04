@@ -60,7 +60,10 @@
     width: 56px; height: 56px; flex-shrink: 0;
     filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35));
   }
-  @media (max-width: 560px) { .header-logo { width: 42px; height: 42px; } }
+  @media (max-width: 560px) {
+    .header-logo { width: 96px; height: 96px; }
+    header { padding: 22px 20px; }
+  }
 
   nav {
     display: flex;
@@ -536,7 +539,6 @@
     <img src="logo.png" alt="HC Licitações" class="header-logo">
     <div>
       <h1>HC Licitações — Inteligência de Mercado</h1>
-      <p>Alertas de licitações e diagnóstico de mercado, com dados do PNCP e do Portal da Transparência.</p>
     </div>
   </div>
 </header>
@@ -581,8 +583,8 @@
         <select id="op-uf" class="select-uf"></select>
       </div>
       <div class="campo">
-        <label>Município contém</label>
-        <input id="op-municipio" placeholder="Ex: Manaus">
+        <label>Município</label>
+        <select id="op-municipio" class="select-municipio"></select>
       </div>
       <div class="campo">
         <label>Prazo até</label>
@@ -611,8 +613,8 @@
           <select id="dg-uf" class="select-uf"></select>
         </div>
         <div class="campo">
-          <label>Município contém</label>
-          <input id="dg-municipio" placeholder="Ex: Manaus">
+          <label>Município</label>
+          <select id="dg-municipio" class="select-municipio"></select>
         </div>
         <div class="campo">
           <label>Órgão contém</label>
@@ -657,12 +659,17 @@
         <input id="emp-segmento" placeholder="Ex: hospitalar, limpeza">
       </div>
       <div class="campo">
-        <label>Período (dias)</label>
+        <label>Período de análise</label>
         <select id="emp-dias">
-          <option value="1">1 dia</option>
-          <option value="3" selected>3 dias</option>
-          <option value="7">7 dias</option>
-          <option value="15">15 dias</option>
+          <option value="3">Últimos 3 dias</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="15">Últimos 15 dias</option>
+          <option value="30" selected>Últimos 30 dias</option>
+          <option value="60">Últimos 2 meses</option>
+          <option value="90">Últimos 3 meses</option>
+          <option value="180">Últimos 6 meses</option>
+          <option value="365">Últimos 12 meses</option>
+          <option value="730">Últimos 24 meses</option>
         </select>
       </div>
       <button class="btn-buscar" id="emp-buscar">Analisar empresa</button>
@@ -730,6 +737,57 @@
     });
   }
   popularSelectsUf();
+
+  // Popula todos os <select class="select-municipio"> da página com todos os municípios
+  // brasileiros (mesma ideia dos selects de UF, só que pra cidade). A lista completa (~5.570
+  // municípios) vem da API pública do IBGE e fica em cache no navegador do usuário, então só
+  // baixa uma vez por dispositivo — nas próximas visitas é instantâneo.
+  async function popularSelectsMunicipio() {
+    const selects = document.querySelectorAll("select.select-municipio");
+    if (selects.length === 0) return;
+    selects.forEach((sel) => {
+      if (sel.dataset.populado !== "1") sel.innerHTML = '<option value="">Carregando municípios...</option>';
+    });
+    try {
+      let municipios = null;
+      try {
+        const cache = localStorage.getItem("hc_municipios_cache_v1");
+        if (cache) municipios = JSON.parse(cache);
+      } catch (e) { /* localStorage indisponível */ }
+
+      if (!Array.isArray(municipios) || municipios.length === 0) {
+        const resp = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome");
+        if (!resp.ok) throw new Error("Falha ao consultar a API de municípios do IBGE");
+        const dados = await resp.json();
+        municipios = dados.map((m) => {
+          const uf =
+            (m.microrregiao && m.microrregiao.mesorregiao && m.microrregiao.mesorregiao.UF && m.microrregiao.mesorregiao.UF.sigla) ||
+            (m["regiao-imediata"] && m["regiao-imediata"]["regiao-intermediaria"] && m["regiao-imediata"]["regiao-intermediaria"].UF && m["regiao-imediata"]["regiao-intermediaria"].UF.sigla) ||
+            "";
+          return { nome: m.nome, uf };
+        });
+        try {
+          localStorage.setItem("hc_municipios_cache_v1", JSON.stringify(municipios));
+        } catch (e) { /* localStorage indisponível — segue sem cache */ }
+      }
+
+      let opcoes = '<option value="">Todos os municípios</option>';
+      for (const m of municipios) {
+        opcoes += `<option value="${escapeHtml(m.nome)}">${escapeHtml(m.nome)}${m.uf ? " — " + escapeHtml(m.uf) : ""}</option>`;
+      }
+      selects.forEach((sel) => {
+        const valorAtual = sel.value;
+        sel.innerHTML = opcoes;
+        sel.dataset.populado = "1";
+        if (valorAtual) sel.value = valorAtual;
+      });
+    } catch (e) {
+      selects.forEach((sel) => {
+        sel.innerHTML = '<option value="">Não foi possível carregar os municípios agora</option>';
+      });
+    }
+  }
+  popularSelectsMunicipio();
 
   function escapeHtml(s) {
     return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -2012,7 +2070,6 @@
           </div>`;
         }
       }
-
       html2 += "<h2>Contratos encontrados no período</h2>";
       if (registrosFiltrados.length === 0) {
         html2 += "<p>Nenhum contrato desse CNPJ encontrado no PNCP dentro da amostra do período selecionado. Tente aumentar o período.</p>";
@@ -2060,7 +2117,6 @@
             detalhe.className = "detalhe-drilldown";
             detalhe.innerHTML = `<dl>
               <div><dt>Objeto completo</dt><dd>${escapeHtml(r.objeto || "-")}</dd></div>
-              <div><dt>Órgão
               <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
               <div><dt>Município/UF</dt><dd>${escapeHtml((r.municipio || "-") + " / " + (r.uf || "-"))}</dd></div>
               <div><dt>Valor</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
