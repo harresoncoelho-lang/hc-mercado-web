@@ -9,58 +9,79 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --azul: #1a73e8;
-    --laranja: #e8710a;
-    --fundo: #0f1720;
-    --cartao: #182636;
-    --texto: #e7edf3;
-    --texto-fraco: #9fb0c3;
-    --verde: #4caf50;
-    --vermelho: #e05d5d;
+    --azul: #2e8dff;
+    --azul-escuro: #0d47a1;
+    --laranja: #f2891a;
+    --laranja-forte: #ff9d33;
+    --fundo: #0a121c;
+    --cartao: #141f2e;
+    --cartao-claro: #182638;
+    --borda: #223144;
+    --texto: #eef3f8;
+    --texto-fraco: #90a2b8;
+    --verde: #34c17c;
+    --vermelho: #e8617a;
+    --raio: 12px;
+    --raio-pq: 8px;
+    --sombra: 0 4px 18px rgba(0,0,0,0.35);
+    --sombra-forte: 0 10px 30px rgba(0,0,0,0.45);
   }
   * { box-sizing: border-box; }
   body {
     font-family: "Inter", Arial, Helvetica, sans-serif;
-    background: var(--fundo);
+    background:
+      radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(242,137,26,0.10), transparent 55%),
+      var(--fundo);
+    background-attachment: fixed;
     color: var(--texto);
     margin: 0;
     -webkit-font-smoothing: antialiased;
   }
   header {
-    background: linear-gradient(90deg, var(--azul), #0d47a1);
-    padding: 22px 32px;
-    box-shadow: 0 3px 14px rgba(0,0,0,0.3);
+    background: linear-gradient(120deg, var(--azul-escuro) 0%, var(--azul) 55%, #1c63c7 100%);
+    padding: 28px 36px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
     position: relative;
     z-index: 1;
+    overflow: hidden;
   }
-  header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.2px; }
-  header p { margin: 4px 0 0; color: #cfe0fb; font-size: 14px; }
+  header::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(600px 200px at 90% -40%, rgba(255,255,255,0.18), transparent 60%);
+    pointer-events: none;
+  }
+  header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.3px; position: relative; }
+  header p { margin: 6px 0 0; color: #d9e8fd; font-size: 14px; position: relative; }
 
   nav {
     display: flex;
-    gap: 4px;
-    padding: 0 32px;
-    background: #101c29;
-    border-bottom: 1px solid #223144;
+    gap: 6px;
+    padding: 10px 32px;
+    background: #0c1520;
+    border-bottom: 1px solid var(--borda);
+    overflow-x: auto;
   }
   nav button {
     background: none;
-    border: none;
+    border: 1px solid transparent;
     color: var(--texto-fraco);
-    padding: 14px 18px;
+    padding: 10px 18px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    border-bottom: 3px solid transparent;
-    border-radius: 6px 6px 0 0;
+    border-radius: 999px;
+    white-space: nowrap;
   }
   nav button.ativo {
     color: #fff;
-    background: #182636;
-    border-bottom: 3px solid var(--laranja);
+    background: linear-gradient(135deg, var(--azul), var(--azul-escuro));
+    border-color: transparent;
+    box-shadow: 0 3px 10px rgba(46,141,255,0.35);
   }
 
-  main { max-width: 1000px; margin: 0 auto; padding: 28px 24px 60px; }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 24px 70px; }
   section { display: none; }
   section.ativa { display: block; }
 
@@ -251,6 +272,116 @@
   .acc.aberto .acc-seta { transform: rotate(180deg); }
   .acc-corpo { display: none; padding: 16px; }
   .acc.aberto .acc-corpo { display: block; }
+
+  /* ---- 5ª rodada de polimento visual: mais profundidade, respiro e acabamento "dashboard" ---- */
+
+  .painel-filtros {
+    background: linear-gradient(160deg, var(--cartao-claro), var(--cartao));
+    border: 1px solid var(--borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    padding: 22px 24px;
+  }
+  .campo input, .campo select {
+    background: #0b1420;
+    border: 1px solid var(--borda);
+    border-radius: var(--raio-pq);
+    padding: 11px 13px;
+  }
+  .btn-buscar {
+    background: linear-gradient(135deg, var(--laranja-forte), var(--laranja));
+    padding: 12px 26px;
+    border-radius: var(--raio-pq);
+    box-shadow: 0 4px 14px rgba(242,137,26,0.35);
+    letter-spacing: 0.2px;
+  }
+  .btn-buscar:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ffb15c, var(--laranja-forte));
+    box-shadow: 0 6px 18px rgba(242,137,26,0.45);
+  }
+
+  h2 {
+    color: var(--texto);
+    border-bottom: none;
+    border-left: 4px solid var(--laranja);
+    padding: 4px 0 4px 14px;
+    margin-top: 40px;
+    margin-bottom: 18px;
+    font-size: 18px;
+    letter-spacing: -0.1px;
+  }
+  h2:first-of-type { margin-top: 0; }
+
+  .cartoes { gap: 18px; }
+  .cartao {
+    background: linear-gradient(160deg, var(--cartao-claro), var(--cartao));
+    border: 1px solid var(--borda);
+    border-top: none;
+    border-radius: var(--raio);
+    padding: 20px 22px;
+    box-shadow: var(--sombra);
+    position: relative;
+  }
+  .cartao::before {
+    content: "";
+    position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px;
+    background: linear-gradient(180deg, var(--azul), var(--azul-escuro));
+    border-radius: 0 4px 4px 0;
+  }
+  .cartao h3 { font-size: 11px; letter-spacing: 0.4px; }
+  .cartao .valor { font-size: 24px; }
+  .cartao:hover { transform: translateY(-3px); box-shadow: var(--sombra-forte); }
+
+  table {
+    background: var(--cartao);
+    border: 1px solid var(--borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+  }
+  th {
+    background: #0b1420;
+    letter-spacing: 0.5px;
+    padding: 12px 14px;
+  }
+  td { padding: 12px 14px; }
+  tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+  tr.linha-clicavel:hover { background: #142132; }
+  tr.linha-selecionada { background: #142132; }
+
+  .acc {
+    border-radius: 14px;
+    box-shadow: var(--sombra);
+    border-color: var(--borda);
+    background: var(--cartao);
+  }
+  .acc-cab {
+    padding: 16px 20px;
+    background: linear-gradient(160deg, var(--cartao-claro), var(--cartao));
+  }
+  .acc-cab:hover { background: linear-gradient(160deg, #1d2f45, #182636); }
+  .acc-icone {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 9px;
+    background: rgba(46,141,255,0.14); font-size: 15px;
+  }
+  .acc-corpo { padding: 20px; border-top: 1px solid var(--borda); }
+
+  .ficha-empresa, .painel-filtros, .detalhe-drilldown, .acc, .cartao, table {
+    border-radius: var(--raio);
+  }
+
+  .situacao-ativa, .situacao-outra, .badge-modalidade, .fonte-badge, .acc-contagem {
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+
+  ::selection { background: rgba(46,141,255,0.35); }
+
+  ::-webkit-scrollbar { height: 10px; width: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--borda); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2f4763; }
+
+  .rodape { border-top: 1px solid var(--borda); padding-top: 20px; margin-top: 60px; }
 </style>
 </head>
 <body>
