@@ -412,6 +412,42 @@
     return html;
   }
 
+  // Consulta a Netlify Function que busca sanções (CEIS/CNEP) por CNPJ no Portal da
+  // Transparência. O token fica só no servidor (variável de ambiente do Netlify),
+  // nunca é exposto no navegador. Retorna null se a function não estiver disponível
+  // (ex: TRANSPARENCIA_TOKEN ainda não configurado no Netlify).
+  async function carregarSancoes(cnpj) {
+    try {
+      const resp = await fetch(`/.netlify/functions/sancoes?cnpj=${cnpj}`);
+      if (!resp.ok) return null;
+      return await resp.json();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function montarHtmlSancoes(sancoes) {
+    if (!sancoes) {
+      return '<div class="ficha-secao"><h4>Sanções</h4><p style="color:var(--texto-fraco);font-size:13px;">Consulta de sanções indisponível no momento.</p></div>';
+    }
+    if (sancoes.erro) {
+      return `<div class="ficha-secao"><h4>Sanções</h4><div class="aviso">${escapeHtml(sancoes.erro)}</div></div>`;
+    }
+    if (!sancoes.temSancao) {
+      return '<div class="ficha-secao"><h4>Sanções</h4><p style="color:var(--verde);font-size:13px;">Nenhuma sanção encontrada para este CNPJ no CEIS/CNEP (Portal da Transparência).</p></div>';
+    }
+    let html = '<div class="ficha-secao"><h4>Sanções encontradas</h4><ul class="ficha-lista">';
+    for (const s of [...sancoes.ceis, ...sancoes.cnep]) {
+      const tipo = s.tipoSancao && s.tipoSancao.descricaoResumida || s.categoriaSancao || "Sanção";
+      const orgao = s.orgaoSancionador && s.orgaoSancionador.nome || "-";
+      const inicio = s.dataInicioSancao || "-";
+      const fim = s.dataFimSancao || "-";
+      html += `<li><strong style="color:var(--vermelho)">${escapeHtml(tipo)}</strong> <span class="socio-qualif">— ${escapeHtml(orgao)} · início ${escapeHtml(inicio)} · término ${escapeHtml(fim)}</span></li>`;
+    }
+    html += "</ul></div>";
+    return html;
+  }
+
   function extrairUf(registro) {
     const caminhos = [
       ["unidadeOrgao", "ufSigla"],
@@ -808,7 +844,10 @@
         return;
       }
       const ficha = await resp.json();
-      alvoFicha.innerHTML = montarFichaCadastral(ficha);
+      alvoFicha.innerHTML = montarFichaCadastral(ficha) + '<div class="ficha-secao"><p class="carregando">Consultando sanções (CEIS/CNEP)...</p></div>';
+      const sancoes = await carregarSancoes(soDigitos(cnpj));
+      const painelSancoes = alvoFicha.querySelector(".ficha-secao:last-child");
+      if (painelSancoes) painelSancoes.outerHTML = montarHtmlSancoes(sancoes);
     } catch (e) {
       alvoFicha.innerHTML = '<div class="aviso">Erro ao consultar dados cadastrais deste CNPJ.</div>';
     }
@@ -1088,7 +1127,7 @@
       let html = "";
 
       if (ficha) {
-        html += montarFichaCadastral(ficha);
+        html += montarFichaCadastral(ficha) + '<div id="emp-sancoes"><p class="carregando">Consultando sanções (CEIS/CNEP)...</p></div>';
       } else {
         html += `<div class="aviso">${escapeHtml(erroFicha || "Dados cadastrais indisponíveis.")}</div>`;
       }
@@ -1178,6 +1217,12 @@
       }
 
       alvo.innerHTML = html + html2;
+
+      if (ficha) {
+        const sancoes = await carregarSancoes(cnpj);
+        const alvoSancoes = document.getElementById("emp-sancoes");
+        if (alvoSancoes) alvoSancoes.outerHTML = montarHtmlSancoes(sancoes);
+      }
 
       if (registrosFiltrados.length > 0) {
         alvo.querySelectorAll("tr.linha-clicavel").forEach((tr) => {
