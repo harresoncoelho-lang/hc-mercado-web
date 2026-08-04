@@ -473,6 +473,59 @@
     .dg-print-titulo { display: block !important; }
   }
   .dg-print-titulo { display: none; }
+
+  /* ---- Alertas de Licitações: cards estilo "boletim" (inspirado no ConLicitação) ---- */
+  .boletim-resumo { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .boletim-filtros-rapidos { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-filtro-rapido {
+    background: var(--cartao-claro); border: 1px solid var(--borda); color: var(--texto-fraco);
+    padding: 7px 14px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-filtro-rapido:hover { color: var(--texto); border-color: var(--azul); }
+  .btn-filtro-rapido.ativo { background: linear-gradient(135deg, var(--azul), var(--azul-escuro)); color: #fff; border-color: transparent; }
+
+  .lista-boletim { display: flex; flex-direction: column; gap: 14px; }
+  .boletim-card {
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
+    box-shadow: var(--sombra); overflow: hidden; position: relative;
+    border-left: 4px solid var(--verde);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .boletim-card:hover { box-shadow: var(--sombra-forte); }
+  .boletim-card.lido { border-left-color: var(--borda); opacity: 0.82; }
+  .boletim-card.favorito { border-left-color: var(--laranja); }
+  .boletim-card.oculto { display: none; }
+
+  .boletim-topo {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 16px; background: #0b1420; border-bottom: 1px solid var(--borda);
+  }
+  .boletim-numero {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 999px; background: var(--verde);
+    color: #06281a; font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .boletim-card.lido .boletim-numero { background: #46586f; color: #dbe4ee; }
+  .boletim-acoes-rapidas { display: flex; gap: 6px; }
+  .boletim-acao-icone {
+    background: none; border: 1px solid var(--borda); color: var(--texto-fraco);
+    width: 30px; height: 30px; border-radius: var(--raio-pq); cursor: pointer; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .boletim-acao-icone:hover { border-color: var(--azul); color: var(--texto); }
+  .boletim-acao-icone.favorito-ativo { color: var(--laranja); border-color: var(--laranja); }
+  .boletim-acao-icone.lido-ativo { color: var(--verde); border-color: var(--verde); }
+
+  .boletim-corpo { padding: 16px; }
+  .boletim-objeto { font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
+  .boletim-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 20px; margin-bottom: 12px; }
+  .boletim-meta dt { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--texto-fraco); margin-bottom: 2px; }
+  .boletim-meta dd { margin: 0; font-size: 13px; }
+  .boletim-valor-linha { font-size: 13px; margin-bottom: 12px; }
+  .boletim-valor-linha strong { color: var(--laranja); }
+  .boletim-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--borda); }
 </style>
 </head>
 <body>
@@ -816,6 +869,38 @@
     return (s || "").replace(/\D/g, "");
   }
 
+  // ---- Favoritos / marcados como lido (persistidos no navegador do usuário) ----
+  // Espelha o conceito de "boletim visualizado / não visualizado" do ConLicitação,
+  // mas guardado localmente (localStorage) já que não temos conta/servidor por usuário.
+  function chaveArmazenamento(nome) {
+    return `hc_${nome}`;
+  }
+  function lerConjunto(nome) {
+    try {
+      const bruto = localStorage.getItem(chaveArmazenamento(nome));
+      const arr = bruto ? JSON.parse(bruto) : [];
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch (e) {
+      return new Set();
+    }
+  }
+  function salvarConjunto(nome, conjunto) {
+    try {
+      localStorage.setItem(chaveArmazenamento(nome), JSON.stringify(Array.from(conjunto)));
+    } catch (e) {
+      // localStorage indisponível (modo privado etc.) — segue sem persistir
+    }
+  }
+  function alternarNoConjunto(nome, id) {
+    const conjunto = lerConjunto(nome);
+    if (conjunto.has(id)) conjunto.delete(id); else conjunto.add(id);
+    salvarConjunto(nome, conjunto);
+    return conjunto.has(id);
+  }
+  function idOportunidade(r) {
+    return r.numeroControlePNCP || `${r.objeto || ""}|${r.orgao || ""}|${r.encerramento || ""}`;
+  }
+
   // Converte um registro de contrato — seja vindo direto da API do PNCP (formato bruto)
   // ou do nosso cache diário em /data (formato já resumido) — para um formato único,
   // usado em todo o resto do código. Assim, o site funciona igual não importa a origem.
@@ -977,6 +1062,90 @@
     return { encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao };
   }
 
+  // Monta a lista de oportunidades no formato "cartão de boletim" (inspirado na página
+  // de Boletins de Licitações do ConLicitação: card numerado, ações rápidas de favoritar/
+  // marcar como lido, e todos os campos principais já visíveis sem precisar clicar).
+  function montarCardsBoletim(resultados) {
+    const favoritos = lerConjunto("favoritos");
+    const lidos = lerConjunto("lidos");
+    let html = '<div class="lista-boletim" id="lista-boletim">';
+    resultados.forEach((r, i) => {
+      const id = idOportunidade(r);
+      const idAttr = escapeHtml(id);
+      const isFav = favoritos.has(id);
+      const isLido = lidos.has(id);
+      const classes = ["boletim-card"];
+      if (isLido) classes.push("lido");
+      if (isFav) classes.push("favorito");
+      html += `<div class="${classes.join(" ")}" data-id="${idAttr}" data-idx="${i}">
+        <div class="boletim-topo">
+          <span class="boletim-numero">${i + 1}</span>
+          <div class="boletim-acoes-rapidas">
+            <button class="boletim-acao-icone btn-favoritar${isFav ? " favorito-ativo" : ""}" title="Marcar como favorito">${isFav ? "★" : "☆"}</button>
+            <button class="boletim-acao-icone btn-marcar-lido${isLido ? " lido-ativo" : ""}" title="Marcar como lido">${isLido ? "✓" : "👁"}</button>
+          </div>
+        </div>
+        <div class="boletim-corpo">
+          <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}</p>
+          <dl class="boletim-meta">
+            <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
+            <div><dt>Município/UF</dt><dd>${escapeHtml((r.municipio || "-") + (r.uf ? " / " + r.uf : ""))}</dd></div>
+            <div><dt>Encerramento da proposta</dt><dd>${escapeHtml(r.encerramento || "Não informado")}</dd></div>
+            <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
+          </dl>
+          <div class="boletim-rodape">
+            <span></span>
+            ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">Ver edital completo no PNCP ↗</a>` : "<span></span>"}
+          </div>
+        </div>
+      </div>`;
+    });
+    html += "</div>";
+    return html;
+  }
+
+  // Liga os botões de favoritar/marcar como lido dentro de um container de cards de boletim.
+  function ligarAcoesBoletim(container, resultados, aoAtualizar) {
+    container.querySelectorAll(".boletim-card").forEach((card) => {
+      const id = card.dataset.id;
+      const btnFav = card.querySelector(".btn-favoritar");
+      const btnLido = card.querySelector(".btn-marcar-lido");
+      if (btnFav) {
+        btnFav.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const ativo = alternarNoConjunto("favoritos", id);
+          card.classList.toggle("favorito", ativo);
+          btnFav.classList.toggle("favorito-ativo", ativo);
+          btnFav.textContent = ativo ? "★" : "☆";
+          if (aoAtualizar) aoAtualizar();
+        });
+      }
+      if (btnLido) {
+        btnLido.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const ativo = alternarNoConjunto("lidos", id);
+          card.classList.toggle("lido", ativo);
+          btnLido.classList.toggle("lido-ativo", ativo);
+          btnLido.textContent = ativo ? "✓" : "👁";
+          if (aoAtualizar) aoAtualizar();
+        });
+      }
+    });
+  }
+
+  // Aplica o filtro rápido (Todos / Não lidos / Favoritos) escondendo/mostrando cards já renderizados.
+  function aplicarFiltroRapidoBoletim(container, modo) {
+    const lidos = lerConjunto("lidos");
+    const favoritos = lerConjunto("favoritos");
+    container.querySelectorAll(".boletim-card").forEach((card) => {
+      const id = card.dataset.id;
+      let mostrar = true;
+      if (modo === "nao-lidos") mostrar = !lidos.has(id);
+      else if (modo === "favoritos") mostrar = favoritos.has(id);
+      card.classList.toggle("oculto", !mostrar);
+    });
+  }
+
   // ---------- Oportunidades ----------
   document.getElementById("op-buscar").addEventListener("click", async () => {
     const uf = document.getElementById("op-uf").value.trim().toUpperCase();
@@ -1020,37 +1189,38 @@
         return;
       }
 
-      let html = avisoConexao + `<div class="cartoes"><div class="cartao"><h3>Oportunidades abertas</h3><div class="valor">${resultados.length}</div></div></div>`;
-      html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
-      resultados.forEach((r, i) => {
-        html += `<tr class="linha-clicavel" data-idx="${i}"><td>${escapeHtml(r.objeto)}</td><td>${escapeHtml(r.orgao)}</td><td>${escapeHtml(r.encerramento || "-")}</td><td>${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
-      });
-      html += "</table>";
-      html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
-      alvo.innerHTML = html;
+      const renderizarLista = (modoFiltro) => {
+        const lidos = lerConjunto("lidos");
+        const naoLidos = resultados.filter((r) => !lidos.has(idOportunidade(r))).length;
+        let html = avisoConexao + `<div class="cartoes">
+          <div class="cartao"><h3>Oportunidades abertas</h3><div class="valor">${resultados.length}</div></div>
+          <div class="cartao"><h3>Ainda não lidas</h3><div class="valor">${naoLidos}</div></div>
+        </div>`;
+        html += `<div class="boletim-resumo">
+          <div class="boletim-filtros-rapidos">
+            <button class="btn-filtro-rapido" data-modo="todos">Todos (${resultados.length})</button>
+            <button class="btn-filtro-rapido" data-modo="nao-lidos">Não lidos (${naoLidos})</button>
+            <button class="btn-filtro-rapido" data-modo="favoritos">Favoritos</button>
+          </div>
+        </div>`;
+        html += montarCardsBoletim(resultados);
+        alvo.innerHTML = html;
 
-      alvo.querySelectorAll("tr.linha-clicavel").forEach((tr) => {
-        tr.addEventListener("click", () => {
-          const jaSelecionada = tr.classList.contains("linha-selecionada");
-          alvo.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
-          const detalheExistente = alvo.querySelector(".detalhe-drilldown");
-          if (detalheExistente) detalheExistente.remove();
-          if (jaSelecionada) return;
-          tr.classList.add("linha-selecionada");
-          const r = resultados[Number(tr.dataset.idx)];
-          const detalhe = document.createElement("div");
-          detalhe.className = "detalhe-drilldown";
-          detalhe.innerHTML = `<dl>
-            <div><dt>Objeto completo</dt><dd>${escapeHtml(r.objeto || "-")}</dd></div>
-            <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
-            <div><dt>Município</dt><dd>${escapeHtml(r.municipio || "-")}</dd></div>
-            <div><dt>Encerramento da proposta</dt><dd>${escapeHtml(r.encerramento || "-")}</dd></div>
-            <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
-            <div><dt>Link</dt><dd>${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">Abrir edital no PNCP ↗</a>` : "-"}</dd></div>
-          </dl>`;
-          tr.after(detalhe);
+        const listaEl = document.getElementById("lista-boletim");
+        ligarAcoesBoletim(listaEl, resultados, () => renderizarLista(modoFiltro));
+
+        alvo.querySelectorAll(".btn-filtro-rapido").forEach((btn) => {
+          btn.classList.toggle("ativo", btn.dataset.modo === modoFiltro);
+          btn.addEventListener("click", () => {
+            aplicarFiltroRapidoBoletim(listaEl, btn.dataset.modo);
+            alvo.querySelectorAll(".btn-filtro-rapido").forEach((b) => b.classList.remove("ativo"));
+            btn.classList.add("ativo");
+          });
         });
-      });
+        aplicarFiltroRapidoBoletim(listaEl, modoFiltro);
+      };
+
+      renderizarLista("todos");
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao buscar: ${escapeHtml(String(e))}</div>`;
     } finally {
