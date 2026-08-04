@@ -24,7 +24,8 @@ jobs:
 
       - name: Rodar robô de coleta
         env:
-          DIAS_HISTORICO: "30"
+          DIAS_HISTORICO_INICIAL: "30"
+          RETENCAO_DIAS: "730"
           LIMITE_MINUTOS: "25"
         run: node scripts/atualizar_dados.js
 
