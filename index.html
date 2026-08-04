@@ -148,6 +148,44 @@
   .ficha-empresa .campo-ficha div { font-size: 14px; }
   .situacao-ativa { color: #4caf50; font-weight: bold; }
   .situacao-outra { color: #e8710a; font-weight: bold; }
+
+  /* ---- Polimento visual: profundidade, hover e transições ---- */
+  .cartao {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .cartao:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+
+  table { box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+  tr.linha-clicavel { cursor: pointer; transition: background 0.12s ease; }
+  tr.linha-clicavel:hover { background: #10202f; }
+  tr.linha-selecionada { background: #10202f; box-shadow: inset 3px 0 0 var(--laranja); }
+
+  .painel-filtros { box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+
+  .detalhe-drilldown {
+    background: #0f1a26;
+    border: 1px solid #2a3c50;
+    border-left: 3px solid var(--laranja);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: -4px 0 20px;
+    font-size: 13px;
+    animation: aparecer 0.15s ease;
+  }
+  .detalhe-drilldown dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 20px; margin: 0; }
+  .detalhe-drilldown dt { font-size: 11px; text-transform: uppercase; color: var(--texto-fraco); margin-bottom: 2px; }
+  .detalhe-drilldown dd { margin: 0; }
+  @keyframes aparecer { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+  nav button { transition: color 0.15s ease, border-color 0.15s ease; }
+  nav button:hover { color: #fff; }
+
+  .fonte-badge {
+    display: inline-block; font-size: 10px; text-transform: uppercase;
+    background: #0f2a4a; color: #6fa8f5; border: 1px solid #24476f;
+    padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
+  }
 </style>
 </head>
 <body>
@@ -161,6 +199,7 @@
   <button class="ativo" data-alvo="oportunidades">Alertas de Licitações</button>
   <button data-alvo="diagnostico">Diagnóstico de Mercado</button>
   <button data-alvo="empresa">Analisar Empresa</button>
+  <button data-alvo="transparencia">Portal da Transparência</button>
 </nav>
 
 <main>
@@ -229,6 +268,17 @@
       <button class="btn-buscar" id="emp-buscar">Analisar empresa</button>
     </div>
     <div id="emp-resultado"></div>
+  </section>
+
+  <section id="transparencia">
+    <div class="painel-filtros">
+      <div class="campo" style="flex:2">
+        <label>Filtrar por palavra (dentro dos resultados já coletados)</label>
+        <input id="tr-filtro" placeholder="Ex: hospitalar, veiculo">
+      </div>
+      <button class="btn-buscar" id="tr-buscar">Filtrar</button>
+    </div>
+    <div id="tr-resultado"></div>
   </section>
 
 </main>
@@ -903,6 +953,96 @@
     } finally {
       btn.disabled = false;
     }
+  });
+
+  // ---------- Portal da Transparência ----------
+  let cacheTransparencia = null;
+
+  function formatarDataIso(s) {
+    if (!s) return "-";
+    try {
+      const d = new Date(s);
+      if (isNaN(d.getTime())) return escapeHtml(String(s));
+      return d.toLocaleDateString("pt-BR");
+    } catch (e) {
+      return escapeHtml(String(s));
+    }
+  }
+
+  function renderizarTransparencia(dados, filtroTexto) {
+    const alvo = document.getElementById("tr-resultado");
+    if (!dados) {
+      alvo.innerHTML = '<div class="aviso">Ainda não há dados coletados do Portal da Transparência. O robô roda automaticamente todo dia às 06h30 (Brasília) — volte em breve.</div>';
+      return;
+    }
+
+    let registros = dados.registros || [];
+    if (filtroTexto) {
+      const palavras = filtroTexto.split(",").map((p) => p.trim()).filter(Boolean);
+      registros = registros.filter((r) => bateComSegmento(r.objeto, palavras));
+    }
+
+    let html = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(new Date(dados.atualizadoEm).toLocaleString("pt-BR"))} · janela de ${escapeHtml(dados.dataInicial)} a ${escapeHtml(dados.dataFinal)} · UFs: ${escapeHtml((dados.ufsInteresse || []).join(", "))} · ${escapeHtml(String(dados.orgaosVarridos || 0))} órgãos federais varridos.</div>`;
+
+    html += `<div class="cartoes"><div class="cartao"><h3>Licitações encontradas</h3><div class="valor">${registros.length}</div></div></div>`;
+
+    if (registros.length === 0) {
+      html += '<div class="aviso">Nenhuma licitação federal encontrada nas UFs de interesse com essas palavras-chave no período coletado. Isso é normal em dias mais parados — o robô acumula resultados diariamente.</div>';
+      alvo.innerHTML = html;
+      return;
+    }
+
+    html += `<table><tr><th>Objeto</th><th>Órgão</th><th>Modalidade</th><th>UF/Município</th><th>Abertura</th></tr>`;
+    registros.forEach((r, i) => {
+      html += `<tr class="linha-clicavel" data-idx="${i}">
+        <td>${escapeHtml(r.objeto || "-")}</td>
+        <td>${escapeHtml(r.orgao || "-")}</td>
+        <td>${escapeHtml(r.modalidade || "-")}</td>
+        <td>${escapeHtml(r.uf || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
+        <td>${formatarDataIso(r.dataAbertura)}</td>
+      </tr>`;
+    });
+    html += "</table>";
+
+    alvo.innerHTML = html;
+
+    // Clicar numa linha aprofunda os dados (drill-down), como no ConLicitação:
+    // mostra número do processo, unidade gestora, situação e valor sem sair da tela.
+    alvo.querySelectorAll("tr.linha-clicavel").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const jaSelecionada = tr.classList.contains("linha-selecionada");
+        alvo.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+        const detalheExistente = alvo.querySelector(".detalhe-drilldown");
+        if (detalheExistente) detalheExistente.remove();
+        if (jaSelecionada) return;
+
+        tr.classList.add("linha-selecionada");
+        const r = registros[Number(tr.dataset.idx)];
+        const detalhe = document.createElement("div");
+        detalhe.className = "detalhe-drilldown";
+        detalhe.innerHTML = `<dl>
+          <div><dt>Número da licitação</dt><dd>${escapeHtml(r.numero || "-")}</dd></div>
+          <div><dt>Processo</dt><dd>${escapeHtml(r.numeroProcesso || "-")}</dd></div>
+          <div><dt>Unidade gestora</dt><dd>${escapeHtml(r.unidadeGestora || "-")}</dd></div>
+          <div><dt>Situação</dt><dd>${escapeHtml(r.situacao || "-")}</dd></div>
+          <div><dt>Valor</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
+          <div><dt>Publicação</dt><dd>${formatarDataIso(r.dataPublicacao)}</dd></div>
+        </dl>`;
+        tr.after(detalhe);
+      });
+    });
+  }
+
+  document.querySelector('button[data-alvo="transparencia"]').addEventListener("click", async () => {
+    if (cacheTransparencia === null) {
+      document.getElementById("tr-resultado").innerHTML = '<div class="carregando">Carregando dados do Portal da Transparência...</div>';
+      cacheTransparencia = (await carregarCache("data/transparencia_licitacoes.json")) || false;
+    }
+    renderizarTransparencia(cacheTransparencia || null, "");
+  });
+
+  document.getElementById("tr-buscar").addEventListener("click", () => {
+    renderizarTransparencia(cacheTransparencia || null, document.getElementById("tr-filtro").value.trim());
   });
 </script>
 
