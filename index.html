@@ -684,6 +684,23 @@
       .map((f) => ({ ...f, ufs: Array.from(f.ufs), valorFormatado: formatarValor(f.valor) }));
   }
 
+  // Ranking de órgãos compradores na amostra (espelha o bloco "Órgão Público" do ConLicitação)
+  function calcularOrgaos(encontrados) {
+    const orgaos = {};
+    for (const c of encontrados) {
+      const valor = c.valor || 0;
+      const nome = c.orgao || "Órgão não informado";
+      if (!orgaos[nome]) orgaos[nome] = { nome, valor: 0, contratos: 0, ufs: new Set() };
+      orgaos[nome].valor += valor;
+      orgaos[nome].contratos += 1;
+      if (c.uf) orgaos[nome].ufs.add(c.uf);
+    }
+    return Object.values(orgaos)
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 10)
+      .map((o) => ({ ...o, ufs: Array.from(o.ufs), valorFormatado: formatarValor(o.valor) }));
+  }
+
   function renderChipsDiagnostico() {
     const chipsEl = document.getElementById("dg-chips");
     const d = estado.diagnostico;
@@ -694,11 +711,23 @@
     if (d.fornecedorSelecionado) {
       html += `<div class="chip">Fornecedor: ${escapeHtml(d.fornecedorSelecionado.nome)} <button id="dg-chip-limpar" title="Remover filtro">✕</button></div>`;
     }
+    if (d.orgaoSelecionado) {
+      html += `<div class="chip">Órgão: ${escapeHtml(d.orgaoSelecionado.nome)} <button id="dg-chip-limpar-orgao" title="Remover filtro">✕</button></div>`;
+    }
     chipsEl.innerHTML = html;
     const btnLimpar = document.getElementById("dg-chip-limpar");
     if (btnLimpar) {
       btnLimpar.addEventListener("click", () => {
         estado.diagnostico.fornecedorSelecionado = null;
+        document.getElementById("dg-detalhe").innerHTML = "";
+        renderChipsDiagnostico();
+        renderDiagnostico();
+      });
+    }
+    const btnLimparOrgao = document.getElementById("dg-chip-limpar-orgao");
+    if (btnLimparOrgao) {
+      btnLimparOrgao.addEventListener("click", () => {
+        estado.diagnostico.orgaoSelecionado = null;
         document.getElementById("dg-detalhe").innerHTML = "";
         renderChipsDiagnostico();
         renderDiagnostico();
@@ -762,6 +791,31 @@
     }
   }
 
+  function renderDetalheOrgao(nomeOrgao) {
+    const d = estado.diagnostico;
+    const registros = d.encontrados.filter((c) => (c.orgao || "Órgão não informado") === nomeOrgao);
+    d.orgaoSelecionado = { nome: nomeOrgao };
+    renderChipsDiagnostico();
+
+    let html = `<h2>Contratos deste órgão — ${escapeHtml(nomeOrgao)}</h2>`;
+    html += "<table><tr><th>Objeto</th><th>Fornecedor</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
+    for (const r of registros) {
+      const valor = formatarValor(r.valor);
+      const link = linkPncp(r.numeroControlePNCP);
+      html += `<tr>
+        <td>${escapeHtml(r.objeto || "-")}</td>
+        <td>${escapeHtml(r.nomeFornecedor || r.cnpjFornecedor || "-")}</td>
+        <td>${escapeHtml(r.uf || "-")}</td>
+        <td>${escapeHtml(valor)}</td>
+        <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
+        <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+      </tr>`;
+    }
+    html += "</table>";
+    document.getElementById("dg-detalhe").innerHTML = html;
+    document.getElementById("dg-detalhe").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderDiagnostico() {
     const d = estado.diagnostico;
     const alvo = document.getElementById("dg-resultado");
@@ -815,6 +869,22 @@
       }
     }
 
+    html += "<h2>Principais órgãos compradores (por valor contratado na amostra) — clique para ver os contratos</h2>";
+    if (d.orgaos.length === 0) {
+      html += "<p>Nenhum contrato do segmento encontrado na amostra do período.</p>";
+    } else {
+      const maxOrgao = d.orgaos[0].valor || 1;
+      for (const o of d.orgaos) {
+        const largura = Math.round((o.valor / maxOrgao) * 100);
+        const selecionado = d.orgaoSelecionado && d.orgaoSelecionado.nome === o.nome;
+        html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-orgao="${escapeHtml(o.nome)}">
+          <div class="barra-label">${escapeHtml(o.nome)}</div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(o.valorFormatado)}</div></div>
+          <div class="barra-meta">UFs: ${escapeHtml(o.ufs.join(", ") || "-")} · ${o.contratos} contrato(s) · <small>clique para detalhar</small></div>
+        </div>`;
+      }
+    }
+
     html += "<h2>Oportunidades abertas agora " + (d.uf ? "em " + escapeHtml(d.uf) : "") + "</h2>";
     if (d.oportunidadesAbertas.length === 0) {
       html += "<p>Nenhuma oportunidade aberta encontrada no momento para esse segmento/UF.</p>";
@@ -829,8 +899,12 @@
 
     alvo.innerHTML = html;
 
-    alvo.querySelectorAll(".barra-item").forEach((el) => {
+    alvo.querySelectorAll(".barra-item[data-cnpj]").forEach((el) => {
       el.addEventListener("click", () => renderDetalheFornecedor(el.dataset.cnpj));
+    });
+
+    alvo.querySelectorAll(".barra-item[data-orgao]").forEach((el) => {
+      el.addEventListener("click", () => renderDetalheOrgao(el.dataset.orgao));
     });
 
     alvo.querySelectorAll("tr.linha-clicavel[data-idx-op]").forEach((tr) => {
@@ -914,6 +988,7 @@
       }
 
       const concorrentes = calcularConcorrentes(encontrados);
+      const orgaos = calcularOrgaos(encontrados);
       let oportunidadesAbertas = [];
       let falhaConexaoOportunidades = false;
       let ufOportunidadesFalhouHoje = false;
@@ -945,8 +1020,10 @@
         },
         fonte,
         concorrentes,
+        orgaos,
         oportunidadesAbertas,
         fornecedorSelecionado: null,
+        orgaoSelecionado: null,
       };
 
       renderChipsDiagnostico();
