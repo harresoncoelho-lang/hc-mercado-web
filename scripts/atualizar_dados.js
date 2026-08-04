@@ -5,10 +5,22 @@
 //
 // Uso: node scripts/atualizar_dados.js
 // Variáveis de ambiente opcionais:
-//   DIAS_HISTORICO=30          -> quantos dias de contratos históricos varrer (padrão 30)
+//   DIAS_HISTORICO_INICIAL=30  -> na 1ª execução (sem arquivo anterior), quantos dias varrer (padrão 30)
+//   RETENCAO_DIAS=730          -> quantos dias de histórico manter acumulado (padrão 730 = 24 meses)
 //   LIMITE_MINUTOS=25          -> orçamento de tempo total do robô (padrão 25 min)
+//
+// IMPORTANTE: a partir desta versão o robô é INCREMENTAL — ele não re-varre tudo do zero
+// a cada execução. Ele lê o data/contratos_recentes.json já existente (comitado no repo),
+// busca só o que é novo desde a última coleta (com uma folga de 2 dias pra pegar contratos
+// que o PNCP publicou com atraso) e junta com o que já tinha, descartando duplicatas e
+// registros mais velhos que RETENCAO_DIAS. Assim, o histórico vai crescendo dia após dia até
+// cobrir os 24 meses — não tem como "pular" direto pra 24 meses de uma vez só, porque isso
+// exigiria escanear anos de licitações nacionais numa única execução, o que estoura o tempo
+// e os limites de taxa da API do PNCP.
 
-const DIAS_HISTORICO = parseInt(process.env.DIAS_HISTORICO || "30", 10);
+const DIAS_HISTORICO_INICIAL = parseInt(process.env.DIAS_HISTORICO_INICIAL || "30", 10);
+const RETENCAO_DIAS = parseInt(process.env.RETENCAO_DIAS || "730", 10);
+const FOLGA_DIAS = 2; // re-busca os últimos 2 dias pra pegar publicações atrasadas no PNCP
 const LIMITE_MINUTOS = parseFloat(process.env.LIMITE_MINUTOS || "25");
 const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
 const TAMANHO_PAGINA = 100;
@@ -55,14 +67,47 @@ async function fetchComRetentativa(url, tentativas = 3) {
   return null;
 }
 
-// ---------- Contratos históricos (nacional, últimos N dias) ----------
-async function coletarContratos() {
+// Lê o arquivo acumulado da execução anterior (se existir). Retorna null se não existir
+// ainda ou se estiver corrompido/em formato antigo.
+async function lerContratosExistentes(caminho) {
+  try {
+    const fs = await import("node:fs/promises");
+    const texto = await fs.readFile(caminho, "utf8");
+    const dados = JSON.parse(texto);
+    if (!Array.isArray(dados.registros)) return null;
+    return dados;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Chave única de um contrato, pra deduplicar ao juntar coleta nova com a antiga.
+function chaveRegistro(r) {
+  return r.numeroControlePNCP || `${r.cnpjFornecedor}|${r.dataAssinatura}|${r.valor}|${r.objeto}`;
+}
+
+// ---------- Contratos históricos (nacional, acumulados de forma incremental) ----------
+async function coletarContratos(caminhoArquivo) {
+  const existentes = await lerContratosExistentes(caminhoArquivo);
   const hoje = new Date();
-  const inicio = new Date(hoje.getTime() - DIAS_HISTORICO * 24 * 60 * 60 * 1000);
+
+  let inicio;
+  let primeiraExecucao = !existentes;
+  if (existentes && existentes.dataFinal) {
+    // Já tem histórico: busca só a partir de perto de onde parou (com folga pra pegar
+    // publicações atrasadas do PNCP), em vez de re-varrer tudo de novo.
+    const dataFinalAnterior = new Date(
+      `${existentes.dataFinal.slice(0, 4)}-${existentes.dataFinal.slice(4, 6)}-${existentes.dataFinal.slice(6, 8)}`
+    );
+    inicio = new Date(dataFinalAnterior.getTime() - FOLGA_DIAS * 24 * 60 * 60 * 1000);
+  } else {
+    // 1ª execução (sem arquivo anterior no repo): faz uma varredura inicial curta.
+    inicio = new Date(hoje.getTime() - DIAS_HISTORICO_INICIAL * 24 * 60 * 60 * 1000);
+  }
   const dataInicial = fmtData(inicio);
   const dataFinal = fmtData(hoje);
 
-  const registros = [];
+  const novos = [];
   let pagina = 1;
   let totalPaginas = 1;
   let paginasVarridas = 0;
@@ -86,7 +131,7 @@ async function coletarContratos() {
     paginasVarridas += 1;
 
     for (const item of itens) {
-      registros.push({
+      novos.push({
         objeto: item.objetoContrato || item.objetoCompra || "",
         orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "",
         uf: (item.unidadeOrgao && item.unidadeOrgao.ufSigla) || "",
@@ -100,18 +145,52 @@ async function coletarContratos() {
     }
 
     if (pagina % 20 === 0) {
-      console.log(`[contratos] ${pagina}/${totalPaginas} páginas, ${registros.length} registros até agora...`);
+      console.log(`[contratos] ${pagina}/${totalPaginas} páginas, ${novos.length} registros novos até agora...`);
     }
     pagina += 1;
   }
 
-  console.log(`[contratos] Concluído: ${registros.length} registros, ${paginasVarridas} páginas varridas de ${totalPaginas}, parcial=${parcial}.`);
+  // Junta com o que já tinha, deduplicando, e descarta o que passou da retenção.
+  const mapa = new Map();
+  if (existentes) {
+    for (const r of existentes.registros) mapa.set(chaveRegistro(r), r);
+  }
+  for (const r of novos) mapa.set(chaveRegistro(r), r);
+
+  const limiteRetencao = new Date(hoje.getTime() - RETENCAO_DIAS * 24 * 60 * 60 * 1000);
+  let registros = Array.from(mapa.values()).filter((r) => {
+    if (!r.dataAssinatura) return true; // mantém registros sem data (raros) por segurança
+    const d = new Date(r.dataAssinatura);
+    return isNaN(d) || d >= limiteRetencao;
+  });
+
+  // Trava de segurança de tamanho: contratos nacionais acumulados por até 24 meses podem
+  // crescer bastante. Se passar de MAX_REGISTROS, descarta primeiro os mais antigos —
+  // assim o arquivo não estoura o limite de tamanho do GitHub nem o tempo de carregamento
+  // no navegador do usuário.
+  const MAX_REGISTROS = 250000;
+  if (registros.length > MAX_REGISTROS) {
+    registros.sort((a, b) => (b.dataAssinatura || "").localeCompare(a.dataAssinatura || ""));
+    registros = registros.slice(0, MAX_REGISTROS);
+    console.log(`[contratos] Atingiu MAX_REGISTROS (${MAX_REGISTROS}); descartados os mais antigos.`);
+  }
+
+  const dataInicialReal = registros.reduce((min, r) => {
+    if (!r.dataAssinatura) return min;
+    return !min || r.dataAssinatura < min ? r.dataAssinatura : min;
+  }, null);
+
+  console.log(
+    `[contratos] Concluído: ${novos.length} novos nesta execução (${paginasVarridas} páginas de ${totalPaginas}, parcial=${parcial}). ` +
+    `Total acumulado após deduplicar/podar: ${registros.length} registros (${primeiraExecucao ? "1ª execução" : "incremental"}), ` +
+    `cobrindo desde ${dataInicialReal || "?"}.`
+  );
 
   return {
     atualizadoEm: new Date().toISOString(),
-    dataInicial,
+    dataInicial: dataInicialReal || dataInicial,
     dataFinal,
-    diasHistorico: DIAS_HISTORICO,
+    retencaoDias: RETENCAO_DIAS,
     totalRegistros: registros.length,
     paginasVarridas,
     totalPaginasDisponiveis: totalPaginas,
@@ -175,14 +254,11 @@ async function main() {
   const dirDados = path.join(process.cwd(), "data");
   await fs.mkdir(dirDados, { recursive: true });
 
-  console.log(`Iniciando coleta. Histórico: ${DIAS_HISTORICO} dias. Orçamento: ${LIMITE_MINUTOS} min.`);
+  console.log(`Iniciando coleta incremental. Retenção: ${RETENCAO_DIAS} dias. Orçamento: ${LIMITE_MINUTOS} min.`);
 
-  const contratos = await coletarContratos();
-  await fs.writeFile(
-    path.join(dirDados, "contratos_recentes.json"),
-    JSON.stringify(contratos),
-    "utf8"
-  );
+  const caminhoContratos = path.join(dirDados, "contratos_recentes.json");
+  const contratos = await coletarContratos(caminhoContratos);
+  await fs.writeFile(caminhoContratos, JSON.stringify(contratos), "utf8");
   console.log("Gravado data/contratos_recentes.json");
 
   const oportunidades = await coletarOportunidadesAbertas();
