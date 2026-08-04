@@ -557,7 +557,7 @@
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
         <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente a cada visita.</p>
       </div>
-      <button class="btn-imprimir" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
+      <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
     </div>
     <div class="painel-filtros" id="bol-config-painel" style="display:none;">
       <div class="campo">
@@ -701,7 +701,7 @@
   // Imprimir/gerar PDF: usa a impressão nativa do navegador (Ctrl+P → "Salvar como PDF"),
   // igual ao botão "Imprimir" do ConLicitação. O CSS de @media print esconde nav/filtros/
   // botões e força os acordeões a aparecerem abertos, deixando só o conteúdo do painel.
-  document.querySelectorAll(".btn-imprimir").forEach((btn) => {
+  document.querySelectorAll(".btn-imprimir:not(.btn-config-boletim)").forEach((btn) => {
     btn.addEventListener("click", () => window.print());
   });
 
