@@ -526,6 +526,7 @@
   .boletim-valor-linha { font-size: 13px; margin-bottom: 12px; }
   .boletim-valor-linha strong { color: var(--laranja); }
   .boletim-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--borda); }
+  .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 </style>
 </head>
 <body>
@@ -541,7 +542,8 @@
 </header>
 
 <nav>
-  <button class="ativo" data-alvo="oportunidades">Alertas de Licitações</button>
+  <button class="ativo" data-alvo="boletim">Boletim</button>
+  <button data-alvo="oportunidades">Encontrar Licitações</button>
   <button data-alvo="diagnostico">Diagnóstico de Mercado</button>
   <button data-alvo="empresa">Analisar Empresa</button>
   <button data-alvo="transparencia">Portal da Transparência</button>
@@ -549,11 +551,42 @@
 
 <main>
 
-  <section id="oportunidades" class="ativa">
-    <div class="painel-filtros">
+  <section id="boletim" class="ativa">
+    <div class="boletim-cabecalho">
+      <div>
+        <h2 style="margin-top:0;">Boletim de oportunidades</h2>
+        <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente a cada visita.</p>
+      </div>
+      <button class="btn-imprimir" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
+    </div>
+    <div class="painel-filtros" id="bol-config-painel" style="display:none;">
       <div class="campo">
         <label>Estado (UF)</label>
-        <input id="op-uf" placeholder="Ex: AM" maxlength="2">
+        <input id="bol-uf" placeholder="Ex: AM" maxlength="2">
+      </div>
+      <div class="campo" style="flex:2">
+        <label>Palavras-chave (separadas por vírgula)</label>
+        <input id="bol-palavras" placeholder="Ex: hospitalar, limpeza, informatica">
+      </div>
+      <button class="btn-buscar" id="bol-salvar">Salvar filtro do boletim</button>
+    </div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    <div id="bol-resultado"></div>
+  </section>
+
+  <section id="oportunidades">
+    <div class="painel-filtros">
+      <div class="campo">
+        <label>Estado (UF) — opcional</label>
+        <input id="op-uf" placeholder="Ex: AM (deixe em branco p/ todo o Brasil)" maxlength="2">
+      </div>
+      <div class="campo">
+        <label>Município contém</label>
+        <input id="op-municipio" placeholder="Ex: Manaus">
+      </div>
+      <div class="campo">
+        <label>Prazo até</label>
+        <input id="op-prazo-ate" type="date">
       </div>
       <div class="campo" style="flex:2">
         <label>Palavras-chave (separadas por vírgula)</label>
@@ -1146,15 +1179,142 @@
     });
   }
 
+  // Renderiza um painel completo de cards de boletim (resumo + filtros rápidos + lista)
+  // dentro do elemento `alvo`. Reaproveitado tanto pelo Boletim (filtro salvo, automático)
+  // quanto pelo Encontrar Licitações (busca manual) — mesma UI, fontes de dados diferentes.
+  function renderizarPainelBoletim(alvo, resultados, avisoHtml) {
+    const renderizar = (modoFiltro) => {
+      const lidos = lerConjunto("lidos");
+      const naoLidos = resultados.filter((r) => !lidos.has(idOportunidade(r))).length;
+      let html = avisoHtml + `<div class="cartoes">
+        <div class="cartao"><h3>Oportunidades encontradas</h3><div class="valor">${resultados.length}</div></div>
+        <div class="cartao"><h3>Ainda não lidas</h3><div class="valor">${naoLidos}</div></div>
+      </div>`;
+      html += `<div class="boletim-resumo">
+        <div class="boletim-filtros-rapidos">
+          <button class="btn-filtro-rapido" data-modo="todos">Todos (${resultados.length})</button>
+          <button class="btn-filtro-rapido" data-modo="nao-lidos">Não lidos (${naoLidos})</button>
+          <button class="btn-filtro-rapido" data-modo="favoritos">Favoritos</button>
+        </div>
+      </div>`;
+      html += montarCardsBoletim(resultados);
+      alvo.innerHTML = html;
+
+      const listaEl = document.getElementById("lista-boletim");
+      ligarAcoesBoletim(listaEl, resultados, () => renderizar(modoFiltro));
+
+      alvo.querySelectorAll(".btn-filtro-rapido").forEach((btn) => {
+        btn.classList.toggle("ativo", btn.dataset.modo === modoFiltro);
+        btn.addEventListener("click", () => {
+          aplicarFiltroRapidoBoletim(listaEl, btn.dataset.modo);
+          alvo.querySelectorAll(".btn-filtro-rapido").forEach((b) => b.classList.remove("ativo"));
+          btn.classList.add("ativo");
+        });
+      });
+      aplicarFiltroRapidoBoletim(listaEl, modoFiltro);
+    };
+    renderizar("todos");
+  }
+
+  // ---- Boletim (painel automático, baseado num filtro salvo — igual ao conceito de
+  // "edição do dia" do ConLicitação, só que sem precisar clicar em nada toda vez) ----
+  function lerFiltroBoletim() {
+    try {
+      const bruto = localStorage.getItem("hc_boletim_filtro");
+      return bruto ? JSON.parse(bruto) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function salvarFiltroBoletim(uf, palavrasRaw) {
+    try {
+      localStorage.setItem("hc_boletim_filtro", JSON.stringify({ uf, palavrasRaw }));
+    } catch (e) { /* localStorage indisponível */ }
+  }
+
+  async function gerarBoletim() {
+    const alvo = document.getElementById("bol-resultado");
+    const metaEl = document.getElementById("bol-meta");
+    const filtro = lerFiltroBoletim();
+
+    if (!filtro || !filtro.palavrasRaw) {
+      metaEl.textContent = "Configure seu filtro (estado + palavras-chave) para o boletim ser gerado automaticamente a cada visita.";
+      alvo.innerHTML = '<div class="aviso">Nenhum filtro salvo ainda. Clique em "Configurar filtro do boletim" acima e salve pra começar a receber seu boletim diário.</div>';
+      return;
+    }
+
+    const uf = (filtro.uf || "").trim().toUpperCase();
+    const palavras = filtro.palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
+    alvo.innerHTML = '<div class="carregando">Gerando boletim...</div>';
+
+    try {
+      const cache = await carregarCache("data/oportunidades_abertas.json");
+      let resultados = [];
+      let avisoHtml = "";
+
+      if (cache) {
+        resultados = cache.registros
+          .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
+          .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
+        const dt = new Date(cache.atualizadoEm);
+        const dataFormatada = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+        metaEl.textContent = `Boletim de ${dataFormatada}, ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · filtro: ${uf ? uf + " · " : ""}${palavras.join(", ")}`;
+        avisoHtml = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Gerado automaticamente a partir da coleta diária do robô (${escapeHtml(dt.toLocaleString("pt-BR"))}).</div>`;
+      } else {
+        metaEl.textContent = "Coleta diária ainda não disponível.";
+      }
+
+      if (resultados.length === 0) {
+        alvo.innerHTML = avisoHtml + '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na coleta mais recente.</div>';
+        return;
+      }
+
+      renderizarPainelBoletim(alvo, resultados, avisoHtml);
+    } catch (e) {
+      alvo.innerHTML = `<div class="aviso">Erro ao gerar boletim: ${escapeHtml(String(e))}</div>`;
+    }
+  }
+
+  document.querySelector('nav button[data-alvo="boletim"]').addEventListener("click", gerarBoletim);
+
+  document.getElementById("bol-config-toggle").addEventListener("click", () => {
+    const painel = document.getElementById("bol-config-painel");
+    const visivel = painel.style.display !== "none";
+    if (!visivel) {
+      const filtro = lerFiltroBoletim();
+      document.getElementById("bol-uf").value = (filtro && filtro.uf) || "";
+      document.getElementById("bol-palavras").value = (filtro && filtro.palavrasRaw) || "";
+    }
+    painel.style.display = visivel ? "none" : "flex";
+  });
+
+  document.getElementById("bol-salvar").addEventListener("click", () => {
+    const uf = document.getElementById("bol-uf").value.trim().toUpperCase();
+    const palavrasRaw = document.getElementById("bol-palavras").value.trim();
+    if (!palavrasRaw) {
+      alert("Informe ao menos uma palavra-chave pro filtro do boletim.");
+      return;
+    }
+    salvarFiltroBoletim(uf, palavrasRaw);
+    document.getElementById("bol-config-painel").style.display = "none";
+    gerarBoletim();
+  });
+
+  // Gera o boletim automaticamente já na primeira carga da página (aba inicial),
+  // igual ao ConLicitação abrir direto na tela de boletins.
+  gerarBoletim();
+
   // ---------- Oportunidades ----------
   document.getElementById("op-buscar").addEventListener("click", async () => {
     const uf = document.getElementById("op-uf").value.trim().toUpperCase();
+    const municipioFiltro = document.getElementById("op-municipio").value.trim().toLowerCase();
+    const prazoAte = document.getElementById("op-prazo-ate").value;
     const palavrasRaw = document.getElementById("op-palavras").value.trim();
     const alvo = document.getElementById("op-resultado");
     const btn = document.getElementById("op-buscar");
 
-    if (!uf || !palavrasRaw) {
-      alvo.innerHTML = '<div class="aviso">Preencha a UF e ao menos uma palavra-chave.</div>';
+    if (!palavrasRaw) {
+      alvo.innerHTML = '<div class="aviso">Informe ao menos uma palavra-chave.</div>';
       return;
     }
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
@@ -1168,15 +1328,31 @@
 
       if (cache) {
         resultados = cache.registros
-          .filter((r) => r.uf === uf && bateComSegmento(r.objeto, palavras))
+          .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
           .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
         falhaConexao = false;
         const dt = new Date(cache.atualizadoEm);
         avisoFonte = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(dt.toLocaleString("pt-BR"))}.</div>`;
-      } else {
+      } else if (uf) {
         const resp = await buscarOportunidadesAbertas(uf, palavras, 20);
         resultados = resp.encontrados;
         falhaConexao = resp.falhaConexao;
+      } else {
+        resultados = [];
+        falhaConexao = false;
+        avisoFonte = '<div class="aviso">Cache ainda não disponível — para buscar ao vivo sem cache, informe um estado (UF).</div>';
+      }
+
+      if (municipioFiltro) {
+        resultados = resultados.filter((r) => (r.municipio || "").toLowerCase().includes(municipioFiltro));
+      }
+      if (prazoAte) {
+        const limite = new Date(prazoAte + "T23:59:59");
+        resultados = resultados.filter((r) => {
+          if (!r.encerramento) return true;
+          const d = new Date(r.encerramento);
+          return isNaN(d) || d <= limite;
+        });
       }
 
       let avisoConexao = avisoFonte;
@@ -1189,38 +1365,7 @@
         return;
       }
 
-      const renderizarLista = (modoFiltro) => {
-        const lidos = lerConjunto("lidos");
-        const naoLidos = resultados.filter((r) => !lidos.has(idOportunidade(r))).length;
-        let html = avisoConexao + `<div class="cartoes">
-          <div class="cartao"><h3>Oportunidades abertas</h3><div class="valor">${resultados.length}</div></div>
-          <div class="cartao"><h3>Ainda não lidas</h3><div class="valor">${naoLidos}</div></div>
-        </div>`;
-        html += `<div class="boletim-resumo">
-          <div class="boletim-filtros-rapidos">
-            <button class="btn-filtro-rapido" data-modo="todos">Todos (${resultados.length})</button>
-            <button class="btn-filtro-rapido" data-modo="nao-lidos">Não lidos (${naoLidos})</button>
-            <button class="btn-filtro-rapido" data-modo="favoritos">Favoritos</button>
-          </div>
-        </div>`;
-        html += montarCardsBoletim(resultados);
-        alvo.innerHTML = html;
-
-        const listaEl = document.getElementById("lista-boletim");
-        ligarAcoesBoletim(listaEl, resultados, () => renderizarLista(modoFiltro));
-
-        alvo.querySelectorAll(".btn-filtro-rapido").forEach((btn) => {
-          btn.classList.toggle("ativo", btn.dataset.modo === modoFiltro);
-          btn.addEventListener("click", () => {
-            aplicarFiltroRapidoBoletim(listaEl, btn.dataset.modo);
-            alvo.querySelectorAll(".btn-filtro-rapido").forEach((b) => b.classList.remove("ativo"));
-            btn.classList.add("ativo");
-          });
-        });
-        aplicarFiltroRapidoBoletim(listaEl, modoFiltro);
-      };
-
-      renderizarLista("todos");
+      renderizarPainelBoletim(alvo, resultados, avisoConexao);
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao buscar: ${escapeHtml(String(e))}</div>`;
     } finally {
