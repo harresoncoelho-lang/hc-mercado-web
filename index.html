@@ -198,6 +198,18 @@
   .btn-buscar:active:not(:disabled) { transform: translateY(0); }
 
   .dica-clique { font-size: 12px; color: var(--texto-fraco); margin: 8px 2px 0; }
+
+  /* ---- Ficha cadastral enriquecida (inspirada no modal "Concorrente" do ConLicitação) ---- */
+  .ficha-secao { margin-top: 18px; }
+  .ficha-secao h4 {
+    margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: var(--texto-fraco);
+    border-bottom: 1px solid #223144; padding-bottom: 6px;
+  }
+  .ficha-lista { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+  .ficha-lista li { padding: 5px 0; border-bottom: 1px solid #1a2635; }
+  .ficha-lista li:last-child { border-bottom: none; }
+  .ficha-lista .socio-qualif, .ficha-lista .cnae-codigo { color: var(--texto-fraco); font-size: 12px; }
+  .ficha-rapida-cnpj { margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -327,6 +339,54 @@
   function formatarValor(v) {
     const n = Number(v) || 0;
     return "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function formatarTelefone(ddd, numero) {
+    if (!numero) return null;
+    return ddd ? `(${ddd}) ${numero}` : numero;
+  }
+
+  // Monta o HTML de uma ficha cadastral completa a partir da resposta da BrasilAPI
+  // (endpoint /api/cnpj/v1/{cnpj}). Inspirado no modal "Concorrente" do ConLicitação:
+  // dados básicos + endereço/contato + sócios (QSA) + CNAEs secundários (segmentos de atuação).
+  function montarFichaCadastral(ficha) {
+    const ativa = (ficha.descricao_situacao_cadastral || "").toUpperCase() === "ATIVA";
+    const endereco = [
+      ficha.descricao_tipo_de_logradouro, ficha.logradouro, ficha.numero,
+    ].filter(Boolean).join(" ") + (ficha.bairro ? `, ${ficha.bairro}` : "");
+    const telefone = formatarTelefone(ficha.ddd_telefone_1 && ficha.ddd_telefone_1.slice(0, 2), ficha.ddd_telefone_1 && ficha.ddd_telefone_1.slice(2));
+
+    let html = `<div class="ficha-empresa">
+      <div class="campo-ficha"><label>Razão social</label><div>${escapeHtml(ficha.razao_social || "-")}</div></div>
+      <div class="campo-ficha"><label>Nome fantasia</label><div>${escapeHtml(ficha.nome_fantasia || "-")}</div></div>
+      <div class="campo-ficha"><label>Situação cadastral</label><div class="${ativa ? "situacao-ativa" : "situacao-outra"}">${escapeHtml(ficha.descricao_situacao_cadastral || "-")}</div></div>
+      <div class="campo-ficha"><label>Porte</label><div>${escapeHtml(ficha.descricao_porte || ficha.porte || "-")}</div></div>
+      <div class="campo-ficha"><label>Natureza jurídica</label><div>${escapeHtml(ficha.natureza_juridica || "-")}</div></div>
+      <div class="campo-ficha"><label>Data de abertura</label><div>${escapeHtml(ficha.data_inicio_atividade || "-")}</div></div>
+      <div class="campo-ficha"><label>CNAE principal</label><div>${escapeHtml((ficha.cnae_fiscal_descricao || "-"))}</div></div>
+      <div class="campo-ficha"><label>Município/UF</label><div>${escapeHtml((ficha.municipio || "-") + " / " + (ficha.uf || "-"))}</div></div>
+      <div class="campo-ficha"><label>Endereço</label><div>${escapeHtml(endereco || "-")}${ficha.cep ? " · CEP " + escapeHtml(ficha.cep) : ""}</div></div>
+      <div class="campo-ficha"><label>Telefone</label><div>${escapeHtml(telefone || "-")}</div></div>
+      <div class="campo-ficha"><label>Capital social</label><div>${escapeHtml(formatarValor(ficha.capital_social || 0))}</div></div>
+    </div>`;
+
+    if (Array.isArray(ficha.qsa) && ficha.qsa.length > 0) {
+      html += `<div class="ficha-secao"><h4>Sócios / administradores</h4><ul class="ficha-lista">`;
+      for (const s of ficha.qsa) {
+        html += `<li>${escapeHtml(s.nome_socio || "-")} <span class="socio-qualif">— ${escapeHtml(s.qualificacao_socio || "-")}</span></li>`;
+      }
+      html += `</ul></div>`;
+    }
+
+    if (Array.isArray(ficha.cnaes_secundarios) && ficha.cnaes_secundarios.length > 0) {
+      html += `<div class="ficha-secao"><h4>Outros segmentos de atuação (CNAEs secundários)</h4><ul class="ficha-lista">`;
+      for (const c of ficha.cnaes_secundarios) {
+        html += `<li><span class="cnae-codigo">${escapeHtml(String(c.codigo || ""))}</span> — ${escapeHtml(c.descricao || "-")}</li>`;
+      }
+      html += `</ul></div>`;
+    }
+
+    return html;
   }
 
   function extrairUf(registro) {
@@ -646,7 +706,7 @@
     }
   }
 
-  function renderDetalheFornecedor(cnpj) {
+  async function renderDetalheFornecedor(cnpj) {
     const d = estado.diagnostico;
     const registros = d.encontrados.filter((c) => (c.cnpjFornecedor || "sem-cnpj") === cnpj);
     const fornecedor = d.concorrentes.find((f) => f.cnpj === cnpj);
@@ -654,7 +714,8 @@
     renderChipsDiagnostico();
 
     let html = `<h2>Contratos individuais — ${escapeHtml(d.fornecedorSelecionado.nome)}</h2>`;
-    html += `<p><a class="link-pncp" href="#" id="dg-ir-empresa">→ Ver ficha cadastral e cruzar histórico completo na aba Analisar Empresa</a></p>`;
+    html += `<div id="dg-ficha-cnpj" class="ficha-rapida-cnpj"><div class="carregando">Consultando dados cadastrais do CNPJ...</div></div>`;
+    html += `<p><a class="link-pncp" href="#" id="dg-ir-empresa">→ Cruzar histórico completo por segmento na aba Analisar Empresa</a></p>`;
     html += "<table><tr><th>Objeto</th><th>Órgão</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
     for (const r of registros) {
       const valor = formatarValor(r.valor);
@@ -679,6 +740,25 @@
         document.querySelector('nav button[data-alvo="empresa"]').click();
         document.getElementById("emp-cnpj").value = cnpj;
       });
+    }
+
+    // Busca a ficha cadastral completa (CNPJ válido de 14 dígitos, sem o placeholder "sem-cnpj")
+    const alvoFicha = document.getElementById("dg-ficha-cnpj");
+    if (!alvoFicha) return;
+    if (!cnpj || soDigitos(cnpj).length !== 14) {
+      alvoFicha.innerHTML = "";
+      return;
+    }
+    try {
+      const resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${soDigitos(cnpj)}`);
+      if (!resp.ok) {
+        alvoFicha.innerHTML = '<div class="aviso">Não foi possível obter os dados cadastrais desse CNPJ agora.</div>';
+        return;
+      }
+      const ficha = await resp.json();
+      alvoFicha.innerHTML = montarFichaCadastral(ficha);
+    } catch (e) {
+      alvoFicha.innerHTML = '<div class="aviso">Erro ao consultar dados cadastrais deste CNPJ.</div>';
     }
   }
 
@@ -908,17 +988,7 @@
       let html = "";
 
       if (ficha) {
-        const ativa = (ficha.descricao_situacao_cadastral || "").toUpperCase() === "ATIVA";
-        html += `<div class="ficha-empresa">
-          <div class="campo-ficha"><label>Razão social</label><div>${escapeHtml(ficha.razao_social || "-")}</div></div>
-          <div class="campo-ficha"><label>Nome fantasia</label><div>${escapeHtml(ficha.nome_fantasia || "-")}</div></div>
-          <div class="campo-ficha"><label>Situação cadastral</label><div class="${ativa ? "situacao-ativa" : "situacao-outra"}">${escapeHtml(ficha.descricao_situacao_cadastral || "-")}</div></div>
-          <div class="campo-ficha"><label>Porte</label><div>${escapeHtml(ficha.porte || "-")}</div></div>
-          <div class="campo-ficha"><label>Data de abertura</label><div>${escapeHtml(ficha.data_inicio_atividade || "-")}</div></div>
-          <div class="campo-ficha"><label>CNAE principal</label><div>${escapeHtml((ficha.cnae_fiscal_descricao || "-"))}</div></div>
-          <div class="campo-ficha"><label>Município/UF</label><div>${escapeHtml((ficha.municipio || "-") + " / " + (ficha.uf || "-"))}</div></div>
-          <div class="campo-ficha"><label>Capital social</label><div>${escapeHtml(formatarValor(ficha.capital_social || 0))}</div></div>
-        </div>`;
+        html += montarFichaCadastral(ficha);
       } else {
         html += `<div class="aviso">${escapeHtml(erroFicha || "Dados cadastrais indisponíveis.")}</div>`;
       }
