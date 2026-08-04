@@ -420,6 +420,52 @@
   .mini-grafico-coluna:hover .mini-grafico-barra { opacity: 0.85; }
   .mini-grafico-rotulo { font-size: 10px; color: var(--texto-fraco); text-align: center; white-space: nowrap; }
   .mini-grafico-valor { font-size: 10px; color: var(--texto); font-weight: 600; }
+
+  /* ---- Botão Imprimir/Gerar PDF (Diagnóstico de Mercado) ---- */
+  .dg-topo-acoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .dg-topo-acoes .chips { margin-bottom: 0; flex: 1; }
+  .btn-imprimir {
+    background: var(--cartao-claro);
+    border: 1px solid var(--borda);
+    color: var(--texto);
+    padding: 9px 16px;
+    border-radius: var(--raio-pq);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-imprimir:hover { background: #1d2f45; border-color: var(--azul); }
+
+  /* ---- Impressão / Geração de PDF: mostra só o conteúdo do diagnóstico, sem nav/filtros/menus ---- */
+  @media print {
+    body { background: #fff !important; color: #111 !important; }
+    header, nav, .filtros-lateral, .btn-imprimir, .rodape, .dica-clique,
+    .barra-item .barra-meta small, tr.linha-clicavel td .link-pncp { }
+    header, nav, .filtros-lateral, .btn-imprimir, .rodape { display: none !important; }
+    main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    .layout-mercado { display: block !important; }
+    section { display: none !important; }
+    section.ativa { display: block !important; }
+    .cartao, table, .acc, .aviso, .mini-grafico, .barra-item {
+      box-shadow: none !important; break-inside: avoid;
+    }
+    .cartao { border: 1px solid #ccc !important; background: #fff !important; }
+    .cartao .valor, h2, .barra-label { color: #111 !important; }
+    .valor { color: #0d47a1 !important; }
+    table { background: #fff !important; border: 1px solid #ccc !important; }
+    th { background: #f0f0f0 !important; color: #333 !important; }
+    td, th { border-bottom: 1px solid #ddd !important; color: #111 !important; }
+    tbody tr:nth-child(even) { background: #fafafa !important; }
+    .acc-corpo { display: block !important; }
+    .acc { border: 1px solid #ccc !important; background: #fff !important; }
+    .acc-cab { background: #f5f5f5 !important; }
+    .mini-grafico-barra { background: #f2891a !important; }
+    a { color: #0d47a1 !important; text-decoration: underline !important; }
+    .dg-print-titulo { display: block !important; }
+  }
+  .dg-print-titulo { display: none; }
 </style>
 </head>
 <body>
@@ -450,6 +496,7 @@
       </div>
       <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
     </div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="op-resultado"></div>
   </section>
 
@@ -491,7 +538,10 @@
         <p class="dica-clique" style="margin-top:14px;">O histórico é acumulado dia a dia por um robô — quanto mais tempo o site estiver no ar, mais fundo o período de 24 meses vai cobrir de verdade.</p>
       </aside>
       <div class="conteudo-mercado">
-        <div id="dg-chips" class="chips"></div>
+        <div class="dg-topo-acoes">
+          <div id="dg-chips" class="chips"></div>
+          <button id="dg-imprimir" class="btn-imprimir" title="Gerar PDF/impressão deste diagnóstico">🖨️ Imprimir / Gerar PDF</button>
+        </div>
         <div id="dg-resultado"></div>
         <div id="dg-detalhe"></div>
       </div>
@@ -519,6 +569,7 @@
       </div>
       <button class="btn-buscar" id="emp-buscar">Analisar empresa</button>
     </div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="emp-resultado"></div>
   </section>
 
@@ -530,6 +581,7 @@
       </div>
       <button class="btn-buscar" id="tr-buscar">Filtrar</button>
     </div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="tr-resultado"></div>
   </section>
 
@@ -546,6 +598,13 @@
       b.classList.add("ativo");
       document.getElementById(b.dataset.alvo).classList.add("ativa");
     });
+  });
+
+  // Imprimir/gerar PDF: usa a impressão nativa do navegador (Ctrl+P → "Salvar como PDF"),
+  // igual ao botão "Imprimir" do ConLicitação. O CSS de @media print esconde nav/filtros/
+  // botões e força os acordeões a aparecerem abertos, deixando só o conteúdo do painel.
+  document.querySelectorAll(".btn-imprimir").forEach((btn) => {
+    btn.addEventListener("click", () => window.print());
   });
 
   function escapeHtml(s) {
@@ -1165,9 +1224,10 @@
     for (const r of registros) {
       const valor = formatarValor(r.valor);
       const link = linkPncp(r.numeroControlePNCP);
+      const cnpjForn = r.cnpjFornecedor || "sem-cnpj";
       html += `<tr>
         <td>${escapeHtml(r.objeto || "-")}</td>
-        <td>${escapeHtml(r.nomeFornecedor || r.cnpjFornecedor || "-")}</td>
+        <td><a href="#" class="link-pncp fornecedor-clicavel" data-cnpj="${escapeHtml(cnpjForn)}">${escapeHtml(r.nomeFornecedor || cnpjForn)} ↗</a></td>
         <td>${escapeHtml(r.uf || "-")}</td>
         <td>${escapeHtml(valor)}</td>
         <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
@@ -1175,8 +1235,17 @@
       </tr>`;
     }
     html += "</table>";
-    document.getElementById("dg-detalhe").innerHTML = html;
-    document.getElementById("dg-detalhe").scrollIntoView({ behavior: "smooth", block: "start" });
+    html += '<div class="dica-clique">Clique no nome do fornecedor para ver todos os contratos e a ficha cadastral dele.</div>';
+    const alvoDetalhe = document.getElementById("dg-detalhe");
+    alvoDetalhe.innerHTML = html;
+    alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    alvoDetalhe.querySelectorAll(".fornecedor-clicavel").forEach((a) => {
+      a.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        renderDetalheFornecedor(a.dataset.cnpj);
+      });
+    });
   }
 
   function renderDiagnostico() {
@@ -1380,6 +1449,9 @@
         fonte = { tipo: "ao_vivo" };
       }
 
+      if (uf) {
+        encontrados = encontrados.filter((r) => (r.uf || "").toUpperCase() === uf);
+      }
       if (municipioFiltro) {
         encontrados = encontrados.filter((r) => (r.municipio || "").toLowerCase().includes(municipioFiltro));
       }
