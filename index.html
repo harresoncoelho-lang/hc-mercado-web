@@ -186,6 +186,18 @@
     background: #0f2a4a; color: #6fa8f5; border: 1px solid #24476f;
     padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
   }
+
+  /* ---- Polimento visual (2ª rodada): foco em campos, botão e dica de clique ---- */
+  .campo input:focus, .campo select:focus {
+    outline: none;
+    border-color: var(--azul);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.25);
+  }
+  .btn-buscar { transition: background 0.15s ease, transform 0.1s ease; }
+  .btn-buscar:hover:not(:disabled) { background: #ff8c2b; transform: translateY(-1px); }
+  .btn-buscar:active:not(:disabled) { transform: translateY(0); }
+
+  .dica-clique { font-size: 12px; color: var(--texto-fraco); margin: 8px 2px 0; }
 </style>
 </head>
 <body>
@@ -557,11 +569,35 @@
 
       let html = avisoConexao + `<div class="cartoes"><div class="cartao"><h3>Oportunidades abertas</h3><div class="valor">${resultados.length}</div></div></div>`;
       html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
-      for (const r of resultados) {
-        html += `<tr><td>${escapeHtml(r.objeto)}</td><td>${escapeHtml(r.orgao)}</td><td>${escapeHtml(r.encerramento || "-")}</td><td>${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
-      }
+      resultados.forEach((r, i) => {
+        html += `<tr class="linha-clicavel" data-idx="${i}"><td>${escapeHtml(r.objeto)}</td><td>${escapeHtml(r.orgao)}</td><td>${escapeHtml(r.encerramento || "-")}</td><td>${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
+      });
       html += "</table>";
+      html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
       alvo.innerHTML = html;
+
+      alvo.querySelectorAll("tr.linha-clicavel").forEach((tr) => {
+        tr.addEventListener("click", () => {
+          const jaSelecionada = tr.classList.contains("linha-selecionada");
+          alvo.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+          const detalheExistente = alvo.querySelector(".detalhe-drilldown");
+          if (detalheExistente) detalheExistente.remove();
+          if (jaSelecionada) return;
+          tr.classList.add("linha-selecionada");
+          const r = resultados[Number(tr.dataset.idx)];
+          const detalhe = document.createElement("div");
+          detalhe.className = "detalhe-drilldown";
+          detalhe.innerHTML = `<dl>
+            <div><dt>Objeto completo</dt><dd>${escapeHtml(r.objeto || "-")}</dd></div>
+            <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
+            <div><dt>Município</dt><dd>${escapeHtml(r.municipio || "-")}</dd></div>
+            <div><dt>Encerramento da proposta</dt><dd>${escapeHtml(r.encerramento || "-")}</dd></div>
+            <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
+            <div><dt>Link</dt><dd>${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">Abrir edital no PNCP ↗</a>` : "-"}</dd></div>
+          </dl>`;
+          tr.after(detalhe);
+        });
+      });
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao buscar: ${escapeHtml(String(e))}</div>`;
     } finally {
@@ -704,16 +740,39 @@
       html += "<p>Nenhuma oportunidade aberta encontrada no momento para esse segmento/UF.</p>";
     } else {
       html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
-      for (const o of d.oportunidadesAbertas) {
-        html += `<tr><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(o.encerramento || "-")}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
-      }
+      d.oportunidadesAbertas.forEach((o, i) => {
+        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(o.encerramento || "-")}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
+      });
       html += "</table>";
+      html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
     }
 
     alvo.innerHTML = html;
 
     alvo.querySelectorAll(".barra-item").forEach((el) => {
       el.addEventListener("click", () => renderDetalheFornecedor(el.dataset.cnpj));
+    });
+
+    alvo.querySelectorAll("tr.linha-clicavel[data-idx-op]").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const jaSelecionada = tr.classList.contains("linha-selecionada");
+        alvo.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+        const detalheExistente = alvo.querySelector(".detalhe-drilldown");
+        if (detalheExistente) detalheExistente.remove();
+        if (jaSelecionada) return;
+        tr.classList.add("linha-selecionada");
+        const o = d.oportunidadesAbertas[Number(tr.dataset.idxOp)];
+        const detalhe = document.createElement("div");
+        detalhe.className = "detalhe-drilldown";
+        detalhe.innerHTML = `<dl>
+          <div><dt>Objeto completo</dt><dd>${escapeHtml(o.objeto || "-")}</dd></div>
+          <div><dt>Órgão</dt><dd>${escapeHtml(o.orgao || "-")}</dd></div>
+          <div><dt>Encerramento da proposta</dt><dd>${escapeHtml(o.encerramento || "-")}</dd></div>
+          <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(o.numeroControlePNCP || "-")}</dd></div>
+          <div><dt>Link</dt><dd>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener">Abrir edital no PNCP ↗</a>` : "-"}</dd></div>
+        </dl>`;
+        tr.after(detalhe);
+      });
     });
   }
 
@@ -933,21 +992,49 @@
         html2 += "<p>Nenhum contrato desse CNPJ encontrado no PNCP dentro da amostra do período selecionado. Tente aumentar o período.</p>";
       } else {
         html2 += "<table><tr><th>Objeto</th><th>Órgão</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
-        for (const r of registrosFiltrados) {
+        registrosFiltrados.forEach((r, i) => {
           const link = linkPncp(r.numeroControlePNCP);
-          html2 += `<tr>
+          html2 += `<tr class="linha-clicavel" data-idx="${i}">
             <td>${escapeHtml(r.objeto || "-")}</td>
             <td>${escapeHtml(r.orgao || "-")}</td>
             <td>${escapeHtml(r.uf || "-")}</td>
             <td>${escapeHtml(formatarValor(r.valor))}</td>
             <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
-            <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+            <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td>
           </tr>`;
-        }
+        });
         html2 += "</table>";
+        html2 += '<div class="dica-clique">Clique numa linha para ver todos os detalhes desse contrato.</div>';
       }
 
       alvo.innerHTML = html + html2;
+
+      if (registrosFiltrados.length > 0) {
+        alvo.querySelectorAll("tr.linha-clicavel").forEach((tr) => {
+          tr.addEventListener("click", () => {
+            const jaSelecionada = tr.classList.contains("linha-selecionada");
+            alvo.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+            const detalheExistente = alvo.querySelector(".detalhe-drilldown");
+            if (detalheExistente) detalheExistente.remove();
+            if (jaSelecionada) return;
+            tr.classList.add("linha-selecionada");
+            const r = registrosFiltrados[Number(tr.dataset.idx)];
+            const link = linkPncp(r.numeroControlePNCP);
+            const detalhe = document.createElement("div");
+            detalhe.className = "detalhe-drilldown";
+            detalhe.innerHTML = `<dl>
+              <div><dt>Objeto completo</dt><dd>${escapeHtml(r.objeto || "-")}</dd></div>
+              <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
+              <div><dt>Município/UF</dt><dd>${escapeHtml((r.municipio || "-") + " / " + (r.uf || "-"))}</dd></div>
+              <div><dt>Valor</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
+              <div><dt>Data de assinatura</dt><dd>${escapeHtml(String(r.dataAssinatura || "-"))}</dd></div>
+              <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
+              <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</dd></div>
+            </dl>`;
+            tr.after(detalhe);
+          });
+        });
+      }
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao analisar empresa: ${escapeHtml(String(e))}</div>`;
     } finally {
