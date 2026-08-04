@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HC Licitações - Inteligência de Mercado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --azul: #1a73e8;
@@ -12,24 +15,30 @@
     --cartao: #182636;
     --texto: #e7edf3;
     --texto-fraco: #9fb0c3;
+    --verde: #4caf50;
+    --vermelho: #e05d5d;
   }
   * { box-sizing: border-box; }
   body {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: "Inter", Arial, Helvetica, sans-serif;
     background: var(--fundo);
     color: var(--texto);
     margin: 0;
+    -webkit-font-smoothing: antialiased;
   }
   header {
     background: linear-gradient(90deg, var(--azul), #0d47a1);
     padding: 22px 32px;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.3);
+    position: relative;
+    z-index: 1;
   }
-  header h1 { margin: 0; font-size: 22px; }
+  header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.2px; }
   header p { margin: 4px 0 0; color: #cfe0fb; font-size: 14px; }
 
   nav {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     padding: 0 32px;
     background: #101c29;
     border-bottom: 1px solid #223144;
@@ -40,11 +49,14 @@
     color: var(--texto-fraco);
     padding: 14px 18px;
     font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
     border-bottom: 3px solid transparent;
+    border-radius: 6px 6px 0 0;
   }
   nav button.ativo {
     color: #fff;
+    background: #182636;
     border-bottom: 3px solid var(--laranja);
   }
 
@@ -146,8 +158,19 @@
   }
   .ficha-empresa .campo-ficha label { display:block; font-size: 11px; text-transform: uppercase; color: var(--texto-fraco); margin-bottom: 2px; }
   .ficha-empresa .campo-ficha div { font-size: 14px; }
-  .situacao-ativa { color: #4caf50; font-weight: bold; }
-  .situacao-outra { color: #e8710a; font-weight: bold; }
+  .situacao-ativa, .situacao-outra {
+    display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; letter-spacing: 0.3px;
+  }
+  .situacao-ativa { color: var(--verde); background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.35); }
+  .situacao-outra { color: var(--laranja); background: rgba(232,113,10,0.12); border: 1px solid rgba(232,113,10,0.35); }
+
+  /* Badges genéricos de modalidade (usados na tabela do Portal da Transparência) */
+  .badge-modalidade {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; background: #0f2a4a; color: #6fa8f5; border: 1px solid #24476f;
+    white-space: nowrap;
+  }
 
   /* ---- Polimento visual: profundidade, hover e transições ---- */
   .cartao {
@@ -1231,7 +1254,7 @@
       html += `<tr class="linha-clicavel" data-idx="${i}">
         <td>${escapeHtml(r.objeto || "-")}</td>
         <td>${escapeHtml(r.orgao || "-")}</td>
-        <td>${escapeHtml(r.modalidade || "-")}</td>
+        <td>${r.modalidade ? `<span class="badge-modalidade">${escapeHtml(r.modalidade)}</span>` : "-"}</td>
         <td>${escapeHtml(r.uf || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
         <td>${formatarDataIso(r.dataAbertura)}</td>
       </tr>`;
