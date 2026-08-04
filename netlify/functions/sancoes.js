@@ -47,9 +47,11 @@ exports.handler = async (event) => {
     };
   }
 
+  // OBS: o parâmetro correto da API é "codigoSancionado" (CNPJ ou CPF do sancionado),
+  // não "cnpjSancionado" -- esse último é ignorado pela API e retorna resultados não filtrados.
   const [ceis, cnep] = await Promise.all([
-    consultar(`/ceis?cnpjSancionado=${cnpj}&pagina=1`, token),
-    consultar(`/cnep?cnpjSancionado=${cnpj}&pagina=1`, token),
+    consultar(`/ceis?codigoSancionado=${cnpj}&pagina=1`, token),
+    consultar(`/cnep?codigoSancionado=${cnpj}&pagina=1`, token),
   ]);
 
   const falhouAlguma = !ceis.ok && !cnep.ok;
