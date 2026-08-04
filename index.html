@@ -382,6 +382,44 @@
   ::-webkit-scrollbar-thumb:hover { background: #2f4763; }
 
   .rodape { border-top: 1px solid var(--borda); padding-top: 20px; margin-top: 60px; }
+
+  /* ---- Diagnóstico de Mercado: layout em duas colunas (filtros na lateral) ---- */
+  .layout-mercado { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
+  .filtros-lateral {
+    position: sticky; top: 16px;
+    background: linear-gradient(160deg, var(--cartao-claro), var(--cartao));
+    border: 1px solid var(--borda);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .filtros-lateral-titulo {
+    margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--texto-fraco); border-bottom: 1px solid var(--borda); padding-bottom: 10px;
+  }
+  .filtros-lateral .campo { flex: none; min-width: 0; }
+  .conteudo-mercado { min-width: 0; }
+  .conteudo-mercado h2:first-of-type { margin-top: 0; }
+
+  @media (max-width: 820px) {
+    .layout-mercado { grid-template-columns: 1fr; }
+    .filtros-lateral { position: static; }
+  }
+
+  /* Mini-gráfico de barras "Licitações por mês" (equivalente simplificado ao gráfico do ConLicitação) */
+  .mini-grafico { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 10px 4px 0; }
+  .mini-grafico-coluna { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+  .mini-grafico-barra {
+    width: 100%; max-width: 34px;
+    background: linear-gradient(180deg, var(--laranja-forte), var(--laranja));
+    border-radius: 5px 5px 0 0;
+    box-shadow: 0 2px 8px rgba(242,137,26,0.3);
+    transition: opacity 0.15s ease;
+  }
+  .mini-grafico-coluna:hover .mini-grafico-barra { opacity: 0.85; }
+  .mini-grafico-rotulo { font-size: 10px; color: var(--texto-fraco); text-align: center; white-space: nowrap; }
+  .mini-grafico-valor { font-size: 10px; color: var(--texto); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -416,30 +454,48 @@
   </section>
 
   <section id="diagnostico">
-    <div class="painel-filtros">
-      <div class="campo" style="flex:2">
-        <label>Segmento (palavras-chave, separadas por vírgula)</label>
-        <input id="dg-segmento" placeholder="Ex: fotovoltaic, energia solar">
+    <div class="layout-mercado">
+      <aside class="filtros-lateral">
+        <h3 class="filtros-lateral-titulo">Filtros</h3>
+        <div class="campo">
+          <label>Segmento (palavras-chave)</label>
+          <input id="dg-segmento" placeholder="Ex: fotovoltaic, energia solar">
+        </div>
+        <div class="campo">
+          <label>UF de referência</label>
+          <input id="dg-uf" placeholder="Ex: AM" maxlength="2">
+        </div>
+        <div class="campo">
+          <label>Município contém</label>
+          <input id="dg-municipio" placeholder="Ex: Manaus">
+        </div>
+        <div class="campo">
+          <label>Órgão contém</label>
+          <input id="dg-orgao-filtro" placeholder="Ex: Prefeitura, Ministério...">
+        </div>
+        <div class="campo">
+          <label>Período de análise</label>
+          <select id="dg-dias">
+            <option value="3">Últimos 3 dias</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="15">Últimos 15 dias</option>
+            <option value="30" selected>Últimos 30 dias</option>
+            <option value="60">Últimos 2 meses</option>
+            <option value="90">Últimos 3 meses</option>
+            <option value="180">Últimos 6 meses</option>
+            <option value="365">Últimos 12 meses</option>
+            <option value="730">Últimos 24 meses</option>
+          </select>
+        </div>
+        <button class="btn-buscar" id="dg-buscar" style="width:100%;">Gerar diagnóstico</button>
+        <p class="dica-clique" style="margin-top:14px;">O histórico é acumulado dia a dia por um robô — quanto mais tempo o site estiver no ar, mais fundo o período de 24 meses vai cobrir de verdade.</p>
+      </aside>
+      <div class="conteudo-mercado">
+        <div id="dg-chips" class="chips"></div>
+        <div id="dg-resultado"></div>
+        <div id="dg-detalhe"></div>
       </div>
-      <div class="campo">
-        <label>UF de referência</label>
-        <input id="dg-uf" placeholder="Ex: AM" maxlength="2">
-      </div>
-      <div class="campo">
-        <label>Período (dias)</label>
-        <select id="dg-dias">
-          <option value="1">1 dia</option>
-          <option value="2">2 dias</option>
-          <option value="3" selected>3 dias</option>
-          <option value="5">5 dias</option>
-          <option value="7">7 dias</option>
-        </select>
-      </div>
-      <button class="btn-buscar" id="dg-buscar">Gerar diagnóstico</button>
     </div>
-    <div id="dg-chips" class="chips"></div>
-    <div id="dg-resultado"></div>
-    <div id="dg-detalhe"></div>
   </section>
 
   <section id="empresa">
@@ -967,6 +1023,44 @@
       .map((o) => ({ ...o, ufs: Array.from(o.ufs), valorFormatado: formatarValor(o.valor) }));
   }
 
+  // Agrupa por mês/ano de assinatura — alimenta o mini-gráfico "Licitações por mês"
+  // (equivalente simplificado ao gráfico de barras do ConLicitação).
+  function calcularPorMes(encontrados) {
+    const meses = {};
+    for (const c of encontrados) {
+      if (!c.dataAssinatura) continue;
+      const d = new Date(c.dataAssinatura);
+      if (isNaN(d)) continue;
+      const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!meses[chave]) meses[chave] = { chave, valor: 0, contratos: 0 };
+      meses[chave].valor += c.valor || 0;
+      meses[chave].contratos += 1;
+    }
+    const nomesMes = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return Object.values(meses)
+      .sort((a, b) => a.chave.localeCompare(b.chave))
+      .slice(-24)
+      .map((m) => {
+        const [ano, mes] = m.chave.split("-");
+        return { ...m, rotulo: `${nomesMes[Number(mes) - 1]}/${ano.slice(2)}`, valorFormatado: formatarValor(m.valor) };
+      });
+  }
+
+  // Ranking de licitações por UF na amostra (equivalente ao bloco "Licitações por região" do ConLicitação).
+  function calcularPorUf(encontrados) {
+    const ufs = {};
+    for (const c of encontrados) {
+      const uf = c.uf || "Não informado";
+      if (!ufs[uf]) ufs[uf] = { uf, valor: 0, contratos: 0 };
+      ufs[uf].valor += c.valor || 0;
+      ufs[uf].contratos += 1;
+    }
+    return Object.values(ufs)
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 15)
+      .map((u) => ({ ...u, valorFormatado: formatarValor(u.valor) }));
+  }
+
   function renderChipsDiagnostico() {
     const chipsEl = document.getElementById("dg-chips");
     const d = estado.diagnostico;
@@ -1122,6 +1216,34 @@
       <div class="cartao"><h3>Oportunidades abertas agora</h3><div class="valor">${d.oportunidadesAbertas.length}</div></div>
     </div>`;
 
+    if (d.porMes && d.porMes.length > 0) {
+      html += "<h2>Licitações por mês (valor contratado na amostra)</h2>";
+      const maxMes = Math.max(...d.porMes.map((m) => m.valor), 1);
+      html += '<div class="mini-grafico">';
+      for (const m of d.porMes) {
+        const alturaPct = Math.max(4, Math.round((m.valor / maxMes) * 100));
+        html += `<div class="mini-grafico-coluna" title="${escapeHtml(m.rotulo)}: ${escapeHtml(m.valorFormatado)} · ${m.contratos} contrato(s)">
+          <div class="mini-grafico-valor">${m.contratos}</div>
+          <div class="mini-grafico-barra" style="height:${alturaPct}%"></div>
+          <div class="mini-grafico-rotulo">${escapeHtml(m.rotulo)}</div>
+        </div>`;
+      }
+      html += "</div>";
+    }
+
+    if (d.porUf && d.porUf.length > 0) {
+      html += "<h2>Licitações por UF (valor contratado na amostra)</h2>";
+      const maxUf = d.porUf[0].valor || 1;
+      for (const u of d.porUf) {
+        const largura = Math.round((u.valor / maxUf) * 100);
+        html += `<div class="barra-item">
+          <div class="barra-label">${escapeHtml(u.uf)}</div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(u.valorFormatado)}</div></div>
+          <div class="barra-meta">${u.contratos} contrato(s)</div>
+        </div>`;
+      }
+    }
+
     html += "<h2>Principais concorrentes (por valor contratado na amostra) — clique para ver os contratos</h2>";
     if (d.concorrentes.length === 0) {
       html += "<p>Nenhum contrato do segmento encontrado na amostra do período.</p>";
@@ -1202,6 +1324,8 @@
   document.getElementById("dg-buscar").addEventListener("click", async () => {
     const segmentoRaw = document.getElementById("dg-segmento").value.trim();
     const uf = document.getElementById("dg-uf").value.trim().toUpperCase();
+    const municipioFiltro = document.getElementById("dg-municipio").value.trim().toLowerCase();
+    const orgaoFiltro = document.getElementById("dg-orgao-filtro").value.trim().toLowerCase();
     const dias = parseInt(document.getElementById("dg-dias").value, 10);
     const alvo = document.getElementById("dg-resultado");
     const btn = document.getElementById("dg-buscar");
@@ -1256,8 +1380,17 @@
         fonte = { tipo: "ao_vivo" };
       }
 
+      if (municipioFiltro) {
+        encontrados = encontrados.filter((r) => (r.municipio || "").toLowerCase().includes(municipioFiltro));
+      }
+      if (orgaoFiltro) {
+        encontrados = encontrados.filter((r) => (r.orgao || "").toLowerCase().includes(orgaoFiltro));
+      }
+
       const concorrentes = calcularConcorrentes(encontrados);
       const orgaos = calcularOrgaos(encontrados);
+      const porMes = calcularPorMes(encontrados);
+      const porUf = calcularPorUf(encontrados);
       let oportunidadesAbertas = [];
       let falhaConexaoOportunidades = false;
       let ufOportunidadesFalhouHoje = false;
@@ -1290,6 +1423,8 @@
         fonte,
         concorrentes,
         orgaos,
+        porMes,
+        porUf,
         oportunidadesAbertas,
         fornecedorSelecionado: null,
         orgaoSelecionado: null,
