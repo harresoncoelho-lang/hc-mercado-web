@@ -1175,10 +1175,19 @@
 
       let totalContratado = 0;
       const ufsAtuacao = new Set();
+      const porUf = {};
       for (const c of registrosFiltrados) {
         totalContratado += c.valor || 0;
-        if (c.uf) ufsAtuacao.add(c.uf);
+        if (c.uf) {
+          ufsAtuacao.add(c.uf);
+          if (!porUf[c.uf]) porUf[c.uf] = { contratos: 0, valor: 0 };
+          porUf[c.uf].contratos += 1;
+          porUf[c.uf].valor += c.valor || 0;
+        }
       }
+      const rankingUf = Object.entries(porUf)
+        .map(([uf, dados]) => ({ uf, ...dados }))
+        .sort((a, b) => b.valor - a.valor);
 
       let html2 = "";
       if (fonte.tipo === "cache") {
@@ -1195,6 +1204,19 @@
         <div class="cartao"><h3>Valor total contratado (amostra)</h3><div class="valor">${escapeHtml(formatarValor(totalContratado))}</div></div>
         <div class="cartao"><h3>UFs onde atuou</h3><div class="valor">${ufsAtuacao.size ? escapeHtml(Array.from(ufsAtuacao).join(", ")) : "-"}</div></div>
       </div>`;
+
+      if (rankingUf.length > 0) {
+        html2 += "<h2>Participação por estado (UF), na amostra</h2>";
+        const maxUf = rankingUf[0].valor || 1;
+        for (const r of rankingUf) {
+          const largura = Math.round((r.valor / maxUf) * 100);
+          html2 += `<div class="barra-item">
+            <div class="barra-label">${escapeHtml(r.uf)}</div>
+            <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(formatarValor(r.valor))}</div></div>
+            <div class="barra-meta">${r.contratos} contrato(s)</div>
+          </div>`;
+        }
+      }
 
       html2 += "<h2>Contratos encontrados no período</h2>";
       if (registrosFiltrados.length === 0) {
