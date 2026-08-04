@@ -726,6 +726,20 @@
     return "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  // Formata uma data/hora ISO (ex: "2026-08-05T00:59:00") no mesmo padrão que o PNCP usa
+  // pra "Data fim de recebimento de propostas": "05/08/2026 00:59 (horário de Brasília)".
+  function formatarPrazoPropostas(iso) {
+    if (!iso) return "Não informado";
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    const dia = String(d.getDate()).padStart(2, "0");
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const ano = d.getFullYear();
+    const hora = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    return `${dia}/${mes}/${ano} ${hora}:${min} (horário de Brasília)`;
+  }
+
   function formatarTelefone(ddd, numero) {
     if (!numero) return null;
     return ddd ? `(${ddd}) ${numero}` : numero;
@@ -1123,7 +1137,7 @@
           <dl class="boletim-meta">
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
             <div><dt>Município/UF</dt><dd>${escapeHtml((r.municipio || "-") + (r.uf ? " / " + r.uf : ""))}</dd></div>
-            <div><dt>Encerramento da proposta</dt><dd>${escapeHtml(r.encerramento || "Não informado")}</dd></div>
+            <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
             <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
           <div class="boletim-rodape">
@@ -1678,7 +1692,7 @@
     } else {
       html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
       d.oportunidadesAbertas.forEach((o, i) => {
-        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(o.encerramento || "-")}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
+        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
       });
       html += "</table>";
       html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
@@ -1708,7 +1722,7 @@
         detalhe.innerHTML = `<dl>
           <div><dt>Objeto completo</dt><dd>${escapeHtml(o.objeto || "-")}</dd></div>
           <div><dt>Órgão</dt><dd>${escapeHtml(o.orgao || "-")}</dd></div>
-          <div><dt>Encerramento da proposta</dt><dd>${escapeHtml(o.encerramento || "-")}</dd></div>
+          <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</dd></div>
           <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(o.numeroControlePNCP || "-")}</dd></div>
           <div><dt>Link</dt><dd>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener">Abrir edital no PNCP ↗</a>` : "-"}</dd></div>
         </dl>`;
