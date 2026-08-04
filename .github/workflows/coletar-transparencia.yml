@@ -1,0 +1,40 @@
+name: Coletar Portal da Transparencia
+
+on:
+  schedule:
+    # 09:30 UTC = 06:30 no horario de Brasilia (um pouco depois do robo do PNCP)
+    - cron: "30 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rodar robo de coleta do Portal da Transparencia
+        env:
+          TRANSPARENCIA_TOKEN: ${{ secrets.TRANSPARENCIA_TOKEN }}
+        run: node scripts/coletar_transparencia.js
+
+      - name: Commitar dados coletados
+        run: |
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add data/transparencia_licitacoes.json
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca nos dados hoje."
+          else
+            git commit -m "Atualiza dados do Portal da Transparencia - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
