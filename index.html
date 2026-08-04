@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HC Licitações - Inteligência de Mercado</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,6 +55,13 @@
   }
   header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.3px; position: relative; }
   header p { margin: 6px 0 0; color: #d9e8fd; font-size: 14px; position: relative; }
+  .header-topo { display: flex; align-items: center; gap: 16px; position: relative; }
+  .header-logo {
+    width: 52px; height: 52px; flex-shrink: 0;
+    background: #fff; border-radius: 12px; padding: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  }
+  @media (max-width: 560px) { .header-logo { width: 40px; height: 40px; } }
 
   nav {
     display: flex;
@@ -471,8 +479,13 @@
 <body>
 
 <header>
-  <h1>HC Licitações — Inteligência de Mercado</h1>
-  <p>Alertas de licitações e diagnóstico de mercado, com dados do PNCP e do Portal da Transparência.</p>
+  <div class="header-topo">
+    <img src="logo.svg" alt="HC Licitações" class="header-logo">
+    <div>
+      <h1>HC Licitações — Inteligência de Mercado</h1>
+      <p>Alertas de licitações e diagnóstico de mercado, com dados do PNCP e do Portal da Transparência.</p>
+    </div>
+  </div>
 </header>
 
 <nav>
