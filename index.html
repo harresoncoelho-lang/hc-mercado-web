@@ -565,7 +565,7 @@
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
-        <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente acada visita.</p>
+        <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente a cada visita.</p>
       </div>
       <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
     </div>
@@ -810,7 +810,7 @@
   // "Amazonas" só mostra municípios do Amazonas, e não os ~5.570 do Brasil inteiro.
   async function popularSelectsMunicipio() {
     const selects = document.querySelectorAll("select.select-municipio");
-    if (selects.length=== 0) return;
+    if (selects.length === 0) return;
     selects.forEach((sel) => {
       sel.innerHTML = '<option value="">Carregando municípios...</option>';
     });
@@ -1088,6 +1088,46 @@
     return r.numeroControlePNCP || `${r.objeto || ""}|${r.orgao || ""}|${r.encerramento || ""}`;
   }
 
+  // ---- Sistema S (SENAC/AM, SESC/AM) — entra na mesma busca/boletim do PNCP, não é
+  // um painel separado. Normaliza cada registro pro mesmo formato usado pelos cards
+  // (montarCardsBoletim) e pelos filtros (UF, palavras-chave, prazo).
+  function dataBrParaIso(dataBr) {
+    if (!dataBr) return null;
+    const m = String(dataBr).match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return null;
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  function sistemaSEstaAberta(r) {
+    const s = (r.situacao || "").toLowerCase();
+    return s.includes("processo") || s.includes("aberto");
+  }
+  function normalizarSistemaS(r) {
+    return {
+      objeto: r.objeto,
+      orgao: `${r.entidade || "Sistema S"}/${r.uf || ""}`,
+      municipio: "",
+      uf: r.uf,
+      encerramento: dataBrParaIso(r.dataAbertura),
+      numeroControlePNCP: r.numero,
+      link: r.link,
+      fonte: r.fonte,
+    };
+  }
+  // Busca oportunidades abertas do Sistema S/AM (SENAC, SESC) que batem com o mesmo
+  // filtro de UF e palavras-chave usado na busca de oportunidades do PNCP.
+  async function buscarExtrasSistemaS(uf, palavras) {
+    try {
+      const cache = await carregarCache("data/sistema_s_am.json");
+      if (!cache || !Array.isArray(cache.registros)) return [];
+      return cache.registros
+        .filter(sistemaSEstaAberta)
+        .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
+        .map(normalizarSistemaS);
+    } catch (e) {
+      return [];
+    }
+  }
+
   // Converte um registro de contrato — seja vindo direto da API do PNCP (formato bruto)
   // ou do nosso cache diário em /data (formato já resumido) — para um formato único,
   // usado em todo o resto do código. Assim, o site funciona igual não importa a origem.
@@ -1345,16 +1385,16 @@
           </div>
         </div>
         <div class="boletim-corpo">
-          <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}</p>
+          <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}${r.fonte ? ` <span class="fonte-badge">${escapeHtml(r.fonte)}</span>` : ""}</p>
           <dl class="boletim-meta">
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
-            <div><dt>Município/UF</dt><dd>${escapeHtml((r.municipio || "-") + (r.uf ? " / " + r.uf : ""))}</dd></div>
+            <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
             <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
-            <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
+            <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
           <div class="boletim-rodape">
             <span></span>
-            ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">Ver edital completo no PNCP ↗</a>` : "<span></span>"}
+            ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
           </div>
         </div>
       </div>`;
@@ -1490,6 +1530,8 @@
         metaEl.textContent = "Coleta diária ainda não disponível.";
       }
 
+      resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));
+
       if (resultados.length === 0) {
         alvo.innerHTML = avisoHtml + '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na coleta mais recente.</div>';
         return;
@@ -1569,8 +1611,12 @@
         avisoFonte = '<div class="aviso">Cache ainda não disponível — para buscar ao vivo sem cache, informe um estado (UF).</div>';
       }
 
+      resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));
+
       if (municipioFiltro) {
-        resultados = resultados.filter((r) => (r.municipio || "").toLowerCase().includes(municipioFiltro));
+        // Registros do Sistema S/AM não têm município discriminado (só UF) — mantém
+        // esses passando direto pelo filtro em vez de escondê-los por falta de dado.
+        resultados = resultados.filter((r) => r.fonte || (r.municipio || "").toLowerCase().includes(municipioFiltro));
       }
       if (prazoAte) {
         const limite = new Date(prazoAte + "T23:59:59");
@@ -2021,7 +2067,7 @@
         html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
       });
       html += "</table>";
-      html += '<div class="dica-clique">Clique numa linha paraver todos os detalhes dessa oportunidade.</div>';
+      html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
     }
 
     alvo.innerHTML = html;
