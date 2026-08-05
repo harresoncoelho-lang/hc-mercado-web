@@ -26,7 +26,9 @@ jobs:
         env:
           DIAS_HISTORICO_INICIAL: "30"
           RETENCAO_DIAS: "730"
-          LIMITE_MINUTOS: "25"
+          LIMITE_MINUTOS_CONTRATOS: "13"
+          LIMITE_MINUTOS_MERCADO: "13"
+          CONCORRENCIA_PAGINAS: "5"
         run: node scripts/atualizar_dados.js
 
       - name: Commitar e enviar dados atualizados
@@ -38,5 +40,18 @@ jobs:
             echo "Nenhuma mudança nos dados hoje."
           else
             git commit -m "Atualização automática de dados do PNCP - $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git push
+            # Se o main tiver avançado desde o checkout (ex: edição manual em paralelo),
+            # tenta reintegrar antes de enviar em vez de simplesmente falhar o push.
+            for tentativa in 1 2 3; do
+              if git push; then
+                break
+              fi
+              echo "Push rejeitado (tentativa $tentativa) — atualizando com o remoto e tentando de novo."
+              git fetch origin main
+              git rebase origin/main || { git rebase --abort; git merge -X ours origin/main -m "Merge automático do robô"; }
+              if [ "$tentativa" = "3" ]; then
+                echo "Não foi possível enviar os dados após 3 tentativas."
+                exit 1
+              fi
+            done
           fi
