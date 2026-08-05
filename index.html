@@ -565,7 +565,7 @@
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
-        <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente a cada visita.</p>
+        <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente acada visita.</p>
       </div>
       <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
     </div>
@@ -1121,6 +1121,78 @@
     }
   }
 
+  // Carrega data/mercado_segmentos.json (atas de registro de preço + empresas vencedoras,
+  // já cruzadas pelo robô — só cobre os segmentos fixos que a HC monitora, ver SEGMENTOS
+  // em scripts/atualizar_dados.js). Formato diferente do carregarCache() acima (não tem
+  // "registros", tem "atas" e "empresas").
+  async function carregarMercadoSegmentos() {
+    try {
+      const resp = await fetch("data/mercado_segmentos.json", { cache: "no-store" });
+      if (!resp.ok) return null;
+      const dados = await resp.json();
+      if (!dados || !Array.isArray(dados.atas)) return null;
+      return dados;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Recalcula o ranking de empresas vencedoras a partir de uma lista de atas já filtrada
+  // (por segmento/UF/período) — assim o ranking sempre reflete exatamente o filtro atual
+  // em vez do agregado bruto de todos os segmentos que o robô coletou.
+  function calcularEmpresasMercado(atasFiltradas) {
+    const agora = Date.now();
+    const empresas = new Map();
+    for (const ata of atasFiltradas) {
+      if (!ata.enriquecida || !Array.isArray(ata.itens)) continue;
+      const vigente = !ata.cancelado && ata.vigenciaFim && new Date(ata.vigenciaFim).getTime() >= agora;
+      for (const item of ata.itens) {
+        for (const v of item.vencedores || []) {
+          if (!v.cnpj) continue;
+          if (!empresas.has(v.cnpj)) {
+            empresas.set(v.cnpj, {
+              cnpj: v.cnpj,
+              nome: v.nome || v.cnpj,
+              ufs: new Set(),
+              atasVigentes: [],
+              atasEncerradas: [],
+              valorTotalVigente: 0,
+              valorTotalHistorico: 0,
+              itensGanhos: 0,
+            });
+          }
+          const emp = empresas.get(v.cnpj);
+          if (v.nome) emp.nome = v.nome;
+          if (ata.ufOrgao) emp.ufs.add(ata.ufOrgao);
+          emp.itensGanhos += 1;
+          emp.valorTotalHistorico += v.valorTotal || 0;
+          const refEntry = {
+            numeroControlePNCPAta: ata.numeroControlePNCPAta,
+            orgao: ata.orgao,
+            uf: ata.ufOrgao,
+            municipio: ata.municipioOrgao,
+            objeto: ata.objeto,
+            item: item.descricao,
+            valorTotal: v.valorTotal,
+            quantidade: v.quantidade,
+            vigenciaInicio: ata.vigenciaInicio,
+            vigenciaFim: ata.vigenciaFim,
+            cancelado: ata.cancelado,
+          };
+          if (vigente) {
+            emp.valorTotalVigente += v.valorTotal || 0;
+            emp.atasVigentes.push(refEntry);
+          } else {
+            emp.atasEncerradas.push(refEntry);
+          }
+        }
+      }
+    }
+    return Array.from(empresas.values())
+      .map((e) => ({ ...e, ufs: Array.from(e.ufs) }))
+      .sort((a, b) => b.valorTotalHistorico - a.valorTotalHistorico);
+  }
+
   // Faz fetch com timeout próprio: a API do PNCP às vezes fica lenta e trava
   // uma requisição por 60-70s+, o que sozinho já estoura o orçamento de tempo
   // do escaneamento. Com isso, cada página desiste em no máx. `timeoutMs` e
@@ -1614,6 +1686,10 @@
     if (d.orgaoSelecionado) {
       html += `<div class="chip">Órgão: ${escapeHtml(d.orgaoSelecionado.nome)} <button id="dg-chip-limpar-orgao" title="Remover filtro">✕</button></div>`;
     }
+    if (d.mercado && d.mercado.empresaSelecionada) {
+      const emp = d.mercado.empresas.find((e) => e.cnpj === d.mercado.empresaSelecionada.cnpj);
+      html += `<div class="chip">Empresa (mercado): ${escapeHtml(emp ? emp.nome : d.mercado.empresaSelecionada.cnpj)} <button id="dg-chip-limpar-empresa-mercado" title="Remover filtro">✕</button></div>`;
+    }
     chipsEl.innerHTML = html;
     const btnLimpar = document.getElementById("dg-chip-limpar");
     if (btnLimpar) {
@@ -1628,6 +1704,15 @@
     if (btnLimparOrgao) {
       btnLimparOrgao.addEventListener("click", () => {
         estado.diagnostico.orgaoSelecionado = null;
+        document.getElementById("dg-detalhe").innerHTML = "";
+        renderChipsDiagnostico();
+        renderDiagnostico();
+      });
+    }
+    const btnLimparEmpresaMercado = document.getElementById("dg-chip-limpar-empresa-mercado");
+    if (btnLimparEmpresaMercado) {
+      btnLimparEmpresaMercado.addEventListener("click", () => {
+        estado.diagnostico.mercado.empresaSelecionada = null;
         document.getElementById("dg-detalhe").innerHTML = "";
         renderChipsDiagnostico();
         renderDiagnostico();
@@ -1729,6 +1814,60 @@
     });
   }
 
+  // Detalha uma empresa do painel "Empresas atuantes no mercado" (atas de registro de
+  // preço): mostra separadamente os contratos/atas ainda vigentes e os já encerrados, com
+  // os itens que ela ganhou em cada um — é a visão "quais licitações essa empresa já
+  // ganhou nesse segmento, quais valem hoje e quais não valem mais" que o cliente pediu.
+  function renderDetalheEmpresaMercado(cnpj) {
+    const d = estado.diagnostico;
+    const m = d.mercado;
+    const empresa = m.empresas.find((e) => e.cnpj === cnpj);
+    if (!empresa) return;
+    m.empresaSelecionada = { cnpj };
+    renderChipsDiagnostico();
+
+    const linhaAta = (a) => `<tr>
+      <td>${escapeHtml(a.objeto || "-")}</td>
+      <td>${escapeHtml(a.item || "-")}</td>
+      <td>${escapeHtml(a.orgao || "-")}</td>
+      <td>${escapeHtml(a.uf || "-")}${a.municipio ? " / " + escapeHtml(a.municipio) : ""}</td>
+      <td>${escapeHtml(formatarValor(a.valorTotal))}</td>
+      <td>${escapeHtml(String(a.vigenciaInicio || "-"))} a ${escapeHtml(String(a.vigenciaFim || "-"))}${a.cancelado ? " (cancelada)" : ""}</td>
+    </tr>`;
+
+    let html = `<h2>${escapeHtml(empresa.nome)} <span class="cnpj">(${escapeHtml(empresa.cnpj)})</span></h2>`;
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Valor total histórico (segmento)</h3><div class="valor">${escapeHtml(formatarValor(empresa.valorTotalHistorico))}</div></div>
+      <div class="cartao"><h3>Valor em atas vigentes hoje</h3><div class="valor">${escapeHtml(formatarValor(empresa.valorTotalVigente))}</div></div>
+      <div class="cartao"><h3>Itens ganhos</h3><div class="valor">${empresa.itensGanhos}</div></div>
+      <div class="cartao"><h3>UFs onde atua</h3><div class="valor" style="font-size:16px;">${escapeHtml(empresa.ufs.join(", ") || "-")}</div></div>
+    </div>`;
+
+    html += `<h3>Contratos/atas vigentes hoje (${empresa.atasVigentes.length})</h3>`;
+    if (empresa.atasVigentes.length === 0) {
+      html += "<p>Nenhuma ata vigente encontrada pra essa empresa nesse segmento na amostra coletada.</p>";
+    } else {
+      html += "<table><tr><th>Objeto</th><th>Item</th><th>Órgão</th><th>UF/Município</th><th>Valor</th><th>Vigência</th></tr>";
+      for (const a of empresa.atasVigentes) html += linhaAta(a);
+      html += "</table>";
+    }
+
+    html += `<h3>Contratos/atas encerrados ou cancelados (${empresa.atasEncerradas.length})</h3>`;
+    if (empresa.atasEncerradas.length === 0) {
+      html += "<p>Nenhum histórico encerrado encontrado pra essa empresa nesse segmento na amostra coletada.</p>";
+    } else {
+      html += "<table><tr><th>Objeto</th><th>Item</th><th>Órgão</th><th>UF/Município</th><th>Valor</th><th>Vigência</th></tr>";
+      for (const a of empresa.atasEncerradas) html += linhaAta(a);
+      html += "</table>";
+    }
+
+    html += '<div class="dica-clique">Esses dados vêm das atas de registro de preço vinculadas a esse CNPJ nos segmentos monitorados. Use a aba "Analisar Empresa" pra ver também os contratos assinados diretamente (fora de ata) desse CNPJ.</div>';
+
+    const alvoDetalhe = document.getElementById("dg-detalhe");
+    alvoDetalhe.innerHTML = html;
+    alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderDiagnostico() {
     const d = estado.diagnostico;
     const alvo = document.getElementById("dg-resultado");
@@ -1761,10 +1900,57 @@
 
     html += `<div class="cartoes">
       <div class="cartao"><h3>Mercado nacional (amostra, ${escapeHtml(String(d.periodo.dias))} dia(s))</h3><div class="valor">${escapeHtml(formatarValor(totalNacional))}</div></div>
-      <div class="cartao"><h3>Mercado em ${escapeHtml(d.uf || "-")}</h3><div class="valor">${escapeHtml(formatarValor(totalRegional))}</div></div>
+      ${d.uf ? `<div class="cartao"><h3>Mercado em ${escapeHtml(d.uf)}</h3><div class="valor">${escapeHtml(formatarValor(totalRegional))}</div></div>` : ""}
       <div class="cartao"><h3>Concorrentes identificados</h3><div class="valor">${d.concorrentes.length}</div></div>
       <div class="cartao"><h3>Oportunidades abertas agora</h3><div class="valor">${d.oportunidadesAbertas.length}</div></div>
+      ${d.mercado && d.mercado.empresas.length > 0 ? `<div class="cartao"><h3>Empresas com ata vigente no segmento${d.uf ? " (" + escapeHtml(d.uf) + ")" : ""}</h3><div class="valor">${d.mercado.empresas.filter((e) => e.atasVigentes.length > 0).length}</div></div>` : ""}
     </div>`;
+
+    if (d.mercado) {
+      const m = d.mercado;
+      const bateComAlgumMonitorado = m.segmentosMonitorados.some((s) => d.palavras.some((p) => normalizar(s).includes(normalizar(p)) || normalizar(p).includes(normalizar(s))));
+      if (!m.atualizadoEm) {
+        html += '<div class="aviso">O robô ainda não coletou atas de registro de preço (empresas vencedoras por segmento) — essa parte do diagnóstico fica disponível assim que a primeira coleta rodar.</div>';
+      } else if (!bateComAlgumMonitorado) {
+        html += `<div class="aviso">O cruzamento de empresas por ata de registro de preço hoje cobre só estes segmentos fixos: ${escapeHtml(m.segmentosMonitorados.join(", "))}. Sua busca ("${escapeHtml(d.palavras.join(", "))}") não bate com nenhum deles, então essa parte do painel fica vazia — o ranking de concorrentes acima (baseado em contratos assinados) continua valendo pra qualquer palavra-chave.</div>`;
+      } else {
+        if (m.parcial) {
+          html += '<div class="aviso">Coleta de atas ainda em andamento (o robô processa aos poucos, item por item, pra não estourar os limites da API do PNCP) — o ranking abaixo tende a crescer nas próximas atualizações diárias.</div>';
+        }
+        html += `<h2>Empresas atuantes no mercado${d.uf ? " — " + escapeHtml(d.uf) : ""} (por atas de registro de preço) — clique para detalhar</h2>`;
+        if (m.empresas.length === 0) {
+          html += "<p>Nenhuma empresa com ata de registro de preço encontrada ainda para esse segmento/UF na amostra coletada.</p>";
+        } else {
+          const maxEmp = m.empresas[0].valorTotalHistorico || 1;
+          for (const e of m.empresas) {
+            const largura = Math.round((e.valorTotalHistorico / maxEmp) * 100);
+            const selecionada = m.empresaSelecionada && m.empresaSelecionada.cnpj === e.cnpj;
+            html += `<div class="barra-item${selecionada ? " selecionado" : ""}" data-cnpj-mercado="${escapeHtml(e.cnpj)}">
+              <div class="barra-label">${escapeHtml(e.nome)} <span class="cnpj">(${escapeHtml(e.cnpj)})</span></div>
+              <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(formatarValor(e.valorTotalHistorico))}</div></div>
+              <div class="barra-meta">${e.atasVigentes.length} ata(s) vigente(s) · ${e.atasEncerradas.length} encerrada(s) · ${e.itensGanhos} item(ns) ganho(s) · UFs: ${escapeHtml(e.ufs.join(", ") || "-")} · <small>clique para detalhar</small></div>
+            </div>`;
+          }
+        }
+
+        html += `<h2>Atas de registro de preço vigentes${d.uf ? " — " + escapeHtml(d.uf) : ""}</h2>`;
+        const atasVigentesLista = m.atas.filter((a) => a.enriquecida && !a.cancelado && a.vigenciaFim && new Date(a.vigenciaFim).getTime() >= Date.now());
+        if (atasVigentesLista.length === 0) {
+          html += "<p>Nenhuma ata vigente encontrada ainda para esse segmento/UF na amostra coletada.</p>";
+        } else {
+          html += "<table><tr><th>Objeto</th><th>Órgão</th><th>UF/Município</th><th>Vigência até</th></tr>";
+          for (const a of atasVigentesLista) {
+            html += `<tr>
+              <td>${escapeHtml(a.objeto || "-")}</td>
+              <td>${escapeHtml(a.orgao || "-")}</td>
+              <td>${escapeHtml(a.ufOrgao || "-")}${a.municipioOrgao ? " / " + escapeHtml(a.municipioOrgao) : ""}</td>
+              <td>${escapeHtml(String(a.vigenciaFim || "-"))}</td>
+            </tr>`;
+          }
+          html += "</table>";
+        }
+      }
+    }
 
     if (d.porMes && d.porMes.length > 0) {
       html += "<h2>Licitações por mês (valor contratado na amostra)</h2>";
@@ -1818,7 +2004,7 @@
       for (const o of d.orgaos) {
         const largura = Math.round((o.valor / maxOrgao) * 100);
         const selecionado = d.orgaoSelecionado && d.orgaoSelecionado.nome === o.nome;
-      html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-orgao="${escapeHtml(o.nome)}">
+        html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-orgao="${escapeHtml(o.nome)}">
           <div class="barra-label">${escapeHtml(o.nome)}</div>
           <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(o.valorFormatado)}</div></div>
           <div class="barra-meta">UFs: ${escapeHtml(o.ufs.join(", ") || "-")} · ${o.contratos} contrato(s) · <small>clique para detalhar</small></div>
@@ -1835,7 +2021,7 @@
         html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
       });
       html += "</table>";
-      html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
+      html += '<div class="dica-clique">Clique numa linha paraver todos os detalhes dessa oportunidade.</div>';
     }
 
     alvo.innerHTML = html;
@@ -1846,6 +2032,10 @@
 
     alvo.querySelectorAll(".barra-item[data-orgao]").forEach((el) => {
       el.addEventListener("click", () => renderDetalheOrgao(el.dataset.orgao));
+    });
+
+    alvo.querySelectorAll(".barra-item[data-cnpj-mercado]").forEach((el) => {
+      el.addEventListener("click", () => renderDetalheEmpresaMercado(el.dataset.cnpjMercado));
     });
 
     alvo.querySelectorAll("tr.linha-clicavel[data-idx-op]").forEach((tr) => {
@@ -1961,6 +2151,28 @@
         }
       }
 
+      // Atas de registro de preço + empresas vencedoras, restrito aos segmentos fixos que
+      // o robô monitora (ver SEGMENTOS em scripts/atualizar_dados.js). Só entra em jogo
+      // quando a busca do usuário bate com algum desses segmentos — pra qualquer outra
+      // palavra-chave, esse painel simplesmente fica vazio (com aviso explicando o porquê).
+      let atasFiltradas = [];
+      let empresasMercado = [];
+      let mercadoSegmentosMonitorados = [];
+      let mercadoAtualizadoEm = null;
+      let mercadoParcial = false;
+      const cacheMercado = await carregarMercadoSegmentos();
+      if (cacheMercado) {
+        mercadoSegmentosMonitorados = cacheMercado.segmentosMonitorados || [];
+        mercadoAtualizadoEm = cacheMercado.atualizadoEm;
+        mercadoParcial = !!cacheMercado.parcial;
+        atasFiltradas = cacheMercado.atas.filter((a) => {
+          if (!bateComSegmento(a.objeto, palavras)) return false;
+          if (uf && (a.ufOrgao || "").toUpperCase() !== uf) return false;
+          return true;
+        });
+        empresasMercado = calcularEmpresasMercado(atasFiltradas);
+      }
+
       estado.diagnostico = {
         encontrados,
         palavras,
@@ -1981,6 +2193,14 @@
         oportunidadesAbertas,
         fornecedorSelecionado: null,
         orgaoSelecionado: null,
+        mercado: {
+          atas: atasFiltradas,
+          empresas: empresasMercado,
+          segmentosMonitorados: mercadoSegmentosMonitorados,
+          atualizadoEm: mercadoAtualizadoEm,
+          parcial: mercadoParcial,
+          empresaSelecionada: null,
+        },
       };
 
       renderChipsDiagnostico();
