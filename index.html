@@ -1261,37 +1261,59 @@
     diagnostico: null, // { encontrados, palavras, uf, periodo, fornecedorSelecionado }
   };
 
-  // Busca oportunidades ABERTAS agora no PNCP (direto do navegador, sem backend)
+  // Busca licitações no PNCP direto do navegador, sem backend e sem depender do robô/cache.
+  // IMPORTANTE: a API "oficial" de consulta (api/consulta/v1/contratacoes/proposta) vive
+  // travando/tirando minutos pra responder (confirmado testando direto, sem nenhuma rede
+  // nossa no meio) — por isso ficávamos com resultado vazio mesmo com o PNCP cheio de
+  // licitações abertas. Trocamos pro endpoint que o PRÓPRIO site pncp.gov.br usa na busca
+  // (api/search) — responde em milissegundos e cobre TODO o histórico (não só "aberto agora"),
+  // o que também é o que permite a busca por período (Publicado de/até) ser retroativa de verdade.
   async function buscarOportunidadesAbertas(uf, palavras, maxPaginas) {
-    const dataFinal = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-      .toISOString().slice(0, 10).replace(/-/g, "");
     const encontrados = [];
     let pagina = 1;
     let totalPaginas = 1;
     let falhaConexao = false;
-    while (pagina <= totalPaginas && pagina <= maxPaginas) {
-      const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=50`;
+    const params = new URLSearchParams({
+      tipos_documento: "edital",
+      status: "todos",
+      ordenacao: "-data",
+      tam_pagina: "50",
+    });
+    if (uf) params.set("ufs", uf);
+    // Sem UF pra restringir, o acervo nacional é grande demais pra paginar ao vivo — nesse
+    // caso usamos a 1ª palavra-chave como filtro no servidor (reduz bastante o volume) e
+    // ainda assim aplicamos o filtro completo (todas as palavras) no cliente logo abaixo.
+    if (!uf && palavras && palavras[0]) params.set("q", palavras[0]);
+
+    while (pagina <= maxPaginas) {
+      params.set("pagina", String(pagina));
+      const url = `https://pncp.gov.br/api/search/?${params.toString()}`;
       let resp;
       try {
-        resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
+        resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 15000);
       } catch (e) { falhaConexao = true; break; }
       if (!resp.ok) { falhaConexao = true; break; }
       const texto = await resp.text();
       if (!texto) break;
       const dados = JSON.parse(texto);
-      const itens = dados.data || [];
-      totalPaginas = dados.totalPaginas || 1;
+      const itens = dados.items || [];
+      if (itens.length === 0) break;
+      totalPaginas = Math.max(1, Math.ceil((Number(dados.total) || itens.length) / 50));
       for (const item of itens) {
-        const objeto = item.objetoCompra || item.objetoContrato || "";
-        if (bateComSegmento(objeto, palavras)) {
+        const objeto = item.description || item.title || "";
+        const textoBusca = `${item.title || ""} ${objeto}`;
+        if (bateComSegmento(textoBusca, palavras)) {
           encontrados.push({
             objeto,
-            orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Órgão não informado",
-            municipio: (item.unidadeOrgao && item.unidadeOrgao.municipioNome) || "",
-            encerramento: item.dataEncerramentoProposta || null,
-            publicacao: item.dataPublicacaoPncp || null,
-            numeroControlePNCP: item.numeroControlePNCP || null,
-            link: linkPncp(item.numeroControlePNCP),
+            orgao: item.orgao_subrogado_nome || item.orgao_nome || "Órgão não informado",
+            municipio: item.municipio_nome || "",
+            uf: item.uf || uf || "",
+            encerramento: null,
+            publicacao: item.data_publicacao_pncp || item.createdAt || null,
+            numeroControlePNCP: item.numero_controle_pncp || null,
+            link: item.numero_controle_pncp
+              ? linkPncp(item.numero_controle_pncp)
+              : (item.item_url ? `https://pncp.gov.br${item.item_url}` : null),
           });
         }
       }
@@ -1525,21 +1547,22 @@
     alvo.innerHTML = '<div class="carregando">Gerando boletim...</div>';
 
     try {
-      const cache = await carregarCache("data/oportunidades_abertas.json");
-      let resultados = [];
-      let avisoHtml = "";
-
-      if (cache) {
-        resultados = cache.registros
-          .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
-          .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
-        const dt = new Date(cache.atualizadoEm);
-        const dataFormatada = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-        metaEl.textContent = `Boletim de ${dataFormatada}, ${dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · filtro: ${uf ? uf + " · " : ""}${palavras.join(", ")}`;
-        avisoHtml = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Gerado automaticamente a partir da coleta diária do robô (${escapeHtml(dt.toLocaleString("pt-BR"))}).</div>`;
-      } else {
-        metaEl.textContent = "Coleta diária ainda não disponível.";
-      }
+      // Boletim = só o que é NOVIDADE (publicado nos últimos dias) — busca ao vivo (mesma
+      // fonte rápida de "Encontrar Licitações") e filtra pra recência, igual ao boletim
+      // por e-mail. "Encontrar Licitações" é quem faz a busca livre em todo o histórico.
+      const DIAS_BOLETIM = 3;
+      const resp = await buscarOportunidadesAbertas(uf, palavras, 15);
+      const limiteRecencia = new Date(Date.now() - DIAS_BOLETIM * 24 * 60 * 60 * 1000);
+      let resultados = resp.encontrados.filter((r) => {
+        if (!r.publicacao) return true;
+        const d = new Date(r.publicacao);
+        return isNaN(d) || d >= limiteRecencia;
+      });
+      const agora = new Date();
+      metaEl.textContent = `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · filtro: ${uf ? uf + " · " : ""}${palavras.join(", ")} · últimos ${DIAS_BOLETIM} dias`;
+      let avisoHtml = resp.falhaConexao
+        ? '<div class="aviso">A API pública do PNCP não respondeu agora — os resultados abaixo podem estar incompletos.</div>'
+        : "";
 
       resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));
 
@@ -1600,27 +1623,26 @@
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
 
     btn.disabled = true;
-    alvo.innerHTML = '<div class="carregando">Buscando oportunidades abertas...</div>';
+    alvo.innerHTML = '<div class="carregando">Buscando licitações no PNCP...</div>';
 
     try {
-      const cache = await carregarCache("data/oportunidades_abertas.json");
-      let resultados, falhaConexao, avisoFonte = "";
+      // Busca sempre ao vivo direto na API de busca do PNCP (rápida e cobre todo o
+      // histórico, não só "aberto agora" — ver comentário na função). O cache do robô
+      // (data/oportunidades_abertas.json) é só um complemento pra garantir cobertura
+      // extra caso o robô já tenha visto algo que a busca ao vivo não trouxe nesta página.
+      const resp = await buscarOportunidadesAbertas(uf, palavras, 20);
+      let resultados = resp.encontrados;
+      const falhaConexao = resp.falhaConexao;
+      let avisoFonte = "";
 
-      if (cache) {
-        resultados = cache.registros
+      const cache = await carregarCache("data/oportunidades_abertas.json");
+      if (cache && Array.isArray(cache.registros) && cache.registros.length > 0) {
+        const jaVistos = new Set(resultados.map((r) => r.numeroControlePNCP).filter(Boolean));
+        const doCache = cache.registros
           .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
+          .filter((r) => !r.numeroControlePNCP || !jaVistos.has(r.numeroControlePNCP))
           .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
-        falhaConexao = false;
-        const dt = new Date(cache.atualizadoEm);
-        avisoFonte = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(dt.toLocaleString("pt-BR"))}.</div>`;
-      } else if (uf) {
-        const resp = await buscarOportunidadesAbertas(uf, palavras, 20);
-        resultados = resp.encontrados;
-        falhaConexao = resp.falhaConexao;
-      } else {
-        resultados = [];
-        falhaConexao = false;
-        avisoFonte = '<div class="aviso">Cache ainda não disponível — para buscar ao vivo sem cache, informe um estado (UF).</div>';
+        resultados = resultados.concat(doCache);
       }
 
       resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));

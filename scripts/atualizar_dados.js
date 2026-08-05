@@ -303,25 +303,32 @@ async function coletarContratos(caminhoArquivo) {
 const RETENCAO_DIAS_OPORTUNIDADES = parseInt(process.env.RETENCAO_DIAS_OPORTUNIDADES || "120", 10);
 
 async function coletarOportunidadesAbertas(caminhoArquivo) {
-  iniciarFase(6); // orçamento curto e fixo; roda depois da etapa de contratos
+  // Orçamento maior (era 6 min fixo) e busca em PARALELO por UF (era 1 UF de cada vez) —
+  // com 27 UFs e a API do PNCP às vezes lenta, rodar sequencial estourava o orçamento
+  // depois de só 8-9 UFs e o resto nunca era nem tentado. Um pool de workers concorrentes
+  // consegue cobrir muito mais UFs no mesmo tempo, do mesmo jeito que coletarContratos já
+  // faz pras páginas de contratos.
+  const ORCAMENTO_MINUTOS_OPORTUNIDADES = parseFloat(process.env.LIMITE_MINUTOS_OPORTUNIDADES || "18");
+  const CONCORRENCIA_UF = parseInt(process.env.CONCORRENCIA_UF_OPORTUNIDADES || "6", 10);
+  iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
   const hoje = new Date();
   const dataFinal = fmtData(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
   const todas = [];
   let ufsComFalha = [];
+  let ufsOk = [];
 
-  for (const uf of UFS) {
-    if (tempoRestanteMs() < 8000) {
-      console.log(`[oportunidades] Orçamento de tempo esgotado antes de terminar todas as UFs (parou em ${uf}).`);
-      break;
-    }
+  const filaUfs = [...UFS];
+
+  async function processarUf(uf) {
     let pagina = 1;
     let totalPaginas = 1;
     let falhouUf = false;
 
     while (pagina <= totalPaginas && pagina <= 20) {
+      if (tempoRestanteMs() < 8000) { falhouUf = true; break; }
       const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=50`;
-      const dados = await fetchComRetentativa(url);
+      const dados = await fetchComRetentativa(url, 2, 25000, `oportunidades ${uf}`);
       if (!dados) { falhouUf = true; break; }
       const itens = dados.data || [];
       totalPaginas = dados.totalPaginas || 1;
@@ -339,7 +346,21 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       }
       pagina += 1;
     }
-    if (falhouUf) ufsComFalha.push(uf);
+    if (falhouUf) ufsComFalha.push(uf); else ufsOk.push(uf);
+  }
+
+  async function trabalhador() {
+    while (filaUfs.length > 0) {
+      if (tempoRestanteMs() < 8000) return;
+      const uf = filaUfs.shift();
+      if (!uf) return;
+      await processarUf(uf);
+    }
+  }
+
+  await Promise.all(Array.from({ length: CONCORRENCIA_UF }, () => trabalhador()));
+  if (filaUfs.length > 0) {
+    console.log(`[oportunidades] Orçamento de tempo esgotado — ${filaUfs.length} UF(s) nem chegaram a ser tentadas: ${filaUfs.join(", ")}.`);
   }
 
   // Funde com o que já existia, mantendo a versão mais nova de cada registro (a que
@@ -360,7 +381,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   });
 
   console.log(
-    `[oportunidades] Concluído: ${todas.length} vistas nesta execução, falhas em: ${ufsComFalha.join(", ") || "nenhuma"}. ` +
+    `[oportunidades] Concluído: ${todas.length} vistas nesta execução (UFs ok: ${ufsOk.length}, falhas em: ${ufsComFalha.join(", ") || "nenhuma"}). ` +
     `Total acumulado após fundir/podar (retenção ${RETENCAO_DIAS_OPORTUNIDADES}d): ${registros.length} registros.`
   );
 
