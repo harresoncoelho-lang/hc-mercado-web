@@ -293,9 +293,19 @@ async function coletarContratos(caminhoArquivo) {
   };
 }
 
-// ---------- Oportunidades abertas agora (por UF) ----------
-async function coletarOportunidadesAbertas() {
+// ---------- Oportunidades (por UF) — ACUMULADO, não só "abertas agora" ----------
+// A API do PNCP (/contratacoes/proposta) só devolve o que ainda está com prazo de
+// proposta aberto hoje. Pra permitir busca retroativa no site (ex: "o que foi publicado
+// nos últimos 30/60 dias", incluindo o que já encerrou nesse meio tempo), este robô
+// FUNDE o resultado de cada execução com o que já tinha coletado antes (por
+// numeroControlePNCP), em vez de sobrescrever o arquivo do zero. Registros somem do
+// arquivo só quando ficam mais velhos que RETENCAO_DIAS_OPORTUNIDADES.
+const RETENCAO_DIAS_OPORTUNIDADES = parseInt(process.env.RETENCAO_DIAS_OPORTUNIDADES || "120", 10);
+
+async function coletarOportunidadesAbertas(caminhoArquivo) {
   iniciarFase(6); // orçamento curto e fixo; roda depois da etapa de contratos
+  const existentes = await lerJsonExistente(caminhoArquivo);
+  const hoje = new Date();
   const dataFinal = fmtData(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
   const todas = [];
   let ufsComFalha = [];
@@ -323,6 +333,7 @@ async function coletarOportunidadesAbertas() {
           uf,
           municipio: (item.unidadeOrgao && item.unidadeOrgao.municipioNome) || "",
           encerramento: item.dataEncerramentoProposta || null,
+          publicacao: item.dataPublicacaoPncp || null,
           numeroControlePNCP: item.numeroControlePNCP || null,
         });
       }
@@ -331,13 +342,34 @@ async function coletarOportunidadesAbertas() {
     if (falhouUf) ufsComFalha.push(uf);
   }
 
-  console.log(`[oportunidades] Concluído: ${todas.length} oportunidades abertas, falhas em: ${ufsComFalha.join(", ") || "nenhuma"}.`);
+  // Funde com o que já existia, mantendo a versão mais nova de cada registro (a que
+  // acabou de vir da API, se ele ainda apareceu; senão, a antiga que já tínhamos).
+  const chave = (r) => r.numeroControlePNCP || `${r.objeto}|${r.orgao}|${r.uf}`;
+  const mapa = new Map();
+  if (existentes && Array.isArray(existentes.registros)) {
+    for (const r of existentes.registros) mapa.set(chave(r), r);
+  }
+  for (const r of todas) mapa.set(chave(r), r);
+
+  const limiteRetencao = new Date(hoje.getTime() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000);
+  const registros = Array.from(mapa.values()).filter((r) => {
+    const refBruta = r.publicacao || r.encerramento;
+    if (!refBruta) return true;
+    const d = new Date(refBruta);
+    return isNaN(d) || d >= limiteRetencao;
+  });
+
+  console.log(
+    `[oportunidades] Concluído: ${todas.length} vistas nesta execução, falhas em: ${ufsComFalha.join(", ") || "nenhuma"}. ` +
+    `Total acumulado após fundir/podar (retenção ${RETENCAO_DIAS_OPORTUNIDADES}d): ${registros.length} registros.`
+  );
 
   return {
     atualizadoEm: new Date().toISOString(),
-    totalRegistros: todas.length,
+    retencaoDias: RETENCAO_DIAS_OPORTUNIDADES,
+    totalRegistros: registros.length,
     ufsComFalha,
-    registros: todas,
+    registros,
   };
 }
 
@@ -636,12 +668,9 @@ async function main() {
   await fs.writeFile(caminhoContratos, JSON.stringify(contratos), "utf8");
   console.log("Gravado data/contratos_recentes.json");
 
-  const oportunidades = await coletarOportunidadesAbertas();
-  await fs.writeFile(
-    path.join(dirDados, "oportunidades_abertas.json"),
-    JSON.stringify(oportunidades),
-    "utf8"
-  );
+  const caminhoOportunidades = path.join(dirDados, "oportunidades_abertas.json");
+  const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
+  await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   console.log("Gravado data/oportunidades_abertas.json");
 
   iniciarFase(LIMITE_MINUTOS_MERCADO);

@@ -598,8 +598,12 @@
         </div>
       </div>
       <div class="campo">
-        <label>Prazo até</label>
-        <input id="op-prazo-ate" type="date">
+        <label>Publicado de</label>
+        <input id="op-data-de" type="date">
+      </div>
+      <div class="campo">
+        <label>Publicado até</label>
+        <input id="op-data-ate" type="date">
       </div>
       <div class="campo" style="flex:2">
         <label>Palavras-chave (separadas por vírgula)</label>
@@ -607,6 +611,7 @@
       </div>
       <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
     </div>
+    <p class="dica-clique" style="margin:8px 2px 0;">Deixe as duas datas em branco pra buscar em todo o histórico coletado. Preencha pra buscar num período específico (ex: últimos 30 ou 60 dias) — inclui licitações já encerradas nesse período, não só as que ainda estão com prazo aberto.</p>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="op-resultado"></div>
   </section>
@@ -1108,6 +1113,10 @@
       municipio: "",
       uf: r.uf,
       encerramento: dataBrParaIso(r.dataAbertura),
+      // SESC/AM traz dataPublicacao real; SENAC/AM não tem esse campo separado, então
+      // usamos a data de abertura como melhor aproximação de "quando essa oportunidade
+      // apareceu" pra poder entrar na busca por período.
+      publicacao: dataBrParaIso(r.dataPublicacao) || dataBrParaIso(r.dataAbertura),
       numeroControlePNCP: r.numero,
       link: r.link,
       fonte: r.fonte,
@@ -1280,6 +1289,7 @@
             orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Órgão não informado",
             municipio: (item.unidadeOrgao && item.unidadeOrgao.municipioNome) || "",
             encerramento: item.dataEncerramentoProposta || null,
+            publicacao: item.dataPublicacaoPncp || null,
             numeroControlePNCP: item.numeroControlePNCP || null,
             link: linkPncp(item.numeroControlePNCP),
           });
@@ -1389,6 +1399,7 @@
           <dl class="boletim-meta">
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
             <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
+            ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : ""}
             <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
             <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
@@ -1576,7 +1587,8 @@
   document.getElementById("op-buscar").addEventListener("click", async () => {
     const uf = document.getElementById("op-uf").value.trim().toUpperCase();
     const municipioFiltro = document.getElementById("op-municipio").value.trim().toLowerCase();
-    const prazoAte = document.getElementById("op-prazo-ate").value;
+    const dataDe = document.getElementById("op-data-de").value;
+    const dataAte = document.getElementById("op-data-ate").value;
     const palavrasRaw = document.getElementById("op-palavras").value.trim();
     const alvo = document.getElementById("op-resultado");
     const btn = document.getElementById("op-buscar");
@@ -1618,12 +1630,21 @@
         // esses passando direto pelo filtro em vez de escondê-los por falta de dado.
         resultados = resultados.filter((r) => r.fonte || (r.municipio || "").toLowerCase().includes(municipioFiltro));
       }
-      if (prazoAte) {
-        const limite = new Date(prazoAte + "T23:59:59");
+      if (dataDe || dataAte) {
+        // Filtra por período de publicação (não pelo prazo de encerramento da proposta),
+        // pra permitir busca retroativa: "o que foi publicado nos últimos 30/60 dias",
+        // incluindo oportunidades que já encerraram nesse meio tempo — não só as que
+        // ainda estão com proposta aberta agora.
+        const limiteDe = dataDe ? new Date(dataDe + "T00:00:00") : null;
+        const limiteAte = dataAte ? new Date(dataAte + "T23:59:59") : null;
         resultados = resultados.filter((r) => {
-          if (!r.encerramento) return true;
-          const d = new Date(r.encerramento);
-          return isNaN(d) || d <= limite;
+          const refBruta = r.publicacao || r.encerramento;
+          if (!refBruta) return true; // sem data de referência: não exclui por falta de dado
+          const d = new Date(refBruta);
+          if (isNaN(d)) return true;
+          if (limiteDe && d < limiteDe) return false;
+          if (limiteAte && d > limiteAte) return false;
+          return true;
         });
       }
 
