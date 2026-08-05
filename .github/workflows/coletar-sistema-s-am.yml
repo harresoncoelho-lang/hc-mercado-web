@@ -1,0 +1,38 @@
+name: Coletar Sistema S AM
+
+on:
+  schedule:
+    # 10:00 UTC = 07:00 no horario de Brasilia (depois do PNCP e do Portal da Transparencia)
+    - cron: "0 10 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rodar robo de coleta do Sistema S/AM
+        run: node scripts/coletar_sistema_s_am.js
+
+      - name: Commitar dados coletados
+        run: |
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add data/sistema_s_am.json
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca nos dados hoje."
+          else
+            git commit -m "Atualiza dados do Sistema S/AM - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
