@@ -80,7 +80,24 @@ function fmtData(d) {
   return d.toISOString().slice(0, 10).replace(/-/g, "");
 }
 
-async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000) {
+// Quebra um período [inicioStr, fimStr] (yyyymmdd) em janelas de no máximo `diasPorJanela`
+// dias. A API de /v1/atas do PNCP fica muito lenta (e às vezes nem responde dentro do
+// timeout) quando o período pedido é muito longo — por isso nunca pedimos mais que uma
+// janela curta de cada vez, mesmo que isso signifique várias chamadas.
+function gerarJanelas(inicioStr, fimStr, diasPorJanela) {
+  const ini = new Date(`${inicioStr.slice(0, 4)}-${inicioStr.slice(4, 6)}-${inicioStr.slice(6, 8)}`);
+  const fim = new Date(`${fimStr.slice(0, 4)}-${fimStr.slice(4, 6)}-${fimStr.slice(6, 8)}`);
+  const janelas = [];
+  let cursor = ini;
+  while (cursor < fim) {
+    const fimJanela = new Date(Math.min(cursor.getTime() + diasPorJanela * 24 * 60 * 60 * 1000, fim.getTime()));
+    janelas.push({ inicio: fmtData(cursor), fim: fmtData(fimJanela) });
+    cursor = new Date(fimJanela.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return janelas;
+}
+
+async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "") {
   for (let i = 0; i < tentativas; i++) {
     try {
       const ctrl = new AbortController();
@@ -95,12 +112,19 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000) {
         continue;
       }
       if (resp.status === 204) return { data: [], totalPaginas: 0 };
-      if (!resp.ok) return null;
+      if (!resp.ok) {
+        console.log(`[fetch${rotulo ? " " + rotulo : ""}] HTTP ${resp.status} em ${url}`);
+        return null;
+      }
       const texto = await resp.text();
       if (!texto) return null;
       return JSON.parse(texto);
     } catch (e) {
-      if (i === tentativas - 1) return null;
+      const motivo = e && e.name === "AbortError" ? `timeout (${timeoutMs}ms)` : String(e && e.message || e);
+      if (i === tentativas - 1) {
+        console.log(`[fetch${rotulo ? " " + rotulo : ""}] Falhou após ${tentativas} tentativas (${motivo}) em ${url}`);
+        return null;
+      }
       await new Promise((r) => setTimeout(r, 800 * (i + 1)));
     }
   }
@@ -252,7 +276,7 @@ async function coletarContratos(caminhoArquivo) {
 
   console.log(
     `[contratos] Concluído: ${novos.length} novos nesta execução (${resultado.paginasVarridas} páginas de ${resultado.totalPaginas}, parcial=${resultado.parcial}). ` +
-    `Total acumulado após deduplicar/podar: ${registros.length} registros (${primeiraExecucao ? "1ª execução" : "incremental"}), ` +
+    `Total acumulado após dedupuplicar/podar: ${registros.length} registros (${primeiraExecucao ? "1ª execução" : "incremental"}), ` +
     `cobrindo desde ${dataInicialReal || "?"}.`
   );
 
@@ -341,8 +365,11 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
   const dataInicial = fmtData(inicio);
   // Janela de vigência: também olha um pouco pra frente, porque a consulta é por
   // "período de vigência coincide com o período informado" — isso pega atas com vigência
-  // futura já publicadas hoje.
-  const dataFinal = fmtData(new Date(hoje.getTime() + 400 * 24 * 60 * 60 * 1000));
+  // futura já publicadas hoje. Na 1ª execução usamos uma janela bem generosa pra frente
+  // (backfill único); nas execuções seguintes basta uma janela curta, senão ficaríamos
+  // re-varrendo o mesmo período enorme todo dia à toa.
+  const diasParaFrente = primeiraExecucao ? 400 : 60;
+  const dataFinal = fmtData(new Date(hoje.getTime() + diasParaFrente * 24 * 60 * 60 * 1000));
 
   const atasMapa = new Map();
   if (existentes && Array.isArray(existentes.atas)) {
@@ -429,60 +456,80 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
   }
   filaPendente = novaFilaPendente;
 
-  // 2) Varre novas atas no período (sem paralelismo aqui — cada ata que bate já dispara
-  // várias chamadas sequenciais de enriquecimento, então já satura o orçamento sozinha).
-  let pagina = 1;
-  let totalPaginas = 1;
+  // 2) Varre novas atas no período, em janelas curtas de datas (nunca pedimos o período
+  // inteiro de uma vez — ver gerarJanelas). A fila de janelas é persistida entre execuções:
+  // se o orçamento de tempo acabar no meio do backfill, a próxima execução continua dali.
+  const JANELA_DIAS = 90;
+  let janelasPendentes = (existentes && Array.isArray(existentes.janelasPendentes) && existentes.janelasPendentes.length > 0)
+    ? existentes.janelasPendentes
+    : gerarJanelas(dataInicial, dataFinal, JANELA_DIAS);
+
   let paginasVarridas = 0;
   let atasNovas = 0;
   let atasEnfileiradas = 0;
+  let janelasProcessadasNestaExecucao = 0;
 
-  while (pagina <= totalPaginas) {
-    if (tempoRestanteMs() < 12000) break;
-    const url = `https://pncp.gov.br/api/consulta/v1/atas?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=500`;
-    const dados = await fetchComRetentativa(url, 2, 20000);
-    if (!dados) break;
-    const itens = dados.data || [];
-    totalPaginas = dados.totalPaginas || 1;
-    paginasVarridas += 1;
+  while (janelasPendentes.length > 0) {
+    if (tempoRestanteMs() < 15000) break;
+    const janela = janelasPendentes[0];
+    let pagina = 1;
+    let totalPaginas = 1;
+    let janelaOk = true;
 
-    for (const item of itens) {
-      const objeto = item.objetoContratacao || "";
-      const segs = segmentosQueBatem(objeto);
-      if (segs.length === 0) continue;
-      const chave = item.numeroControlePNCPAta;
-      if (!chave || atasMapa.has(chave)) continue;
+    while (pagina <= totalPaginas) {
+      if (tempoRestanteMs() < 12000) { janelaOk = false; break; }
+      const url = `https://pncp.gov.br/api/consulta/v1/atas?dataInicial=${janela.inicio}&dataFinal=${janela.fim}&pagina=${pagina}&tamanhoPagina=500`;
+      const dados = await fetchComRetentativa(url, 2, 20000, "atas");
+      if (!dados) { janelaOk = false; break; }
+      const itens = dados.data || [];
+      totalPaginas = dados.totalPaginas || 1;
+      paginasVarridas += 1;
 
-      const referenciaAta = {
-        numeroControlePNCPAta: chave,
-        numeroControlePNCPCompra: item.numeroControlePNCPCompra || null,
-        objeto,
-        segmentos: segs,
-        orgao: item.nomeOrgao || "",
-        cnpjOrgao: item.cnpjOrgao || "",
-        numeroAta: item.numeroAtaRegistroPreco || "",
-        anoAta: item.anoAta || null,
-        dataAssinatura: item.dataAssinatura || null,
-        vigenciaInicio: item.vigenciaInicio || null,
-        vigenciaFim: item.vigenciaFim || null,
-        cancelado: !!item.cancelado,
-      };
+      for (const item of itens) {
+        const objeto = item.objetoContratacao || "";
+        const segs = segmentosQueBatem(objeto);
+        if (segs.length === 0) continue;
+        const chave = item.numeroControlePNCPAta;
+        if (!chave || atasMapa.has(chave)) continue;
 
-      if (tempoRestanteMs() < 12000) {
-        filaPendente.push(referenciaAta);
-        atasEnfileiradas += 1;
-        continue;
+        const referenciaAta = {
+          numeroControlePNCPAta: chave,
+          numeroControlePNCPCompra: item.numeroControlePNCPCompra || null,
+          objeto,
+          segmentos: segs,
+          orgao: item.nomeOrgao || "",
+          cnpjOrgao: item.cnpjOrgao || "",
+          numeroAta: item.numeroAtaRegistroPreco || "",
+          anoAta: item.anoAta || null,
+          dataAssinatura: item.dataAssinatura || null,
+          vigenciaInicio: item.vigenciaInicio || null,
+          vigenciaFim: item.vigenciaFim || null,
+          cancelado: !!item.cancelado,
+        };
+
+        if (tempoRestanteMs() < 12000) {
+          filaPendente.push(referenciaAta);
+          atasEnfileiradas += 1;
+          continue;
+        }
+        const enriquecido = await enriquecerAta(referenciaAta);
+        if (enriquecido) {
+          atasMapa.set(chave, { ...referenciaAta, ...enriquecido, enriquecida: true });
+          atasNovas += 1;
+        } else {
+          filaPendente.push(referenciaAta);
+          atasEnfileiradas += 1;
+        }
       }
-      const enriquecido = await enriquecerAta(referenciaAta);
-      if (enriquecido) {
-        atasMapa.set(chave, { ...referenciaAta, ...enriquecido, enriquecida: true });
-        atasNovas += 1;
-      } else {
-        filaPendente.push(referenciaAta);
-        atasEnfileiradas += 1;
-      }
+      pagina += 1;
     }
-    pagina += 1;
+
+    if (janelaOk) {
+      janelasPendentes.shift();
+      janelasProcessadasNestaExecucao += 1;
+    } else {
+      break; // orçamento de tempo ou falha de rede — retoma essa mesma janela na próxima execução
+    }
   }
 
   // Descarta atas encerradas há muito tempo (mantém histórico de ~24 meses, igual contratos).
@@ -553,9 +600,10 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     .sort((a, b) => b.valorTotalHistorico - a.valorTotalHistorico);
 
   console.log(
-    `[mercado] Concluído: ${atasNovas} atas novas enriquecidas, ${atasEnfileiradas} enfileiradas pra próxima execução, ` +
-    `${filaPendente.length} pendentes no total, ${paginasVarridas} páginas de atas varridas. ` +
-    `Total acumulado: ${atas.length} atas, ${empresasArray.length} empresas identificadas.`
+    `[mercado] Concluído: ${janelasProcessadasNestaExecucao} janela(s) de datas varridas nesta execução ` +
+    `(${janelasPendentes.length} janela(s) restando pro backfill), ${atasNovas} atas novas enriquecidas, ` +
+    `${atasEnfileiradas} enfileiradas pra próxima execução, ${filaPendente.length} pendentes no total, ` +
+    `${paginasVarridas} páginas de atas varridas. Total acumulado: ${atas.length} atas, ${empresasArray.length} empresas identificadas.`
   );
 
   return {
@@ -564,8 +612,9 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     dataInicial,
     dataFinal: fmtData(hoje),
     retencaoDias: RETENCAO_DIAS,
+    janelasPendentes,
     filaPendente,
-    parcial: filaPendente.length > 0,
+    parcial: filaPendente.length > 0 || janelasPendentes.length > 0,
     totalAtas: atas.length,
     atas,
     empresas: empresasArray,
