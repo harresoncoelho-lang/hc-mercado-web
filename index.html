@@ -247,6 +247,14 @@
     border-color: var(--azul);
     box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.25);
   }
+  .select-com-limpar { display: flex; align-items: stretch; gap: 6px; }
+  .select-com-limpar select { flex: 1; min-width: 0; }
+  .btn-limpar-select {
+    background: #0f1a26; border: 1px solid #2a3c50; color: var(--texto-fraco);
+    width: 38px; flex-shrink: 0; border-radius: 6px; cursor: pointer; font-size: 13px;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-limpar-select:hover { color: var(--texto); border-color: var(--vermelho); background: #241419; }
   .btn-buscar { transition: background 0.15s ease, transform 0.1s ease; }
   .btn-buscar:hover:not(:disabled) { background: #ff8c2b; transform: translateY(-1px); }
   .btn-buscar:active:not(:disabled) { transform: translateY(0); }
@@ -584,7 +592,10 @@
       </div>
       <div class="campo">
         <label>Município</label>
-        <select id="op-municipio" class="select-municipio"></select>
+        <div class="select-com-limpar">
+          <select id="op-municipio" class="select-municipio"></select>
+          <button type="button" class="btn-limpar-select" data-limpa="op-municipio" title="Limpar município selecionado">✕</button>
+        </div>
       </div>
       <div class="campo">
         <label>Prazo até</label>
@@ -614,7 +625,10 @@
         </div>
         <div class="campo">
           <label>Município</label>
-          <select id="dg-municipio" class="select-municipio"></select>
+          <div class="select-com-limpar">
+            <select id="dg-municipio" class="select-municipio"></select>
+            <button type="button" class="btn-limpar-select" data-limpa="dg-municipio" title="Limpar município selecionado">✕</button>
+          </div>
         </div>
         <div class="campo">
           <label>Órgão contém</label>
@@ -738,17 +752,16 @@
   }
   popularSelectsUf();
 
-  // Popula todos os <select class="select-municipio"> da página com todos os municípios
-  // brasileiros (mesma ideia dos selects de UF, só que pra cidade). A lista completa (~5.570
-  // municípios) vem da API pública do IBGE e fica em cache no navegador do usuário, então só
-  // baixa uma vez por dispositivo — nas próximas visitas é instantâneo.
-  async function popularSelectsMunicipio() {
-    const selects = document.querySelectorAll("select.select-municipio");
-    if (selects.length === 0) return;
-    selects.forEach((sel) => {
-      if (sel.dataset.populado !== "1") sel.innerHTML = '<option value="">Carregando municípios...</option>';
-    });
-    try {
+  // Carrega a lista completa de municípios brasileiros (~5.570) uma única vez, a partir da
+  // API pública do IBGE, e mantém em cache no navegador do usuário (só baixa de novo se o
+  // cache não existir). Cada município já vem com a sigla da UF, o que permite filtrar o
+  // select de município pra mostrar só as cidades do estado escolhido no select de UF ao lado.
+  let TODOS_MUNICIPIOS = null;
+  let promessaMunicipios = null;
+  function carregarTodosMunicipios() {
+    if (TODOS_MUNICIPIOS) return Promise.resolve(TODOS_MUNICIPIOS);
+    if (promessaMunicipios) return promessaMunicipios;
+    promessaMunicipios = (async () => {
       let municipios = null;
       try {
         const cache = localStorage.getItem("hc_municipios_cache_v1");
@@ -770,16 +783,48 @@
           localStorage.setItem("hc_municipios_cache_v1", JSON.stringify(municipios));
         } catch (e) { /* localStorage indisponível — segue sem cache */ }
       }
+      TODOS_MUNICIPIOS = municipios;
+      return municipios;
+    })();
+    return promessaMunicipios;
+  }
 
-      let opcoes = '<option value="">Todos os municípios</option>';
-      for (const m of municipios) {
-        opcoes += `<option value="${escapeHtml(m.nome)}">${escapeHtml(m.nome)}${m.uf ? " — " + escapeHtml(m.uf) : ""}</option>`;
-      }
+  // Preenche um <select class="select-municipio"> com os municípios de uma UF específica —
+  // ou com a lista nacional inteira, se nenhuma UF estiver selecionada no select irmão.
+  function renderOpcoesMunicipio(sel, uf, municipios) {
+    const lista = uf ? municipios.filter((m) => m.uf === uf) : municipios;
+    let opcoes = `<option value="">${uf ? "Todos os municípios de " + escapeHtml(uf) : "Todos os municípios"}</option>`;
+    for (const m of lista) {
+      opcoes += `<option value="${escapeHtml(m.nome)}">${escapeHtml(m.nome)}${!uf && m.uf ? " — " + escapeHtml(m.uf) : ""}</option>`;
+    }
+    const valorAtual = sel.value;
+    sel.innerHTML = opcoes;
+    sel.dataset.populado = "1";
+    // Só mantém o valor anterior se ele ainda existir na lista filtrada (ex: trocou de UF).
+    if (valorAtual && lista.some((m) => m.nome === valorAtual)) sel.value = valorAtual;
+  }
+
+  // Popula todos os <select class="select-municipio"> da página, cada um filtrado pela UF
+  // selecionada no select.select-uf mais próximo (mesmo bloco de filtros). Além disso, liga
+  // um listener no select de UF pra refiltrar o município toda vez que o estado mudar — assim
+  // "Amazonas" só mostra municípios do Amazonas, e não os ~5.570 do Brasil inteiro.
+  async function popularSelectsMunicipio() {
+    const selects = document.querySelectorAll("select.select-municipio");
+    if (selects.length=== 0) return;
+    selects.forEach((sel) => {
+      sel.innerHTML = '<option value="">Carregando municípios...</option>';
+    });
+    try {
+      const municipios = await carregarTodosMunicipios();
       selects.forEach((sel) => {
-        const valorAtual = sel.value;
-        sel.innerHTML = opcoes;
-        sel.dataset.populado = "1";
-        if (valorAtual) sel.value = valorAtual;
+        const selUf = sel.closest(".painel-filtros, .filtros-lateral, aside")?.querySelector("select.select-uf") || null;
+        renderOpcoesMunicipio(sel, selUf ? selUf.value.trim().toUpperCase() : "", municipios);
+        if (selUf && !selUf.dataset.ligadoMunicipio) {
+          selUf.dataset.ligadoMunicipio = "1";
+          selUf.addEventListener("change", () => {
+            renderOpcoesMunicipio(sel, selUf.value.trim().toUpperCase(), municipios);
+          });
+        }
       });
     } catch (e) {
       selects.forEach((sel) => {
@@ -788,6 +833,17 @@
     }
   }
   popularSelectsMunicipio();
+
+  // Botão "✕" ao lado do select de município: limpa a seleção (volta pra "Todos os
+  // municípios") sem precisar abrir o dropdown e rolar até a primeira opção.
+  document.querySelectorAll(".btn-limpar-select").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const sel = document.getElementById(btn.dataset.limpa);
+      if (!sel) return;
+      sel.value = "";
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  });
 
   function escapeHtml(s) {
     return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -1762,7 +1818,7 @@
       for (const o of d.orgaos) {
         const largura = Math.round((o.valor / maxOrgao) * 100);
         const selecionado = d.orgaoSelecionado && d.orgaoSelecionado.nome === o.nome;
-        html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-orgao="${escapeHtml(o.nome)}">
+      html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-orgao="${escapeHtml(o.nome)}">
           <div class="barra-label">${escapeHtml(o.nome)}</div>
           <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(o.valorFormatado)}</div></div>
           <div class="barra-meta">UFs: ${escapeHtml(o.ufs.join(", ") || "-")} · ${o.contratos} contrato(s) · <small>clique para detalhar</small></div>
@@ -2070,6 +2126,7 @@
           </div>`;
         }
       }
+
       html2 += "<h2>Contratos encontrados no período</h2>";
       if (registrosFiltrados.length === 0) {
         html2 += "<p>Nenhum contrato desse CNPJ encontrado no PNCP dentro da amostra do período selecionado. Tente aumentar o período.</p>";
