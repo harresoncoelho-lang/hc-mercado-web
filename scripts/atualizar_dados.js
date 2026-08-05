@@ -5,24 +5,31 @@
 //
 // Uso: node scripts/atualizar_dados.js
 // Variáveis de ambiente opcionais:
-//   DIAS_HISTORICO_INICIAL=30  -> na 1ª execução (sem arquivo anterior), quantos dias varrer (padrão 30)
-//   RETENCAO_DIAS=730          -> quantos dias de histórico manter acumulado (padrão 730 = 24 meses)
-//   LIMITE_MINUTOS=25          -> orçamento de tempo total do robô (padrão 25 min)
+//   DIAS_HISTORICO_INICIAL=30     -> na 1ª execução (sem arquivo anterior), quantos dias varrer (padrão 30)
+//   RETENCAO_DIAS=730             -> quantos dias de histórico manter acumulado (padrão 730 = 24 meses)
+//   LIMITE_MINUTOS_CONTRATOS=13   -> orçamento de tempo da etapa de contratos nacionais (padrão 13 min)
+//   LIMITE_MINUTOS_MERCADO=13     -> orçamento de tempo da etapa de atas/empresas por segmento (padrão 13 min)
+//   CONCORRENCIA_PAGINAS=5        -> quantas páginas buscar em paralelo na coleta de contratos (padrão 5)
 //
 // IMPORTANTE: a partir desta versão o robô é INCREMENTAL — ele não re-varre tudo do zero
-// a cada execução. Ele lê o data/contratos_recentes.json já existente (comitado no repo),
-// busca só o que é novo desde a última coleta (com uma folga de 2 dias pra pegar contratos
-// que o PNCP publicou com atraso) e junta com o que já tinha, descartando duplicatas e
-// registros mais velhos que RETENCAO_DIAS. Assim, o histórico vai crescendo dia após dia até
-// cobrir os 24 meses — não tem como "pular" direto pra 24 meses de uma vez só, porque isso
-// exigiria escanear anos de licitações nacionais numa única execução, o que estoura o tempo
-// e os limites de taxa da API do PNCP.
+// a cada execução. Ele lê os arquivos já existentes (comitados no repo), busca só o que é
+// novo desde a última coleta (com uma folga de alguns dias pra pegar publicações atrasadas)
+// e junta com o que já tinha, descartando duplicatas e registros mais velhos que RETENCAO_DIAS.
+//
+// Duas etapas independentes, cada uma com seu próprio orçamento de tempo:
+//   1) coletarContratos()        -> data/contratos_recentes.json (todos os setores, nacional)
+//   2) coletarMercadoSegmentos() -> data/mercado_segmentos.json (atas de registro de preço +
+//      empresas vencedoras, só para os segmentos que a HC realmente monitora — ver SEGMENTOS
+//      abaixo). Essa etapa é mais cara por ata (precisa consultar itens e resultados de cada
+//      contratação vinculada), por isso fica restrita a um conjunto fixo de segmentos em vez
+//      de tentar cobrir livremente qualquer palavra-chave que o usuário digitar no site.
 
 const DIAS_HISTORICO_INICIAL = parseInt(process.env.DIAS_HISTORICO_INICIAL || "30", 10);
 const RETENCAO_DIAS = parseInt(process.env.RETENCAO_DIAS || "730", 10);
-const FOLGA_DIAS = 2; // re-busca os últimos 2 dias pra pegar publicações atrasadas no PNCP
-const LIMITE_MINUTOS = parseFloat(process.env.LIMITE_MINUTOS || "25");
-const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
+const FOLGA_DIAS = 2; // re-busca os últimos dias pra pegar publicações atrasadas no PNCP
+const LIMITE_MINUTOS_CONTRATOS = parseFloat(process.env.LIMITE_MINUTOS_CONTRATOS || "13");
+const LIMITE_MINUTOS_MERCADO = parseFloat(process.env.LIMITE_MINUTOS_MERCADO || "13");
+const CONCORRENCIA_PAGINAS = parseInt(process.env.CONCORRENCIA_PAGINAS || "5", 10);
 const TAMANHO_PAGINA = 100;
 
 const UFS = [
@@ -31,21 +38,53 @@ const UFS = [
   "SP", "SE", "TO",
 ];
 
-const inicioExecucao = Date.now();
+// Segmentos que a HC realmente monitora pros clientes (mesma lista usada no boletim de
+// e-mail em busca_editais.py). É nesses que vale a pena pagar o custo extra de consultar
+// item por item das atas de registro de preço pra descobrir quem são as empresas vencedoras.
+const SEGMENTOS = [
+  "expediente",
+  "higiene",
+  "limpeza",
+  "aliment",
+  "veiculo",
+  "hospitalar",
+  "engenharia",
+  "fotovoltaic",
+  "eletric",
+  "informatica",
+];
+
+function normalizar(txt) {
+  if (!txt) return "";
+  return txt.toString().normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function segmentosQueBatem(texto) {
+  const norm = normalizar(texto);
+  return SEGMENTOS.filter((s) => norm.includes(normalizar(s)));
+}
+
+let inicioExecucaoFase = Date.now();
+let limiteMsFase = 0;
+
+function iniciarFase(minutos) {
+  inicioExecucaoFase = Date.now();
+  limiteMsFase = minutos * 60 * 1000;
+}
 
 function tempoRestanteMs() {
-  return LIMITE_MS - (Date.now() - inicioExecucao);
+  return limiteMsFase - (Date.now() - inicioExecucaoFase);
 }
 
 function fmtData(d) {
   return d.toISOString().slice(0, 10).replace(/-/g, "");
 }
 
-async function fetchComRetentativa(url, tentativas = 3) {
+async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000) {
   for (let i = 0; i < tentativas; i++) {
     try {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 30000);
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
       const resp = await fetch(url, {
         headers: { Accept: "application/json" },
         signal: ctrl.signal,
@@ -55,27 +94,24 @@ async function fetchComRetentativa(url, tentativas = 3) {
         await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
         continue;
       }
+      if (resp.status === 204) return { data: [], totalPaginas: 0 };
       if (!resp.ok) return null;
       const texto = await resp.text();
       if (!texto) return null;
       return JSON.parse(texto);
     } catch (e) {
       if (i === tentativas - 1) return null;
-      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+      await new Promise((r) => setTimeout(r, 800 * (i + 1)));
     }
   }
   return null;
 }
 
-// Lê o arquivo acumulado da execução anterior (se existir). Retorna null se não existir
-// ainda ou se estiver corrompido/em formato antigo.
-async function lerContratosExistentes(caminho) {
+async function lerJsonExistente(caminho) {
   try {
     const fs = await import("node:fs/promises");
     const texto = await fs.readFile(caminho, "utf8");
-    const dados = JSON.parse(texto);
-    if (!Array.isArray(dados.registros)) return null;
-    return dados;
+    return JSON.parse(texto);
   } catch (e) {
     return null;
   }
@@ -86,54 +122,88 @@ function chaveRegistro(r) {
   return r.numeroControlePNCP || `${r.cnpjFornecedor}|${r.dataAssinatura}|${r.valor}|${r.objeto}`;
 }
 
+// Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
+// "CNPJ-TIPO-SEQUENCIAL/ANO" (mesmo formato usado em toda a integração do PNCP).
+function partesNumeroControle(numeroControlePNCP) {
+  if (!numeroControlePNCP) return null;
+  try {
+    const partes = numeroControlePNCP.split("-");
+    if (partes.length < 3) return null;
+    const cnpj = partes[0];
+    const seqAno = partes.slice(2).join("-");
+    const [seq, ano] = seqAno.split("/");
+    if (!cnpj || !seq || !ano) return null;
+    return { cnpj, ano, sequencial: parseInt(seq, 10) };
+  } catch (e) {
+    return null;
+  }
+}
+
+// ---------- Utilitário: busca um lote de páginas em paralelo (com limite de concorrência) ----------
+async function buscarPaginasEmLote(montarUrl, paginaInicial, totalPaginasConhecido, concorrencia, aoReceberPagina) {
+  let proximaPagina = paginaInicial;
+  let totalPaginas = totalPaginasConhecido || 1;
+  let paginasVarridas = 0;
+  let parouPorTempo = false;
+  let falhaConsecutivas = 0;
+
+  async function trabalhador() {
+    while (true) {
+      if (tempoRestanteMs() < 12000) { parouPorTempo = true; return; }
+      if (proximaPagina > totalPaginas) return;
+      const paginaAtual = proximaPagina;
+      proximaPagina += 1;
+      const dados = await fetchComRetentativa(montarUrl(paginaAtual));
+      if (!dados) {
+        falhaConsecutivas += 1;
+        if (falhaConsecutivas > 8) { parouPorTempo = true; return; }
+        continue;
+      }
+      falhaConsecutivas = 0;
+      if (typeof dados.totalPaginas === "number" && dados.totalPaginas > 0) {
+        totalPaginas = dados.totalPaginas;
+      }
+      paginasVarridas += 1;
+      aoReceberPagina(dados, paginaAtual);
+    }
+  }
+
+  const trabalhadores = Array.from({ length: concorrencia }, () => trabalhador());
+  await Promise.all(trabalhadores);
+
+  return { paginasVarridas, totalPaginas, parcial: parouPorTempo || proximaPagina <= totalPaginas };
+}
+
 // ---------- Contratos históricos (nacional, acumulados de forma incremental) ----------
 async function coletarContratos(caminhoArquivo) {
-  const existentes = await lerContratosExistentes(caminhoArquivo);
+  const existentes = await lerJsonExistente(caminhoArquivo);
   const hoje = new Date();
 
   let inicio;
-  let primeiraExecucao = !existentes;
-  if (existentes && existentes.dataFinal) {
-    // Já tem histórico: busca só a partir de perto de onde parou (com folga pra pegar
-    // publicações atrasadas do PNCP), em vez de re-varrer tudo de novo.
+  let primeiraExecucao = !existentes || !Array.isArray(existentes.registros);
+  if (!primeiraExecucao && existentes.dataFinal) {
     const dataFinalAnterior = new Date(
       `${existentes.dataFinal.slice(0, 4)}-${existentes.dataFinal.slice(4, 6)}-${existentes.dataFinal.slice(6, 8)}`
     );
     inicio = new Date(dataFinalAnterior.getTime() - FOLGA_DIAS * 24 * 60 * 60 * 1000);
   } else {
-    // 1ª execução (sem arquivo anterior no repo): faz uma varredura inicial curta.
     inicio = new Date(hoje.getTime() - DIAS_HISTORICO_INICIAL * 24 * 60 * 60 * 1000);
   }
   const dataInicial = fmtData(inicio);
   const dataFinal = fmtData(hoje);
 
   const novos = [];
-  let pagina = 1;
-  let totalPaginas = 1;
-  let paginasVarridas = 0;
-  let parcial = false;
+  const montarUrl = (pagina) =>
+    `https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=${TAMANHO_PAGINA}`;
 
-  while (pagina <= totalPaginas) {
-    if (tempoRestanteMs() < 15000) {
-      parcial = true;
-      console.log(`[contratos] Orçamento de tempo esgotado na página ${pagina}/${totalPaginas}.`);
-      break;
-    }
-    const url = `https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=${TAMANHO_PAGINA}`;
-    const dados = await fetchComRetentativa(url);
-    if (!dados) {
-      console.log(`[contratos] Falha ao buscar página ${pagina}, parando (parcial).`);
-      parcial = true;
-      break;
-    }
+  const resultado = await buscarPaginasEmLote(montarUrl, 1, 1, CONCORRENCIA_PAGINAS, (dados) => {
     const itens = dados.data || [];
-    totalPaginas = dados.totalPaginas || 1;
-    paginasVarridas += 1;
-
     for (const item of itens) {
+      const objeto = item.objetoContrato || item.objetoCompra || "";
       novos.push({
-        objeto: item.objetoContrato || item.objetoCompra || "",
+        objeto,
         orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "",
+        cnpjOrgao: (item.orgaoEntidade && item.orgaoEntidade.cnpj) || "",
         uf: (item.unidadeOrgao && item.unidadeOrgao.ufSigla) || "",
         municipio: (item.unidadeOrgao && item.unidadeOrgao.municipioNome) || "",
         cnpjFornecedor: item.niFornecedor || "",
@@ -141,38 +211,38 @@ async function coletarContratos(caminhoArquivo) {
         valor: Number(item.valorGlobal || item.valorInicial || 0),
         dataAssinatura: item.dataAssinatura || item.dataVigenciaInicio || null,
         numeroControlePNCP: item.numeroControlePNCP || null,
+        segmentos: segmentosQueBatem(objeto),
       });
     }
-
-    if (pagina % 20 === 0) {
-      console.log(`[contratos] ${pagina}/${totalPaginas} páginas, ${novos.length} registros novos até agora...`);
-    }
-    pagina += 1;
-  }
+  });
 
   // Junta com o que já tinha, deduplicando, e descarta o que passou da retenção.
   const mapa = new Map();
-  if (existentes) {
+  if (existentes && Array.isArray(existentes.registros)) {
     for (const r of existentes.registros) mapa.set(chaveRegistro(r), r);
   }
   for (const r of novos) mapa.set(chaveRegistro(r), r);
 
   const limiteRetencao = new Date(hoje.getTime() - RETENCAO_DIAS * 24 * 60 * 60 * 1000);
   let registros = Array.from(mapa.values()).filter((r) => {
-    if (!r.dataAssinatura) return true; // mantém registros sem data (raros) por segurança
+    if (!r.dataAssinatura) return true;
     const d = new Date(r.dataAssinatura);
     return isNaN(d) || d >= limiteRetencao;
   });
 
-  // Trava de segurança de tamanho: contratos nacionais acumulados por até 24 meses podem
-  // crescer bastante. Se passar de MAX_REGISTROS, descarta primeiro os mais antigos —
-  // assim o arquivo não estoura o limite de tamanho do GitHub nem o tempo de carregamento
-  // no navegador do usuário.
+  // Trava de segurança de tamanho: ao podar, prioriza manter os registros que batem com
+  // algum dos segmentos monitorados (mais valiosos pro diagnóstico de mercado) e descarta
+  // primeiro os mais antigos entre os que não batem com nenhum segmento.
   const MAX_REGISTROS = 250000;
   if (registros.length > MAX_REGISTROS) {
-    registros.sort((a, b) => (b.dataAssinatura || "").localeCompare(a.dataAssinatura || ""));
+    registros.sort((a, b) => {
+      const aTem = (a.segmentos || []).length > 0 ? 1 : 0;
+      const bTem = (b.segmentos || []).length > 0 ? 1 : 0;
+      if (aTem !== bTem) return bTem - aTem; // prioriza quem tem segmento
+      return (b.dataAssinatura || "").localeCompare(a.dataAssinatura || "");
+    });
     registros = registros.slice(0, MAX_REGISTROS);
-    console.log(`[contratos] Atingiu MAX_REGISTROS (${MAX_REGISTROS}); descartados os mais antigos.`);
+    console.log(`[contratos] Atingiu MAX_REGISTROS (${MAX_REGISTROS}); descartados os mais antigos sem segmento.`);
   }
 
   const dataInicialReal = registros.reduce((min, r) => {
@@ -181,7 +251,7 @@ async function coletarContratos(caminhoArquivo) {
   }, null);
 
   console.log(
-    `[contratos] Concluído: ${novos.length} novos nesta execução (${paginasVarridas} páginas de ${totalPaginas}, parcial=${parcial}). ` +
+    `[contratos] Concluído: ${novos.length} novos nesta execução (${resultado.paginasVarridas} páginas de ${resultado.totalPaginas}, parcial=${resultado.parcial}). ` +
     `Total acumulado após deduplicar/podar: ${registros.length} registros (${primeiraExecucao ? "1ª execução" : "incremental"}), ` +
     `cobrindo desde ${dataInicialReal || "?"}.`
   );
@@ -192,21 +262,22 @@ async function coletarContratos(caminhoArquivo) {
     dataFinal,
     retencaoDias: RETENCAO_DIAS,
     totalRegistros: registros.length,
-    paginasVarridas,
-    totalPaginasDisponiveis: totalPaginas,
-    parcial,
+    paginasVarridas: resultado.paginasVarridas,
+    totalPaginasDisponiveis: resultado.totalPaginas,
+    parcial: resultado.parcial,
     registros,
   };
 }
 
 // ---------- Oportunidades abertas agora (por UF) ----------
 async function coletarOportunidadesAbertas() {
+  iniciarFase(6); // orçamento curto e fixo; roda depois da etapa de contratos
   const dataFinal = fmtData(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
   const todas = [];
   let ufsComFalha = [];
 
   for (const uf of UFS) {
-    if (tempoRestanteMs() < 10000) {
+    if (tempoRestanteMs() < 8000) {
       console.log(`[oportunidades] Orçamento de tempo esgotado antes de terminar todas as UFs (parou em ${uf}).`);
       break;
     }
@@ -234,7 +305,6 @@ async function coletarOportunidadesAbertas() {
       pagina += 1;
     }
     if (falhouUf) ufsComFalha.push(uf);
-    console.log(`[oportunidades] ${uf}: ok (${todas.length} acumuladas)`);
   }
 
   console.log(`[oportunidades] Concluído: ${todas.length} oportunidades abertas, falhas em: ${ufsComFalha.join(", ") || "nenhuma"}.`);
@@ -247,6 +317,261 @@ async function coletarOportunidadesAbertas() {
   };
 }
 
+// ---------- Mercado por segmento: atas de registro de preço + empresas vencedoras ----------
+// Só processa atas cujo objeto bate com algum dos SEGMENTOS monitorados — cada ata que bate
+// custa consultas extras (itens + resultados de cada item), então não dá pra fazer isso pra
+// TODAS as atas do Brasil sem estourar o orçamento de tempo/limites da API do PNCP.
+async function coletarMercadoSegmentos(caminhoArquivo) {
+  const existentes = await lerJsonExistente(caminhoArquivo);
+  const hoje = new Date();
+
+  let inicio;
+  let primeiraExecucao = !existentes || !existentes.dataFinal;
+  if (!primeiraExecucao) {
+    const dataFinalAnterior = new Date(
+      `${existentes.dataFinal.slice(0, 4)}-${existentes.dataFinal.slice(4, 6)}-${existentes.dataFinal.slice(6, 8)}`
+    );
+    inicio = new Date(dataFinalAnterior.getTime() - FOLGA_DIAS * 24 * 60 * 60 * 1000);
+  } else {
+    // 1ª execução: varre uma janela de vigência mais generosa, já que atas costumam durar
+    // até 12 meses — assim já pegamos atas ainda vigentes hoje mesmo que tenham sido
+    // assinadas há alguns meses.
+    inicio = new Date(hoje.getTime() - 365 * 24 * 60 * 60 * 1000);
+  }
+  const dataInicial = fmtData(inicio);
+  // Janela de vigência: também olha um pouco pra frente, porque a consulta é por
+  // "período de vigência coincide com o período informado" — isso pega atas com vigência
+  // futura já publicadas hoje.
+  const dataFinal = fmtData(new Date(hoje.getTime() + 400 * 24 * 60 * 60 * 1000));
+
+  const atasMapa = new Map();
+  if (existentes && Array.isArray(existentes.atas)) {
+    for (const a of existentes.atas) atasMapa.set(a.numeroControlePNCPAta, a);
+  }
+
+  // Fila de atas que já sabemos que batem com algum segmento mas ainda não tiveram os
+  // itens/resultados consultados (por falta de tempo em execuções anteriores). Processar
+  // essa fila primeiro garante que o robô sempre termina de enriquecer o que já achou antes
+  // de gastar tempo procurando atas novas.
+  let filaPendente = (existentes && Array.isArray(existentes.filaPendente)) ? existentes.filaPendente : [];
+
+  const cacheOrgaoUf = new Map();
+
+  async function enriquecerAta(referenciaAta) {
+    const partes = partesNumeroControle(referenciaAta.numeroControlePNCPCompra);
+    if (!partes) return null;
+
+    // UF/município do órgão (1 chamada, cacheada por CNPJ+ano+sequencial pra não repetir
+    // à toa se duas atas forem da mesma compra).
+    let ufOrgao = "", municipioOrgao = "";
+    const chaveCompra = `${partes.cnpj}|${partes.ano}|${partes.sequencial}`;
+    if (cacheOrgaoUf.has(chaveCompra)) {
+      const c = cacheOrgaoUf.get(chaveCompra);
+      ufOrgao = c.uf; municipioOrgao = c.municipio;
+    } else {
+      const compra = await fetchComRetentativa(
+        `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}`,
+        2, 15000
+      );
+      if (compra) {
+        ufOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.ufSigla) || "";
+        municipioOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.municipioNome) || "";
+      }
+      cacheOrgaoUf.set(chaveCompra, { uf: ufOrgao, municipio: municipioOrgao });
+    }
+
+    const itensResp = await fetchComRetentativa(
+      `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens?pagina=1&tamanhoPagina=50`,
+      2, 15000
+    );
+    const listaItens = Array.isArray(itensResp) ? itensResp : (itensResp && itensResp.data) || [];
+
+    const itensComVencedor = [];
+    // Limita a no máx. 30 itens por ata pra não estourar o orçamento numa única contratação
+    // com centenas de itens (ex: atas de material de expediente com muitos itens).
+    for (const item of listaItens.slice(0, 30)) {
+      if (tempoRestanteMs() < 10000) break;
+      const numeroItem = item.numeroItem || item.numero;
+      if (!numeroItem) continue;
+      const resultados = await fetchComRetentativa(
+        `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens/${numeroItem}/resultados`,
+        2, 15000
+      );
+      const listaResultados = Array.isArray(resultados) ? resultados : (resultados && resultados.data) || [];
+      if (listaResultados.length === 0) continue;
+      itensComVencedor.push({
+        numeroItem,
+        descricao: item.descricao || item.descricaoItem || "",
+        vencedores: listaResultados.map((r) => ({
+          cnpj: r.niFornecedor || "",
+          nome: r.nomeRazaoSocialFornecedor || "",
+          valorUnitario: Number(r.valorUnitarioHomologado || 0),
+          valorTotal: Number(r.valorTotalHomologado || 0),
+          quantidade: Number(r.quantidadeHomologada || 0),
+          data: r.dataResultado || null,
+        })),
+      });
+    }
+
+    return { ufOrgao, municipioOrgao, itens: itensComVencedor };
+  }
+
+  // 1) Processa primeiro a fila pendente de execuções anteriores.
+  const novaFilaPendente = [];
+  for (const referenciaAta of filaPendente) {
+    if (tempoRestanteMs() < 12000) { novaFilaPendente.push(referenciaAta); continue; }
+    const enriquecido = await enriquecerAta(referenciaAta);
+    if (enriquecido) {
+      atasMapa.set(referenciaAta.numeroControlePNCPAta, { ...referenciaAta, ...enriquecido, enriquecida: true });
+    } else {
+      novaFilaPendente.push(referenciaAta);
+    }
+  }
+  filaPendente = novaFilaPendente;
+
+  // 2) Varre novas atas no período (sem paralelismo aqui — cada ata que bate já dispara
+  // várias chamadas sequenciais de enriquecimento, então já satura o orçamento sozinha).
+  let pagina = 1;
+  let totalPaginas = 1;
+  let paginasVarridas = 0;
+  let atasNovas = 0;
+  let atasEnfileiradas = 0;
+
+  while (pagina <= totalPaginas) {
+    if (tempoRestanteMs() < 12000) break;
+    const url = `https://pncp.gov.br/api/consulta/v1/atas?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=500`;
+    const dados = await fetchComRetentativa(url, 2, 20000);
+    if (!dados) break;
+    const itens = dados.data || [];
+    totalPaginas = dados.totalPaginas || 1;
+    paginasVarridas += 1;
+
+    for (const item of itens) {
+      const objeto = item.objetoContratacao || "";
+      const segs = segmentosQueBatem(objeto);
+      if (segs.length === 0) continue;
+      const chave = item.numeroControlePNCPAta;
+      if (!chave || atasMapa.has(chave)) continue;
+
+      const referenciaAta = {
+        numeroControlePNCPAta: chave,
+        numeroControlePNCPCompra: item.numeroControlePNCPCompra || null,
+        objeto,
+        segmentos: segs,
+        orgao: item.nomeOrgao || "",
+        cnpjOrgao: item.cnpjOrgao || "",
+        numeroAta: item.numeroAtaRegistroPreco || "",
+        anoAta: item.anoAta || null,
+        dataAssinatura: item.dataAssinatura || null,
+        vigenciaInicio: item.vigenciaInicio || null,
+        vigenciaFim: item.vigenciaFim || null,
+        cancelado: !!item.cancelado,
+      };
+
+      if (tempoRestanteMs() < 12000) {
+        filaPendente.push(referenciaAta);
+        atasEnfileiradas += 1;
+        continue;
+      }
+      const enriquecido = await enriquecerAta(referenciaAta);
+      if (enriquecido) {
+        atasMapa.set(chave, { ...referenciaAta, ...enriquecido, enriquecida: true });
+        atasNovas += 1;
+      } else {
+        filaPendente.push(referenciaAta);
+        atasEnfileiradas += 1;
+      }
+    }
+    pagina += 1;
+  }
+
+  // Descarta atas encerradas há muito tempo (mantém histórico de ~24 meses, igual contratos).
+  const limiteRetencao = new Date(hoje.getTime() - RETENCAO_DIAS * 24 * 60 * 60 * 1000);
+  const atas = Array.from(atasMapa.values()).filter((a) => {
+    if (!a.vigenciaFim) return true;
+    const d = new Date(a.vigenciaFim);
+    return isNaN(d) || d >= limiteRetencao;
+  });
+
+  // Agrega por empresa (CNPJ vencedor), cruzando todos os itens de todas as atas.
+  const empresas = new Map();
+  const agora = hoje.getTime();
+  for (const ata of atas) {
+    if (!ata.enriquecida || !Array.isArray(ata.itens)) continue;
+    const vigente = !ata.cancelado && ata.vigenciaFim && new Date(ata.vigenciaFim).getTime() >= agora;
+    for (const item of ata.itens) {
+      for (const v of item.vencedores || []) {
+        if (!v.cnpj) continue;
+        if (!empresas.has(v.cnpj)) {
+          empresas.set(v.cnpj, {
+            cnpj: v.cnpj,
+            nome: v.nome,
+            segmentos: new Set(),
+            ufs: new Set(),
+            atasVigentes: [],
+            atasEncerradas: [],
+            valorTotalVigente: 0,
+            valorTotalHistorico: 0,
+            itensGanhos: 0,
+          });
+        }
+        const emp = empresas.get(v.cnpj);
+        if (v.nome) emp.nome = v.nome;
+        for (const s of ata.segmentos || []) emp.segmentos.add(s);
+        if (ata.ufOrgao) emp.ufs.add(ata.ufOrgao);
+        emp.itensGanhos += 1;
+        emp.valorTotalHistorico += v.valorTotal || 0;
+        const refEntry = {
+          numeroControlePNCPAta: ata.numeroControlePNCPAta,
+          orgao: ata.orgao,
+          uf: ata.ufOrgao,
+          municipio: ata.municipioOrgao,
+          objeto: ata.objeto,
+          item: item.descricao,
+          valorTotal: v.valorTotal,
+          quantidade: v.quantidade,
+          vigenciaInicio: ata.vigenciaInicio,
+          vigenciaFim: ata.vigenciaFim,
+          cancelado: ata.cancelado,
+        };
+        if (vigente) {
+          emp.valorTotalVigente += v.valorTotal || 0;
+          emp.atasVigentes.push(refEntry);
+        } else {
+          emp.atasEncerradas.push(refEntry);
+        }
+      }
+    }
+  }
+
+  const empresasArray = Array.from(empresas.values())
+    .map((e) => ({
+      ...e,
+      segmentos: Array.from(e.segmentos),
+      ufs: Array.from(e.ufs),
+    }))
+    .sort((a, b) => b.valorTotalHistorico - a.valorTotalHistorico);
+
+  console.log(
+    `[mercado] Concluído: ${atasNovas} atas novas enriquecidas, ${atasEnfileiradas} enfileiradas pra próxima execução, ` +
+    `${filaPendente.length} pendentes no total, ${paginasVarridas} páginas de atas varridas. ` +
+    `Total acumulado: ${atas.length} atas, ${empresasArray.length} empresas identificadas.`
+  );
+
+  return {
+    atualizadoEm: new Date().toISOString(),
+    segmentosMonitorados: SEGMENTOS,
+    dataInicial,
+    dataFinal: fmtData(hoje),
+    retencaoDias: RETENCAO_DIAS,
+    filaPendente,
+    parcial: filaPendente.length > 0,
+    totalAtas: atas.length,
+    atas,
+    empresas: empresasArray,
+  };
+}
+
 async function main() {
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
@@ -254,8 +579,9 @@ async function main() {
   const dirDados = path.join(process.cwd(), "data");
   await fs.mkdir(dirDados, { recursive: true });
 
-  console.log(`Iniciando coleta incremental. Retenção: ${RETENCAO_DIAS} dias. Orçamento: ${LIMITE_MINUTOS} min.`);
+  console.log(`Iniciando coleta incremental. Retenção: ${RETENCAO_DIAS} dias.`);
 
+  iniciarFase(LIMITE_MINUTOS_CONTRATOS);
   const caminhoContratos = path.join(dirDados, "contratos_recentes.json");
   const contratos = await coletarContratos(caminhoContratos);
   await fs.writeFile(caminhoContratos, JSON.stringify(contratos), "utf8");
@@ -268,6 +594,12 @@ async function main() {
     "utf8"
   );
   console.log("Gravado data/oportunidades_abertas.json");
+
+  iniciarFase(LIMITE_MINUTOS_MERCADO);
+  const caminhoMercado = path.join(dirDados, "mercado_segmentos.json");
+  const mercado = await coletarMercadoSegmentos(caminhoMercado);
+  await fs.writeFile(caminhoMercado, JSON.stringify(mercado), "utf8");
+  console.log("Gravado data/mercado_segmentos.json");
 
   console.log("Coleta finalizada com sucesso.");
 }
