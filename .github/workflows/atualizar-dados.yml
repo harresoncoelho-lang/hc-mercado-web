@@ -54,11 +54,36 @@ jobs:
           ATRASO_MS: "13000"
         run: node scripts/enriquecer_contato.js
 
+      - name: Publicar dados privados no painel interno (Base de Empresas/SICAF)
+        if: ${{ secrets.PAINEL_INTERNO_TOKEN != '' }}
+        env:
+          PAINEL_INTERNO_TOKEN: ${{ secrets.PAINEL_INTERNO_TOKEN }}
+        run: |
+          set -e
+          rm -rf /tmp/painel-interno
+          git clone --depth 1 "https://harresoncoelho-lang:${PAINEL_INTERNO_TOKEN}@github.com/harresoncoelho-lang/hc-painel-interno.git" /tmp/painel-interno
+          mkdir -p /tmp/painel-interno/data/fornecedores
+          cp data/empresas.json /tmp/painel-interno/data/empresas.json
+          cp data/fornecedores/*.json /tmp/painel-interno/data/fornecedores/
+          cd /tmp/painel-interno
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudança nos dados privados hoje."
+          else
+            git commit -m "Atualização automática da base de fornecedores - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push "https://harresoncoelho-lang:${PAINEL_INTERNO_TOKEN}@github.com/harresoncoelho-lang/hc-painel-interno.git" HEAD:main
+          fi
+
       - name: Commitar e enviar dados atualizados
         run: |
           git config user.name "hc-licitacoes-bot"
           git config user.email "actions@github.com"
           git add data/
+          # empresas.json e fornecedores/ são propositalmente PRIVADOS (base de prospecção só
+          # da HC, publicada acima no painel interno) — nunca vão pro site público dos clientes.
+          git reset -- data/empresas.json data/fornecedores/ 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "Nenhuma mudança nos dados hoje."
           else
