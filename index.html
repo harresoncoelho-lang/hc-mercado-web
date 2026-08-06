@@ -539,6 +539,7 @@
   .boletim-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--borda); }
   .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -558,6 +559,7 @@
   <button data-alvo="empresa">Analisar Empresa</button>
   <button data-alvo="transparencia">Portal da Transparência</button>
   <button data-alvo="precos">Pesquisa de Preços</button>
+  <button data-alvo="empresas-base">Base de Empresas</button>
 </nav>
 
 <main>
@@ -751,6 +753,49 @@
     <div id="pp-itens"></div>
     <div id="pp-selecao"></div>
     <div id="pp-resultado"></div>
+
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+  </section>
+
+  <section id="empresas-base">
+    <h2 style="margin-top:0;">Base de Empresas que Participam de Licitação</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Base própria, construída a partir das empresas que realmente venceram contratos ou atas de registro de preço no PNCP — cruzada com o cadastro público da Receita Federal (razão social, sócios, endereço, telefone, CNAE). Filtre por estado e segmento e exporte a lista em planilha. Nota: e-mail nem sempre está disponível — a Receita não obriga esse campo, então varia de empresa pra empresa.</p>
+
+    <div class="painel-filtros">
+      <div class="campo">
+        <label>Estado (UF)</label>
+        <select id="eb-uf" class="select-uf"></select>
+      </div>
+      <div class="campo">
+        <label>Segmento</label>
+        <select id="eb-segmento">
+          <option value="">Todos os segmentos</option>
+          <option value="expediente">Material de expediente</option>
+          <option value="higiene">Higiene</option>
+          <option value="limpeza">Limpeza</option>
+          <option value="aliment">Alimentação</option>
+          <option value="veiculo">Veículos</option>
+          <option value="hospitalar">Hospitalar</option>
+          <option value="engenharia">Engenharia / Obras</option>
+          <option value="fotovoltaic">Fotovoltaico / Energia solar</option>
+          <option value="eletric">Elétrico</option>
+          <option value="informatica">Informática</option>
+        </select>
+      </div>
+      <div class="campo" style="flex:2">
+        <label>Buscar por nome ou CNPJ</label>
+        <input id="eb-busca" placeholder="Ex: nome da empresa ou CNPJ">
+      </div>
+      <div class="campo">
+        <label>&nbsp;</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:400;padding-top:9px;">
+          <input type="checkbox" id="eb-so-contato" style="width:auto;"> Só com telefone/e-mail
+        </label>
+      </div>
+      <button class="btn-buscar" id="eb-filtrar">Filtrar</button>
+    </div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir" id="eb-exportar">📊 Exportar planilha (.xlsx)</button></div>
+    <div id="eb-resultado"></div>
 
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
   </section>
@@ -2972,6 +3017,218 @@
   document.getElementById("pp-buscar-categoria").addEventListener("click", ppBuscarCategorias);
   document.getElementById("pp-busca").addEventListener("keydown", (ev) => {
     if (ev.key === "Enter") ppBuscarCategorias();
+  });
+
+  // ---------- Base de Empresas que Participam de Licitação (Fase 1+2) ----------
+  const EB_SEGMENTOS_NOME = {
+    expediente: "Material de expediente",
+    higiene: "Higiene",
+    limpeza: "Limpeza",
+    aliment: "Alimentação",
+    veiculo: "Veículos",
+    hospitalar: "Hospitalar",
+    engenharia: "Engenharia / Obras",
+    fotovoltaic: "Fotovoltaico / Energia solar",
+    eletric: "Elétrico",
+    informatica: "Informática",
+  };
+
+  let ebCacheEmpresas = null;
+  let ebFiltrados = [];
+
+  function ebFormatarCnpj(cnpj) {
+    const d = String(cnpj || "").replace(/\D/g, "");
+    if (d.length !== 14) return cnpj || "-";
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  }
+
+  function ebNomeSegmentos(lista) {
+    return (lista || []).map((s) => EB_SEGMENTOS_NOME[s] || s).join(", ");
+  }
+
+  async function ebCarregarBase() {
+    if (ebCacheEmpresas) return ebCacheEmpresas;
+    ebCacheEmpresas = (await carregarCache("data/empresas.json")) || false;
+    return ebCacheEmpresas;
+  }
+
+  function ebAplicarFiltros(dados, uf, segmento, busca, soComContato) {
+    let registros = dados.registros || [];
+    if (uf) registros = registros.filter((r) => (r.ufs || []).includes(uf));
+    if (segmento) registros = registros.filter((r) => (r.segmentos || []).includes(segmento));
+    if (busca) {
+      const b = normalizar(busca);
+      const soDigitosBusca = busca.replace(/\D/g, "");
+      registros = registros.filter((r) => {
+        const nomeBate = normalizar(r.nome || (r.enriquecimento && r.enriquecimento.razaoSocial) || "").includes(b);
+        const cnpjBate = soDigitosBusca.length >= 4 && (r.cnpj || "").includes(soDigitosBusca);
+        return nomeBate || cnpjBate;
+      });
+    }
+    if (soComContato) {
+      registros = registros.filter((r) => {
+        const enr = r.enriquecimento;
+        return enr && ((enr.telefones && enr.telefones.length > 0) || enr.email);
+      });
+    }
+    return registros;
+  }
+
+  function ebRenderizar(dados) {
+    const alvo = document.getElementById("eb-resultado");
+    if (!dados) {
+      alvo.innerHTML = '<div class="aviso">Ainda não há dados coletados na base de empresas. O robô roda automaticamente todo dia — volte em breve.</div>';
+      ebFiltrados = [];
+      return;
+    }
+
+    const uf = document.getElementById("eb-uf").value.trim().toUpperCase();
+    const segmento = document.getElementById("eb-segmento").value;
+    const busca = document.getElementById("eb-busca").value.trim();
+    const soComContato = document.getElementById("eb-so-contato").checked;
+
+    const registros = ebAplicarFiltros(dados, uf, segmento, busca, soComContato)
+      .sort((a, b) => (b.quantidadeContratos || 0) - (a.quantidadeContratos || 0));
+    ebFiltrados = registros;
+
+    const comEnriquecimento = registros.filter((r) => r.enriquecimento && r.enriquecimento.enriquecidoEm).length;
+    const comTelefone = registros.filter((r) => r.enriquecimento && r.enriquecimento.telefones && r.enriquecimento.telefones.length > 0).length;
+    const comEmail = registros.filter((r) => r.enriquecimento && r.enriquecimento.email).length;
+
+    let html = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Base atualizada em ${escapeHtml(new Date(dados.atualizadoEm).toLocaleString("pt-BR"))} · ${dados.totalEmpresas || (dados.registros || []).length} empresas na base total · ${dados.totalEnriquecidas != null ? escapeHtml(String(dados.totalEnriquecidas)) + " já com cadastro completo (" + escapeHtml(String(dados.percentualEnriquecido || 0)) + "%)" : "enriquecimento cadastral ainda em andamento"}.</div>`;
+
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Empresas encontradas</h3><div class="valor">${registros.length}</div></div>
+      <div class="cartao"><h3>Com cadastro completo</h3><div class="valor">${comEnriquecimento}</div></div>
+      <div class="cartao"><h3>Com telefone</h3><div class="valor">${comTelefone}</div></div>
+      <div class="cartao"><h3>Com e-mail</h3><div class="valor">${comEmail}</div></div>
+    </div>`;
+
+    if (registros.length === 0) {
+      html += '<div class="aviso">Nenhuma empresa encontrada com esse filtro.</div>';
+      alvo.innerHTML = html;
+      return;
+    }
+
+    const LIMITE_EXIBIDO = 300;
+    html += `<table><tr><th>Empresa</th><th>CNPJ</th><th>UF/Município</th><th>Segmento</th><th>Contratos</th><th>Telefone</th></tr>`;
+    registros.slice(0, LIMITE_EXIBIDO).forEach((r, i) => {
+      const enr = r.enriquecimento || {};
+      const nomeExibicao = enr.razaoSocial || r.nome || "-";
+      const municipio = (r.municipios && r.municipios[0]) || (enr.endereco && enr.endereco.municipio) || "-";
+      const uf1 = (r.ufs && r.ufs[0]) || (enr.endereco && enr.endereco.uf) || "-";
+      html += `<tr class="linha-clicavel eb-linha" data-idx="${i}">
+        <td>${escapeHtml(nomeExibicao)}</td>
+        <td>${escapeHtml(ebFormatarCnpj(r.cnpj))}</td>
+        <td>${escapeHtml(uf1)}${municipio && municipio !== "-" ? " / " + escapeHtml(municipio) : ""}</td>
+        <td>${escapeHtml(ebNomeSegmentos(r.segmentos)) || "-"}</td>
+        <td>${r.quantidadeContratos || 0}</td>
+        <td>${enr.telefones && enr.telefones.length > 0 ? escapeHtml(enr.telefones[0]) : "-"}</td>
+      </tr>`;
+    });
+    html += `</table>`;
+    if (registros.length > LIMITE_EXIBIDO) {
+      html += `<p style="color:var(--texto-fraco);font-size:12px;margin-top:8px;">Mostrando as ${LIMITE_EXIBIDO} empresas com mais contratos de ${registros.length} encontradas. Use a exportação em planilha pra pegar a lista completa.</p>`;
+    }
+
+    alvo.innerHTML = html;
+
+    alvo.querySelectorAll(".eb-linha").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const jaSelecionada = tr.classList.contains("linha-selecionada");
+        alvo.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+        const detalheExistente = alvo.querySelector(".detalhe-drilldown");
+        if (detalheExistente) detalheExistente.remove();
+        if (jaSelecionada) return;
+        tr.classList.add("linha-selecionada");
+        const r = registros[Number(tr.dataset.idx)];
+        const enr = r.enriquecimento || {};
+        const end = enr.endereco || {};
+        const enderecoCompleto = [
+          [end.logradouro, end.numero].filter(Boolean).join(", "),
+          end.complemento,
+          end.bairro,
+          [end.municipio, end.uf].filter(Boolean).join("/"),
+          end.cep,
+        ].filter(Boolean).join(" — ");
+        const listaSocios = (enr.socios || []).map((s) => `${s.nome}${s.qualificacao ? " (" + s.qualificacao + ")" : ""}`).join("; ");
+
+        const detalhe = document.createElement("div");
+        detalhe.className = "detalhe-drilldown";
+        detalhe.innerHTML = `<dl>
+          <div><dt>Razão social</dt><dd>${escapeHtml(enr.razaoSocial || r.nome || "-")}</dd></div>
+          <div><dt>Nome fantasia</dt><dd>${escapeHtml(enr.nomeFantasia || "-")}</dd></div>
+          <div><dt>CNPJ</dt><dd>${escapeHtml(ebFormatarCnpj(r.cnpj))}</dd></div>
+          <div><dt>Situação cadastral</dt><dd>${escapeHtml(enr.situacaoCadastral || "-")}</dd></div>
+          <div><dt>Porte</dt><dd>${escapeHtml(enr.porte || "-")}</dd></div>
+          <div><dt>Natureza jurídica</dt><dd>${escapeHtml(enr.naturezaJuridica || "-")}</dd></div>
+          <div><dt>CNAE (atividade)</dt><dd>${escapeHtml(enr.cnaeDescricao || "-")}</dd></div>
+          <div><dt>Endereço</dt><dd>${escapeHtml(enderecoCompleto || "Ainda não enriquecido")}</dd></div>
+          <div><dt>Telefone(s)</dt><dd>${escapeHtml((enr.telefones || []).join(" / ") || "Não informado")}</dd></div>
+          <div><dt>E-mail</dt><dd>${escapeHtml(enr.email || "Não informado")}</dd></div>
+          <div><dt>Sócios${enr.totalSocios ? " (" + enr.totalSocios + ")" : ""}</dt><dd>${escapeHtml(listaSocios || "Não disponível")}</dd></div>
+          <div><dt>Data início atividade</dt><dd>${formatarDataIso(enr.dataInicioAtividade)}</dd></div>
+          <div><dt>Segmentos identificados</dt><dd>${escapeHtml(ebNomeSegmentos(r.segmentos)) || "-"}</dd></div>
+          <div><dt>UFs onde atuou</dt><dd>${escapeHtml((r.ufs || []).join(", ") || "-")}</dd></div>
+          <div><dt>Órgãos com quem já contratou</dt><dd>${escapeHtml((r.orgaosDistintos || []).slice(0, 8).join("; ") || "-")}</dd></div>
+          <div><dt>Quantidade de contratos vistos</dt><dd>${r.quantidadeContratos || 0}</dd></div>
+          <div><dt>Valor total contratado (amostra PNCP)</dt><dd>${formatarValor(r.valorTotalContratado)}</dd></div>
+          <div><dt>Primeira/última aparição</dt><dd>${formatarDataIso(r.primeiraAparicao)} — ${formatarDataIso(r.ultimaAparicao)}</dd></div>
+        </dl>`;
+        tr.after(detalhe);
+      });
+    });
+  }
+
+  async function ebExecutarFiltro() {
+    document.getElementById("eb-resultado").innerHTML = '<div class="carregando">Carregando base de empresas...</div>';
+    const dados = await ebCarregarBase();
+    ebRenderizar(dados || null);
+  }
+
+  document.querySelector('nav button[data-alvo="empresas-base"]').addEventListener("click", ebExecutarFiltro);
+  document.getElementById("eb-filtrar").addEventListener("click", ebExecutarFiltro);
+  document.getElementById("eb-busca").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") ebExecutarFiltro();
+  });
+
+  document.getElementById("eb-exportar").addEventListener("click", () => {
+    if (!ebFiltrados || ebFiltrados.length === 0) {
+      alert("Nenhuma empresa pra exportar — ajuste os filtros e clique em Filtrar primeiro.");
+      return;
+    }
+    const linhas = ebFiltrados.map((r) => {
+      const enr = r.enriquecimento || {};
+      const end = enr.endereco || {};
+      return {
+        "Razão Social": enr.razaoSocial || r.nome || "",
+        "Nome Fantasia": enr.nomeFantasia || "",
+        "CNPJ": ebFormatarCnpj(r.cnpj),
+        "Situação Cadastral": enr.situacaoCadastral || "",
+        "Porte": enr.porte || "",
+        "CNAE": enr.cnaeDescricao || "",
+        "Segmentos": ebNomeSegmentos(r.segmentos),
+        "Logradouro": end.logradouro || "",
+        "Número": end.numero || "",
+        "Bairro": end.bairro || "",
+        "CEP": end.cep || "",
+        "Município": end.municipio || (r.municipios && r.municipios[0]) || "",
+        "UF": end.uf || (r.ufs && r.ufs[0]) || "",
+        "Telefone 1": (enr.telefones && enr.telefones[0]) || "",
+        "Telefone 2": (enr.telefones && enr.telefones[1]) || "",
+        "E-mail": enr.email || "",
+        "Sócios": (enr.socios || []).map((s) => s.nome).join("; "),
+        "Qtde Contratos": r.quantidadeContratos || 0,
+        "Valor Total Contratado": r.valorTotalContratado || 0,
+        "Primeira Aparição": r.primeiraAparicao || "",
+        "Última Aparição": r.ultimaAparicao || "",
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(linhas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Empresas");
+    const dataHoje = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `hc_base_empresas_${dataHoje}.xlsx`);
   });
 </script>
 

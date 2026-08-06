@@ -12,7 +12,7 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
@@ -33,6 +33,13 @@ jobs:
 
       - name: Consolidar base de empresas (Fase 1)
         run: node scripts/coletar_empresas.js
+
+      - name: Enriquecer cadastro das empresas (Fase 2)
+        env:
+          LIMITE_MINUTOS: "10"
+          RENOVAR_APOS_DIAS: "180"
+          ATRASO_MS: "350"
+        run: node scripts/enriquecer_empresas.js
 
       - name: Commitar e enviar dados atualizados
         run: |
