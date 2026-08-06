@@ -133,13 +133,17 @@ async function coletarConvenios(caminhoArquivo) {
       for (const item of dados) {
         const localidade = item.localidadePessoa || {};
         const municipioConv = item.municipioConvenente || {};
+        // A API devolve "convenente" e "tipoInstrumento" como OBJETOS (nao strings) -
+        // precisa extrair o campo textual de dentro deles.
+        const tipoInstrumentoDesc = (item.tipoInstrumento && item.tipoInstrumento.descricao) || "";
+        const convenenteNome = (item.convenente && (item.convenente.nome || item.convenente.razaoSocialReceita)) || "";
         novos.push({
           id: item.id || null,
           numeroProcesso: item.numeroProcesso || "",
-          objeto: (item.dimConvenio && item.dimConvenio.objeto) || item.tipoInstrumento || "",
+          objeto: (item.dimConvenio && item.dimConvenio.objeto) || tipoInstrumentoDesc || "",
           situacao: item.situacao || "",
-          tipoInstrumento: item.tipoInstrumento || "",
-          convenente: item.convenente || "",
+          tipoInstrumento: tipoInstrumentoDesc,
+          convenente: convenenteNome,
           orgao: (item.orgao && item.orgao.nome) || "",
           unidadeGestora: (item.unidadeGestora && item.unidadeGestora.nome) || "",
           municipio: municipioConv.nomeIBGE || localidade.municipio || "",
