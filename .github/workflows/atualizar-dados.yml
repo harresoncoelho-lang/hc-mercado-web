@@ -61,6 +61,13 @@ jobs:
           ATRASO_MS: "350"
         run: node scripts/enriquecer_sicaf.js
 
+      - name: Complementar e-mail/telefone do SICAF puro (Fase 4c)
+        env:
+          LIMITE_MINUTOS: "8"
+          RENOVAR_APOS_DIAS: "90"
+          ATRASO_MS: "13000"
+        run: node scripts/enriquecer_contato_sicaf.js
+
       - name: Publicar dados privados no painel interno (Base de Empresas/SICAF)
         env:
           PAINEL_INTERNO_TOKEN: ${{ secrets.PAINEL_INTERNO_TOKEN }}
