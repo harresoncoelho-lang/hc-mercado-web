@@ -2,8 +2,10 @@ name: Boletim diario de editais
 
 on:
   schedule:
-    # 13:00 UTC = 10:00 no horario de Brasilia (sem horario de verao)
-    - cron: "0 13 * * *"
+    # Roda 3x ao dia, no horario de Brasilia (UTC-4, sem horario de verao):
+    - cron: "0 11 * * *"  # 07:00 Brasilia
+    - cron: "0 16 * * *"  # 12:00 Brasilia
+    - cron: "0 21 * * *"  # 17:00 Brasilia
   workflow_dispatch: {}
 
 permissions:
