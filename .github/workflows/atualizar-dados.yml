@@ -55,11 +55,14 @@ jobs:
         run: node scripts/enriquecer_contato.js
 
       - name: Publicar dados privados no painel interno (Base de Empresas/SICAF)
-        if: ${{ secrets.PAINEL_INTERNO_TOKEN != '' }}
         env:
           PAINEL_INTERNO_TOKEN: ${{ secrets.PAINEL_INTERNO_TOKEN }}
         run: |
           set -e
+          if [ -z "$PAINEL_INTERNO_TOKEN" ]; then
+            echo "PAINEL_INTERNO_TOKEN não configurado, pulando publicação no painel interno."
+            exit 0
+          fi
           rm -rf /tmp/painel-interno
           git clone --depth 1 "https://harresoncoelho-lang:${PAINEL_INTERNO_TOKEN}@github.com/harresoncoelho-lang/hc-painel-interno.git" /tmp/painel-interno
           mkdir -p /tmp/painel-interno/data/fornecedores
