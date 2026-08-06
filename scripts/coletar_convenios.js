@@ -63,7 +63,8 @@ async function fetchApi(caminho, tentativas = 3) {
         continue;
       }
       if (!resp.ok) {
-        if (resp.status === 401) console.error("ERRO 401: token invalido (TRANSPARENCIA_TOKEN).");
+        const corpoErro = await resp.text().catch(() => "");
+        console.error(`[fetch] HTTP ${resp.status} em ${caminho} :: ${corpoErro.slice(0, 300)}`);
         return null;
       }
       const texto = await resp.text();
