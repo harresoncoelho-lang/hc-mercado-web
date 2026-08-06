@@ -63,8 +63,7 @@ async function fetchApi(caminho, tentativas = 3) {
         continue;
       }
       if (!resp.ok) {
-        const corpoErro = await resp.text().catch(() => "");
-        console.error(`[fetch] HTTP ${resp.status} em ${caminho} :: ${corpoErro.slice(0, 300)}`);
+        if (resp.status === 401) console.error("ERRO 401: token invalido (TRANSPARENCIA_TOKEN).");
         return null;
       }
       const texto = await resp.text();
@@ -112,44 +111,54 @@ async function coletarConvenios(caminhoArquivo) {
   const dataFinal = fmtDataBR(hoje);
 
   const novos = [];
-  let pagina = 1;
   let paginasVarridas = 0;
+  let diasVarridos = 0;
   let parcial = false;
 
-  while (true) {
-    if (tempoRestanteMs() < 15000) { parcial = true; break; }
-    const dados = await fetchApi(`/convenios?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}`);
-    if (dados === null) { parcial = true; break; }
-    if (!Array.isArray(dados) || dados.length === 0) break;
-    paginasVarridas += 1;
+  // IMPORTANTE: a API /convenios exige "Periodo de no maximo 1 dia" (limite documentado
+  // no proprio Swagger). Um dataInicial/dataFinal com uma janela maior nao da erro -
+  // simplesmente devolve uma lista vazia, o que mascarava o problema antes. Por isso
+  // varremos dia a dia dentro da janela desejada, paginando dentro de cada dia.
+  diaLoop:
+  for (let cursor = new Date(inicio); cursor <= hoje; cursor.setDate(cursor.getDate() + 1)) {
+    const diaBr = fmtDataBR(cursor);
+    let pagina = 1;
+    while (true) {
+      if (tempoRestanteMs() < 15000) { parcial = true; break diaLoop; }
+      const dados = await fetchApi(`/convenios?dataInicial=${diaBr}&dataFinal=${diaBr}&pagina=${pagina}`);
+      if (dados === null) { parcial = true; break diaLoop; }
+      if (!Array.isArray(dados) || dados.length === 0) break;
+      paginasVarridas += 1;
 
-    for (const item of dados) {
-      const localidade = item.localidadePessoa || {};
-      const municipioConv = item.municipioConvenente || {};
-      novos.push({
-        id: item.id || null,
-        numeroProcesso: item.numeroProcesso || "",
-        objeto: (item.dimConvenio && item.dimConvenio.objeto) || item.tipoInstrumento || "",
-        situacao: item.situacao || "",
-        tipoInstrumento: item.tipoInstrumento || "",
-        convenente: item.convenente || "",
-        orgao: (item.orgao && item.orgao.nome) || "",
-        unidadeGestora: (item.unidadeGestora && item.unidadeGestora.nome) || "",
-        municipio: municipioConv.nomeIBGE || localidade.municipio || "",
-        uf: (municipioConv.uf && municipioConv.uf.sigla) || localidade.uf || "",
-        valor: Number(item.valor || 0),
-        valorLiberado: Number(item.valorLiberado || 0),
-        valorContrapartida: Number(item.valorContrapartida || 0),
-        dataPublicacao: paraIso(item.dataPublicacao),
-        dataInicioVigencia: paraIso(item.dataInicioVigencia),
-        dataFinalVigencia: paraIso(item.dataFinalVigencia),
-        dataUltimaLiberacao: paraIso(item.dataUltimaLiberacao),
-      });
+      for (const item of dados) {
+        const localidade = item.localidadePessoa || {};
+        const municipioConv = item.municipioConvenente || {};
+        novos.push({
+          id: item.id || null,
+          numeroProcesso: item.numeroProcesso || "",
+          objeto: (item.dimConvenio && item.dimConvenio.objeto) || item.tipoInstrumento || "",
+          situacao: item.situacao || "",
+          tipoInstrumento: item.tipoInstrumento || "",
+          convenente: item.convenente || "",
+          orgao: (item.orgao && item.orgao.nome) || "",
+          unidadeGestora: (item.unidadeGestora && item.unidadeGestora.nome) || "",
+          municipio: municipioConv.nomeIBGE || localidade.municipio || "",
+          uf: (municipioConv.uf && municipioConv.uf.sigla) || localidade.uf || "",
+          valor: Number(item.valor || 0),
+          valorLiberado: Number(item.valorLiberado || 0),
+          valorContrapartida: Number(item.valorContrapartida || 0),
+          dataPublicacao: paraIso(item.dataPublicacao),
+          dataInicioVigencia: paraIso(item.dataInicioVigencia),
+          dataFinalVigencia: paraIso(item.dataFinalVigencia),
+          dataUltimaLiberacao: paraIso(item.dataUltimaLiberacao),
+        });
+      }
+
+      if (dados.length < 10) break; // provavelmente ultima pagina desse dia
+      pagina += 1;
+      if (pagina > 100) break; // trava de seguranca por dia
     }
-
-    if (dados.length < 10) break; // provavelmente ultima pagina
-    pagina += 1;
-    if (pagina > 300) break; // trava de seguranca
+    diasVarridos += 1;
   }
 
   const mapa = new Map();
@@ -166,7 +175,7 @@ async function coletarConvenios(caminhoArquivo) {
   });
 
   console.log(
-    `[convenios] Concluido: ${novos.length} vistos nesta execucao (${paginasVarridas} pagina(s), parcial=${parcial}). ` +
+    `[convenios] Concluido: ${novos.length} vistos nesta execucao (${diasVarridos} dia(s), ${paginasVarridas} pagina(s), parcial=${parcial}). ` +
     `Total acumulado apos fundir/podar (retencao ${RETENCAO_DIAS}d): ${registros.length} registros.`
   );
 
