@@ -1,0 +1,42 @@
+name: Coletar Convenios (Portal da Transparencia)
+
+on:
+  schedule:
+    # 09:45 UTC = 06:45 no horario de Brasilia (depois do robo do PNCP e de licitacoes)
+    - cron: "45 9 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rodar robo de coleta de convenios
+        env:
+          TRANSPARENCIA_TOKEN: ${{ secrets.TRANSPARENCIA_TOKEN }}
+          LIMITE_MINUTOS: "13"
+          RETENCAO_DIAS: "730"
+        run: node scripts/coletar_convenios.js
+
+      - name: Commitar dados coletados
+        run: |
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add data/convenios.json
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudanca nos dados hoje."
+          else
+            git commit -m "Atualiza dados de convenios - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
