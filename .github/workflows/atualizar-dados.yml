@@ -12,7 +12,7 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
@@ -33,6 +33,12 @@ jobs:
 
       - name: Consolidar base de empresas (Fase 1)
         run: node scripts/coletar_empresas.js
+
+      - name: Coletar cadastro de fornecedores SICAF (Fase 4)
+        env:
+          LIMITE_MINUTOS: "12"
+          ATRASO_MS: "250"
+        run: node scripts/coletar_fornecedores_sicaf.js
 
       - name: Enriquecer cadastro das empresas (Fase 2)
         env:

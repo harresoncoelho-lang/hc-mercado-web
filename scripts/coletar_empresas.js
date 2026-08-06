@@ -44,7 +44,7 @@ async function lerJsonExistente(caminho) {
 // poderiam crescer sem controle (ex: uma empresa gigante que aparece em milhares de contratos
 // com dezenas de órgãos diferentes) pra não inflar o arquivo à toa.
 function finalizarRegistro(reg, LIMITE_LISTA = 25) {
-  return {
+  const saida = {
     cnpj: reg.cnpj,
     nome: reg.nome || "",
     ufs: Array.from(reg.ufs).sort(),
@@ -57,6 +57,10 @@ function finalizarRegistro(reg, LIMITE_LISTA = 25) {
     ultimaAparicao: reg.ultimaAparicao,
     fontes: Array.from(reg.fontes).sort(),
   };
+  // Preserva os campos extras adicionados por outros robôs (ver comentário na leitura acima).
+  if (reg.enriquecimento) saida.enriquecimento = reg.enriquecimento;
+  if (reg.sicaf) saida.sicaf = reg.sicaf;
+  return saida;
 }
 
 function novoRegistro(cnpj) {
@@ -101,6 +105,11 @@ async function consolidarEmpresas(dirDados) {
       reg.primeiraAparicao = r.primeiraAparicao || null;
       reg.ultimaAparicao = r.ultimaAparicao || null;
       reg.fontes = new Set(r.fontes || []);
+      // IMPORTANTE: preserva campos que outros robôs adicionam depois (enriquecimento via
+      // Receita/cnpja, cadastro SICAF) — sem isso, cada execução deste robô apagava esse
+      // trabalho e enriquecer_empresas.js ficava reprocessando as mesmas empresas pra sempre.
+      if (r.enriquecimento) reg.enriquecimento = r.enriquecimento;
+      if (r.sicaf) reg.sicaf = r.sicaf;
       mapa.set(r.cnpj, reg);
     }
   }
