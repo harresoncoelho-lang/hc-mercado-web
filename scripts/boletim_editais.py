@@ -35,6 +35,16 @@ TODAS_UFS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","P
 # ---- DESTINATARIOS (edite aqui para adicionar/remover clientes) ----
 # ufs: lista de siglas (ex: ["AM","RR"]) ou None para buscar em todo o Brasil
 # palavras_chave: use radicais de palavra (sem plural/genero fixo) para pegar mais variacoes
+#
+# whatsapp (opcional): alem do e-mail, tambem manda um resumo por WhatsApp via CallMeBot
+# (API gratuita, nao-oficial). Pra ativar pra um destinatario:
+#   1) Salve o numero +34 644 59 71 40 nos contatos do WhatsApp do destinatario.
+#   2) Do WhatsApp desse numero, mande a mensagem: "I allow callmebot to send me messages"
+#      pro contato salvo no passo 1.
+#   3) O bot responde com um "apikey" (numero). Cole esse apikey aqui embaixo.
+#   4) Preencha "telefone" com o numero completo do destinatario, com DDI+DDD, sem
+#      espacos/traco/parenteses (ex: "5592912345678" pra um numero de Manaus/AM).
+# Se "whatsapp" for None, o boletim desse destinatario continua indo so por e-mail.
 DESTINATARIOS = [
     {
         "nome": "Harreson",
@@ -52,6 +62,7 @@ DESTINATARIOS = [
             "eletric",
             "informatica",
         ],
+        "whatsapp": None,  # preencha {"telefone": "55...", "apikey": "..."} depois de liberar o CallMeBot
     },
     {
         "nome": "Plug Engenharia",
@@ -67,6 +78,7 @@ DESTINATARIOS = [
             "iluminacao",
             "usina",
         ],
+        "whatsapp": None,
     },
 ]
 # ---------------------------------------------------------------------
@@ -329,6 +341,43 @@ def enviar_email(destino_email, nome_destinatario, editais_novos):
         servidor.sendmail(remetente, [destino_email], msg.as_string())
 
 
+# ---- WhatsApp via CallMeBot (API gratuita, nao-oficial) ----
+# Manda so pro numero que autorizou o bot (ver instrucoes acima, junto de DESTINATARIOS).
+CALLMEBOT_URL = "https://api.callmebot.com/whatsapp.php"
+
+
+def montar_mensagem_whatsapp(nome_destinatario, editais_novos):
+    # WhatsApp/CallMeBot nao tem HTML - mensagem em texto puro, com *negrito* (markdown do
+    # proprio WhatsApp). Limita a quantidade de editais no corpo da mensagem pra nao ficar
+    # gigante (o e-mail continua trazendo a lista completa).
+    limite = 8
+    linhas = [
+        "🔔 *HC Licitacoes* - Novas oportunidades",
+        f"Ola, {nome_destinatario}! Encontramos {len(editais_novos)} nova(s) oportunidade(s):",
+        "",
+    ]
+    for e in editais_novos[:limite]:
+        orgao = e.get("orgaoEntidade", {}).get("razaoSocial") or "Orgao nao informado"
+        objeto = e.get("objetoCompra") or "Objeto nao informado"
+        if len(objeto) > 140:
+            objeto = objeto[:140].rstrip() + "..."
+        linhas.append(f"📌 *{orgao}*")
+        linhas.append(objeto)
+        linhas.append(link_pncp(e))
+        linhas.append("")
+    if len(editais_novos) > limite:
+        linhas.append(f"...e mais {len(editais_novos) - limite} oportunidade(s). Lista completa no e-mail.")
+    return "\n".join(linhas)
+
+
+def enviar_whatsapp(telefone, apikey, mensagem):
+    params = {"phone": telefone, "text": mensagem, "apikey": apikey}
+    url = CALLMEBOT_URL + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return resp.read().decode("utf-8", errors="ignore")
+
+
 def main():
     log("=== Iniciando busca de editais ===")
     historico = carregar_historico()
@@ -369,6 +418,17 @@ def main():
             if novos:
                 enviar_email(d["email"], d["nome"], novos)
                 log("E-mail enviado para " + d["email"] + " com " + str(len(novos)) + " edital(is).")
+
+                whatsapp_cfg = d.get("whatsapp")
+                if whatsapp_cfg and whatsapp_cfg.get("telefone") and whatsapp_cfg.get("apikey"):
+                    try:
+                        mensagem = montar_mensagem_whatsapp(d["nome"], novos)
+                        enviar_whatsapp(whatsapp_cfg["telefone"], whatsapp_cfg["apikey"], mensagem)
+                        log("WhatsApp enviado para " + whatsapp_cfg["telefone"] + ".")
+                    except Exception as e:
+                        # Falha no WhatsApp nao pode derrubar o e-mail, que ja foi enviado.
+                        log("ERRO ao enviar WhatsApp para " + d["nome"] + ": " + str(e))
+
                 for e in novos:
                     vistos_deste.add(e.get("numeroControlePNCP"))
                 historico[d["email"]] = list(vistos_deste)

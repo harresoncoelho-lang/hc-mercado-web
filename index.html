@@ -538,6 +538,49 @@
   .boletim-valor-linha strong { color: var(--laranja); }
   .boletim-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--borda); }
   .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+
+  /* ---- Boletim: calendário mensal (inspirado no ConLicitação) ---- */
+  .bol-calendario {
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
+    padding: 18px; margin-bottom: 22px; box-shadow: var(--sombra);
+  }
+  .bol-cal-topo { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 14px; }
+  .bol-cal-titulo { font-size: 15px; font-weight: 700; text-transform: capitalize; min-width: 160px; text-align: center; }
+  .bol-cal-nav {
+    background: var(--cartao-claro); border: 1px solid var(--borda); color: var(--texto);
+    width: 30px; height: 30px; border-radius: var(--raio-pq); cursor: pointer; font-size: 16px; line-height: 1;
+  }
+  .bol-cal-nav:hover { border-color: var(--azul); color: var(--azul); }
+  .bol-cal-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .bol-cal-dia-semana { text-align: center; font-size: 11px; text-transform: uppercase; color: var(--texto-fraco); padding-bottom: 6px; font-weight: 600; }
+  .bol-cal-dia {
+    position: relative; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+    border-radius: var(--raio-pq); border: 1px solid transparent; font-size: 13px; color: var(--texto-fraco);
+  }
+  .bol-cal-dia.vazio { visibility: hidden; }
+  .bol-cal-dia.tem-dados { color: var(--texto); border-color: var(--azul); background: #0f2a4a; cursor: pointer; font-weight: 700; }
+  .bol-cal-dia.tem-dados:hover { background: var(--azul); color: #fff; }
+  .bol-cal-dia.hoje { border-color: var(--laranja); }
+  .bol-cal-dia.selecionado { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .bol-cal-dia-badge {
+    position: absolute; top: -6px; right: -6px; background: var(--laranja); color: #2a1400;
+    font-size: 10px; font-weight: 700; min-width: 16px; height: 16px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; padding: 0 3px;
+  }
+  .bol-cal-legenda { margin: 12px 0 0; font-size: 12px; color: var(--texto-fraco); text-align: center; }
+  .bol-cal-filtro-ativo {
+    margin: 12px 0 0; font-size: 13px; text-align: center; color: var(--texto);
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  }
+  .bol-cal-filtro-ativo button {
+    background: none; border: 1px solid var(--borda); color: var(--texto-fraco); padding: 4px 10px;
+    border-radius: 999px; cursor: pointer; font-size: 12px;
+  }
+  .bol-cal-filtro-ativo button:hover { border-color: var(--vermelho); color: var(--texto); }
+  @media (max-width: 560px) {
+    .bol-cal-dia { font-size: 11px; }
+    .bol-cal-dia-badge { font-size: 9px; min-width: 14px; height: 14px; }
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -584,6 +627,7 @@
       <button class="btn-buscar" id="bol-salvar">Salvar filtro do boletim</button>
     </div>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    <div id="bol-calendario"></div>
     <div id="bol-resultado"></div>
   </section>
 
@@ -1628,6 +1672,120 @@
     } catch (e) { /* localStorage indisponível */ }
   }
 
+  // ---- Calendário mensal do boletim (inspirado na visão de calendário do ConLicitação) ----
+  // Agrupa as oportunidades do boletim pela data de publicação e mostra um calendário do mês
+  // com os dias que tiveram editais novos marcados — clicar num dia filtra a lista abaixo pra
+  // mostrar só as oportunidades daquela data.
+  let bolResultadosCompletos = [];
+  let bolMesReferencia = new Date();
+  bolMesReferencia.setDate(1);
+  let bolDiaSelecionado = null; // "AAAA-MM-DD" ou null (= todos os dias)
+
+  const BOL_MESES_NOME = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const BOL_DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+  function bolChaveDia(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function bolAgruparPorDia(resultados) {
+    const mapa = new Map();
+    resultados.forEach((r) => {
+      const chave = bolChaveDia(r.publicacao);
+      if (!chave) return;
+      if (!mapa.has(chave)) mapa.set(chave, []);
+      mapa.get(chave).push(r);
+    });
+    return mapa;
+  }
+
+  function montarCalendarioBoletim(resultados, mesRef, diaSelecionado) {
+    const porDia = bolAgruparPorDia(resultados);
+    const ano = mesRef.getFullYear();
+    const mes = mesRef.getMonth();
+    const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+    const totalDias = new Date(ano, mes + 1, 0).getDate();
+    const hojeChave = bolChaveDia(new Date().toISOString());
+
+    let html = `<div class="bol-calendario">
+      <div class="bol-cal-topo">
+        <button type="button" class="bol-cal-nav" id="bol-cal-prev" title="Mês anterior">‹</button>
+        <span class="bol-cal-titulo">${BOL_MESES_NOME[mes]} de ${ano}</span>
+        <button type="button" class="bol-cal-nav" id="bol-cal-next" title="Próximo mês">›</button>
+      </div>
+      <div class="bol-cal-grade">`;
+    BOL_DIAS_SEMANA.forEach((d) => { html += `<div class="bol-cal-dia-semana">${d}</div>`; });
+    for (let i = 0; i < primeiroDiaSemana; i++) html += `<div class="bol-cal-dia vazio"></div>`;
+    for (let dia = 1; dia <= totalDias; dia++) {
+      const chave = `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+      const itens = porDia.get(chave) || [];
+      const classes = ["bol-cal-dia"];
+      if (itens.length > 0) classes.push("tem-dados");
+      if (chave === hojeChave) classes.push("hoje");
+      if (chave === diaSelecionado) classes.push("selecionado");
+      html += `<div class="${classes.join(" ")}" data-dia="${chave}" title="${itens.length > 0 ? itens.length + " oportunidade(s) publicada(s) nesse dia" : ""}">
+        <span class="bol-cal-dia-numero">${dia}</span>
+        ${itens.length > 0 ? `<span class="bol-cal-dia-badge">${itens.length}</span>` : ""}
+      </div>`;
+    }
+    html += `</div>`;
+    if (diaSelecionado) {
+      html += `<div class="bol-cal-filtro-ativo">Mostrando oportunidades de ${formatarDataIso(diaSelecionado)}<button type="button" id="bol-cal-limpar">Ver todos os dias ✕</button></div>`;
+    } else {
+      html += `<p class="bol-cal-legenda">Os dias marcados tiveram editais novos publicados. Clique num dia pra ver só as oportunidades daquela data.</p>`;
+    }
+    html += `</div>`;
+    return html;
+  }
+
+  function ligarCalendarioBoletim(alvoCalendario, aoMudar) {
+    const prev = document.getElementById("bol-cal-prev");
+    const next = document.getElementById("bol-cal-next");
+    if (prev) prev.addEventListener("click", () => {
+      bolMesReferencia.setMonth(bolMesReferencia.getMonth() - 1);
+      aoMudar();
+    });
+    if (next) next.addEventListener("click", () => {
+      bolMesReferencia.setMonth(bolMesReferencia.getMonth() + 1);
+      aoMudar();
+    });
+    const limpar = document.getElementById("bol-cal-limpar");
+    if (limpar) limpar.addEventListener("click", () => {
+      bolDiaSelecionado = null;
+      aoMudar();
+    });
+    alvoCalendario.querySelectorAll(".bol-cal-dia.tem-dados").forEach((el) => {
+      el.addEventListener("click", () => {
+        const chave = el.dataset.dia;
+        bolDiaSelecionado = bolDiaSelecionado === chave ? null : chave;
+        aoMudar();
+      });
+    });
+  }
+
+  // Desenha o calendário + a lista de cards abaixo dele (filtrada pelo dia selecionado, se houver).
+  function renderizarBoletimComCalendario(resultadosCompletos, avisoHtml) {
+    bolResultadosCompletos = resultadosCompletos;
+    const alvoCal = document.getElementById("bol-calendario");
+    const alvoLista = document.getElementById("bol-resultado");
+
+    const desenhar = () => {
+      alvoCal.innerHTML = montarCalendarioBoletim(bolResultadosCompletos, bolMesReferencia, bolDiaSelecionado);
+      ligarCalendarioBoletim(alvoCal, desenhar);
+      const listaFiltrada = bolDiaSelecionado
+        ? bolResultadosCompletos.filter((r) => bolChaveDia(r.publicacao) === bolDiaSelecionado)
+        : bolResultadosCompletos;
+      const avisoComContagem = listaFiltrada.length === 0 && bolDiaSelecionado
+        ? avisoHtml + '<div class="aviso">Nenhuma oportunidade publicada nesse dia especificamente (pode haver oportunidades sem data de publicação informada, que não aparecem no calendário).</div>'
+        : avisoHtml;
+      renderizarPainelBoletim(alvoLista, listaFiltrada, avisoComContagem);
+    };
+    desenhar();
+  }
+
   async function gerarBoletim() {
     const alvo = document.getElementById("bol-resultado");
     const metaEl = document.getElementById("bol-meta");
@@ -1636,12 +1794,19 @@
     if (!filtro || !filtro.palavrasRaw) {
       metaEl.textContent = "Configure seu filtro (estado + palavras-chave) para o boletim ser gerado automaticamente a cada visita.";
       alvo.innerHTML = '<div class="aviso">Nenhum filtro salvo ainda. Clique em "Configurar filtro do boletim" acima e salve pra começar a receber seu boletim diário.</div>';
+      document.getElementById("bol-calendario").innerHTML = "";
       return;
     }
 
     const uf = (filtro.uf || "").trim().toUpperCase();
     const palavras = filtro.palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
     alvo.innerHTML = '<div class="carregando">Gerando boletim...</div>';
+    document.getElementById("bol-calendario").innerHTML = "";
+    // Toda vez que o boletim é gerado de novo (troca de aba ou novo filtro salvo), volta o
+    // calendário pro mês atual e sem dia selecionado — uma visão "limpa" a cada carregamento.
+    bolMesReferencia = new Date();
+    bolMesReferencia.setDate(1);
+    bolDiaSelecionado = null;
 
     try {
       // Boletim = só o que é NOVIDADE (publicado nos últimos dias) — busca ao vivo (mesma
@@ -1668,7 +1833,7 @@
         return;
       }
 
-      renderizarPainelBoletim(alvo, resultados, avisoHtml);
+      renderizarBoletimComCalendario(resultados, avisoHtml);
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao gerar boletim: ${escapeHtml(String(e))}</div>`;
     }
