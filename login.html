@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar — HC Licitações</title>
+<link rel="icon" type="image/png" href="logo.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<style>
+  :root {
+    --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a;
+    --fundo: #0a121c; --cartao: #141f2e; --borda: #223144;
+    --texto: #eef3f8; --texto-fraco: #90a2b8; --verde: #34c17c; --vermelho: #e8617a;
+    --raio: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Inter", Arial, Helvetica, sans-serif;
+    background: radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%), var(--fundo);
+    background-attachment: fixed;
+    color: var(--texto);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .caixa {
+    width: 100%;
+    max-width: 400px;
+    background: var(--cartao);
+    border: 1px solid var(--borda);
+    border-radius: var(--raio);
+    padding: 32px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  }
+  .logo-topo { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .logo-topo img { width: 40px; height: 40px; }
+  .logo-topo span { font-weight: 700; font-size: 18px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  p.sub { color: var(--texto-fraco); font-size: 14px; margin: 0 0 24px; }
+  label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
+  input {
+    width: 100%; padding: 11px 12px; margin-bottom: 16px;
+    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
+    color: var(--texto); font-size: 14px; font-family: inherit;
+  }
+  input:focus { outline: none; border-color: var(--azul); }
+  button.entrar {
+    width: 100%; padding: 12px; background: var(--laranja); color: #1a1005;
+    border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer;
+  }
+  button.entrar:hover { filter: brightness(1.08); }
+  button.entrar:disabled { opacity: 0.6; cursor: default; }
+  .aviso { margin-top: 16px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
+  .aviso.erro { background: rgba(232,97,122,0.12); border: 1px solid var(--vermelho); color: #ffb3c1; }
+  .aviso.ok { background: rgba(52,193,124,0.12); border: 1px solid var(--verde); color: #a6f0c6; }
+  .rodape-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--texto-fraco); }
+  .rodape-link a { color: var(--azul); text-decoration: none; }
+  .rodape-link a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="caixa">
+    <div class="logo-topo">
+      <img src="logo.png?v=2" alt="HC Licitações">
+      <span>HC Licitações</span>
+    </div>
+    <h1>Acessar conta</h1>
+    <p class="sub">Entre com o e-mail e senha do seu cadastro.</p>
+
+    <form id="form-login">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" required autocomplete="email">
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" required autocomplete="current-password">
+      <button type="submit" class="entrar" id="btn-entrar">Entrar</button>
+    </form>
+
+    <div class="aviso" id="aviso"></div>
+
+    <div class="rodape-link">
+      Ainda não tem conta? <a href="cadastro.html">Cadastre-se</a>
+    </div>
+  </div>
+
+<script>
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function mostrarAviso(texto, tipo) {
+    const el = document.getElementById("aviso");
+    el.textContent = texto;
+    el.className = "aviso " + tipo;
+    el.style.display = "block";
+  }
+
+  document.getElementById("form-login").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const btn = document.getElementById("btn-entrar");
+    btn.disabled = true;
+    btn.textContent = "Entrando...";
+
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("senha").value;
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+
+    if (error) {
+      mostrarAviso("E-mail ou senha incorretos, ou sua conta ainda não foi aprovada.", "erro");
+      btn.disabled = false;
+      btn.textContent = "Entrar";
+      return;
+    }
+
+    // Confere o status do cadastro antes de liberar o acesso.
+    const { data: cliente } = await sb
+      .from("clientes")
+      .select("status, nome")
+      .eq("id", data.user.id)
+      .single();
+
+    if (!cliente || cliente.status !== "aprovado") {
+      mostrarAviso("Seu cadastro ainda está em análise. Você recebe um aviso assim que for aprovado.", "erro");
+      await sb.auth.signOut();
+      btn.disabled = false;
+      btn.textContent = "Entrar";
+      return;
+    }
+
+    mostrarAviso("Login realizado! Redirecionando...", "ok");
+    window.location.href = "index.html";
+  });
+</script>
+</body>
+</html>

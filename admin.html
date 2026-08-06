@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel Admin — HC Licitações</title>
+<link rel="icon" type="image/png" href="logo.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<style>
+  :root {
+    --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a;
+    --fundo: #0a121c; --cartao: #141f2e; --cartao-claro: #182638; --borda: #223144;
+    --texto: #eef3f8; --texto-fraco: #90a2b8; --verde: #34c17c; --vermelho: #e8617a;
+    --raio: 12px; --raio-pq: 8px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Inter", Arial, Helvetica, sans-serif;
+    background: radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%), var(--fundo);
+    background-attachment: fixed;
+    color: var(--texto);
+    margin: 0;
+  }
+  header {
+    background: linear-gradient(120deg, var(--azul-escuro) 0%, var(--azul) 55%, #1c63c7 100%);
+    padding: 22px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header .titulo { display: flex; align-items: center; gap: 12px; }
+  header img { width: 36px; height: 36px; }
+  header h1 { margin: 0; font-size: 19px; }
+  header button {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff;
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  main { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tabs button {
+    background: var(--cartao); border: 1px solid var(--borda); color: var(--texto-fraco);
+    padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  .tabs button.ativo { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .cartao-lista {
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 12px 16px; color: var(--texto-fraco); font-weight: 600; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid var(--borda); }
+  td { padding: 14px 16px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.pendente { background: rgba(242,137,26,0.15); color: var(--laranja); }
+  .badge.aprovado { background: rgba(52,193,124,0.15); color: var(--verde); }
+  .badge.rejeitado { background: rgba(232,97,122,0.15); color: var(--vermelho); }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .acoes button {
+    border: none; padding: 7px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-aprovar { background: var(--verde); color: #06301b; }
+  .btn-rejeitar { background: var(--vermelho); color: #3a0713; }
+  .btn-reverter { background: var(--cartao-claro); color: var(--texto-fraco); border: 1px solid var(--borda) !important; }
+  .vazio { padding: 40px; text-align: center; color: var(--texto-fraco); }
+  .carregando { padding: 40px; text-align: center; color: var(--texto-fraco); }
+  #tela-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  #tela-login .caixa { width: 100%; max-width: 380px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 32px; }
+  #tela-login label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
+  #tela-login input { width: 100%; padding: 11px 12px; margin-bottom: 16px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 14px; }
+  #tela-login button { width: 100%; padding: 12px; background: var(--laranja); color: #1a1005; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  #tela-login .erro { margin-top: 14px; font-size: 13px; color: #ffb3c1; display: none; }
+</style>
+</head>
+<body>
+
+<div id="tela-login">
+  <div class="caixa">
+    <h2 style="margin-top:0;">Painel Admin</h2>
+    <p style="color:var(--texto-fraco);font-size:14px;">Acesso restrito à administração da HC Licitações.</p>
+    <form id="form-login-admin">
+      <label>E-mail</label>
+      <input type="email" id="admin-email" required>
+      <label>Senha</label>
+      <input type="password" id="admin-senha" required>
+      <button type="submit">Entrar</button>
+    </form>
+    <div class="erro" id="erro-login-admin"></div>
+  </div>
+</div>
+
+<div id="painel" style="display:none;">
+  <header>
+    <div class="titulo">
+      <img src="logo.png?v=2" alt="">
+      <h1>Painel Admin — Clientes</h1>
+    </div>
+    <button id="btn-sair">Sair</button>
+  </header>
+  <main>
+    <div class="tabs">
+      <button data-status="pendente" class="ativo">Pendentes</button>
+      <button data-status="aprovado">Aprovados</button>
+      <button data-status="rejeitado">Rejeitados</button>
+      <button data-status="todos">Todos</button>
+    </div>
+    <div class="cartao-lista">
+      <div id="conteudo-lista" class="carregando">Carregando clientes...</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let filtroAtual = "pendente";
+  let todosClientes = [];
+
+  function badgeStatus(status) {
+    const nomes = { pendente: "Pendente", aprovado: "Aprovado", rejeitado: "Rejeitado" };
+    return `<span class="badge ${status}">${nomes[status] || status}</span>`;
+  }
+
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  async function verificarSessaoAdmin() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return false;
+    const { data: admin } = await sb.from("admins").select("email").eq("email", session.user.email).maybeSingle();
+    return !!admin;
+  }
+
+  async function mostrarPainelSeAdmin() {
+    const ehAdmin = await verificarSessaoAdmin();
+    if (ehAdmin) {
+      document.getElementById("tela-login").style.display = "none";
+      document.getElementById("painel").style.display = "block";
+      carregarClientes();
+    } else {
+      document.getElementById("tela-login").style.display = "flex";
+      document.getElementById("painel").style.display = "none";
+    }
+  }
+
+  document.getElementById("form-login-admin").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const email = document.getElementById("admin-email").value.trim();
+    const senha = document.getElementById("admin-senha").value;
+    const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+    const erroEl = document.getElementById("erro-login-admin");
+    if (error) {
+      erroEl.textContent = "E-mail ou senha incorretos.";
+      erroEl.style.display = "block";
+      return;
+    }
+    const ehAdmin = await verificarSessaoAdmin();
+    if (!ehAdmin) {
+      erroEl.textContent = "Essa conta não tem acesso ao painel administrativo.";
+      erroEl.style.display = "block";
+      await sb.auth.signOut();
+      return;
+    }
+    mostrarPainelSeAdmin();
+  });
+
+  document.getElementById("btn-sair").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    mostrarPainelSeAdmin();
+  });
+
+  async function carregarClientes() {
+    document.getElementById("conteudo-lista").innerHTML = '<div class="carregando">Carregando clientes...</div>';
+    const { data, error } = await sb.from("clientes").select("*").order("criado_em", { ascending: false });
+    if (error) {
+      document.getElementById("conteudo-lista").innerHTML = '<div class="vazio">Erro ao carregar: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+    todosClientes = data || [];
+    renderizarLista();
+  }
+
+  function renderizarLista() {
+    const alvo = document.getElementById("conteudo-lista");
+    const lista = filtroAtual === "todos" ? todosClientes : todosClientes.filter((c) => c.status === filtroAtual);
+
+    if (lista.length === 0) {
+      alvo.innerHTML = '<div class="vazio">Nenhum cliente ' + (filtroAtual === "todos" ? "cadastrado" : "com status \"" + filtroAtual + "\"") + ' ainda.</div>';
+      return;
+    }
+
+    let html = '<table><thead><tr><th>Nome / Empresa</th><th>Contato</th><th>Status</th><th>Cadastrado em</th><th>Ações</th></tr></thead><tbody>';
+    for (const c of lista) {
+      const dataCadastro = c.criado_em ? new Date(c.criado_em).toLocaleString("pt-BR") : "-";
+      html += `<tr>
+        <td><strong>${escapeHtml(c.nome)}</strong><br><span style="color:var(--texto-fraco);font-size:13px;">${escapeHtml(c.empresa || "-")}${c.cnpj ? " · " + escapeHtml(c.cnpj) : ""}</span></td>
+        <td>${escapeHtml(c.email)}<br><span style="color:var(--texto-fraco);font-size:13px;">${escapeHtml(c.telefone || "-")}</span></td>
+        <td>${badgeStatus(c.status)}</td>
+        <td>${dataCadastro}</td>
+        <td><div class="acoes">
+          ${c.status !== "aprovado" ? `<button class="btn-aprovar" data-id="${c.id}" data-acao="aprovado">Aprovar</button>` : ""}
+          ${c.status !== "rejeitado" ? `<button class="btn-rejeitar" data-id="${c.id}" data-acao="rejeitado">Rejeitar</button>` : ""}
+          ${c.status !== "pendente" ? `<button class="btn-reverter" data-id="${c.id}" data-acao="pendente">Voltar p/ pendente</button>` : ""}
+        </div></td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    alvo.innerHTML = html;
+
+    alvo.querySelectorAll("button[data-acao]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        const novoStatus = btn.dataset.acao;
+        btn.disabled = true;
+        const { data: { session } } = await sb.auth.getSession();
+        await sb.from("clientes").update({
+          status: novoStatus,
+          aprovado_em: novoStatus === "aprovado" ? new Date().toISOString() : null,
+          aprovado_por: novoStatus === "aprovado" ? session.user.email : null,
+        }).eq("id", id);
+        carregarClientes();
+      });
+    });
+  }
+
+  document.querySelectorAll(".tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("ativo"));
+      btn.classList.add("ativo");
+      filtroAtual = btn.dataset.status;
+      renderizarLista();
+    });
+  });
+
+  mostrarPainelSeAdmin();
+</script>
+</body>
+</html>
