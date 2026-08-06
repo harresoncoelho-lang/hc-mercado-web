@@ -12,7 +12,7 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 130
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
@@ -49,10 +49,17 @@ jobs:
 
       - name: Complementar e-mail/telefone (Fase 2b)
         env:
-          LIMITE_MINUTOS: "6"
+          LIMITE_MINUTOS: "15"
           RENOVAR_APOS_DIAS: "90"
           ATRASO_MS: "13000"
         run: node scripts/enriquecer_contato.js
+
+      - name: Enriquecer cadastro SICAF puro (Fase 4b)
+        env:
+          LIMITE_MINUTOS: "25"
+          RENOVAR_APOS_DIAS: "365"
+          ATRASO_MS: "350"
+        run: node scripts/enriquecer_sicaf.js
 
       - name: Publicar dados privados no painel interno (Base de Empresas/SICAF)
         env:
