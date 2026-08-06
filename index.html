@@ -918,6 +918,11 @@
         if (selUf && !selUf.dataset.ligadoMunicipio) {
           selUf.dataset.ligadoMunicipio = "1";
           selUf.addEventListener("change", () => {
+            // Ao trocar de estado (inclusive voltar pra "Todos os estados"), reseta o
+            // município escolhido — senão a seleção anterior fica "grudada" (ela continua
+            // existindo na lista nacional completa) e o usuário precisa rolar manualmente
+            // até o topo pra voltar a "Todos os municípios".
+            sel.value = "";
             renderOpcoesMunicipio(sel, selUf.value.trim().toUpperCase(), municipios);
           });
         }
@@ -2596,6 +2601,26 @@
   // ---------- Portal da Transparência: Radar de Convênios + Raio-X de Fornecedor ----------
   let cacheConvenios = null;
 
+  // O robô de convênios grava a UF como nome completo (ex: "AMAZONAS", às vezes sem acento
+  // por causa da fonte, ex: "ESPIRITO SANTO") em vez da sigla de 2 letras que o resto do site
+  // usa. Isso fazia o filtro de estado nunca bater (comparava "AM" com "AMAZONAS"). Essa
+  // função aceita sigla ou nome completo (com ou sem acento) e sempre devolve a sigla.
+  const NOME_PARA_SIGLA_UF = (() => {
+    const mapa = {};
+    for (const [sigla, nome] of ESTADOS_BR) mapa[normalizar(nome)] = sigla;
+    return mapa;
+  })();
+  function siglaUf(valor) {
+    if (!valor) return "";
+    const v = String(valor).trim();
+    if (v.length === 2) return v.toUpperCase();
+    return NOME_PARA_SIGLA_UF[normalizar(v)] || v.toUpperCase();
+  }
+
+  function linkConvenio(r) {
+    return r && r.id ? `https://portaldatransparencia.gov.br/convenios/${r.id}` : null;
+  }
+
   function formatarDataIso(s) {
     if (!s) return "-";
     try {
@@ -2615,7 +2640,7 @@
     }
 
     let registros = dados.registros || [];
-    if (uf) registros = registros.filter((r) => r.uf === uf);
+    if (uf) registros = registros.filter((r) => siglaUf(r.uf) === uf);
     if (municipioFiltro) {
       const mf = municipioFiltro.toLowerCase();
       registros = registros.filter((r) => (r.municipio || "").toLowerCase().includes(mf));
@@ -2641,13 +2666,14 @@
 
     html += `<table><tr><th>Convenente</th><th>Objeto</th><th>Órgão concedente</th><th>UF/Município</th><th>Valor liberado</th><th>Publicação</th></tr>`;
     registros.forEach((r, i) => {
+      const link = linkConvenio(r);
       html += `<tr class="linha-clicavel" data-idx="${i}">
         <td>${escapeHtml(r.convenente || "-")}</td>
         <td>${escapeHtml((r.objeto || "-").slice(0, 90))}</td>
         <td>${escapeHtml(r.orgao || "-")}</td>
-        <td>${escapeHtml(r.uf || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
+        <td>${escapeHtml(siglaUf(r.uf) || r.uf || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
         <td>${formatarValor(r.valorLiberado || r.valor || 0)}</td>
-        <td>${formatarDataIso(r.dataPublicacao)}</td>
+        <td>${formatarDataIso(r.dataPublicacao)}${link ? ` <a class="link-pncp" href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Ver este convênio no Portal da Transparência">↗</a>` : ""}</td>
       </tr>`;
     });
     html += "</table>";
@@ -2664,6 +2690,7 @@
 
         tr.classList.add("linha-selecionada");
         const r = registros[Number(tr.dataset.idx)];
+        const link = linkConvenio(r);
         const detalhe = document.createElement("div");
         detalhe.className = "detalhe-drilldown";
         detalhe.innerHTML = `<dl>
@@ -2678,6 +2705,7 @@
           <div><dt>Início de vigência</dt><dd>${formatarDataIso(r.dataInicioVigencia)}</dd></div>
           <div><dt>Fim de vigência</dt><dd>${formatarDataIso(r.dataFinalVigencia)}</dd></div>
           <div><dt>Última liberação</dt><dd>${formatarDataIso(r.dataUltimaLiberacao)}</dd></div>
+          <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver convênio completo no Portal da Transparência ↗</a>` : "-"}</dd></div>
         </dl>`;
         tr.after(detalhe);
       });
