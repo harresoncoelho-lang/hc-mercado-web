@@ -557,6 +557,7 @@
   <button data-alvo="diagnostico">Diagnóstico de Mercado</button>
   <button data-alvo="empresa">Analisar Empresa</button>
   <button data-alvo="transparencia">Portal da Transparência</button>
+  <button data-alvo="precos">Pesquisa de Preços</button>
 </nav>
 
 <main>
@@ -730,6 +731,26 @@
       <button class="btn-buscar" id="fn-buscar">Consultar pagamentos</button>
     </div>
     <div id="fn-resultado"></div>
+
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+  </section>
+
+  <section id="precos">
+    <h2 style="margin-top:0;">Pesquisa de Preços de Mercado</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Descubra quanto o governo está pagando, agora, por um item — direto da base oficial do Compras.gov.br (a mesma que substituiu o antigo "Painel de Preços"). Busque um produto, escolha a especificação exata e veja o preço médio, mediano e as compras reais por trás (fornecedor, órgão, valor, link do edital) dos últimos 12 meses.</p>
+
+    <div class="painel-filtros">
+      <div class="campo" style="flex:3">
+        <label>O que você quer pesquisar?</label>
+        <input id="pp-busca" placeholder="Ex: caneta esferográfica, notebook, papel A4, cadeira...">
+      </div>
+      <button class="btn-buscar" id="pp-buscar-categoria">Buscar categorias</button>
+    </div>
+
+    <div id="pp-categorias"></div>
+    <div id="pp-itens"></div>
+    <div id="pp-selecao"></div>
+    <div id="pp-resultado"></div>
 
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
   </section>
@@ -2698,6 +2719,259 @@
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao consultar: ${escapeHtml(String(e))}</div>`;
     }
+  });
+
+  // ---------- Pesquisa de Preços de Mercado (Catálogo + Painel de Preços do Compras.gov.br) ----------
+  // Fonte: substituto oficial do antigo "Painel de Preços" (agora "Pesquisa de Preços"),
+  // acessado 100% no navegador do usuário (API pública, sem login, CORS liberado), sem
+  // depender de robô. Fluxo: palavra-chave -> PDM (categoria) -> item específico (com
+  // características técnicas) -> unidade de fornecimento -> preços reais pagos.
+  const PP_CNBS_URL = "https://cnbs.estaleiro.serpro.gov.br/cnbs-api";
+  const PP_PESQPRECO_URL = "https://pesqpreco.estaleiro.serpro.gov.br/pesquisa-precos-backend-semlogin";
+
+  let ppItens = [];
+  let ppUnidades = [];
+  let ppPdmAtual = null;
+
+  function ppFormatarUnidade(u) {
+    if (u.capacidadeUnidadeMedida && u.capacidadeUnidadeMedida > 0) {
+      return `${u.nomeUnidadeFornecimento} (${u.capacidadeUnidadeMedida % 1 === 0 ? u.capacidadeUnidadeMedida.toFixed(0) : u.capacidadeUnidadeMedida} ${u.nomeUnidadeMedida || ""})`.trim();
+    }
+    return u.nomeUnidadeFornecimento;
+  }
+
+  function ppResumoCaracteristicas(item) {
+    const lista = item.buscaItemCaracteristica || [];
+    return lista.map((c) => `${c.nomeCaracteristica}: ${c.nomeValorCaracteristica}`).join(" · ");
+  }
+
+  async function ppBuscarCategorias() {
+    const termo = document.getElementById("pp-busca").value.trim();
+    const alvoCat = document.getElementById("pp-categorias");
+    document.getElementById("pp-itens").innerHTML = "";
+    document.getElementById("pp-selecao").innerHTML = "";
+    document.getElementById("pp-resultado").innerHTML = "";
+    if (!termo) {
+      alvoCat.innerHTML = '<div class="aviso">Digite um termo pra pesquisar (ex: "caneta", "notebook").</div>';
+      return;
+    }
+    alvoCat.innerHTML = '<div class="carregando">Buscando categorias no Catálogo do Compras.gov.br...</div>';
+    try {
+      const resp = await fetch(`${PP_CNBS_URL}/material/v1/palavra?palavra=${encodeURIComponent(termo)}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const pdms = await resp.json();
+      if (!Array.isArray(pdms) || pdms.length === 0) {
+        alvoCat.innerHTML = '<div class="aviso">Nenhuma categoria de material encontrada com esse termo. Tente outra palavra (ex: mais genérica).</div>';
+        return;
+      }
+      let html = `<p style="color:var(--texto-fraco);font-size:13px;margin:10px 0 6px;">${pdms.length} categoria(s) encontrada(s) — clique numa pra ver os itens específicos:</p>`;
+      html += `<table><tr><th>Categoria (PDM)</th><th>Classe</th></tr>`;
+      pdms.forEach((p, i) => {
+        const nome = p.descricaoPDM || p.nomePdm || "-";
+        const classe = p.descricaoClasse || p.nomeClasse || "-";
+        html += `<tr class="linha-clicavel" data-idx="${i}"><td>${escapeHtml(nome)}</td><td>${escapeHtml(classe)}</td></tr>`;
+      });
+      html += `</table>`;
+      alvoCat.innerHTML = html;
+      alvoCat.querySelectorAll("tr.linha-clicavel").forEach((tr) => {
+        tr.addEventListener("click", () => {
+          alvoCat.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+          tr.classList.add("linha-selecionada");
+          const p = pdms[Number(tr.dataset.idx)];
+          const codigoPdm = p.codigoPDM ?? p.codigoPdm;
+          ppCarregarItens(codigoPdm, p.descricaoPDM || p.nomePdm || "-");
+        });
+      });
+    } catch (e) {
+      alvoCat.innerHTML = `<div class="aviso">Erro ao buscar categorias: ${escapeHtml(String(e))}</div>`;
+    }
+  }
+
+  async function ppCarregarItens(codigoPdm, nomePdm) {
+    ppPdmAtual = { codigoPdm, nomePdm };
+    const alvoItens = document.getElementById("pp-itens");
+    document.getElementById("pp-selecao").innerHTML = "";
+    document.getElementById("pp-resultado").innerHTML = "";
+    alvoItens.innerHTML = '<div class="carregando">Carregando itens específicos dessa categoria...</div>';
+    try {
+      const [respItens, respUnidades] = await Promise.all([
+        fetch(`${PP_CNBS_URL}/material/v1/materialCaracteristcaValorporPDM?codigo_pdm=${codigoPdm}`),
+        fetch(`${PP_CNBS_URL}/material/v1/unidadeFornecimentoPorCodigoPdm?codigo_pdm=${codigoPdm}`),
+      ]);
+      if (!respItens.ok) throw new Error(`HTTP ${respItens.status}`);
+      ppItens = await respItens.json();
+      ppUnidades = respUnidades.ok ? await respUnidades.json() : [];
+
+      if (!Array.isArray(ppItens) || ppItens.length === 0) {
+        alvoItens.innerHTML = '<div class="aviso">Nenhum item específico cadastrado nessa categoria.</div>';
+        return;
+      }
+
+      let html = `<h3 style="margin-bottom:4px;">${escapeHtml(nomePdm)} — ${ppItens.length} item(ns) específico(s)</h3>`;
+      html += `<div class="campo" style="max-width:420px;margin-bottom:10px;"><input id="pp-filtro-itens" placeholder="Refinar por característica (ex: azul, plástico, touch)"></div>`;
+      const LIMITE_EXIBIDOS = 80;
+      html += `<table id="pp-tabela-itens"><tr><th>Código</th><th>Características</th></tr>`;
+      ppItens.forEach((item, i) => {
+        html += `<tr class="linha-clicavel pp-item-linha" data-idx="${i}" data-texto="${escapeHtml(normalizar(ppResumoCaracteristicas(item)))}" style="${i >= LIMITE_EXIBIDOS ? "display:none;" : ""}">
+          <td>${item.codigoItem}</td>
+          <td>${escapeHtml(ppResumoCaracteristicas(item))}</td>
+        </tr>`;
+      });
+      html += `</table>`;
+      if (ppItens.length > LIMITE_EXIBIDOS) {
+        html += `<p style="color:var(--texto-fraco);font-size:12px;margin-top:6px;">Mostrando os primeiros ${LIMITE_EXIBIDOS} de ${ppItens.length} itens. Use o filtro acima pra refinar.</p>`;
+      }
+      alvoItens.innerHTML = html;
+
+      const ligarClique = () => {
+        alvoItens.querySelectorAll(".pp-item-linha").forEach((tr) => {
+          tr.addEventListener("click", () => {
+            alvoItens.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+            tr.classList.add("linha-selecionada");
+            ppSelecionarItem(ppItens[Number(tr.dataset.idx)]);
+          });
+        });
+      };
+      ligarClique();
+
+      document.getElementById("pp-filtro-itens").addEventListener("input", (ev) => {
+        const termo = normalizar(ev.target.value.trim());
+        const linhas = alvoItens.querySelectorAll(".pp-item-linha");
+        let visiveis = 0;
+        linhas.forEach((tr) => {
+          const bate = !termo || tr.dataset.texto.includes(termo);
+          const dentroLimite = visiveis < LIMITE_EXIBIDOS;
+          const mostrar = bate && (termo ? true : dentroLimite);
+          tr.style.display = mostrar ? "" : "none";
+          if (mostrar) visiveis++;
+        });
+      });
+    } catch (e) {
+      alvoItens.innerHTML = `<div class="aviso">Erro ao carregar itens: ${escapeHtml(String(e))}</div>`;
+    }
+  }
+
+  function ppSelecionarItem(item) {
+    const alvoSel = document.getElementById("pp-selecao");
+    document.getElementById("pp-resultado").innerHTML = "";
+    let unidadesUnicas = [];
+    const vistos = new Set();
+    for (const u of ppUnidades) {
+      const chave = `${u.siglaUnidadeFornecimento}|${u.capacidadeUnidadeMedida}`;
+      if (!vistos.has(chave)) { vistos.add(chave); unidadesUnicas.push(u); }
+    }
+    if (unidadesUnicas.length === 0) unidadesUnicas = [{ siglaUnidadeFornecimento: "UN", nomeUnidadeFornecimento: "Unidade", capacidadeUnidadeMedida: 0, siglaUnidadeMedida: null }];
+
+    let opcoesUnidade = unidadesUnicas.map((u, i) => `<option value="${i}">${escapeHtml(ppFormatarUnidade(u))}</option>`).join("");
+
+    alvoSel.innerHTML = `
+      <div class="painel-filtros">
+        <div class="campo">
+          <label>Item selecionado</label>
+          <div style="padding:9px 0;color:#fff;font-size:14px;">Código ${item.codigoItem} — ${escapeHtml(ppResumoCaracteristicas(item)) || "sem características adicionais"}</div>
+        </div>
+      </div>
+      <div class="painel-filtros">
+        <div class="campo">
+          <label>Unidade de fornecimento</label>
+          <select id="pp-unidade">${opcoesUnidade}</select>
+        </div>
+        <button class="btn-buscar" id="pp-buscar-precos">Buscar preços pagos</button>
+      </div>
+    `;
+    alvoSel.dataset.unidades = JSON.stringify(unidadesUnicas);
+    document.getElementById("pp-buscar-precos").addEventListener("click", () => ppBuscarPrecos(item, unidadesUnicas));
+  }
+
+  async function ppBuscarPrecos(item, unidadesUnicas) {
+    const alvoRes = document.getElementById("pp-resultado");
+    const idxUnidade = Number(document.getElementById("pp-unidade").value);
+    const unidade = unidadesUnicas[idxUnidade];
+    alvoRes.innerHTML = '<div class="carregando">Consultando preços pagos pelo governo nos últimos 12 meses...</div>';
+
+    const params = new URLSearchParams({
+      codigoItemCatalogo: String(item.codigoItem),
+      tipoItem: "M",
+      siglaUnidadeFornecimento: unidade.siglaUnidadeFornecimento,
+    });
+    if (unidade.capacidadeUnidadeMedida && unidade.capacidadeUnidadeMedida > 0) {
+      params.set("capacidadeUnidadeFornecimento", String(unidade.capacidadeUnidadeMedida));
+    }
+    if (unidade.siglaUnidadeMedida) params.set("siglaUnidadeMedida", unidade.siglaUnidadeMedida);
+
+    try {
+      const resp = await fetch(`${PP_PESQPRECO_URL}/api/itens-compra/buscar?${params.toString()}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const dados = await resp.json();
+      ppRenderizarResultado(dados, item, unidade);
+    } catch (e) {
+      alvoRes.innerHTML = `<div class="aviso">Erro ao consultar preços: ${escapeHtml(String(e))}</div>`;
+    }
+  }
+
+  function ppRenderizarResultado(dados, item, unidade) {
+    const alvoRes = document.getElementById("pp-resultado");
+    const est = dados.estatisticas || {};
+    const registros = dados.itens || [];
+
+    if (registros.length === 0) {
+      alvoRes.innerHTML = '<div class="aviso">Nenhuma compra registrada pra esse item + unidade nos últimos 12 meses. Tente outra unidade de fornecimento ou uma característica diferente.</div>';
+      return;
+    }
+
+    let html = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Amostra: até 50 compras mais recentes dos últimos 12 meses, unidade "${escapeHtml(ppFormatarUnidade(unidade))}". Fonte: Compras.gov.br (Pesquisa de Preços).</div>`;
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Preço médio</h3><div class="valor">${formatarValor(est.media)}</div></div>
+      <div class="cartao"><h3>Preço mediano</h3><div class="valor">${formatarValor(est.mediana)}</div></div>
+      <div class="cartao"><h3>Menor preço</h3><div class="valor">${formatarValor(est.menorPreco)}</div></div>
+      <div class="cartao"><h3>Maior preço</h3><div class="valor">${formatarValor(est.maiorPreco)}</div></div>
+      <div class="cartao"><h3>Coeficiente de variação</h3><div class="valor">${est.coeficienteVariacao != null ? est.coeficienteVariacao.toFixed(1) + "%" : "-"}</div></div>
+      <div class="cartao"><h3>Compras encontradas</h3><div class="valor">${est.quantidadePrecos ?? registros.length}</div></div>
+    </div>`;
+
+    html += `<table><tr><th>Fornecedor</th><th>Órgão</th><th>UF/Município</th><th>Preço unitário</th><th>Data</th><th>Edital</th></tr>`;
+    registros.forEach((r, i) => {
+      html += `<tr class="linha-clicavel pp-registro-linha" data-idx="${i}">
+        <td>${escapeHtml(r.nomeFornecedor || r.niFornecedor || "-")}</td>
+        <td>${escapeHtml(r.nomeOrgao || "-")}</td>
+        <td>${escapeHtml(r.estado || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
+        <td>${formatarValor(r.precoUnitario)}</td>
+        <td>${formatarDataIso(r.dataResultado)}</td>
+        <td>${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver edital ↗</a>` : "-"}</td>
+      </tr>`;
+    });
+    html += `</table>`;
+    alvoRes.innerHTML = html;
+
+    alvoRes.querySelectorAll(".pp-registro-linha").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        const jaSelecionada = tr.classList.contains("linha-selecionada");
+        alvoRes.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
+        const detalheExistente = alvoRes.querySelector(".detalhe-drilldown");
+        if (detalheExistente) detalheExistente.remove();
+        if (jaSelecionada) return;
+        tr.classList.add("linha-selecionada");
+        const r = registros[Number(tr.dataset.idx)];
+        const detalhe = document.createElement("div");
+        detalhe.className = "detalhe-drilldown";
+        detalhe.innerHTML = `<dl>
+          <div><dt>Descrição detalhada</dt><dd>${escapeHtml(r.descricaoDetalhadaItem || "-")}</dd></div>
+          <div><dt>Marca</dt><dd>${escapeHtml(r.marca || "-")}</dd></div>
+          <div><dt>Quantidade comprada</dt><dd>${escapeHtml(String(r.quantidade ?? "-"))} ${escapeHtml(r.unidadeFornecimentoMedidaConcatenada || "")}</dd></div>
+          <div><dt>UASG / unidade compradora</dt><dd>${escapeHtml(r.nomeUasg || "-")} (${escapeHtml(String(r.codigoUasg ?? "-"))})</dd></div>
+          <div><dt>Modalidade</dt><dd>${escapeHtml(r.modalidade || "-")}</dd></div>
+          <div><dt>Forma</dt><dd>${escapeHtml(r.forma || "-")}</dd></div>
+          <div><dt>Esfera</dt><dd>${escapeHtml({ F: "Federal", E: "Estadual", M: "Municipal" }[r.esfera] || r.esfera || "-")}</dd></div>
+          <div><dt>Critério de julgamento</dt><dd>${escapeHtml(r.criterioJulgamentoCompra || r.criterioJulgamento || "-")}</dd></div>
+        </dl>`;
+        tr.after(detalhe);
+      });
+    });
+  }
+
+  document.getElementById("pp-buscar-categoria").addEventListener("click", ppBuscarCategorias);
+  document.getElementById("pp-busca").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") ppBuscarCategorias();
   });
 </script>
 
