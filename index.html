@@ -698,15 +698,40 @@
   </section>
 
   <section id="transparencia">
+    <h2 style="margin-top:0;">Radar de Convênios e Repasses</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Convênios e repasses federais recebidos por municípios/órgãos — dinheiro chegando costuma anteceder licitação (a obra/serviço financiado tende a virar edital dali a semanas ou meses). Isso é diferente de "Encontrar Licitações": aqui você vê o repasse que ainda vai gerar a licitação, não a licitação já publicada.</p>
+    <div class="painel-filtros">
+      <div class="campo">
+        <label>Estado (UF) — opcional</label>
+        <select id="cv-uf" class="select-uf"></select>
+      </div>
+      <div class="campo">
+        <label>Município</label>
+        <div class="select-com-limpar">
+          <select id="cv-municipio" class="select-municipio"></select>
+          <button type="button" class="btn-limpar-select" data-limpa="cv-municipio" title="Limpar município selecionado">✕</button>
+        </div>
+      </div>
+      <div class="campo" style="flex:2">
+        <label>Palavras-chave (opcional — filtra o objeto do convênio)</label>
+        <input id="cv-palavras" placeholder="Ex: saneamento, pavimentação, saúde">
+      </div>
+      <button class="btn-buscar" id="cv-buscar">Buscar convênios</button>
+    </div>
+    <div id="cv-resultado"></div>
+
+    <h2>Raio-X Financeiro de Fornecedor</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Quanto uma empresa já recebeu de fato em pagamentos do governo federal — execução financeira real, não só o valor do contrato assinado. Complementa a aba "Analisar Empresa".</p>
     <div class="painel-filtros">
       <div class="campo" style="flex:2">
-        <label>Filtrar por palavra (dentro dos resultados já coletados)</label>
-        <input id="tr-filtro" placeholder="Ex: hospitalar, veiculo">
+        <label>CNPJ da empresa</label>
+        <input id="fn-cnpj" placeholder="Ex: 12345678000199">
       </div>
-      <button class="btn-buscar" id="tr-buscar">Filtrar</button>
+      <button class="btn-buscar" id="fn-buscar">Consultar pagamentos</button>
     </div>
+    <div id="fn-resultado"></div>
+
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
-    <div id="tr-resultado"></div>
   </section>
 
 </main>
@@ -2501,8 +2526,8 @@
     }
   });
 
-  // ---------- Portal da Transparência ----------
-  let cacheTransparencia = null;
+  // ---------- Portal da Transparência: Radar de Convênios + Raio-X de Fornecedor ----------
+  let cacheConvenios = null;
 
   function formatarDataIso(s) {
     if (!s) return "-";
@@ -2515,45 +2540,53 @@
     }
   }
 
-  function renderizarTransparencia(dados, filtroTexto) {
-    const alvo = document.getElementById("tr-resultado");
+  function renderizarConvenios(dados, uf, municipioFiltro, palavras) {
+    const alvo = document.getElementById("cv-resultado");
     if (!dados) {
-      alvo.innerHTML = '<div class="aviso">Ainda não há dados coletados do Portal da Transparência. O robô roda automaticamente todo dia às 06h30 (Brasília) — volte em breve.</div>';
+      alvo.innerHTML = '<div class="aviso">Ainda não há dados coletados de convênios. O robô roda automaticamente todo dia — volte em breve.</div>';
       return;
     }
 
     let registros = dados.registros || [];
-    if (filtroTexto) {
-      const palavras = filtroTexto.split(",").map((p) => p.trim()).filter(Boolean);
-      registros = registros.filter((r) => bateComSegmento(r.objeto, palavras));
+    if (uf) registros = registros.filter((r) => r.uf === uf);
+    if (municipioFiltro) {
+      const mf = municipioFiltro.toLowerCase();
+      registros = registros.filter((r) => (r.municipio || "").toLowerCase().includes(mf));
     }
+    if (palavras.length > 0) {
+      registros = registros.filter((r) => bateComSegmento(`${r.objeto} ${r.convenente}`, palavras));
+    }
+    registros = [...registros].sort((a, b) => (b.dataPublicacao || "").localeCompare(a.dataPublicacao || ""));
 
-    let html = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(new Date(dados.atualizadoEm).toLocaleString("pt-BR"))} · janela de ${escapeHtml(dados.dataInicial)} a ${escapeHtml(dados.dataFinal)} · UFs: ${escapeHtml((dados.ufsInteresse || []).join(", "))} · ${escapeHtml(String(dados.orgaosVarridos || 0))} órgãos federais varridos.</div>`;
+    let html = `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Dados atualizados automaticamente em ${escapeHtml(new Date(dados.atualizadoEm).toLocaleString("pt-BR"))} · histórico de ${escapeHtml(dados.dataInicial || "-")} a ${escapeHtml(dados.dataFinal || "-")}.</div>`;
 
-    html += `<div class="cartoes"><div class="cartao"><h3>Licitações encontradas</h3><div class="valor">${registros.length}</div></div></div>`;
+    const valorTotal = registros.reduce((s, r) => s + (r.valorLiberado || r.valor || 0), 0);
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Convênios encontrados</h3><div class="valor">${registros.length}</div></div>
+      <div class="cartao"><h3>Valor liberado (soma)</h3><div class="valor">${formatarValor(valorTotal)}</div></div>
+    </div>`;
 
     if (registros.length === 0) {
-      html += '<div class="aviso">Nenhuma licitação federal encontrada nas UFs de interesse com essas palavras-chave no período coletado. Isso é normal em dias mais parados — o robô acumula resultados diariamente.</div>';
+      html += '<div class="aviso">Nenhum convênio encontrado com esse filtro no período coletado.</div>';
       alvo.innerHTML = html;
       return;
     }
 
-    html += `<table><tr><th>Objeto</th><th>Órgão</th><th>Modalidade</th><th>UF/Município</th><th>Abertura</th></tr>`;
+    html += `<table><tr><th>Convenente</th><th>Objeto</th><th>Órgão concedente</th><th>UF/Município</th><th>Valor liberado</th><th>Publicação</th></tr>`;
     registros.forEach((r, i) => {
       html += `<tr class="linha-clicavel" data-idx="${i}">
-        <td>${escapeHtml(r.objeto || "-")}</td>
+        <td>${escapeHtml(r.convenente || "-")}</td>
+        <td>${escapeHtml((r.objeto || "-").slice(0, 90))}</td>
         <td>${escapeHtml(r.orgao || "-")}</td>
-        <td>${r.modalidade ? `<span class="badge-modalidade">${escapeHtml(r.modalidade)}</span>` : "-"}</td>
         <td>${escapeHtml(r.uf || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
-        <td>${formatarDataIso(r.dataAbertura)}</td>
+        <td>${formatarValor(r.valorLiberado || r.valor || 0)}</td>
+        <td>${formatarDataIso(r.dataPublicacao)}</td>
       </tr>`;
     });
     html += "</table>";
 
     alvo.innerHTML = html;
 
-    // Clicar numa linha aprofunda os dados (drill-down), como no ConLicitação:
-    // mostra número do processo, unidade gestora, situação e valor sem sair da tela.
     alvo.querySelectorAll("tr.linha-clicavel").forEach((tr) => {
       tr.addEventListener("click", () => {
         const jaSelecionada = tr.classList.contains("linha-selecionada");
@@ -2567,28 +2600,103 @@
         const detalhe = document.createElement("div");
         detalhe.className = "detalhe-drilldown";
         detalhe.innerHTML = `<dl>
-          <div><dt>Número da licitação</dt><dd>${escapeHtml(r.numero || "-")}</dd></div>
-          <div><dt>Processo</dt><dd>${escapeHtml(r.numeroProcesso || "-")}</dd></div>
+          <div><dt>Objeto completo</dt><dd>${escapeHtml(r.objeto || "-")}</dd></div>
+          <div><dt>Nº do processo</dt><dd>${escapeHtml(r.numeroProcesso || "-")}</dd></div>
+          <div><dt>Tipo de instrumento</dt><dd>${escapeHtml(r.tipoInstrumento || "-")}</dd></div>
           <div><dt>Unidade gestora</dt><dd>${escapeHtml(r.unidadeGestora || "-")}</dd></div>
           <div><dt>Situação</dt><dd>${escapeHtml(r.situacao || "-")}</dd></div>
-          <div><dt>Valor</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
-          <div><dt>Publicação</dt><dd>${formatarDataIso(r.dataPublicacao)}</dd></div>
+          <div><dt>Valor total</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
+          <div><dt>Valor liberado</dt><dd>${escapeHtml(formatarValor(r.valorLiberado))}</dd></div>
+          <div><dt>Contrapartida</dt><dd>${escapeHtml(formatarValor(r.valorContrapartida))}</dd></div>
+          <div><dt>Início de vigência</dt><dd>${formatarDataIso(r.dataInicioVigencia)}</dd></div>
+          <div><dt>Fim de vigência</dt><dd>${formatarDataIso(r.dataFinalVigencia)}</dd></div>
+          <div><dt>Última liberação</dt><dd>${formatarDataIso(r.dataUltimaLiberacao)}</dd></div>
         </dl>`;
         tr.after(detalhe);
       });
     });
   }
 
-  document.querySelector('button[data-alvo="transparencia"]').addEventListener("click", async () => {
-    if (cacheTransparencia === null) {
-      document.getElementById("tr-resultado").innerHTML = '<div class="carregando">Carregando dados do Portal da Transparência...</div>';
-      cacheTransparencia = (await carregarCache("data/transparencia_licitacoes.json")) || false;
-    }
-    renderizarTransparencia(cacheTransparencia || null, "");
-  });
+  async function executarBuscaConvenios() {
+    const uf = document.getElementById("cv-uf").value.trim().toUpperCase();
+    const municipioFiltro = document.getElementById("cv-municipio").value.trim();
+    const palavrasRaw = document.getElementById("cv-palavras").value.trim();
+    const palavras = palavrasRaw ? palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean) : [];
 
-  document.getElementById("tr-buscar").addEventListener("click", () => {
-    renderizarTransparencia(cacheTransparencia || null, document.getElementById("tr-filtro").value.trim());
+    if (cacheConvenios === null) {
+      document.getElementById("cv-resultado").innerHTML = '<div class="carregando">Carregando convênios...</div>';
+      cacheConvenios = (await carregarCache("data/convenios.json")) || false;
+    }
+    renderizarConvenios(cacheConvenios || null, uf, municipioFiltro, palavras);
+  }
+
+  document.querySelector('nav button[data-alvo="transparencia"]').addEventListener("click", executarBuscaConvenios);
+  document.getElementById("cv-buscar").addEventListener("click", executarBuscaConvenios);
+
+  // ---- Raio-X financeiro de fornecedor (via Netlify Function, token fica no servidor) ----
+  function renderizarRaioXFornecedor(dados) {
+    const alvo = document.getElementById("fn-resultado");
+    if (dados.erro && dados.totalDocumentos === 0) {
+      alvo.innerHTML = `<div class="aviso">${escapeHtml(dados.erro)}</div>`;
+      return;
+    }
+
+    let html = "";
+    if (dados.erro) {
+      html += `<div class="aviso">${escapeHtml(dados.erro)} Os dados abaixo podem estar incompletos.</div>`;
+    }
+
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Total pago (governo federal)</h3><div class="valor">${formatarValor(dados.totalPago)}</div></div>
+      <div class="cartao"><h3>Documentos de pagamento</h3><div class="valor">${dados.totalDocumentos}</div></div>
+    </div>`;
+
+    const anos = Object.keys(dados.porAno || {}).sort().reverse();
+    if (anos.length > 0) {
+      html += `<div class="mini-grafico">`;
+      const maxValor = Math.max(...anos.map((a) => dados.porAno[a]));
+      for (const ano of anos) {
+        const altura = maxValor > 0 ? Math.max(6, Math.round((dados.porAno[ano] / maxValor) * 130)) : 6;
+        html += `<div class="mini-grafico-coluna">
+          <div class="mini-grafico-valor">${formatarValor(dados.porAno[ano])}</div>
+          <div class="mini-grafico-barra" style="height:${altura}px"></div>
+          <div class="mini-grafico-rotulo">${escapeHtml(ano)}</div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+
+    if (dados.totalDocumentos === 0) {
+      html += '<p style="color:var(--texto-fraco);font-size:13px;">Nenhum pagamento federal encontrado pra esse CNPJ nos últimos anos (pode ser que essa empresa só contrate com estados/municípios, cuja execução financeira não está nessa base).</p>';
+    } else if (Array.isArray(dados.documentos) && dados.documentos.length > 0) {
+      html += `<table><tr><th>Data</th><th>Órgão</th><th>Unidade gestora</th><th>Valor</th></tr>`;
+      for (const d of dados.documentos) {
+        html += `<tr><td>${formatarDataIso(d.data)}</td><td>${escapeHtml(d.orgao || "-")}</td><td>${escapeHtml(d.unidadeGestora || "-")}</td><td>${formatarValor(d.valor)}</td></tr>`;
+      }
+      html += `</table>`;
+      if (dados.totalDocumentos > dados.documentos.length) {
+        html += `<p style="color:var(--texto-fraco);font-size:12px;margin-top:8px;">Mostrando os ${dados.documentos.length} pagamentos mais recentes de ${dados.totalDocumentos} encontrados.</p>`;
+      }
+    }
+
+    alvo.innerHTML = html;
+  }
+
+  document.getElementById("fn-buscar").addEventListener("click", async () => {
+    const cnpj = soDigitos(document.getElementById("fn-cnpj").value);
+    const alvo = document.getElementById("fn-resultado");
+    if (cnpj.length !== 14) {
+      alvo.innerHTML = '<div class="aviso">Informe um CNPJ válido (14 dígitos).</div>';
+      return;
+    }
+    alvo.innerHTML = '<div class="carregando">Consultando pagamentos no Portal da Transparência...</div>';
+    try {
+      const resp = await fetch(`/.netlify/functions/despesas-fornecedor?cnpj=${cnpj}`);
+      const dados = await resp.json();
+      renderizarRaioXFornecedor(dados);
+    } catch (e) {
+      alvo.innerHTML = `<div class="aviso">Erro ao consultar: ${escapeHtml(String(e))}</div>`;
+    }
   });
 </script>
 
