@@ -31,6 +31,9 @@ jobs:
           CONCORRENCIA_PAGINAS: "5"
         run: node scripts/atualizar_dados.js
 
+      - name: Consolidar base de empresas (Fase 1)
+        run: node scripts/coletar_empresas.js
+
       - name: Commitar e enviar dados atualizados
         run: |
           git config user.name "hc-licitacoes-bot"
