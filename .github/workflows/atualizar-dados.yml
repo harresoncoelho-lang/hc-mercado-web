@@ -12,7 +12,7 @@ permissions:
 jobs:
   atualizar:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
@@ -40,6 +40,13 @@ jobs:
           RENOVAR_APOS_DIAS: "180"
           ATRASO_MS: "350"
         run: node scripts/enriquecer_empresas.js
+
+      - name: Complementar e-mail/telefone (Fase 2b)
+        env:
+          LIMITE_MINUTOS: "6"
+          RENOVAR_APOS_DIAS: "90"
+          ATRASO_MS: "13000"
+        run: node scripts/enriquecer_contato.js
 
       - name: Commitar e enviar dados atualizados
         run: |
