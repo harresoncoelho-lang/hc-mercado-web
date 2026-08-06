@@ -613,7 +613,10 @@
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
         <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente a cada visita.</p>
       </div>
-      <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-imprimir" id="bol-atualizar" title="Buscar de novo agora">🔄 Atualizar boletim</button>
+        <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
+      </div>
     </div>
     <div class="painel-filtros" id="bol-config-painel" style="display:none;">
       <div class="campo">
@@ -1672,6 +1675,11 @@
     } catch (e) { /* localStorage indisponível */ }
   }
 
+  // Controla se o boletim já foi gerado nessa visita à página — evita refazer a busca ao vivo
+  // (e mostrar "Gerando boletim..." de novo) toda vez que o usuário só troca de aba e volta.
+  // Só busca de novo quando o filtro é salvo ou o botão "Atualizar boletim" é clicado.
+  let bolJaGerado = false;
+
   // ---- Calendário mensal do boletim (inspirado na visão de calendário do ConLicitação) ----
   // Agrupa as oportunidades do boletim pela data de publicação e mostra um calendário do mês
   // com os dias que tiveram editais novos marcados — clicar num dia filtra a lista abaixo pra
@@ -1787,6 +1795,9 @@
   }
 
   async function gerarBoletim() {
+    // Marca como "já gerado" logo de cara — impede que só trocar de aba e voltar dispare uma
+    // nova busca ao vivo (o botão "Atualizar boletim" ou salvar um novo filtro é que força isso).
+    bolJaGerado = true;
     const alvo = document.getElementById("bol-resultado");
     const metaEl = document.getElementById("bol-meta");
     const filtro = lerFiltroBoletim();
@@ -1839,7 +1850,13 @@
     }
   }
 
-  document.querySelector('nav button[data-alvo="boletim"]').addEventListener("click", gerarBoletim);
+  document.querySelector('nav button[data-alvo="boletim"]').addEventListener("click", () => {
+    // Só busca de novo se ainda não foi gerado nessa visita — voltar pra essa aba não deve
+    // refazer a busca ao vivo. Pra atualizar de verdade, use o botão "Atualizar boletim".
+    if (!bolJaGerado) gerarBoletim();
+  });
+
+  document.getElementById("bol-atualizar").addEventListener("click", gerarBoletim);
 
   document.getElementById("bol-config-toggle").addEventListener("click", () => {
     const painel = document.getElementById("bol-config-painel");
