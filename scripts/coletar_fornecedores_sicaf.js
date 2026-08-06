@@ -116,8 +116,10 @@ async function main() {
       iniciadoEm: new Date().toISOString(),
       atualizadoEm: null,
       concluidoEm: null,
+      porUf: {},
     };
   }
+  if (!progresso.porUf) progresso.porUf = {}; // compatibilidade com progresso salvo antes desse campo existir
 
   if (progresso.concluidoEm) {
     console.log(
@@ -213,6 +215,9 @@ async function main() {
       registros,
     };
     await fs.writeFile(caminho, JSON.stringify(saida), "utf8");
+    // Guarda a contagem por estado no progresso — deixa o site mostrar "X de 826 mil já
+    // coletados" sem precisar baixar os 27 arquivos inteiros só pra somar um número.
+    progresso.porUf[uf] = registros.length;
   }
 
   await fs.writeFile(caminhoProgresso, JSON.stringify(progresso), "utf8");

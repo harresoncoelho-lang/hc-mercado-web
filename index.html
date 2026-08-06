@@ -3298,6 +3298,27 @@
     return registros;
   }
 
+  // Total nacional já coletado do SICAF (soma de todos os estados) + a meta total do cadastro
+  // (826 mil e poucos). Vem de um arquivo pequeno (_progresso.json), não precisa baixar os 27
+  // arquivos de estado inteiros só pra mostrar esse número.
+  let ebCacheProgressoSicaf; // undefined = ainda não tentou, null = tentou e não tem, objeto = tem
+  async function ebCarregarProgressoSicaf() {
+    if (ebCacheProgressoSicaf !== undefined) return ebCacheProgressoSicaf;
+    try {
+      const resp = await fetch("data/fornecedores/_progresso.json", { cache: "no-store" });
+      if (resp.ok) {
+        const dados = await resp.json();
+        const coletado = Object.values(dados.porUf || {}).reduce((soma, n) => soma + (n || 0), 0);
+        ebCacheProgressoSicaf = { coletado, meta: dados.totalRegistros || null, concluido: !!dados.concluidoEm };
+      } else {
+        ebCacheProgressoSicaf = null;
+      }
+    } catch (e) {
+      ebCacheProgressoSicaf = null;
+    }
+    return ebCacheProgressoSicaf;
+  }
+
   function ebFormatarCnpj(cnpj) {
     const d = String(cnpj || "").replace(/\D/g, "");
     if (d.length !== 14) return cnpj || "-";
@@ -3336,7 +3357,7 @@
     return registros;
   }
 
-  function ebRenderizar(dados, incluiuSicaf) {
+  function ebRenderizar(dados, incluiuSicaf, progressoSicaf) {
     const alvo = document.getElementById("eb-resultado");
     if (!dados) {
       alvo.innerHTML = '<div class="aviso">Ainda não há dados coletados na base de empresas. O robô roda automaticamente todo dia — volte em breve.</div>';
@@ -3362,6 +3383,13 @@
       html += '<div class="aviso">Dica: escolha um Estado (UF) acima e filtre de novo pra também trazer o cadastro completo de fornecedores do SICAF daquele estado (bem mais amplo — inclui quem nunca ganhou contrato ainda, não só quem já apareceu no PNCP).</div>';
     } else if (incluiuSicaf) {
       html += '<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Essa lista já inclui o cadastro SICAF de ' + escapeHtml(uf) + ' — empresas marcadas "Só cadastro SICAF" ainda não ganharam contrato visto por nós, mas estão habilitadas a licitar.</div>';
+    }
+    if (progressoSicaf && progressoSicaf.meta) {
+      const pct = ((progressoSicaf.coletado / progressoSicaf.meta) * 100).toFixed(1);
+      const status = progressoSicaf.concluido
+        ? "Varredura completa do SICAF concluída."
+        : "Varredura do SICAF em andamento (roda automaticamente todo dia).";
+      html += `<div class="aviso" style="border-color:#2a3c50;color:#9fb0c3;">Cadastro SICAF (Brasil inteiro): ${progressoSicaf.coletado.toLocaleString("pt-BR")} de ${progressoSicaf.meta.toLocaleString("pt-BR")} fornecedores já coletados (${pct}%). ${status}</div>`;
     }
 
     html += `<div class="cartoes">
@@ -3452,11 +3480,11 @@
 
   async function ebExecutarFiltro() {
     document.getElementById("eb-resultado").innerHTML = '<div class="carregando">Carregando base de empresas...</div>';
-    const dados = await ebCarregarBase();
+    const [dados, progressoSicaf] = await Promise.all([ebCarregarBase(), ebCarregarProgressoSicaf()]);
     const uf = document.getElementById("eb-uf").value.trim().toUpperCase();
 
     if (!uf) {
-      ebRenderizar(dados || null, false);
+      ebRenderizar(dados || null, false, progressoSicaf);
       return;
     }
 
@@ -3470,7 +3498,7 @@
     const combinado = dados
       ? { ...dados, registros: registrosBase.concat(doSicaf) }
       : { atualizadoEm: new Date().toISOString(), registros: doSicaf };
-    ebRenderizar(combinado, doSicaf.length > 0);
+    ebRenderizar(combinado, doSicaf.length > 0, progressoSicaf);
   }
 
   document.querySelector('nav button[data-alvo="empresas-base"]').addEventListener("click", ebExecutarFiltro);
