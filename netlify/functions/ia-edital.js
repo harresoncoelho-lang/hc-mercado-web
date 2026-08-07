@@ -19,7 +19,7 @@ const MODELO = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const PNCP_ARQUIVOS_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
-const MAX_CARACTERES_TEXTO = 14000;
+const MAX_CARACTERES_TEXTO = 10000;
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -97,6 +97,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
 
     const pdfParse = require("pdf-parse");
     const AdmZip = require("adm-zip");
+    const mammoth = require("mammoth");
 
     // Tenta extrair texto de um PDF já em memória (usado tanto pro arquivo baixado direto
     // quanto pra PDFs que estavam dentro de um .zip).
@@ -107,9 +108,23 @@ async function buscarTextoEdital(numeroControlePNCP) {
       return texto && texto.length >= 200 ? texto : null;
     }
 
-    // Devolve uma lista de {texto} extraídos de um arquivo baixado — se for PDF direto,
-    // devolve um único texto; se for .zip (comum em portais como o LICITANET, que
-    // compactam o edital antes de subir no PNCP), abre e extrai de cada PDF de dentro.
+    // Tenta extrair texto de um .docx (Word moderno) já em memória. Muitos órgãos publicam
+    // o edital em Word em vez de PDF — e como .docx é, por baixo dos panos, um .zip (formato
+    // OOXML), ele também passa no teste de assinatura "PK\x03\x04" usado pra detectar zip.
+    async function textoDeDocx(buffer) {
+      try {
+        const resultado = await mammoth.extractRawText({ buffer });
+        const texto = (resultado.value || "").replace(/\s+/g, " ").trim();
+        return texto && texto.length >= 200 ? texto : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Devolve uma lista de textos extraídos de um arquivo baixado. Cobre 4 formatos comuns
+    // nos portais de licitação: PDF puro, .docx puro (que também é um .zip por dentro, então
+    // tem que ser checado ANTES do zip genérico), .zip compactando um ou mais PDFs/.docx
+    // (comum no LICITANET e outros portais que "empacotam" o edital antes de subir no PNCP).
     async function textosDoArquivo(buffer) {
       const assinatura4 = buffer.slice(0, 4);
       const ehPdf = buffer.slice(0, 5).toString("latin1") === "%PDF-";
@@ -123,13 +138,23 @@ async function buscarTextoEdital(numeroControlePNCP) {
       if (ehZip) {
         try {
           const zip = new AdmZip(buffer);
-          const entradas = zip.getEntries().filter((e) => !e.isDirectory && /\.pdf$/i.test(e.entryName));
+          const nomesEntradas = zip.getEntries().map((e) => e.entryName);
+          // Um .docx é internamente um .zip com "word/document.xml" dentro — se achar essa
+          // marca, o arquivo inteiro É o documento (não uma coleção de arquivos pra abrir).
+          const ehDocxDisfarcadoDeZip = nomesEntradas.some((n) => n === "word/document.xml");
+          if (ehDocxDisfarcadoDeZip) {
+            const texto = await textoDeDocx(buffer);
+            return texto ? [texto] : [];
+          }
+
+          const entradas = zip.getEntries().filter((e) => !e.isDirectory && /\.(pdf|docx)$/i.test(e.entryName));
           const prioritariasZip = entradas.filter((e) => PALAVRAS_DOCUMENTO_PRINCIPAL.test(e.entryName));
           const ordemZip = [...prioritariasZip, ...entradas.filter((e) => !prioritariasZip.includes(e))];
           const textos = [];
           for (const entrada of ordemZip.slice(0, 6)) {
             try {
-              const texto = await textoDePdf(entrada.getData());
+              const conteudo = entrada.getData();
+              const texto = /\.docx$/i.test(entrada.entryName) ? await textoDeDocx(conteudo) : await textoDePdf(conteudo);
               if (texto) textos.push(texto);
             } catch (eInterno) {
               // tenta o próximo arquivo dentro do zip
@@ -141,7 +166,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
         }
       }
 
-      return []; // não é PDF nem zip reconhecível (pode ser .docx/.rar/.xlsx disfarçado)
+      return []; // não é PDF, docx nem zip reconhecível (pode ser .doc antigo/.rar/.xlsx)
     }
 
     // Junta texto de vários documentos (edital + termo de referência, por exemplo) até
@@ -154,7 +179,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
       if (totalCaracteres >= MAX_CARACTERES_TEXTO) break;
       try {
         const ctrl2 = new AbortController();
-        const t2 = setTimeout(() => ctrl2.abort(), 9000);
+        const t2 = setTimeout(() => ctrl2.abort(), 15000);
         const respArquivo = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
           signal: ctrl2.signal,
         });
@@ -179,9 +204,10 @@ async function buscarTextoEdital(numeroControlePNCP) {
   }
 }
 
-const REGRAS_BASE = `Você é um assistente que ajuda pequenas e médias empresas brasileiras a entender oportunidades de licitação pública, dentro da ferramenta HC Licitações.
+const REGRAS_BASE = `Você é um analista de licitações experiente que ajuda pequenas e médias empresas brasileiras a entender oportunidades de licitação pública, dentro da ferramenta HC Licitações.
 - Nunca invente exigência, documento, cláusula, penalidade, prazo ou valor que não esteja explicitamente nos dados fornecidos. Quando uma informação não estiver disponível, use exatamente o texto "Não informado".
-- Responda sempre em português do Brasil, direto e em linguagem simples.`;
+- Responda sempre em português do Brasil, direto e em linguagem simples.
+- Quando tiver o texto completo do edital, seja EXAUSTIVO: extraia o máximo de informação possível de cada campo, com detalhes concretos (números, prazos, valores, percentuais, nomes) em vez de generalidades. Não resuma demais — o usuário quer análise completa, não um resumo curto.`;
 
 const SCHEMA_ESTRUTURA = `{
   "identificacao": {"objeto": "", "numero": "", "uasg": "", "contratacao": "", "modalidade": "", "portalRealizacao": "", "regulamentacao": ""},
@@ -197,9 +223,9 @@ const SCHEMA_ESTRUTURA = `{
   "anexosDeclaracoes": "",
   "condicoesPagamento": "",
   "penalidades": "",
-  "outrasInformacoesRelevantes": ["lista curta de pontos importantes que não se encaixam nos campos acima"],
+  "outrasInformacoesRelevantes": ["lista de TODOS os pontos importantes do texto que não se encaixam nos campos acima — não limite a quantidade, inclua tudo que for relevante pra quem vai decidir participar"],
   "analiseCritica": {"conflitoObjetoMinuta": "", "conflitoPrazoVigenciaArp": "", "conflitoPrazosEntrega": "", "permiteSubcontratacao": "", "previsaoReajuste": "", "permiteRenovacao": "", "estabeleceCondicoesPagamento": ""},
-  "resumoGeral": "resumo corrido de 4 a 6 frases, em linguagem simples, pra quem está decidindo se participa"
+  "resumoGeral": "resumo corrido e DETALHADO (8 a 14 frases), cobrindo objeto completo, órgão, valor, modalidade, datas/prazos, principais exigências de habilitação, forma de disputa e critério de julgamento — não é pra ser curto, é pra ser uma análise completa da oportunidade, como um analista de licitações faria pra um cliente"
 }`;
 
 async function chamarGroq(apiKey, mensagens, opts) {
@@ -305,10 +331,10 @@ exports.handler = async (event) => {
   // modo === "resumo"
   if (fonteLida) {
     const mensagens = [
-      { role: "system", content: `${REGRAS_BASE}\nVocê recebeu o texto real extraído do PDF do edital. Extraia as informações pedidas e devolva SOMENTE um JSON válido (sem markdown, sem comentários) no formato exato:\n${SCHEMA_ESTRUTURA}` },
+      { role: "system", content: `${REGRAS_BASE}\nVocê recebeu o texto real extraído do(s) documento(s) do edital (pode incluir edital, termo de referência e anexos). Leia com atenção e extraia as informações pedidas com o máximo de detalhe possível — preencha cada campo com o que estiver disponível no texto, mesmo que precise resumir um parágrafo inteiro num campo. Devolva SOMENTE um JSON válido (sem markdown, sem comentários) no formato exato:\n${SCHEMA_ESTRUTURA}` },
       { role: "user", content: `Dados já conhecidos:\n${ficha}\n\nTexto extraído do edital (pode estar truncado):\n${textoEdital}` },
     ];
-    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 2600, timeoutMs: 28000, json: true });
+    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 3000, timeoutMs: 28000, json: true });
     if (r.ok) {
       try {
         const estrutura = JSON.parse(r.texto);

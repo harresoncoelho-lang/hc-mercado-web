@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "dependencies": {
     "pdf-parse": "^1.1.1",
-    "adm-zip": "^0.5.10"
+    "adm-zip": "^0.5.10",
+    "mammoth": "^1.7.0"
   }
 }
