@@ -1305,15 +1305,21 @@
         return;
       }
       if (dados.textoEdital) iaTextoEdital = dados.textoEdital;
+      const mensagemFonteNaoLida = (motivo) => {
+        if (motivo === "escaneado") {
+          return "O documento desse edital é escaneado (imagem, sem texto pesquisável) — não deu pra ler o conteúdo completo automaticamente. Resumo abaixo baseado só nos dados já coletados; recomendamos abrir o edital original pra conferir os detalhes completos.";
+        }
+        return "Não consegui localizar/baixar o documento desse edital agora (pode ser de um portal que não é o PNCP, ou o arquivo pode estar indisponível) — resumo baseado só nos dados já coletados.";
+      };
       if (modo === "resumo" && dados.estrutura) {
         renderizarEstruturaIA(dados.estrutura);
         if (!dados.fonteLida) {
-          escreverMensagemIA("(baseado só nos dados já coletados — não li o PDF completo)", "msg-carregando");
+          escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
         }
       } else {
         escreverMensagemIA(dados.resposta, "");
         if (modo === "resumo" && !dados.fonteLida) {
-          escreverMensagemIA("Não consegui abrir o PDF do edital agora (só funciona pra editais publicados diretamente no PNCP) — resumo baseado nos dados já coletados.", "msg-carregando");
+          escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
         }
       }
       iaHistorico.push({ role: "user", content: pergunta || "(resumo inicial)" });

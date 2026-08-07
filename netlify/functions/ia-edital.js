@@ -64,7 +64,7 @@ const PALAVRAS_DOCUMENTO_PRINCIPAL = /edital|aviso|instrumento convocat[oó]rio|
 // Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
 async function buscarTextoEdital(numeroControlePNCP) {
   const partes = partesNumeroControle(numeroControlePNCP);
-  if (!partes) return null;
+  if (!partes) return { texto: null, escaneado: false };
   try {
     const ctrl1 = new AbortController();
     const t1 = setTimeout(() => ctrl1.abort(), 8000);
@@ -73,9 +73,9 @@ async function buscarTextoEdital(numeroControlePNCP) {
       signal: ctrl1.signal,
     });
     clearTimeout(t1);
-    if (!respLista.ok) return null;
+    if (!respLista.ok) return { texto: null, escaneado: false };
     const lista = await respLista.json();
-    if (!Array.isArray(lista) || lista.length === 0) return null;
+    if (!Array.isArray(lista) || lista.length === 0) return { texto: null, escaneado: false };
 
     // O documento principal nem sempre se chama "Edital" (pode ser "Aviso de Contratação
     // Direta", "Aviso de Dispensa", "Carta Convite", "Instrumento de Credenciamento" etc.
@@ -93,7 +93,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
         return true;
       })
       .slice(0, 6);
-    if (candidatos.length === 0) return null;
+    if (candidatos.length === 0) return { texto: null, escaneado: false };
 
     const pdfParse = require("pdf-parse");
     const AdmZip = require("adm-zip");
@@ -101,11 +101,18 @@ async function buscarTextoEdital(numeroControlePNCP) {
 
     // Tenta extrair texto de um PDF já em memória (usado tanto pro arquivo baixado direto
     // quanto pra PDFs que estavam dentro de um .zip).
+    let algumPdfPareceEscaneado = false;
     async function textoDePdf(buffer) {
       if (buffer.slice(0, 5).toString("latin1") !== "%PDF-") return null;
       const resultado = await pdfParse(buffer);
       const texto = (resultado.text || "").replace(/\s+/g, " ").trim();
-      return texto && texto.length >= 200 ? texto : null;
+      if (texto && texto.length >= 200) return texto;
+      // PDF de verdade (assinatura confere e abriu sem erro), mas quase sem texto — é sinal
+      // forte de que é um documento escaneado/fotografado (imagem das páginas), não texto
+      // pesquisável. OCR resolveria, mas exige infraestrutura que não temos disponível hoje
+      // (rasterização de PDF depende de programas de sistema que o Netlify não oferece).
+      if (resultado.numpages && resultado.numpages > 0) algumPdfPareceEscaneado = true;
+      return null;
     }
 
     // Tenta extrair texto de um .docx (Word moderno) já em memória. Muitos órgãos publicam
@@ -197,10 +204,10 @@ async function buscarTextoEdital(numeroControlePNCP) {
       }
     }
 
-    if (pedacos.length === 0) return null;
-    return pedacos.join("").trim().slice(0, MAX_CARACTERES_TEXTO);
+    if (pedacos.length === 0) return { texto: null, escaneado: algumPdfPareceEscaneado };
+    return { texto: pedacos.join("").trim().slice(0, MAX_CARACTERES_TEXTO), escaneado: false };
   } catch (e) {
-    return null;
+    return { texto: null, escaneado: false };
   }
 }
 
@@ -294,14 +301,17 @@ exports.handler = async (event) => {
 
   const ficha = montarFichaEdital(edital);
   let fonteLida = false;
+  let motivoFonteNaoLida = null; // "escaneado" | "indisponivel" | null
 
   // Só tenta buscar o PDF na primeira chamada (resumo) — perguntas seguintes reaproveitam
   // o texto já extraído, que o frontend manda de volta em body.textoEdital.
   if (modo === "resumo" && !textoEdital && edital.numeroControlePNCP) {
-    const texto = await buscarTextoEdital(edital.numeroControlePNCP);
-    if (texto) {
-      textoEdital = texto;
+    const resultadoBusca = await buscarTextoEdital(edital.numeroControlePNCP);
+    if (resultadoBusca.texto) {
+      textoEdital = resultadoBusca.texto;
       fonteLida = true;
+    } else {
+      motivoFonteNaoLida = resultadoBusca.escaneado ? "escaneado" : "indisponivel";
     }
   } else if (textoEdital) {
     fonteLida = true;
@@ -325,7 +335,7 @@ exports.handler = async (event) => {
     mensagens.push({ role: "user", content: `${contextoTexto}Dados da oportunidade:\n${ficha}\n\nPergunta: ${pergunta.trim()}` });
     const r = await chamarGroq(apiKey, mensagens, { maxTokens: 600, timeoutMs: 20000 });
     if (!r.ok) return { statusCode: 502, headers, body: JSON.stringify({ erro: r.erro }) };
-    return { statusCode: 200, headers, body: JSON.stringify({ resposta: r.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, erro: null }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ resposta: r.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, motivoFonteNaoLida, erro: null }) };
   }
 
   // modo === "resumo"
@@ -346,6 +356,7 @@ exports.handler = async (event) => {
             estrutura,
             textoEdital,
             fonteLida: true,
+            motivoFonteNaoLida: null,
             erro: null,
           }),
         };
@@ -362,5 +373,5 @@ exports.handler = async (event) => {
   ];
   const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: 500, timeoutMs: 20000 });
   if (!r2.ok) return { statusCode: 502, headers, body: JSON.stringify({ erro: r2.erro }) };
-  return { statusCode: 200, headers, body: JSON.stringify({ resposta: r2.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, erro: null }) };
+  return { statusCode: 200, headers, body: JSON.stringify({ resposta: r2.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, motivoFonteNaoLida, erro: null }) };
 };
