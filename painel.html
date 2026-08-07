@@ -3098,7 +3098,28 @@
   gerarBoletim();
 
   // ---------- Oportunidades ----------
-  document.getElementById("op-buscar").addEventListener("click", async () => {
+  // Salva o último filtro usado (e, junto com opJaBuscado, evita que o usuário precise
+  // refiltrar tudo de novo toda vez que sai da aba e volta, ou recarrega a página — mesma
+  // ideia já usada no filtro salvo do Boletim.
+  function salvarFiltroOportunidades(uf, municipio, dataDe, dataAte, palavrasRaw) {
+    try {
+      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ uf, municipio, dataDe, dataAte, palavrasRaw }));
+    } catch (e) { /* localStorage indisponível */ }
+  }
+  function lerFiltroOportunidades() {
+    try {
+      const bruto = localStorage.getItem("hc_oportunidades_filtro");
+      return bruto ? JSON.parse(bruto) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  // Controla se já buscamos nessa visita à página — trocar de aba e voltar não deve refazer
+  // a busca ao vivo (só o botão "Buscar oportunidades" ou a restauração inicial fazem isso).
+  let opJaBuscado = false;
+
+  async function buscarOportunidades() {
+    opJaBuscado = true;
     const uf = document.getElementById("op-uf").value.trim().toUpperCase();
     const municipioFiltro = document.getElementById("op-municipio").value.trim().toLowerCase();
     const dataDe = document.getElementById("op-data-de").value;
@@ -3112,6 +3133,7 @@
       return;
     }
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
+    salvarFiltroOportunidades(uf, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw);
 
     btn.disabled = true;
     alvo.innerHTML = '<div class="carregando">Buscando licitações no PNCP...</div>';
@@ -3177,6 +3199,35 @@
     } finally {
       btn.disabled = false;
     }
+  }
+
+  document.getElementById("op-buscar").addEventListener("click", buscarOportunidades);
+
+  // Restaura o último filtro salvo (se houver) e busca de novo automaticamente — assim o
+  // usuário reabre "Encontrar Licitações" e já vê o resultado de antes, sem preencher tudo
+  // de novo. Só roda uma vez, no carregamento da página.
+  async function restaurarOportunidades() {
+    const filtro = lerFiltroOportunidades();
+    if (!filtro || !filtro.palavrasRaw) return;
+    document.getElementById("op-uf").value = filtro.uf || "";
+    document.getElementById("op-data-de").value = filtro.dataDe || "";
+    document.getElementById("op-data-ate").value = filtro.dataAte || "";
+    document.getElementById("op-palavras").value = filtro.palavrasRaw || "";
+    if (filtro.municipio) {
+      try {
+        const municipios = await carregarTodosMunicipios();
+        renderOpcoesMunicipio(document.getElementById("op-municipio"), (filtro.uf || "").toUpperCase(), municipios);
+        document.getElementById("op-municipio").value = filtro.municipio;
+      } catch (e) { /* segue sem restaurar o município se a lista não carregar a tempo */ }
+    }
+    await buscarOportunidades();
+  }
+  restaurarOportunidades();
+
+  document.querySelector('nav button[data-alvo="oportunidades"]').addEventListener("click", () => {
+    // Voltar pra essa aba não deve refazer a busca ao vivo de novo — só a restauração
+    // inicial (ao carregar a página) ou clicar em "Buscar oportunidades" fazem isso.
+    if (!opJaBuscado) restaurarOportunidades();
   });
 
   // ---------- Diagnóstico ----------
