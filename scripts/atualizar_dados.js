@@ -52,6 +52,7 @@ const SEGMENTOS = [
   "fotovoltaic",
   "eletric",
   "informatica",
+  "construcao",
 ];
 
 function normalizar(txt) {
@@ -549,34 +550,36 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 
   const cacheOrgaoUf = new Map();
 
+  async function buscarUfOrgao(numeroControlePNCPCompra) {
+    const partes = partesNumeroControle(numeroControlePNCPCompra);
+    if (!partes) return { ufOrgao: "", municipioOrgao: "" };
+    const chaveCompra = `${partes.cnpj}|${partes.ano}|${partes.sequencial}`;
+    if (cacheOrgaoUf.has(chaveCompra)) return cacheOrgaoUf.get(chaveCompra);
+    let ufOrgao = "", municipioOrgao = "";
+    // Nota: o endpoint antigo /api/pncp/v1/orgaos/.../compras/{ano}/{sequencial} (sem
+    // /arquivos ou /itens) foi descontinuado pelo PNCP e agora responde 301 pra
+    // /api/consulta/v1/... — usando o antigo, "compra" vinha sempre vazio/sem
+    // unidadeOrgao, e ufOrgao/municipioOrgao ficavam em branco pra TODAS as atas, de
+    // qualquer segmento (zerando o filtro de UF do painel de mercado/atas). Corrigido
+    // pra usar o endpoint novo direto.
+    const compra = await fetchComRetentativa(
+      `https://pncp.gov.br/api/consulta/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}`,
+      2, 15000
+    );
+    if (compra) {
+      ufOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.ufSigla) || "";
+      municipioOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.municipioNome) || "";
+    }
+    const resultado = { ufOrgao, municipioOrgao };
+    cacheOrgaoUf.set(chaveCompra, resultado);
+    return resultado;
+  }
+
   async function enriquecerAta(referenciaAta) {
     const partes = partesNumeroControle(referenciaAta.numeroControlePNCPCompra);
     if (!partes) return null;
 
-    // UF/município do órgão (1 chamada, cacheada por CNPJ+ano+sequencial pra não repetir
-    // à toa se duas atas forem da mesma compra).
-    let ufOrgao = "", municipioOrgao = "";
-    const chaveCompra = `${partes.cnpj}|${partes.ano}|${partes.sequencial}`;
-    if (cacheOrgaoUf.has(chaveCompra)) {
-      const c = cacheOrgaoUf.get(chaveCompra);
-      ufOrgao = c.uf; municipioOrgao = c.municipio;
-    } else {
-      // Nota: o endpoint antigo /api/pncp/v1/orgaos/.../compras/{ano}/{sequencial} (sem
-      // /arquivos ou /itens) foi descontinuado pelo PNCP e agora responde 301 pra
-      // /api/consulta/v1/... — usando o antigo, "compra" vinha sempre vazio/sem
-      // unidadeOrgao, e ufOrgao/municipioOrgao ficavam em branco pra TODAS as atas, de
-      // qualquer segmento (zerando o filtro de UF do painel de mercado/atas). Corrigido
-      // pra usar o endpoint novo direto.
-      const compra = await fetchComRetentativa(
-        `https://pncp.gov.br/api/consulta/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}`,
-        2, 15000
-      );
-      if (compra) {
-        ufOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.ufSigla) || "";
-        municipioOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.municipioNome) || "";
-      }
-      cacheOrgaoUf.set(chaveCompra, { uf: ufOrgao, municipio: municipioOrgao });
-    }
+    const { ufOrgao, municipioOrgao } = await buscarUfOrgao(referenciaAta.numeroControlePNCPCompra);
 
     const itensResp = await fetchComRetentativa(
       `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens?pagina=1&tamanhoPagina=50`,
@@ -626,6 +629,29 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     }
   }
   filaPendente = novaFilaPendente;
+
+  // 1b) Reconserta atas já coletadas ANTES da correção do endpoint de UF (ver comentário em
+  // enriquecerAta acima) — essas ficaram com ufOrgao/municipioOrgao em branco pra sempre,
+  // porque o passo 2 abaixo só processa atas NOVAS (pula qualquer chave que já exista no
+  // mapa). Sem esse retrabalho, o filtro por estado no painel de "Empresas atuantes" e
+  // "Atas vigentes" continuaria vazio pra praticamente todo mundo, mesmo depois do fix,
+  // porque quase todas as atas já coletadas têm o defeito antigo. Prioriza as mais recentes
+  // (ainda vigentes) primeiro, já que são as mais relevantes pro diagnóstico.
+  const pendentesDeUf = Array.from(atasMapa.values())
+    .filter((a) => a.enriquecida && !a.ufOrgao)
+    .sort((a, b) => new Date(b.vigenciaFim || 0) - new Date(a.vigenciaFim || 0));
+  let ufsReconsertadas = 0;
+  for (const ata of pendentesDeUf) {
+    if (tempoRestanteMs() < 10000) break;
+    const { ufOrgao, municipioOrgao } = await buscarUfOrgao(ata.numeroControlePNCPCompra);
+    if (ufOrgao) {
+      atasMapa.set(ata.numeroControlePNCPAta, { ...ata, ufOrgao, municipioOrgao });
+      ufsReconsertadas += 1;
+    }
+  }
+  if (pendentesDeUf.length > 0) {
+    console.log(`[atas] Retrabalho de UF: ${ufsReconsertadas}/${pendentesDeUf.length} ata(s) corrigida(s) nesta execução (o resto continua na próxima).`);
+  }
 
   // 2) Varre novas atas no período, em janelas curtas de datas (nunca pedimos o período
   // inteiro de uma vez — ver gerarJanelas). A fila de janelas é persistida entre execuções:
