@@ -543,6 +543,11 @@
   .kanban-card-remover { background: none; border: none; color: var(--texto-fraco); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
   .kanban-card-remover:hover { color: var(--vermelho); }
   .kanban-card-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+  .kanban-card-mover {
+    width: 100%; margin-top: 9px; padding: 6px 8px; font-size: 11.5px; font-family: inherit;
+    background: #0d1826; border: 1px solid var(--borda); border-radius: 7px; color: var(--texto);
+  }
+  .kanban-card-mover:focus { outline: none; border-color: var(--azul); }
   @media (max-width: 900px) { .kanban-coluna { flex: 0 0 260px; } }
   .modal-ia-consideracoes { width: 100%; min-height: 70px; padding: 10px; background: #0a121c; border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; margin-top: 8px; }
   @media (max-width: 640px) { .modal-ia { max-width: 100%; } }
@@ -2006,6 +2011,12 @@
     const prazoHtml = edital.encerramento
       ? `<span class="kanban-card-prazo ${classePrazo || ""}">⏱ ${escapeHtml(formatarPrazoPropostas(edital.encerramento).split(" (")[0])}</span>`
       : "";
+    // Além de arrastar (que em alguns navegadores/touchpads pode ser difícil de acionar),
+    // todo cartão tem um seletor "Mover para" — garante que dá pra mudar de coluna de
+    // qualquer jeito, sem depender do drag-and-drop funcionar perfeitamente no aparelho.
+    const opcoesMoverHtml = KANBAN_COLUNAS
+      .map((c) => `<option value="${c.valor}" ${c.valor === valorStatus ? "selected" : ""}>${c.titulo}</option>`)
+      .join("");
     return `
       <div class="kanban-card" draggable="true" data-id="${escapeHtml(id)}">
         <div class="kanban-card-topo">
@@ -2015,6 +2026,7 @@
         <p class="kanban-card-meta">🏛️ ${escapeHtml(edital.orgao || "Órgão não informado")}</p>
         <p class="kanban-card-meta">📍 ${escapeHtml([edital.municipio, edital.uf].filter(Boolean).join(" / ") || "Não informado")}</p>
         ${prazoHtml}
+        <select class="kanban-card-mover" data-id="${escapeHtml(id)}" title="Mover para outra coluna">${opcoesMoverHtml}</select>
         <div class="kanban-card-acoes">
           <button type="button" class="kanban-btn-resumir" data-id="${escapeHtml(id)}">🤖 Resumo</button>
           <button type="button" class="kanban-btn-abrir" data-id="${escapeHtml(id)}">↗️ PNCP</button>
@@ -2063,8 +2075,10 @@
     alvo.querySelectorAll(".kanban-coluna").forEach((coluna) => {
       coluna.addEventListener("dragover", (ev) => {
         ev.preventDefault();
+        if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move"; // alguns navegadores (Firefox) exigem isso pra liberar o drop
         coluna.classList.add("arraste-sobre");
       });
+      coluna.addEventListener("dragenter", (ev) => ev.preventDefault());
       coluna.addEventListener("dragleave", () => coluna.classList.remove("arraste-sobre"));
       coluna.addEventListener("drop", (ev) => {
         ev.preventDefault();
@@ -2073,6 +2087,15 @@
         const novoStatus = coluna.dataset.status;
         if (!id || !novoStatus) return;
         definirNoMapa("status-licitacao", id, novoStatus);
+        renderizarKanban();
+      });
+    });
+
+    // Alternativa confiável ao arrastar: seletor "Mover para" em cada cartão.
+    alvo.querySelectorAll(".kanban-card-mover").forEach((sel) => {
+      sel.addEventListener("click", (ev) => ev.stopPropagation());
+      sel.addEventListener("change", () => {
+        definirNoMapa("status-licitacao", sel.dataset.id, sel.value);
         renderizarKanban();
       });
     });
