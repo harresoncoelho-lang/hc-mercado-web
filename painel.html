@@ -1942,7 +1942,7 @@
             orgao: item.orgao_subrogado_nome || item.orgao_nome || "Órgão não informado",
             municipio: item.municipio_nome || "",
             uf: item.uf || uf || "",
-            encerramento: null,
+            encerramento: item.data_fim_vigencia || null,
             publicacao: item.data_publicacao_pncp || item.createdAt || null,
             numeroControlePNCP: item.numero_controle_pncp || null,
             link: item.numero_controle_pncp
