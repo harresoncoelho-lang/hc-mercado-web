@@ -2589,7 +2589,7 @@
     const lidos = lerConjunto("lidos");
     const statusMapa = lerMapa("status-licitacao");
     const anotacoesMapa = lerMapa("anotacoes-licitacao");
-    let html = '<div class="lista-boletim" id="lista-boletim">';
+    let html = '<div class="lista-boletim">';
     resultados.forEach((r, i) => {
       const id = idOportunidade(r);
       const idAttr = escapeHtml(id);
@@ -2839,7 +2839,13 @@
       html += montarCardsBoletim(resultados);
       alvo.innerHTML = html;
 
-      const listaEl = document.getElementById("lista-boletim");
+      // IMPORTANTE: busca o container DENTRO de `alvo` (com querySelector), não por ID no
+      // documento inteiro. O Boletim e o Encontrar Licitações usam essa mesma função pra
+      // renderizar, então os dois têm uma lista de cards na tela ao mesmo tempo (uma
+      // escondida pela troca de aba, não removida do DOM) — usar getElementById pegava
+      // sempre a primeira lista da página inteira (a do Boletim), então os botões do
+      // Encontrar Licitações ficavam sem nenhuma ação ligada a eles.
+      const listaEl = alvo.querySelector(".lista-boletim");
       ligarAcoesBoletim(listaEl, resultados, () => renderizar(modoFiltro));
 
       alvo.querySelectorAll(".btn-filtro-rapido").forEach((btn) => {
