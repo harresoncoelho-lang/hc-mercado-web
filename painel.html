@@ -630,6 +630,16 @@
   .boletim-valor-linha { font-size: 13px; margin-bottom: 12px; }
   .boletim-valor-linha strong { color: var(--laranja); }
   .boletim-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--borda); }
+  .boletim-gerenciar { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; padding: 10px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px; }
+  .select-status-licitacao {
+    padding: 8px 10px; background: #0a121c; border: 1px solid var(--borda); border-radius: 6px;
+    color: var(--texto); font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+  .anotacao-licitacao {
+    width: 100%; padding: 8px 10px; background: #0a121c; border: 1px solid var(--borda); border-radius: 6px;
+    color: var(--texto); font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box;
+  }
+  .anotacao-licitacao:focus, .select-status-licitacao:focus { outline: none; border-color: var(--azul); }
   .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 
   /* ---- Boletim: calendário mensal (inspirado no ConLicitação) ---- */
@@ -1534,6 +1544,38 @@
     return r.numeroControlePNCP || `${r.objeto || ""}|${r.orgao || ""}|${r.encerramento || ""}`;
   }
 
+  // ---- Mapas persistidos (status de acompanhamento e anotações por licitação) ----
+  function lerMapa(nome) {
+    try {
+      const bruto = localStorage.getItem(chaveArmazenamento(nome));
+      const obj = bruto ? JSON.parse(bruto) : {};
+      return obj && typeof obj === "object" ? obj : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function salvarMapa(nome, mapa) {
+    try {
+      localStorage.setItem(chaveArmazenamento(nome), JSON.stringify(mapa));
+    } catch (e) {
+      // localStorage indisponível — segue sem persistir
+    }
+  }
+  function definirNoMapa(nome, id, valor) {
+    const mapa = lerMapa(nome);
+    if (valor === "" || valor === null || valor === undefined) delete mapa[id];
+    else mapa[id] = valor;
+    salvarMapa(nome, mapa);
+  }
+
+  const OPCOES_STATUS_LICITACAO = [
+    ["", "Status: nenhum"],
+    ["interesse", "⭐ Tenho interesse"],
+    ["participando", "🚀 Participando"],
+    ["ganhei", "🏆 Ganhei"],
+    ["perdi", "❌ Perdi"],
+  ];
+
   // ---- Sistema S (SENAC/AM, SESC/AM) — entra na mesma busca/boletim do PNCP, não é
   // um painel separado. Normaliza cada registro pro mesmo formato usado pelos cards
   // (montarCardsBoletim) e pelos filtros (UF, palavras-chave, prazo).
@@ -1840,6 +1882,8 @@
   function montarCardsBoletim(resultados) {
     const favoritos = lerConjunto("favoritos");
     const lidos = lerConjunto("lidos");
+    const statusMapa = lerMapa("status-licitacao");
+    const anotacoesMapa = lerMapa("anotacoes-licitacao");
     let html = '<div class="lista-boletim" id="lista-boletim">';
     resultados.forEach((r, i) => {
       const id = idOportunidade(r);
@@ -1849,6 +1893,11 @@
       const classes = ["boletim-card"];
       if (isLido) classes.push("lido");
       if (isFav) classes.push("favorito");
+      const statusAtual = statusMapa[id] || "";
+      const anotacaoAtual = anotacoesMapa[id] || "";
+      const opcoesStatusHtml = OPCOES_STATUS_LICITACAO.map(([v, texto]) =>
+        `<option value="${v}"${v === statusAtual ? " selected" : ""}>${escapeHtml(texto)}</option>`
+      ).join("");
       html += `<div class="${classes.join(" ")}" data-id="${idAttr}" data-idx="${i}">
         <div class="boletim-topo">
           <span class="boletim-numero">${i + 1}</span>
@@ -1866,8 +1915,15 @@
             <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
             <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
+          <div class="boletim-gerenciar">
+            <select class="select-status-licitacao" title="Status de acompanhamento">${opcoesStatusHtml}</select>
+            <textarea class="anotacao-licitacao" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual)}</textarea>
+          </div>
           <div class="boletim-rodape">
-            <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
+              ${r.link ? `<a class="btn-ia-edital" style="text-decoration:none;" href="${r.link}" target="_blank" rel="noopener">📥 Baixar Edital</a>` : ""}
+            </div>
             ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
           </div>
         </div>
@@ -1909,6 +1965,28 @@
           ev.stopPropagation();
           const idx = Number(card.dataset.idx);
           abrirModalIA(resultados[idx]);
+        });
+      }
+      const selectStatus = card.querySelector(".select-status-licitacao");
+      if (selectStatus) {
+        selectStatus.addEventListener("click", (ev) => ev.stopPropagation());
+        selectStatus.addEventListener("change", () => {
+          definirNoMapa("status-licitacao", id, selectStatus.value);
+        });
+      }
+      const anotacao = card.querySelector(".anotacao-licitacao");
+      if (anotacao) {
+        anotacao.addEventListener("click", (ev) => ev.stopPropagation());
+        let temporizadorAnotacao = null;
+        anotacao.addEventListener("input", () => {
+          clearTimeout(temporizadorAnotacao);
+          temporizadorAnotacao = setTimeout(() => {
+            definirNoMapa("anotacoes-licitacao", id, anotacao.value.trim());
+          }, 500);
+        });
+        anotacao.addEventListener("blur", () => {
+          clearTimeout(temporizadorAnotacao);
+          definirNoMapa("anotacoes-licitacao", id, anotacao.value.trim());
         });
       }
     });
