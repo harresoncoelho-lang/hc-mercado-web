@@ -472,6 +472,28 @@
 
   .rodape { border-top: 1px solid var(--borda); padding-top: 20px; margin-top: 60px; }
 
+  /* ---- Modal Resumir com IA (Resumo do Edital / Pergunte ao Edital) ---- */
+  .btn-ia-edital {
+    background: rgba(46,141,255,0.12); border: 1px solid rgba(46,141,255,0.4); color: var(--azul);
+    padding: 7px 12px; border-radius: 7px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  }
+  .btn-ia-edital:hover { background: rgba(46,141,255,0.22); }
+  .modal-ia-fundo {
+    display: none; position: fixed; inset: 0; background: rgba(5,10,16,0.72);
+    z-index: 200; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-ia-fundo.aberto { display: flex; }
+  .modal-ia {
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px;
+    width: 100%; max-width: 560px; max-height: 82vh; padding: 22px; display: flex; flex-direction: column;
+  }
+  .modal-ia-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .modal-ia-conversa { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+  .msg-ia { background: #0d1826; border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; color: var(--texto); }
+  .msg-ia.msg-usuario { background: rgba(46,141,255,0.1); border-color: rgba(46,141,255,0.3); align-self: flex-end; max-width: 85%; }
+  .msg-ia.msg-carregando { color: var(--texto-fraco); font-style: italic; }
+  .msg-ia.msg-erro { border-color: var(--vermelho); color: #ffb3c1; }
+
   /* ---- Diagnóstico de Mercado: layout em duas colunas (filtros na lateral) ---- */
   .layout-mercado { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
   .filtros-lateral {
@@ -916,6 +938,22 @@
 </main>
 </div>
 
+<div class="modal-ia-fundo" id="modal-ia-fundo">
+  <div class="modal-ia">
+    <div class="modal-ia-topo">
+      <h3 style="margin:0;">🤖 Resumo do Edital</h3>
+      <button type="button" id="modal-ia-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <p class="modal-ia-objeto" id="modal-ia-objeto" style="color:var(--texto-fraco);font-size:13px;margin:0 0 12px;"></p>
+    <div class="modal-ia-conversa" id="modal-ia-conversa"></div>
+    <p class="dica-clique" style="margin:10px 0 0;">Resumo gerado por IA a partir dos dados públicos já coletados (não lê o PDF completo) — sempre confira o edital oficial antes de decidir.</p>
+    <form id="modal-ia-form" style="display:flex;gap:8px;margin-top:12px;">
+      <input id="modal-ia-pergunta" placeholder="Pergunte algo sobre este edital..." style="flex:1;padding:10px 12px;background:#0d1826;border:1px solid var(--borda);border-radius:8px;color:var(--texto);font-size:14px;font-family:inherit;">
+      <button type="submit" class="btn-buscar" id="modal-ia-enviar" style="padding:10px 18px;">Perguntar</button>
+    </form>
+  </div>
+</div>
+
 <div class="rodape">HC Licitações · dados públicos do PNCP e Portal da Transparência.</div>
 
 <script>
@@ -1059,6 +1097,74 @@
   }
 
   document.querySelector('nav button[data-alvo="status"]').addEventListener("click", carregarStatusFerramentas);
+
+  // ---- Modal "Resumir com IA" (Resumo do Edital + Pergunte ao Edital) ----
+  let iaEditalAtual = null;
+  let iaHistorico = [];
+  let iaCarregando = false;
+
+  function escreverMensagemIA(texto, classe) {
+    const conversa = document.getElementById("modal-ia-conversa");
+    const div = document.createElement("div");
+    div.className = "msg-ia" + (classe ? " " + classe : "");
+    div.textContent = texto;
+    conversa.appendChild(div);
+    conversa.scrollTop = conversa.scrollHeight;
+    return div;
+  }
+
+  async function chamarIA(modo, pergunta) {
+    if (iaCarregando) return;
+    iaCarregando = true;
+    const carregando = escreverMensagemIA("Pensando...", "msg-carregando");
+    try {
+      const resp = await fetch("/.netlify/functions/ia-edital", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico }),
+      });
+      const dados = await resp.json();
+      carregando.remove();
+      if (!resp.ok || dados.erro) {
+        escreverMensagemIA(dados.erro || "Não deu pra gerar a resposta agora.", "msg-erro");
+        return;
+      }
+      escreverMensagemIA(dados.resposta, "");
+      iaHistorico.push({ role: "user", content: pergunta || "(resumo inicial)" });
+      iaHistorico.push({ role: "assistant", content: dados.resposta });
+    } catch (e) {
+      carregando.remove();
+      escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
+    } finally {
+      iaCarregando = false;
+    }
+  }
+
+  function abrirModalIA(edital) {
+    iaEditalAtual = edital;
+    iaHistorico = [];
+    document.getElementById("modal-ia-objeto").textContent = edital.objeto || "";
+    document.getElementById("modal-ia-conversa").innerHTML = "";
+    document.getElementById("modal-ia-pergunta").value = "";
+    document.getElementById("modal-ia-fundo").classList.add("aberto");
+    chamarIA("resumo", null);
+  }
+
+  document.getElementById("modal-ia-fechar").addEventListener("click", () => {
+    document.getElementById("modal-ia-fundo").classList.remove("aberto");
+  });
+  document.getElementById("modal-ia-fundo").addEventListener("click", (ev) => {
+    if (ev.target.id === "modal-ia-fundo") document.getElementById("modal-ia-fundo").classList.remove("aberto");
+  });
+  document.getElementById("modal-ia-form").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const campo = document.getElementById("modal-ia-pergunta");
+    const pergunta = campo.value.trim();
+    if (!pergunta) return;
+    escreverMensagemIA(pergunta, "msg-usuario");
+    campo.value = "";
+    chamarIA("pergunta", pergunta);
+  });
 
   // Lista dos 27 estados brasileiros (sigla + nome), usada pra popular todo select de UF do
   // site — assim o usuário escolhe clicando em vez de digitar a sigla de cabeça.
@@ -1761,7 +1867,7 @@
             <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
           <div class="boletim-rodape">
-            <span></span>
+            <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
             ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
           </div>
         </div>
@@ -1795,6 +1901,14 @@
           btnLido.classList.toggle("lido-ativo", ativo);
           btnLido.textContent = ativo ? "✓" : "👁";
           if (aoAtualizar) aoAtualizar();
+        });
+      }
+      const btnIa = card.querySelector(".btn-ia-edital");
+      if (btnIa) {
+        btnIa.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const idx = Number(card.dataset.idx);
+          abrirModalIA(resultados[idx]);
         });
       }
     });
