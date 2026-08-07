@@ -3,8 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "dependencies": {
-    "pdf-parse": "^1.1.1",
+    "@netlify/blobs": "^10.7.12",
     "adm-zip": "^0.5.10",
-    "mammoth": "^1.7.0"
+    "mammoth": "^1.7.0",
+    "pdf-parse": "^1.1.1"
   }
 }

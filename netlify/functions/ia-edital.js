@@ -344,6 +344,41 @@ exports.handler = async (event) => {
   let fonteLida = false;
   let motivoFonteNaoLida = null; // "escaneado" | "indisponivel" | null
 
+  // Cache: uma vez que a gente já leu e estruturou um edital, salva o resultado — assim,
+  // igual o ConLicitação faz, abrir o resumo de novo (por qualquer pessoa, não só quem
+  // pediu na primeira vez) é instantâneo, sem reler PDF nem gastar cota da IA de novo. Só
+  // funciona pra editais do PNCP (que têm numeroControlePNCP como chave estável).
+  let storeResumos = null;
+  try {
+    const { getStore } = require("@netlify/blobs");
+    storeResumos = getStore("resumos-editais");
+  } catch (e) {
+    storeResumos = null; // sem cache disponível — segue funcionando normalmente, só mais devagar
+  }
+
+  if (modo === "resumo" && storeResumos && edital.numeroControlePNCP) {
+    try {
+      const cache = await storeResumos.get(edital.numeroControlePNCP, { type: "json" });
+      if (cache && cache.estrutura) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            resposta: cache.resposta || "Resumo gerado.",
+            estrutura: cache.estrutura,
+            textoEdital: cache.textoEdital || null,
+            fonteLida: true,
+            motivoFonteNaoLida: null,
+            doCache: true,
+            erro: null,
+          }),
+        };
+      }
+    } catch (e) {
+      // cache indisponível ou corrompido — segue pro fluxo normal (lê/analisa de novo)
+    }
+  }
+
   // Só tenta buscar o PDF na primeira chamada (resumo) — perguntas seguintes reaproveitam
   // o texto já extraído, que o frontend manda de volta em body.textoEdital.
   if (modo === "resumo" && !textoEdital && edital.numeroControlePNCP) {
@@ -392,11 +427,27 @@ exports.handler = async (event) => {
       if (!r.ok) break; // erro de API (ex.: limite atingido) — não adianta tentar de novo
       const estrutura = extrairJson(r.texto);
       if (estrutura) {
+        const resposta = formatarEstruturaComoTexto(estrutura) || "Resumo gerado.";
+        // Salva no cache pra próxima vez (por qualquer pessoa) abrir instantâneo, sem
+        // reprocessar. Se o cache não estiver disponível ou der erro, não trava o resumo —
+        // o usuário atual já recebe a resposta normalmente de qualquer forma.
+        if (storeResumos && edital.numeroControlePNCP) {
+          try {
+            await storeResumos.setJSON(edital.numeroControlePNCP, {
+              estrutura,
+              resposta,
+              textoEdital,
+              geradoEm: new Date().toISOString(),
+            });
+          } catch (e) {
+            // não crítico — só significa que não vai ficar em cache dessa vez
+          }
+        }
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({
-            resposta: formatarEstruturaComoTexto(estrutura) || "Resumo gerado.",
+            resposta,
             estrutura,
             textoEdital,
             fonteLida: true,
