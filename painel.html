@@ -2487,6 +2487,18 @@
 
   // Liga os botões de favoritar/marcar como lido dentro de um container de cards de boletim.
   function ligarAcoesBoletim(container, resultados, aoAtualizar) {
+    // Preenche (ou atualiza) o retrato usado pelo Kanban pra toda licitação que já tem
+    // status marcado — assim, quem marcou status ANTES do Kanban existir (ou antes de um
+    // deploy mais recente) não perde o acompanhamento: basta reabrir o Boletim/Encontrar
+    // Licitações uma vez que os cartões somem do zero.
+    const statusMapaAtual = lerMapa("status-licitacao");
+    container.querySelectorAll(".boletim-card").forEach((card) => {
+      const id = card.dataset.id;
+      if (statusMapaAtual[id]) {
+        const idx = Number(card.dataset.idx);
+        if (resultados[idx]) salvarSnapshotKanban(id, resultados[idx]);
+      }
+    });
     container.querySelectorAll(".boletim-card").forEach((card) => {
       const id = card.dataset.id;
       const btnFav = card.querySelector(".btn-favoritar");
