@@ -19,7 +19,7 @@ const MODELO = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const PNCP_ARQUIVOS_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
-const MAX_CARACTERES_TEXTO = 10000;
+const MAX_CARACTERES_TEXTO = 8000;
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -95,9 +95,14 @@ async function buscarTextoEdital(numeroControlePNCP) {
       .slice(0, 6);
     if (candidatos.length === 0) return { texto: null, escaneado: false };
 
-    const pdfParse = require("pdf-parse");
-    const AdmZip = require("adm-zip");
-    const mammoth = require("mammoth");
+    // Cada require isolado no seu próprio try/catch: se adm-zip ou mammoth falharem por
+    // qualquer motivo (ex.: problema de empacotamento no Netlify), a leitura de PDF puro —
+    // o caso mais comum, de longe — continua funcionando normalmente em vez de quebrar tudo.
+    let pdfParse = null, AdmZip = null, mammoth = null;
+    try { pdfParse = require("pdf-parse"); } catch (e) { /* sem isso não dá pra ler nada */ }
+    try { AdmZip = require("adm-zip"); } catch (e) { /* sem isso só perde o suporte a .zip */ }
+    try { mammoth = require("mammoth"); } catch (e) { /* sem isso só perde o suporte a .docx */ }
+    if (!pdfParse) return { texto: null, escaneado: false };
 
     // Tenta extrair texto de um PDF já em memória (usado tanto pro arquivo baixado direto
     // quanto pra PDFs que estavam dentro de um .zip).
@@ -119,6 +124,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
     // o edital em Word em vez de PDF — e como .docx é, por baixo dos panos, um .zip (formato
     // OOXML), ele também passa no teste de assinatura "PK\x03\x04" usado pra detectar zip.
     async function textoDeDocx(buffer) {
+      if (!mammoth) return null;
       try {
         const resultado = await mammoth.extractRawText({ buffer });
         const texto = (resultado.value || "").replace(/\s+/g, " ").trim();
@@ -143,6 +149,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
       }
 
       if (ehZip) {
+        if (!AdmZip) return [];
         try {
           const zip = new AdmZip(buffer);
           const nomesEntradas = zip.getEntries().map((e) => e.entryName);
@@ -344,7 +351,7 @@ exports.handler = async (event) => {
       { role: "system", content: `${REGRAS_BASE}\nVocê recebeu o texto real extraído do(s) documento(s) do edital (pode incluir edital, termo de referência e anexos). Leia com atenção e extraia as informações pedidas com o máximo de detalhe possível — preencha cada campo com o que estiver disponível no texto, mesmo que precise resumir um parágrafo inteiro num campo. Devolva SOMENTE um JSON válido (sem markdown, sem comentários) no formato exato:\n${SCHEMA_ESTRUTURA}` },
       { role: "user", content: `Dados já conhecidos:\n${ficha}\n\nTexto extraído do edital (pode estar truncado):\n${textoEdital}` },
     ];
-    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 3000, timeoutMs: 28000, json: true });
+    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 2600, timeoutMs: 28000, json: true });
     if (r.ok) {
       try {
         const estrutura = JSON.parse(r.texto);
@@ -366,12 +373,23 @@ exports.handler = async (event) => {
     }
   }
 
-  // Sem PDF (ou falhou a extração estruturada): resumo simples baseado só nos campos coletados.
-  const mensagens = [
-    { role: "system", content: REGRAS_BASE + "\nVocê só tem os campos estruturados abaixo, não o PDF completo do edital — deixe isso claro se for relevante." },
-    { role: "user", content: `Dados da oportunidade:\n${ficha}\n\nFaça um resumo curto (4 a 6 frases) explicando do que se trata essa licitação: o que está sendo comprado, quem compra, o prazo, e o porte aproximado pelo valor estimado (se houver).` },
-  ];
-  const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: 500, timeoutMs: 20000 });
+  // Chegou aqui em dois cenários bem diferentes, e o texto importa:
+  // 1) fonteLida=true: CONSEGUIMOS ler o PDF/docx, só a extração estruturada em JSON que
+  //    falhou (formato inválido devolvido pela IA, ou limite de uso do Groq no momento).
+  //    Não faz sentido jogar fora o texto real já lido — tenta de novo, agora pedindo um
+  //    resumo em texto corrido (mais tolerante que JSON) usando o texto de verdade.
+  // 2) fonteLida=false: nunca conseguimos o texto do documento — resumo baseado só nos
+  //    campos estruturados que já tínhamos, deixando isso claro.
+  const mensagens = fonteLida
+    ? [
+        { role: "system", content: REGRAS_BASE },
+        { role: "user", content: `Dados já conhecidos:\n${ficha}\n\nTexto extraído do edital (pode estar truncado):\n${textoEdital}\n\nFaça um resumo DETALHADO (8 a 12 frases) dessa licitação, cobrindo objeto, órgão, valor, modalidade, prazos e principais exigências que aparecerem no texto.` },
+      ]
+    : [
+        { role: "system", content: REGRAS_BASE + "\nVocê só tem os campos estruturados abaixo, não o PDF completo do edital — deixe isso claro se for relevante." },
+        { role: "user", content: `Dados da oportunidade:\n${ficha}\n\nFaça um resumo curto (4 a 6 frases) explicando do que se trata essa licitação: o que está sendo comprado, quem compra, o prazo, e o porte aproximado pelo valor estimado (se houver).` },
+      ];
+  const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: fonteLida ? 900 : 500, timeoutMs: 20000 });
   if (!r2.ok) return { statusCode: 502, headers, body: JSON.stringify({ erro: r2.erro }) };
   return { statusCode: 200, headers, body: JSON.stringify({ resposta: r2.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, motivoFonteNaoLida, erro: null }) };
 };
