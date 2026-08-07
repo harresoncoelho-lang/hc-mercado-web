@@ -878,7 +878,7 @@
         <h3 class="filtros-lateral-titulo">Filtros</h3>
         <div class="campo">
           <label>Segmento (palavras-chave)</label>
-          <input id="dg-segmento" placeholder="Ex: fotovoltaic, energia solar">
+          <input id="dg-segmento" placeholder="Ex: fotovoltaico, energia solar">
         </div>
         <div class="campo">
           <label>UF de referência</label>
@@ -3692,7 +3692,19 @@
     });
   }
 
+  // Salva o último filtro do Diagnóstico de Mercado — mesmo padrão do Boletim e do
+  // Encontrar Licitações: restaura e rebusca sozinho ao reabrir a página, sem o usuário
+  // precisar preencher tudo de novo.
+  function salvarFiltroDiagnostico(segmentoRaw, uf, municipio, orgaoFiltro, dias) {
+    try { localStorage.setItem("hc_diagnostico_filtro", JSON.stringify({ segmentoRaw, uf, municipio, orgaoFiltro, dias })); } catch (e) {}
+  }
+  function lerFiltroDiagnostico() {
+    try { const b = localStorage.getItem("hc_diagnostico_filtro"); return b ? JSON.parse(b) : null; } catch (e) { return null; }
+  }
+  let dgJaBuscado = false;
+
   document.getElementById("dg-buscar").addEventListener("click", async () => {
+    dgJaBuscado = true;
     const segmentoRaw = document.getElementById("dg-segmento").value.trim();
     const uf = document.getElementById("dg-uf").value.trim().toUpperCase();
     const municipioFiltro = document.getElementById("dg-municipio").value.trim().toLowerCase();
@@ -3705,6 +3717,7 @@
       alvo.innerHTML = '<div class="aviso">Informe ao menos uma palavra-chave de segmento.</div>';
       return;
     }
+    salvarFiltroDiagnostico(segmentoRaw, uf, document.getElementById("dg-municipio").value, document.getElementById("dg-orgao-filtro").value, document.getElementById("dg-dias").value);
     const palavras = segmentoRaw.split(",").map((p) => p.trim()).filter(Boolean);
 
     btn.disabled = true;
@@ -3844,7 +3857,16 @@
   });
 
   // ---------- Analisar Empresa ----------
+  function salvarFiltroEmpresa(cnpj, segmentoRaw, dias) {
+    try { localStorage.setItem("hc_empresa_filtro", JSON.stringify({ cnpj, segmentoRaw, dias })); } catch (e) {}
+  }
+  function lerFiltroEmpresa() {
+    try { const b = localStorage.getItem("hc_empresa_filtro"); return b ? JSON.parse(b) : null; } catch (e) { return null; }
+  }
+  let empJaBuscado = false;
+
   document.getElementById("emp-buscar").addEventListener("click", async () => {
+    empJaBuscado = true;
     const cnpj = soDigitos(document.getElementById("emp-cnpj").value);
     const segmentoRaw = document.getElementById("emp-segmento").value.trim();
     const dias = parseInt(document.getElementById("emp-dias").value, 10);
@@ -3855,6 +3877,7 @@
       alvo.innerHTML = '<div class="aviso">Informe um CNPJ válido (14 dígitos, com ou sem pontuação).</div>';
       return;
     }
+    salvarFiltroEmpresa(document.getElementById("emp-cnpj").value, segmentoRaw, document.getElementById("emp-dias").value);
 
     btn.disabled = true;
     alvo.innerHTML = '<div class="carregando">Consultando dados cadastrais e histórico de contratos...</div>';
@@ -4157,11 +4180,19 @@
     });
   }
 
+  function salvarFiltroConvenios(uf, municipio, palavrasRaw) {
+    try { localStorage.setItem("hc_convenios_filtro", JSON.stringify({ uf, municipio, palavrasRaw })); } catch (e) {}
+  }
+  function lerFiltroConvenios() {
+    try { const b = localStorage.getItem("hc_convenios_filtro"); return b ? JSON.parse(b) : null; } catch (e) { return null; }
+  }
+
   async function executarBuscaConvenios() {
     const uf = document.getElementById("cv-uf").value.trim().toUpperCase();
     const municipioFiltro = document.getElementById("cv-municipio").value.trim();
     const palavrasRaw = document.getElementById("cv-palavras").value.trim();
     const palavras = palavrasRaw ? palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean) : [];
+    salvarFiltroConvenios(uf, document.getElementById("cv-municipio").value, palavrasRaw);
 
     if (cacheConvenios === null) {
       document.getElementById("cv-resultado").innerHTML = '<div class="carregando">Carregando convênios...</div>';
@@ -4222,13 +4253,23 @@
     alvo.innerHTML = html;
   }
 
+  function salvarFiltroRaioX(cnpj) {
+    try { localStorage.setItem("hc_raiox_filtro", JSON.stringify({ cnpj })); } catch (e) {}
+  }
+  function lerFiltroRaioX() {
+    try { const b = localStorage.getItem("hc_raiox_filtro"); return b ? JSON.parse(b) : null; } catch (e) { return null; }
+  }
+  let fnJaBuscado = false;
+
   document.getElementById("fn-buscar").addEventListener("click", async () => {
+    fnJaBuscado = true;
     const cnpj = soDigitos(document.getElementById("fn-cnpj").value);
     const alvo = document.getElementById("fn-resultado");
     if (cnpj.length !== 14) {
       alvo.innerHTML = '<div class="aviso">Informe um CNPJ válido (14 dígitos).</div>';
       return;
     }
+    salvarFiltroRaioX(document.getElementById("fn-cnpj").value);
     alvo.innerHTML = '<div class="carregando">Consultando pagamentos no Portal da Transparência...</div>';
     try {
       const resp = await fetch(`/.netlify/functions/despesas-fornecedor?cnpj=${cnpj}`);
@@ -4263,7 +4304,16 @@
     return lista.map((c) => `${c.nomeCaracteristica}: ${c.nomeValorCaracteristica}`).join(" · ");
   }
 
+  function salvarFiltroPrecos(termo) {
+    try { localStorage.setItem("hc_precos_filtro", JSON.stringify({ termo })); } catch (e) {}
+  }
+  function lerFiltroPrecos() {
+    try { const b = localStorage.getItem("hc_precos_filtro"); return b ? JSON.parse(b) : null; } catch (e) { return null; }
+  }
+  let ppJaBuscado = false;
+
   async function ppBuscarCategorias() {
+    ppJaBuscado = true;
     const termo = document.getElementById("pp-busca").value.trim();
     const alvoCat = document.getElementById("pp-categorias");
     document.getElementById("pp-itens").innerHTML = "";
@@ -4273,6 +4323,7 @@
       alvoCat.innerHTML = '<div class="aviso">Digite um termo pra pesquisar (ex: "caneta", "notebook").</div>';
       return;
     }
+    salvarFiltroPrecos(termo);
     alvoCat.innerHTML = '<div class="carregando">Buscando categorias no Catálogo do Compras.gov.br...</div>';
     try {
       const resp = await fetch(`${PP_CNBS_URL}/material/v1/palavra?palavra=${encodeURIComponent(termo)}`);
@@ -4490,6 +4541,85 @@
   document.getElementById("pp-buscar-categoria").addEventListener("click", ppBuscarCategorias);
   document.getElementById("pp-busca").addEventListener("keydown", (ev) => {
     if (ev.key === "Enter") ppBuscarCategorias();
+  });
+
+  // ---------- Restaura o último filtro de cada ferramenta ao carregar a página ----------
+  // Mesma ideia usada no Boletim e no Encontrar Licitações: ninguém devia precisar preencher
+  // o filtro de novo toda vez que volta numa aba ou reabre o site. Cada restaurarX() só roda
+  // de verdade se existir um filtro salvo daquela ferramenta; sem filtro salvo, a tela
+  // continua em branco normalmente (primeira visita).
+
+  async function restaurarDiagnostico() {
+    const filtro = lerFiltroDiagnostico();
+    if (!filtro || !filtro.segmentoRaw) return;
+    document.getElementById("dg-segmento").value = filtro.segmentoRaw || "";
+    document.getElementById("dg-uf").value = filtro.uf || "";
+    document.getElementById("dg-orgao-filtro").value = filtro.orgaoFiltro || "";
+    if (filtro.dias) document.getElementById("dg-dias").value = filtro.dias;
+    if (filtro.municipio) {
+      try {
+        const municipios = await carregarTodosMunicipios();
+        renderOpcoesMunicipio(document.getElementById("dg-municipio"), (filtro.uf || "").toUpperCase(), municipios);
+        document.getElementById("dg-municipio").value = filtro.municipio;
+      } catch (e) { /* segue sem restaurar o município */ }
+    }
+    document.getElementById("dg-buscar").click();
+  }
+  restaurarDiagnostico();
+  document.querySelector('nav button[data-alvo="diagnostico"]').addEventListener("click", () => {
+    if (!dgJaBuscado) restaurarDiagnostico();
+  });
+
+  async function restaurarEmpresa() {
+    const filtro = lerFiltroEmpresa();
+    if (!filtro || !filtro.cnpj) return;
+    document.getElementById("emp-cnpj").value = filtro.cnpj || "";
+    document.getElementById("emp-segmento").value = filtro.segmentoRaw || "";
+    if (filtro.dias) document.getElementById("emp-dias").value = filtro.dias;
+    document.getElementById("emp-buscar").click();
+  }
+  restaurarEmpresa();
+  document.querySelector('nav button[data-alvo="empresa"]').addEventListener("click", () => {
+    if (!empJaBuscado) restaurarEmpresa();
+  });
+
+  async function restaurarConvenios() {
+    const filtro = lerFiltroConvenios();
+    if (!filtro) return;
+    document.getElementById("cv-uf").value = filtro.uf || "";
+    document.getElementById("cv-palavras").value = filtro.palavrasRaw || "";
+    if (filtro.municipio) {
+      try {
+        const municipios = await carregarTodosMunicipios();
+        renderOpcoesMunicipio(document.getElementById("cv-municipio"), (filtro.uf || "").toUpperCase(), municipios);
+        document.getElementById("cv-municipio").value = filtro.municipio;
+      } catch (e) { /* segue sem restaurar o município */ }
+    }
+    // Não precisa chamar executarBuscaConvenios() aqui: o nav já chama sempre que a aba
+    // Portal da Transparência é aberta, e os campos acima de agora vão junto nessa busca.
+  }
+  restaurarConvenios();
+
+  async function restaurarRaioX() {
+    const filtro = lerFiltroRaioX();
+    if (!filtro || !filtro.cnpj) return;
+    document.getElementById("fn-cnpj").value = filtro.cnpj;
+    document.getElementById("fn-buscar").click();
+  }
+  restaurarRaioX();
+  document.querySelector('nav button[data-alvo="transparencia"]').addEventListener("click", () => {
+    if (!fnJaBuscado) restaurarRaioX();
+  });
+
+  function restaurarPrecos() {
+    const filtro = lerFiltroPrecos();
+    if (!filtro || !filtro.termo) return;
+    document.getElementById("pp-busca").value = filtro.termo;
+    document.getElementById("pp-buscar-categoria").click();
+  }
+  restaurarPrecos();
+  document.querySelector('nav button[data-alvo="precos"]').addEventListener("click", () => {
+    if (!ppJaBuscado) restaurarPrecos();
   });
 </script>
 
