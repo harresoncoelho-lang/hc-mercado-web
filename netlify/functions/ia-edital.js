@@ -15,7 +15,11 @@
 // Body: { modo: "resumo"|"pergunta", edital: {...}, pergunta?, historico?, textoEdital? }
 // Resposta: { resposta, estrutura: {...}|null, textoEdital: string|null, fonteLida: bool, erro }
 
-const MODELO = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+// Trocado de llama-3.3-70b-versatile pro 8b-instant: o modelo 70b tem cota gratuita de só
+// 100 mil tokens/dia no total do site (esgota rápido com uso real), enquanto o 8b-instant
+// tem 500 mil tokens/dia — 5x mais capacidade gratuita, ao custo de um pouco menos de
+// "inteligência" na extração (compensado com prompts mais diretos).
+const MODELO = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const PNCP_ARQUIVOS_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
@@ -255,7 +259,13 @@ async function chamarGroq(apiKey, mensagens, opts) {
       body: JSON.stringify(body),
     });
     clearTimeout(t);
-    if (!resp.ok) return { ok: false, erro: `Falha ao consultar a IA (${resp.status}): ${(await resp.text()).slice(0, 200)}` };
+    if (!resp.ok) {
+      const corpoErro = await resp.text();
+      if (resp.status === 429) {
+        return { ok: false, erro: "O robô de IA atingiu o limite de uso gratuito por hoje — tenta de novo mais tarde ou amanhã. (Os dados básicos da licitação continuam disponíveis normalmente.)" };
+      }
+      return { ok: false, erro: `Falha ao consultar a IA (${resp.status}): ${corpoErro.slice(0, 200)}` };
+    }
     const dados = await resp.json();
     const texto = ((dados.choices || [])[0] && dados.choices[0].message && dados.choices[0].message.content || "").trim();
     return { ok: true, texto };
