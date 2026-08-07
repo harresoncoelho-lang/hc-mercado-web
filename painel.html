@@ -548,6 +548,12 @@
     background: #0d1826; border: 1px solid var(--borda); border-radius: 7px; color: var(--texto);
   }
   .kanban-card-mover:focus { outline: none; border-color: var(--azul); }
+  .kanban-card-anotacao {
+    width: 100%; margin-top: 7px; padding: 6px 8px; font-size: 11.5px; font-family: inherit;
+    background: #0a121c; border: 1px solid var(--borda); border-radius: 7px; color: var(--texto);
+    resize: vertical; box-sizing: border-box;
+  }
+  .kanban-card-anotacao:focus { outline: none; border-color: var(--azul); }
   @media (max-width: 900px) { .kanban-coluna { flex: 0 0 260px; } }
   .modal-ia-consideracoes { width: 100%; min-height: 70px; padding: 10px; background: #0a121c; border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; margin-top: 8px; }
   @media (max-width: 640px) { .modal-ia { max-width: 100%; } }
@@ -2006,7 +2012,7 @@
     return "ok";
   }
 
-  function montarCardKanban(id, edital, valorStatus) {
+  function montarCardKanban(id, edital, valorStatus, anotacaoAtual) {
     const classePrazo = classePrazoKanban(edital.encerramento);
     const prazoHtml = edital.encerramento
       ? `<span class="kanban-card-prazo ${classePrazo || ""}">⏱ ${escapeHtml(formatarPrazoPropostas(edital.encerramento).split(" (")[0])}</span>`
@@ -2027,6 +2033,7 @@
         <p class="kanban-card-meta">📍 ${escapeHtml([edital.municipio, edital.uf].filter(Boolean).join(" / ") || "Não informado")}</p>
         ${prazoHtml}
         <select class="kanban-card-mover" data-id="${escapeHtml(id)}" title="Mover para outra coluna">${opcoesMoverHtml}</select>
+        <textarea class="kanban-card-anotacao" data-id="${escapeHtml(id)}" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual || "")}</textarea>
         <div class="kanban-card-acoes">
           <button type="button" class="kanban-btn-resumir" data-id="${escapeHtml(id)}">🤖 Resumo</button>
           <button type="button" class="kanban-btn-abrir" data-id="${escapeHtml(id)}">↗️ PNCP</button>
@@ -2039,11 +2046,12 @@
     if (!alvo) return;
     const statusMapa = lerMapa("status-licitacao");
     const editaisMapa = lerMapa("kanban-editais");
+    const anotacoesMapa = lerMapa("anotacoes-licitacao");
 
     alvo.innerHTML = KANBAN_COLUNAS.map((col) => {
       const idsColuna = Object.keys(statusMapa).filter((id) => statusMapa[id] === col.valor && editaisMapa[id]);
       const cardsHtml = idsColuna.length
-        ? idsColuna.map((id) => montarCardKanban(id, editaisMapa[id], col.valor)).join("")
+        ? idsColuna.map((id) => montarCardKanban(id, editaisMapa[id], col.valor, anotacoesMapa[id])).join("")
         : `<div class="kanban-vazio">Nenhuma licitação aqui ainda.<br>Marque um status pra ela aparecer.</div>`;
       return `
         <div class="kanban-coluna" data-status="${col.valor}" style="--cor-coluna:${col.cor};">
@@ -2097,6 +2105,22 @@
       sel.addEventListener("change", () => {
         definirNoMapa("status-licitacao", sel.dataset.id, sel.value);
         renderizarKanban();
+      });
+    });
+
+    // Anotações direto no cartão: salva com um pequeno atraso enquanto digita, e também ao sair do campo.
+    alvo.querySelectorAll(".kanban-card-anotacao").forEach((campo) => {
+      let temporizadorAnotacaoKanban = null;
+      campo.addEventListener("click", (ev) => ev.stopPropagation());
+      campo.addEventListener("input", () => {
+        clearTimeout(temporizadorAnotacaoKanban);
+        temporizadorAnotacaoKanban = setTimeout(() => {
+          definirNoMapa("anotacoes-licitacao", campo.dataset.id, campo.value);
+        }, 600);
+      });
+      campo.addEventListener("blur", () => {
+        clearTimeout(temporizadorAnotacaoKanban);
+        definirNoMapa("anotacoes-licitacao", campo.dataset.id, campo.value);
       });
     });
 
