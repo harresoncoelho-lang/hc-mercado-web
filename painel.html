@@ -3523,10 +3523,11 @@
     }
 
     let totalNacional = 0, totalRegional = 0;
+    for (const c of (d.encontradosNacional || d.encontrados)) {
+      totalNacional += c.valor || 0;
+    }
     for (const c of d.encontrados) {
-      const valor = c.valor || 0;
-      totalNacional += valor;
-      if (d.uf && c.uf === d.uf) totalRegional += valor;
+      if (d.uf) totalRegional += c.valor || 0;
     }
 
     html += `<div class="cartoes">
@@ -3746,7 +3747,7 @@
         fonte = {
           tipo: "cache",
           atualizadoEm: cacheContratos.atualizadoEm,
-          diasHistoricoCache: cacheContratos.diasHistorico,
+          diasHistoricoCache: cacheContratos.retencaoDias,
         };
       } else {
         alvo.innerHTML = '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador (isso pode levar até 1 minuto)...</div>';
@@ -3763,6 +3764,14 @@
         falhaConexao = resCont.falhaConexao;
         fonte = { tipo: "ao_vivo" };
       }
+
+      // Guarda a lista NACIONAL (segmento + período, sem UF/município/órgão) separada da
+      // lista filtrada — antes o filtro de UF era aplicado direto em cima de "encontrados"
+      // e o cartão "Mercado Nacional" acabava mostrando o total do estado escolhido (e não
+      // o nacional de verdade). Isso fazia o diagnóstico parecer completamente vazio
+      // sempre que o segmento não tivesse nenhum contrato NA AMOSTRA daquele estado
+      // específico, mesmo havendo mercado nacional grande pro mesmo segmento.
+      const encontradosNacional = encontrados;
 
       if (uf) {
         encontrados = encontrados.filter((r) => (r.uf || "").toUpperCase() === uf);
@@ -3819,6 +3828,7 @@
 
       estado.diagnostico = {
         encontrados,
+        encontradosNacional,
         palavras,
         uf: uf || null,
         periodo: { dias },

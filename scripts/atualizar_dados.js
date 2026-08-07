@@ -449,8 +449,14 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
       const c = cacheOrgaoUf.get(chaveCompra);
       ufOrgao = c.uf; municipioOrgao = c.municipio;
     } else {
+      // Nota: o endpoint antigo /api/pncp/v1/orgaos/.../compras/{ano}/{sequencial} (sem
+      // /arquivos ou /itens) foi descontinuado pelo PNCP e agora responde 301 pra
+      // /api/consulta/v1/... — usando o antigo, "compra" vinha sempre vazio/sem
+      // unidadeOrgao, e ufOrgao/municipioOrgao ficavam em branco pra TODAS as atas, de
+      // qualquer segmento (zerando o filtro de UF do painel de mercado/atas). Corrigido
+      // pra usar o endpoint novo direto.
       const compra = await fetchComRetentativa(
-        `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}`,
+        `https://pncp.gov.br/api/consulta/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}`,
         2, 15000
       );
       if (compra) {
