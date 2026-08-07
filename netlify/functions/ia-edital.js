@@ -275,6 +275,30 @@ async function chamarGroq(apiKey, mensagens, opts) {
   }
 }
 
+// Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
+// JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
+// de falhar direto no JSON.parse, limpa esses wrappers comuns e, se ainda assim não der,
+// tenta pegar só o trecho entre a primeira "{" e a última "}" da resposta.
+function extrairJson(texto) {
+  if (!texto) return null;
+  let limpo = texto.trim();
+  limpo = limpo.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  try {
+    return JSON.parse(limpo);
+  } catch (e) {
+    const inicio = limpo.indexOf("{");
+    const fim = limpo.lastIndexOf("}");
+    if (inicio !== -1 && fim !== -1 && fim > inicio) {
+      try {
+        return JSON.parse(limpo.slice(inicio, fim + 1));
+      } catch (e2) {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
 function formatarEstruturaComoTexto(est) {
   const linha = (rotulo, v) => (v ? `${rotulo}: ${v}\n` : "");
   let txt = "";
@@ -364,10 +388,10 @@ exports.handler = async (event) => {
     // O modelo gratuito (8b) é mais fraco pra devolver JSON grande e válido de primeira —
     // tenta duas vezes antes de desistir e cair pro resumo em texto corrido.
     for (let tentativa = 0; tentativa < 2; tentativa++) {
-      const r = await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 4000, timeoutMs: 28000, json: true });
+      const r = await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 6500, timeoutMs: 28000, json: true });
       if (!r.ok) break; // erro de API (ex.: limite atingido) — não adianta tentar de novo
-      try {
-        const estrutura = JSON.parse(r.texto);
+      const estrutura = extrairJson(r.texto);
+      if (estrutura) {
         return {
           statusCode: 200,
           headers,
@@ -380,10 +404,9 @@ exports.handler = async (event) => {
             erro: null,
           }),
         };
-      } catch (e) {
-        // IA não devolveu JSON válido nessa tentativa — tenta mais uma vez (ou desiste e
-        // segue pro resumo em texto corrido abaixo, que ainda usa o texto real do edital).
       }
+      // IA não devolveu JSON válido nessa tentativa — tenta mais uma vez (ou desiste e
+      // segue pro resumo em texto corrido abaixo, que ainda usa o texto real do edital).
     }
   }
 
