@@ -677,6 +677,8 @@
   <button data-alvo="empresa"><span class="nav-ico">🏢</span>Analisar Empresa</button>
   <button data-alvo="transparencia"><span class="nav-ico">🏛️</span>Portal da Transparência</button>
   <button data-alvo="precos"><span class="nav-ico">💰</span>Pesquisa de Preços</button>
+  <button data-alvo="juridico"><span class="nav-ico">⚖️</span>Jurídico &amp; Dúvidas</button>
+  <button data-alvo="status"><span class="nav-ico">🟢</span>Status das Ferramentas</button>
 </nav>
 
 <main>
@@ -878,6 +880,39 @@
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
   </section>
 
+  <section id="juridico">
+    <h2 style="margin-top:0;">Artigos Jurídicos</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Conteúdo de referência sobre licitações públicas — não substitui orientação jurídica pontual sobre o seu processo específico.</p>
+    <div id="juridico-artigos"></div>
+
+    <h2>Envie sua Dúvida</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Descreva sua dúvida sobre um edital, cadastro ou processo — o Harreson responde direto no seu e-mail.</p>
+    <form id="duvida-form" name="duvida-cliente" method="POST" data-netlify="true" netlify-honeypot="duvida-empresa" class="painel-filtros" style="align-items:flex-start;">
+      <input type="hidden" name="form-name" value="duvida-cliente">
+      <p style="display:none;"><label>Não preencha isso: <input name="duvida-empresa"></label></p>
+      <div class="campo">
+        <label>Seu nome</label>
+        <input id="duvida-nome" name="nome" required>
+      </div>
+      <div class="campo">
+        <label>Seu e-mail</label>
+        <input id="duvida-email" name="email" type="email" required>
+      </div>
+      <div class="campo" style="flex:3">
+        <label>Sua dúvida</label>
+        <textarea id="duvida-mensagem" name="mensagem" required rows="4" style="width:100%;padding:11px 12px;background:#0d1826;border:1px solid var(--borda);border-radius:8px;color:var(--texto);font-size:14px;font-family:inherit;resize:vertical;"></textarea>
+      </div>
+      <button type="submit" class="btn-buscar" id="duvida-enviar">Enviar dúvida</button>
+    </form>
+    <p class="aviso-duvida" id="duvida-aviso" style="display:none;margin-top:12px;"></p>
+  </section>
+
+  <section id="status">
+    <h2 style="margin-top:0;">Status das Ferramentas</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Última vez que cada fonte de dados foi atualizada com sucesso pelo robô. O robô roda automaticamente todo dia — se algo aparecer "há mais de 2 dias", pode avisar o suporte.</p>
+    <div id="status-cartoes" class="cartoes"></div>
+  </section>
+
 </main>
 </div>
 
@@ -900,6 +935,130 @@
   document.querySelectorAll(".btn-imprimir:not(.btn-config-boletim)").forEach((btn) => {
     btn.addEventListener("click", () => window.print());
   });
+
+  // ---- Jurídico & Dúvidas: artigos estáticos + formulário de contato (Netlify Forms) ----
+  const ARTIGOS_JURIDICOS = [
+    {
+      titulo: "O que é o SICAF e por que manter o cadastro em dia",
+      corpo: "O SICAF (Sistema de Cadastramento Unificado de Fornecedores) reúne a documentação que comprova a regularidade fiscal, trabalhista e jurídica de uma empresa perante o governo federal. Vários pregões dispensam o envio de documentos já cadastrados no SICAF, desde que estejam válidos — por isso um cadastro vencido pode significar inabilitação automática, mesmo com a proposta mais barata. Vale revisar as validades com regularidade, principalmente certidões negativas (federal, estadual, municipal, FGTS e trabalhista), que costumam ter prazos curtos.",
+    },
+    {
+      titulo: "Pregão eletrônico x concorrência: qual a diferença na prática",
+      corpo: "O pregão eletrônico é a modalidade mais comum para compra de bens e serviços comuns (aqueles cujas especificações podem ser objetivamente descritas), com disputa de lances em tempo real e inversão de fases — primeiro julga-se o preço, depois se verifica a habilitação do vencedor. A concorrência é usada para contratações mais complexas (obras de maior vulto, serviços técnicos especializados), com fase de habilitação mais criteriosa e prazos de publicação mais longos. Na prática, isso muda o ritmo de preparação: pregão exige agilidade na disputa, concorrência exige mais tempo de análise do edital antes de participar.",
+    },
+    {
+      titulo: "Documentos de habilitação mais cobrados em licitações",
+      corpo: "Além da regularidade fiscal (Receita Federal, FGTS, trabalhista, e fiscal estadual/municipal), a maioria dos editais pede: contrato social ou estatuto atualizado, balanço patrimonial ou outra prova de qualificação econômico-financeira, certidão negativa de falência e, dependendo do objeto, atestado de capacidade técnica emitido por outro cliente comprovando que a empresa já executou algo semelhante antes. Ter essa pasta organizada e atualizada reduz o risco de perder um prazo apertado de habilitação por falta de um documento.",
+    },
+    {
+      titulo: "Prazo de recurso administrativo em licitações",
+      corpo: "Depois do resultado do julgamento, o licitante tem direito a manifestar intenção de recurso (geralmente no fim da sessão, no caso do pregão) e depois apresentar as razões por escrito — o prazo mais comum é de 3 dias úteis, mas pode variar conforme a modalidade e o edital, então o prazo exato deve sempre ser conferido no instrumento convocatório daquele processo específico. Perder esse prazo geralmente significa perder o direito de contestar o resultado por essa via.",
+    },
+  ];
+
+  function renderizarArtigosJuridicos() {
+    const alvo = document.getElementById("juridico-artigos");
+    if (!alvo) return;
+    alvo.innerHTML = ARTIGOS_JURIDICOS.map((a, i) => `
+      <details class="cartao" style="margin-bottom:12px;border-top:4px solid var(--laranja);" ${i === 0 ? "open" : ""}>
+        <summary style="cursor:pointer;font-weight:700;color:var(--texto);">${escapeHtml(a.titulo)}</summary>
+        <p style="margin:10px 0 0;color:var(--texto-fraco);line-height:1.55;">${escapeHtml(a.corpo)}</p>
+      </details>
+    `).join("");
+  }
+  renderizarArtigosJuridicos();
+
+  // Envio da dúvida via Netlify Forms (sem backend próprio) — intercepta o submit pra evitar
+  // recarregar a página e mostrar uma confirmação simples no lugar.
+  const formDuvida = document.getElementById("duvida-form");
+  if (formDuvida) {
+    formDuvida.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const aviso = document.getElementById("duvida-aviso");
+      const btn = document.getElementById("duvida-enviar");
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+      try {
+        const dados = new FormData(formDuvida);
+        const corpo = new URLSearchParams();
+        for (const [chave, valor] of dados.entries()) corpo.append(chave, valor);
+        const resp = await fetch("/", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: corpo.toString(),
+        });
+        if (!resp.ok) throw new Error("falha no envio");
+        aviso.textContent = "Dúvida enviada! Você recebe a resposta no e-mail informado.";
+        aviso.style.color = "var(--verde)";
+        aviso.style.display = "block";
+        formDuvida.reset();
+      } catch (e) {
+        aviso.textContent = "Não deu pra enviar agora — tenta de novo em instantes.";
+        aviso.style.color = "var(--vermelho)";
+        aviso.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Enviar dúvida";
+      }
+    });
+  }
+
+  // ---- Status das Ferramentas: mostra a última atualização bem-sucedida de cada fonte ----
+  const FONTES_STATUS = [
+    { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "📋" },
+    { arquivo: "data/contratos_recentes.json", nome: "Contratos assinados (PNCP)", icone: "📄" },
+    { arquivo: "data/mercado_segmentos.json", nome: "Diagnóstico de Mercado", icone: "📊" },
+    { arquivo: "data/transparencia_licitacoes.json", nome: "Licitações federais (Portal da Transparência)", icone: "🏛️" },
+    { arquivo: "data/convenios.json", nome: "Convênios e repasses", icone: "💰" },
+    { arquivo: "data/sistema_s_am.json", nome: "Sistema S/AM (SENAC/SESC)", icone: "🏫" },
+  ];
+
+  function formatarHaQuanto(iso) {
+    if (!iso) return null;
+    const diffMs = Date.now() - new Date(iso).getTime();
+    if (Number.isNaN(diffMs)) return null;
+    const horas = diffMs / (1000 * 60 * 60);
+    if (horas < 1) return "há menos de 1 hora";
+    if (horas < 24) return `há ${Math.round(horas)} hora(s)`;
+    const dias = Math.round(horas / 24);
+    return `há ${dias} dia(s)`;
+  }
+
+  let statusJaCarregado = false;
+  async function carregarStatusFerramentas() {
+    if (statusJaCarregado) return;
+    statusJaCarregado = true;
+    const alvo = document.getElementById("status-cartoes");
+    alvo.innerHTML = '<p class="dica-clique">Carregando...</p>';
+
+    const resultados = await Promise.all(FONTES_STATUS.map(async (fonte) => {
+      try {
+        const resp = await fetch(fonte.arquivo, { cache: "no-store" });
+        if (!resp.ok) return { ...fonte, ok: false };
+        const dados = await resp.json();
+        return { ...fonte, ok: true, atualizadoEm: dados.atualizadoEm || null };
+      } catch (e) {
+        return { ...fonte, ok: false };
+      }
+    }));
+
+    alvo.innerHTML = resultados.map((r) => {
+      const haQuanto = r.ok ? formatarHaQuanto(r.atualizadoEm) : null;
+      const horas = r.atualizadoEm ? (Date.now() - new Date(r.atualizadoEm).getTime()) / (1000 * 60 * 60) : Infinity;
+      let cor = "var(--vermelho)", texto = "Sem dados ainda";
+      if (r.ok && haQuanto) {
+        if (horas <= 30) { cor = "var(--verde)"; texto = `Atualizado ${haQuanto}`; }
+        else if (horas <= 72) { cor = "var(--laranja)"; texto = `Atualizado ${haQuanto} — verificar`; }
+        else { cor = "var(--vermelho)"; texto = `Atualizado ${haQuanto} — pode estar parado`; }
+      }
+      return `<div class="cartao" style="border-top-color:${cor};">
+        <h3>${r.icone} ${escapeHtml(r.nome)}</h3>
+        <div class="valor" style="font-size:14px;color:${cor};">● ${escapeHtml(texto)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  document.querySelector('nav button[data-alvo="status"]').addEventListener("click", carregarStatusFerramentas);
 
   // Lista dos 27 estados brasileiros (sigla + nome), usada pra popular todo select de UF do
   // site — assim o usuário escolhe clicando em vez de digitar a sigla de cabeça.
