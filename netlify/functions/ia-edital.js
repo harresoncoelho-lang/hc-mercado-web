@@ -70,13 +70,21 @@ async function buscarTextoEdital(numeroControlePNCP) {
     const lista = await respLista.json();
     if (!Array.isArray(lista) || lista.length === 0) return null;
 
-    // Prioriza documentos do tipo "Edital"; se não achar nenhum, tenta qualquer coisa com nome
-    // terminando em .pdf. Pode haver mais de um documento chamado "Edital" (retificações etc.)
-    // — tenta até 3 candidatos em ordem até um realmente abrir como PDF.
-    const candidatos = [
-      ...lista.filter((a) => /edital/i.test(a.tipoDocumentoNome || a.tipoDocumentoDescricao || "")),
-      ...lista.filter((a) => /\.pdf$/i.test(a.titulo || "")),
-    ].slice(0, 3);
+    // O documento principal nem sempre se chama "Edital" (pode ser "Aviso de Contratação
+    // Direta", "Aviso de Dispensa" etc. em credenciamentos/dispensas), e o título do arquivo
+    // quase nunca termina em ".pdf" de verdade (o PNCP costuma cortar a extensão). Então, em
+    // vez de tentar adivinhar pelo nome, prioriza por palavra-chave conhecida e, na falta
+    // dela, tenta os documentos na ordem em que aparecem — a validação real de "é um PDF"
+    // acontece depois, olhando a assinatura binária do arquivo baixado.
+    const prioritarios = lista.filter((a) => /edital|aviso|termo de refer[eê]ncia/i.test(a.tipoDocumentoNome || a.tipoDocumentoDescricao || ""));
+    const vistos = new Set();
+    const candidatos = [...prioritarios, ...lista]
+      .filter((a) => {
+        if (vistos.has(a.sequencialDocumento)) return false;
+        vistos.add(a.sequencialDocumento);
+        return true;
+      })
+      .slice(0, 5);
     if (candidatos.length === 0) return null;
 
     const pdfParse = require("pdf-parse");
