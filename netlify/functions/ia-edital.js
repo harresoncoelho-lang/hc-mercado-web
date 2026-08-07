@@ -1,9 +1,13 @@
 // Netlify Function: Resumo do Edital + Pergunte ao Edital (Fase 1 do roadmap de novas
 // ferramentas, inspirado no ConLicitação).
 //
-// Usa a Anthropic API (Claude) pra explicar em linguagem simples uma oportunidade de
-// licitação, a partir dos dados públicos que o robô já coletou (objeto, órgão, valor
-// estimado, prazos, modalidade etc.) — a mesma ficha que já aparece no card do Boletim.
+// Usa a Groq API (modelos Llama, gratuita — sem cartão de crédito, sem cobrança por uso,
+// limite generoso de 14.400 consultas/dia) pra explicar em linguagem simples uma
+// oportunidade de licitação, a partir dos dados públicos que o robô já coletou (objeto,
+// órgão, valor estimado, prazos, modalidade etc.) — a mesma ficha que já aparece no card
+// do Boletim. Optamos pela Groq em vez de um provedor pago por token porque o custo dessa
+// ferramenta precisa ficar previsível (R$0) mesmo se vários clientes usarem ao mesmo tempo;
+// se um dia o volume de uso passar do limite gratuito, vale reavaliar.
 //
 // IMPORTANTE sobre o que a IA sabe: nesta primeira versão ela não lê o PDF completo do
 // edital (não temos ainda um jeito confiável de baixar e extrair o texto de cada portal de
@@ -16,7 +20,8 @@
 //
 // Resposta: { resposta: string, erro: string|null }
 
-const MODELO = "claude-haiku-4-5-20251001";
+const MODELO = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -58,12 +63,12 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers, body: JSON.stringify({ erro: "Use POST." }) };
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ erro: "ANTHROPIC_API_KEY não configurado no Netlify." }),
+      body: JSON.stringify({ erro: "GROQ_API_KEY não configurado no Netlify." }),
     };
   }
 
@@ -91,7 +96,7 @@ exports.handler = async (event) => {
     userContent = `Dados da oportunidade:\n${ficha}\n\nFaça um resumo curto (4 a 6 frases) explicando do que se trata essa licitação, pra alguém que está decidindo se vale a pena participar: o que está sendo comprado, quem compra, o prazo, e o porte aproximado do negócio pelo valor estimado (se houver). Não invente nada além do que está nos dados.`;
   }
 
-  const mensagens = [];
+  const mensagens = [{ role: "system", content: SYSTEM_PROMPT }];
   if (Array.isArray(historico)) {
     for (const h of historico.slice(-6)) {
       if (h && (h.role === "user" || h.role === "assistant") && typeof h.content === "string") {
@@ -104,18 +109,16 @@ exports.handler = async (event) => {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 25000);
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    const resp = await fetch(BASE_URL, {
       method: "POST",
       signal: ctrl.signal,
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: MODELO,
         max_tokens: 500,
-        system: SYSTEM_PROMPT,
         messages: mensagens,
       }),
     });
@@ -131,7 +134,7 @@ exports.handler = async (event) => {
     }
 
     const dados = await resp.json();
-    const resposta = (dados.content || []).map((b) => b.text || "").join("").trim();
+    const resposta = ((dados.choices || [])[0] && dados.choices[0].message && dados.choices[0].message.content || "").trim();
     return { statusCode: 200, headers, body: JSON.stringify({ resposta, erro: null }) };
   } catch (e) {
     return {
