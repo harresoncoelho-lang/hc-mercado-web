@@ -359,16 +359,21 @@ exports.handler = async (event) => {
   if (modo === "resumo" && storeResumos && edital.numeroControlePNCP) {
     try {
       const cache = await storeResumos.get(edital.numeroControlePNCP, { type: "json" });
-      if (cache && cache.estrutura) {
+      // Aceita tanto o cache do resumo ESTRUTURADO (JSON, caminho ideal) quanto do resumo
+      // em TEXTO CORRIDO (fallback, quando a extração em JSON não deu certo) — os dois têm
+      // custo de IA pra gerar, então os dois precisam ficar em cache. Sem isso, todo edital
+      // que cai no fallback reprocessava do zero A CADA vez que alguém abria o resumo de
+      // novo, gastando cota da IA repetidamente à toa.
+      if (cache && (cache.estrutura || cache.resposta)) {
         return {
           statusCode: 200,
           headers,
           body: JSON.stringify({
             resposta: cache.resposta || "Resumo gerado.",
-            estrutura: cache.estrutura,
+            estrutura: cache.estrutura || null,
             textoEdital: cache.textoEdital || null,
-            fonteLida: true,
-            motivoFonteNaoLida: null,
+            fonteLida: cache.fonteLida !== undefined ? cache.fonteLida : true,
+            motivoFonteNaoLida: cache.motivoFonteNaoLida || null,
             doCache: true,
             erro: null,
           }),
@@ -437,6 +442,8 @@ exports.handler = async (event) => {
               estrutura,
               resposta,
               textoEdital,
+              fonteLida: true,
+              motivoFonteNaoLida: null,
               geradoEm: new Date().toISOString(),
             });
           } catch (e) {
@@ -479,5 +486,23 @@ exports.handler = async (event) => {
       ];
   const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: fonteLida ? 900 : 500, timeoutMs: 20000 });
   if (!r2.ok) return { statusCode: 502, headers, body: JSON.stringify({ erro: r2.erro }) };
+  // Cacheia também o resumo em texto corrido (fallback) — sem isso, um edital que sempre
+  // cai no fallback (ex.: modelo gratuito não consegue estruturar aquele texto em JSON)
+  // reprocessava do zero toda vez que alguém abria o resumo de novo, gastando cota da IA
+  // à toa. Só se aplica ao modo "resumo" (perguntas não têm cache, são sempre dinâmicas).
+  if (modo === "resumo" && storeResumos && edital.numeroControlePNCP) {
+    try {
+      await storeResumos.setJSON(edital.numeroControlePNCP, {
+        estrutura: null,
+        resposta: r2.texto,
+        textoEdital: textoEdital || null,
+        fonteLida,
+        motivoFonteNaoLida,
+        geradoEm: new Date().toISOString(),
+      });
+    } catch (e) {
+      // não crítico — só significa que não vai ficar em cache dessa vez
+    }
+  }
   return { statusCode: 200, headers, body: JSON.stringify({ resposta: r2.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, motivoFonteNaoLida, erro: null }) };
 };
