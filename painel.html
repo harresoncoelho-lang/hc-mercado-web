@@ -1328,7 +1328,7 @@
           escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
         }
       } else {
-        escreverMensagemIA(dados.resposta, "");
+        escreverMensagemIA((dados.resposta || "").replace(/\*\*(.+?)\*\*/g, "$1"), "");
         if (modo === "resumo" && !dados.fonteLida) {
           escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
         }

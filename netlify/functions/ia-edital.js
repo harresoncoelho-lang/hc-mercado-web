@@ -357,12 +357,15 @@ exports.handler = async (event) => {
 
   // modo === "resumo"
   if (fonteLida) {
-    const mensagens = [
-      { role: "system", content: `${REGRAS_BASE}\nVocê recebeu o texto real extraído do(s) documento(s) do edital (pode incluir edital, termo de referência e anexos). Leia com atenção e extraia as informações pedidas com o máximo de detalhe possível — preencha cada campo com o que estiver disponível no texto, mesmo que precise resumir um parágrafo inteiro num campo. Devolva SOMENTE um JSON válido (sem markdown, sem comentários) no formato exato:\n${SCHEMA_ESTRUTURA}` },
+    const mensagensEstrutura = [
+      { role: "system", content: `${REGRAS_BASE}\nVocê recebeu o texto real extraído do(s) documento(s) do edital (pode incluir edital, termo de referência e anexos). Leia com atenção e extraia as informações pedidas com o máximo de detalhe possível — preencha cada campo com o que estiver disponível no texto, mesmo que precise resumir um parágrafo inteiro num campo. Devolva SOMENTE um JSON válido (sem markdown, sem comentários, sem texto antes ou depois) no formato exato:\n${SCHEMA_ESTRUTURA}` },
       { role: "user", content: `Dados já conhecidos:\n${ficha}\n\nTexto extraído do edital (pode estar truncado):\n${textoEdital}` },
     ];
-    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 2600, timeoutMs: 28000, json: true });
-    if (r.ok) {
+    // O modelo gratuito (8b) é mais fraco pra devolver JSON grande e válido de primeira —
+    // tenta duas vezes antes de desistir e cair pro resumo em texto corrido.
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      const r = await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 4000, timeoutMs: 28000, json: true });
+      if (!r.ok) break; // erro de API (ex.: limite atingido) — não adianta tentar de novo
       try {
         const estrutura = JSON.parse(r.texto);
         return {
@@ -378,7 +381,8 @@ exports.handler = async (event) => {
           }),
         };
       } catch (e) {
-        // IA não devolveu JSON válido — segue pro resumo simples abaixo em vez de falhar.
+        // IA não devolveu JSON válido nessa tentativa — tenta mais uma vez (ou desiste e
+        // segue pro resumo em texto corrido abaixo, que ainda usa o texto real do edital).
       }
     }
   }
