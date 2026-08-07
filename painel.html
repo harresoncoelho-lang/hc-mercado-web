@@ -496,6 +496,8 @@
   .modal-ia-acoes-rodape { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borda); }
   .modal-ia-acoes-rodape button { padding: 9px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; border: 1px solid var(--borda); background: #0d1826; color: var(--texto); }
   .modal-ia-acoes-rodape button:hover { border-color: var(--azul); color: var(--azul); }
+  .secao-ia { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--borda); }
+  .secao-ia-titulo { margin: 0 0 4px; font-size: 13.5px; font-weight: 700; }
   .modal-ia-consideracoes { width: 100%; min-height: 70px; padding: 10px; background: #0a121c; border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; margin-top: 8px; }
   @media (max-width: 640px) { .modal-ia { max-width: 100%; } }
   .msg-ia { background: #0d1826; border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; color: var(--texto); }
@@ -1183,6 +1185,18 @@
     `).join("");
   }
 
+  // Cria uma seção fixa (sempre aberta, sem seta/clique) — igual ao padrão ConLicitação
+  // que o usuário pediu: o resumo já chega pronto, sem precisar expandir nada.
+  function criarSecaoIA(titulo) {
+    const secao = document.createElement("div");
+    secao.className = "secao-ia";
+    const h4 = document.createElement("h4");
+    h4.className = "secao-ia-titulo";
+    h4.textContent = titulo;
+    secao.appendChild(h4);
+    return secao;
+  }
+
   function renderizarEstruturaIA(est) {
     iaEstruturaAtual = est;
     renderizarCartoesTopoIA(est);
@@ -1198,16 +1212,14 @@
     }
 
     for (const chave of Object.keys(RÓTULOS_ESTRUTURA_IA)) {
-      const secao = est[chave];
-      if (!secao) continue;
+      const secaoDados = est[chave];
+      if (!secaoDados) continue;
       const def = RÓTULOS_ESTRUTURA_IA[chave];
       const linhas = Object.keys(def.campos)
-        .map((campo) => [def.campos[campo], secao[campo]])
+        .map((campo) => [def.campos[campo], secaoDados[campo]])
         .filter(([, v]) => v && String(v).trim() && !/^n[ãa]o informado$/i.test(String(v).trim()));
       if (linhas.length === 0) continue;
-      const det = document.createElement("details");
-      det.style.marginTop = "8px";
-      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">${def.titulo}</summary>`;
+      const secao = criarSecaoIA(def.titulo);
       const dl = document.createElement("dl");
       dl.style.cssText = "margin:8px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;";
       linhas.forEach(([rotulo, valor]) => {
@@ -1220,14 +1232,12 @@
         dl.appendChild(dt);
         dl.appendChild(dd);
       });
-      det.appendChild(dl);
-      wrap.appendChild(det);
+      secao.appendChild(dl);
+      wrap.appendChild(secao);
     }
 
     if (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
-      const det = document.createElement("details");
-      det.style.marginTop = "8px";
-      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">📑 Documentos de Habilitação Exigidos</summary>`;
+      const secao = criarSecaoIA("📑 Documentos de Habilitação Exigidos");
       const ul = document.createElement("ul");
       ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
       est.documentosHabilitacao.forEach((d) => {
@@ -1235,14 +1245,12 @@
         li.textContent = d;
         ul.appendChild(li);
       });
-      det.appendChild(ul);
-      wrap.appendChild(det);
+      secao.appendChild(ul);
+      wrap.appendChild(secao);
     }
 
     if (Array.isArray(est.outrasInformacoesRelevantes) && est.outrasInformacoesRelevantes.length) {
-      const det = document.createElement("details");
-      det.style.marginTop = "8px";
-      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">ℹ️ Outras Informações Relevantes</summary>`;
+      const secao = criarSecaoIA("ℹ️ Outras Informações Relevantes");
       const ul = document.createElement("ul");
       ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
       est.outrasInformacoesRelevantes.forEach((d) => {
@@ -1250,25 +1258,29 @@
         li.textContent = d;
         ul.appendChild(li);
       });
-      det.appendChild(ul);
-      wrap.appendChild(det);
+      secao.appendChild(ul);
+      wrap.appendChild(secao);
     }
 
     if (est.penalidades && !/^n[ãa]o informado$/i.test(String(est.penalidades).trim())) {
-      const det = document.createElement("details");
-      det.style.marginTop = "8px";
-      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">⚠️ Penalidades</summary><p style="margin:8px 0 0;font-size:13px;">${escapeHtml(est.penalidades)}</p>`;
-      wrap.appendChild(det);
+      const secao = criarSecaoIA("⚠️ Penalidades");
+      const p = document.createElement("p");
+      p.style.cssText = "margin:8px 0 0;font-size:13px;";
+      p.textContent = est.penalidades;
+      secao.appendChild(p);
+      wrap.appendChild(secao);
     }
 
     // Campos de texto livre (atestado técnico, legislação, anexos, condições de pagamento).
     CAMPOS_TEXTO_LIVRE_IA.forEach(([chave, titulo]) => {
       const valor = est[chave];
       if (!valor || /^n[ãa]o informado$/i.test(String(valor).trim())) return;
-      const det = document.createElement("details");
-      det.style.marginTop = "8px";
-      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">${titulo}</summary><p style="margin:8px 0 0;font-size:13px;">${escapeHtml(valor)}</p>`;
-      wrap.appendChild(det);
+      const secao = criarSecaoIA(titulo);
+      const p = document.createElement("p");
+      p.style.cssText = "margin:8px 0 0;font-size:13px;";
+      p.textContent = valor;
+      secao.appendChild(p);
+      wrap.appendChild(secao);
     });
 
     conversa.appendChild(wrap);
@@ -1345,8 +1357,13 @@
       const resp = await fetch(`/.netlify/functions/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
       const dados = await resp.json();
       const lista = dados.arquivos || [];
-      let doc = lista.find((a) => /edital/i.test(a.tipoDocumentoNome || ""));
-      if (!doc) doc = lista.find((a) => /\.pdf$/i.test(a.titulo || ""));
+      // O documento principal muda de nome conforme a modalidade (Edital, Aviso de
+      // Contratação Direta/Dispensa, Ato que autoriza a Contratação Direta, Carta Convite,
+      // Instrumento de Credenciamento etc.) e o arquivo quase sempre é um .zip ou não tem
+      // ".pdf" no nome — então não dá pra exigir essas duas coisas pra achar o arquivo certo.
+      const PALAVRAS_DOC = /edital|aviso|instrumento convocat[oó]rio|termo de refer[eê]ncia|projeto b[aá]sico|carta[- ]convite|credenciamento|dispensa|inexigibilidade|chamamento|contrata[çc][ãa]o direta|ato que autoriza/i;
+      let doc = lista.find((a) => PALAVRAS_DOC.test(a.tipoDocumentoNome || "") || PALAVRAS_DOC.test(a.titulo || ""));
+      if (!doc) doc = lista[0];
       if (!doc) {
         window.open(edital.link, "_blank", "noopener");
         return;

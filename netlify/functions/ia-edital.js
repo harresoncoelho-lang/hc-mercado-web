@@ -19,7 +19,7 @@ const MODELO = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 const CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const PNCP_ARQUIVOS_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
-const MAX_CARACTERES_TEXTO = 9000;
+const MAX_CARACTERES_TEXTO = 14000;
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -55,6 +55,13 @@ function partesNumeroControle(numeroControlePNCP) {
   }
 }
 
+// Palavras-chave dos documentos que realmente interessam pro resumo, cobrindo as
+// modalidades mais comuns (pregão, concorrência, credenciamento, carta convite/carta-
+// convite, dispensa, inexigibilidade, chamamento público, RDC etc.) — cada portal/órgão
+// nomeia o documento principal de um jeito diferente, então a lista é ampla de propósito.
+const PALAVRAS_DOCUMENTO_PRINCIPAL = /edital|aviso|instrumento convocat[oó]rio|termo de refer[eê]ncia|projeto b[aá]sico|carta[- ]convite|credenciamento|dispensa|inexigibilidade|chamamento|contrata[çc][ãa]o direta/i;
+
+// Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
 async function buscarTextoEdital(numeroControlePNCP) {
   const partes = partesNumeroControle(numeroControlePNCP);
   if (!partes) return null;
@@ -71,12 +78,13 @@ async function buscarTextoEdital(numeroControlePNCP) {
     if (!Array.isArray(lista) || lista.length === 0) return null;
 
     // O documento principal nem sempre se chama "Edital" (pode ser "Aviso de Contratação
-    // Direta", "Aviso de Dispensa" etc. em credenciamentos/dispensas), e o título do arquivo
-    // quase nunca termina em ".pdf" de verdade (o PNCP costuma cortar a extensão). Então, em
-    // vez de tentar adivinhar pelo nome, prioriza por palavra-chave conhecida e, na falta
-    // dela, tenta os documentos na ordem em que aparecem — a validação real de "é um PDF"
-    // acontece depois, olhando a assinatura binária do arquivo baixado.
-    const prioritarios = lista.filter((a) => /edital|aviso|termo de refer[eê]ncia/i.test(a.tipoDocumentoNome || a.tipoDocumentoDescricao || ""));
+    // Direta", "Aviso de Dispensa", "Carta Convite", "Instrumento de Credenciamento" etc.
+    // dependendo da modalidade), e o título do arquivo quase nunca termina em ".pdf" de
+    // verdade (o PNCP costuma cortar a extensão). Então, em vez de tentar adivinhar pelo
+    // nome, prioriza por palavra-chave conhecida (cobrindo todas as modalidades) e, na
+    // falta dela, tenta os documentos na ordem em que aparecem — a validação real de "é um
+    // PDF" acontece depois, olhando a assinatura binária do arquivo baixado.
+    const prioritarios = lista.filter((a) => PALAVRAS_DOCUMENTO_PRINCIPAL.test(a.tipoDocumentoNome || a.tipoDocumentoDescricao || a.titulo || ""));
     const vistos = new Set();
     const candidatos = [...prioritarios, ...lista]
       .filter((a) => {
@@ -84,7 +92,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
         vistos.add(a.sequencialDocumento);
         return true;
       })
-      .slice(0, 5);
+      .slice(0, 6);
     if (candidatos.length === 0) return null;
 
     const pdfParse = require("pdf-parse");
@@ -99,61 +107,73 @@ async function buscarTextoEdital(numeroControlePNCP) {
       return texto && texto.length >= 200 ? texto : null;
     }
 
+    // Devolve uma lista de {texto} extraídos de um arquivo baixado — se for PDF direto,
+    // devolve um único texto; se for .zip (comum em portais como o LICITANET, que
+    // compactam o edital antes de subir no PNCP), abre e extrai de cada PDF de dentro.
+    async function textosDoArquivo(buffer) {
+      const assinatura4 = buffer.slice(0, 4);
+      const ehPdf = buffer.slice(0, 5).toString("latin1") === "%PDF-";
+      const ehZip = assinatura4[0] === 0x50 && assinatura4[1] === 0x4b && (assinatura4[2] === 0x03 || assinatura4[2] === 0x05 || assinatura4[2] === 0x07);
+
+      if (ehPdf) {
+        const texto = await textoDePdf(buffer);
+        return texto ? [texto] : [];
+      }
+
+      if (ehZip) {
+        try {
+          const zip = new AdmZip(buffer);
+          const entradas = zip.getEntries().filter((e) => !e.isDirectory && /\.pdf$/i.test(e.entryName));
+          const prioritariasZip = entradas.filter((e) => PALAVRAS_DOCUMENTO_PRINCIPAL.test(e.entryName));
+          const ordemZip = [...prioritariasZip, ...entradas.filter((e) => !prioritariasZip.includes(e))];
+          const textos = [];
+          for (const entrada of ordemZip.slice(0, 6)) {
+            try {
+              const texto = await textoDePdf(entrada.getData());
+              if (texto) textos.push(texto);
+            } catch (eInterno) {
+              // tenta o próximo arquivo dentro do zip
+            }
+          }
+          return textos;
+        } catch (eZip) {
+          return []; // zip corrompido ou não suportado
+        }
+      }
+
+      return []; // não é PDF nem zip reconhecível (pode ser .docx/.rar/.xlsx disfarçado)
+    }
+
+    // Junta texto de vários documentos (edital + termo de referência, por exemplo) até
+    // atingir o limite de caracteres, em vez de parar no primeiro PDF que der certo — assim
+    // o resumo cobre informação que às vezes só está no Termo de Referência, e não no Edital
+    // em si (ou vice-versa).
+    const pedacos = [];
+    let totalCaracteres = 0;
     for (const doc of candidatos) {
+      if (totalCaracteres >= MAX_CARACTERES_TEXTO) break;
       try {
         const ctrl2 = new AbortController();
-        const t2 = setTimeout(() => ctrl2.abort(), 12000);
+        const t2 = setTimeout(() => ctrl2.abort(), 9000);
         const respArquivo = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
           signal: ctrl2.signal,
         });
         clearTimeout(t2);
         if (!respArquivo.ok) continue;
         const buffer = Buffer.from(await respArquivo.arrayBuffer());
-        // O PNCP costuma devolver Content-Type genérico (application/octet-stream) e às vezes
-        // sem extensão no nome do arquivo, mesmo quando é um PDF de verdade — então não dá pra
-        // confiar no Content-Type/nome pra decidir se tenta ler. Em vez disso, checa a assinatura
-        // binária do arquivo antes de gastar tempo tentando extrair texto.
-        const assinatura4 = buffer.slice(0, 4);
-        const ehPdf = buffer.slice(0, 5).toString("latin1") === "%PDF-";
-        const ehZip = assinatura4[0] === 0x50 && assinatura4[1] === 0x4b && (assinatura4[2] === 0x03 || assinatura4[2] === 0x05 || assinatura4[2] === 0x07);
-
-        if (ehPdf) {
-          const texto = await textoDePdf(buffer);
-          if (texto) return texto.slice(0, MAX_CARACTERES_TEXTO);
-          continue;
+        const textos = await textosDoArquivo(buffer);
+        for (const texto of textos) {
+          const rotulo = (doc.tipoDocumentoNome || doc.titulo || "Documento").toString();
+          pedacos.push(`\n\n--- ${rotulo} ---\n${texto}`);
+          totalCaracteres += texto.length;
         }
-
-        if (ehZip) {
-          // Alguns portais (ex.: LICITANET) publicam o edital no PNCP como um .zip
-          // compactando o(s) PDF(s) de verdade em vez de subir o PDF direto. Abre o zip em
-          // memória, acha as entradas .pdf (prioriza nomes com "edital"/"aviso" no nome) e
-          // tenta extrair texto de cada uma até achar uma que funcione.
-          try {
-            const zip = new AdmZip(buffer);
-            const entradas = zip.getEntries().filter((e) => !e.isDirectory && /\.pdf$/i.test(e.entryName));
-            const prioritariasZip = entradas.filter((e) => /edital|aviso|termo/i.test(e.entryName));
-            const ordemZip = [...prioritariasZip, ...entradas.filter((e) => !prioritariasZip.includes(e))];
-            for (const entrada of ordemZip.slice(0, 5)) {
-              try {
-                const conteudo = entrada.getData();
-                const texto = await textoDePdf(conteudo);
-                if (texto) return texto.slice(0, MAX_CARACTERES_TEXTO);
-              } catch (eInterno) {
-                // tenta o próximo arquivo dentro do zip
-              }
-            }
-          } catch (eZip) {
-            // zip corrompido ou não suportado — tenta o próximo candidato
-          }
-          continue;
-        }
-
-        // não é PDF nem zip reconhecível (pode ser .docx/.rar/.xlsx disfarçado) — ignora
       } catch (e) {
         // tenta o próximo candidato
       }
     }
-    return null;
+
+    if (pedacos.length === 0) return null;
+    return pedacos.join("").trim().slice(0, MAX_CARACTERES_TEXTO);
   } catch (e) {
     return null;
   }
