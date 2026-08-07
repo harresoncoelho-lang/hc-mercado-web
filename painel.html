@@ -1112,6 +1112,7 @@
   let iaEditalAtual = null;
   let iaHistorico = [];
   let iaCarregando = false;
+  let iaTextoEdital = null;
 
   function escreverMensagemIA(texto, classe) {
     const conversa = document.getElementById("modal-ia-conversa");
@@ -1123,15 +1124,105 @@
     return div;
   }
 
+  const RÓTULOS_ESTRUTURA_IA = {
+    identificacao: { titulo: "📋 Identificação da Licitação", campos: { numero: "Número", uasg: "UASG", contratacao: "Contratação", modalidade: "Modalidade", portalRealizacao: "Portal de realização", regulamentacao: "Regulamentação" } },
+    sessaoPublica: { titulo: "🗓️ Sessão Pública", campos: { data: "Data", horario: "Horário", modoDisputa: "Modo de disputa", intervaloMinimo: "Intervalo mínimo" } },
+    orgao: { titulo: "🏛️ Órgão Responsável", campos: { nome: "Órgão", email: "E-mail", endereco: "Endereço", telefone: "Telefone" } },
+    detalhes: { titulo: "💼 Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade" } },
+    prazos: { titulo: "⏰ Prazos Importantes", campos: { limiteEnvioPropostas: "Limite p/ envio de propostas", prazoRecurso: "Prazo p/ recurso", prazoContrarrazoes: "Prazo p/ contrarrazões", limiteEsclarecimentos: "Limite p/ esclarecimentos", limiteImpugnacao: "Limite p/ impugnação", vigenciaContrato: "Vigência do contrato" } },
+    itens: { titulo: "📦 Resumo dos Itens", campos: { totalItens: "Total de itens", descricaoGeral: "Descrição geral", categoriasPrincipais: "Categorias principais" } },
+  };
+
+  function renderizarEstruturaIA(est) {
+    const conversa = document.getElementById("modal-ia-conversa");
+    const wrap = document.createElement("div");
+    wrap.className = "msg-ia";
+
+    if (est.resumoGeral) {
+      const p = document.createElement("p");
+      p.style.margin = "0 0 12px";
+      p.textContent = est.resumoGeral;
+      wrap.appendChild(p);
+    }
+
+    for (const chave of Object.keys(RÓTULOS_ESTRUTURA_IA)) {
+      const secao = est[chave];
+      if (!secao) continue;
+      const def = RÓTULOS_ESTRUTURA_IA[chave];
+      const linhas = Object.keys(def.campos)
+        .map((campo) => [def.campos[campo], secao[campo]])
+        .filter(([, v]) => v && String(v).trim() && !/^n[ãa]o informado$/i.test(String(v).trim()));
+      if (linhas.length === 0) continue;
+      const det = document.createElement("details");
+      det.style.marginTop = "8px";
+      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">${def.titulo}</summary>`;
+      const dl = document.createElement("dl");
+      dl.style.cssText = "margin:8px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;";
+      linhas.forEach(([rotulo, valor]) => {
+        const dt = document.createElement("dt");
+        dt.style.color = "var(--texto-fraco)";
+        dt.textContent = rotulo;
+        const dd = document.createElement("dd");
+        dd.style.margin = "0";
+        dd.textContent = valor;
+        dl.appendChild(dt);
+        dl.appendChild(dd);
+      });
+      det.appendChild(dl);
+      wrap.appendChild(det);
+    }
+
+    if (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
+      const det = document.createElement("details");
+      det.style.marginTop = "8px";
+      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">📑 Documentos de Habilitação Exigidos</summary>`;
+      const ul = document.createElement("ul");
+      ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
+      est.documentosHabilitacao.forEach((d) => {
+        const li = document.createElement("li");
+        li.textContent = d;
+        ul.appendChild(li);
+      });
+      det.appendChild(ul);
+      wrap.appendChild(det);
+    }
+
+    if (Array.isArray(est.outrasInformacoesRelevantes) && est.outrasInformacoesRelevantes.length) {
+      const det = document.createElement("details");
+      det.style.marginTop = "8px";
+      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">ℹ️ Outras Informações Relevantes</summary>`;
+      const ul = document.createElement("ul");
+      ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
+      est.outrasInformacoesRelevantes.forEach((d) => {
+        const li = document.createElement("li");
+        li.textContent = d;
+        ul.appendChild(li);
+      });
+      det.appendChild(ul);
+      wrap.appendChild(det);
+    }
+
+    if (est.penalidades && !/^n[ãa]o informado$/i.test(String(est.penalidades).trim())) {
+      const det = document.createElement("details");
+      det.style.marginTop = "8px";
+      det.innerHTML = `<summary style="cursor:pointer;font-weight:700;font-size:13px;">⚠️ Penalidades</summary><p style="margin:8px 0 0;font-size:13px;">${escapeHtml(est.penalidades)}</p>`;
+      wrap.appendChild(det);
+    }
+
+    conversa.appendChild(wrap);
+    conversa.scrollTop = conversa.scrollHeight;
+  }
+
   async function chamarIA(modo, pergunta) {
     if (iaCarregando) return;
     iaCarregando = true;
-    const carregando = escreverMensagemIA("Pensando...", "msg-carregando");
+    const mensagemEspera = modo === "resumo" ? "Lendo o edital e gerando o resumo... (pode levar alguns segundos)" : "Pensando...";
+    const carregando = escreverMensagemIA(mensagemEspera, "msg-carregando");
     try {
       const resp = await fetch("/.netlify/functions/ia-edital", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico }),
+        body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico, textoEdital: iaTextoEdital }),
       });
       const dados = await resp.json();
       carregando.remove();
@@ -1139,7 +1230,18 @@
         escreverMensagemIA(dados.erro || "Não deu pra gerar a resposta agora.", "msg-erro");
         return;
       }
-      escreverMensagemIA(dados.resposta, "");
+      if (dados.textoEdital) iaTextoEdital = dados.textoEdital;
+      if (modo === "resumo" && dados.estrutura) {
+        renderizarEstruturaIA(dados.estrutura);
+        if (!dados.fonteLida) {
+          escreverMensagemIA("(baseado só nos dados já coletados — não li o PDF completo)", "msg-carregando");
+        }
+      } else {
+        escreverMensagemIA(dados.resposta, "");
+        if (modo === "resumo" && !dados.fonteLida) {
+          escreverMensagemIA("Não consegui abrir o PDF do edital agora (só funciona pra editais publicados diretamente no PNCP) — resumo baseado nos dados já coletados.", "msg-carregando");
+        }
+      }
       iaHistorico.push({ role: "user", content: pergunta || "(resumo inicial)" });
       iaHistorico.push({ role: "assistant", content: dados.resposta });
     } catch (e) {
@@ -1150,9 +1252,58 @@
     }
   }
 
+  // Baixa o arquivo real do edital (via proxy que lê a API pública do PNCP) em vez de só
+  // abrir a página do PNCP no navegador — se não for um edital nativo do PNCP (ou algo falhar),
+  // cai de volta pro link normal.
+  function partesNumeroControleCliente(numeroControlePNCP) {
+    if (!numeroControlePNCP) return null;
+    try {
+      const partes = numeroControlePNCP.split("-");
+      if (partes.length < 3) return null;
+      const cnpj = partes[0];
+      const seqAno = partes.slice(2).join("-");
+      const [seq, ano] = seqAno.split("/");
+      if (!cnpj || !seq || !ano) return null;
+      return { cnpj, ano: parseInt(ano, 10), sequencial: parseInt(seq, 10) };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function baixarEditalDireto(edital, botao) {
+    const textoOriginal = botao.textContent;
+    const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
+    if (!partes) {
+      window.open(edital.link, "_blank", "noopener");
+      return;
+    }
+    botao.disabled = true;
+    botao.textContent = "Buscando arquivo...";
+    try {
+      const resp = await fetch(`/.netlify/functions/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const dados = await resp.json();
+      const lista = dados.arquivos || [];
+      let doc = lista.find((a) => /edital/i.test(a.tipoDocumentoNome || ""));
+      if (!doc) doc = lista.find((a) => /\.pdf$/i.test(a.titulo || ""));
+      if (!doc) {
+        window.open(edital.link, "_blank", "noopener");
+        return;
+      }
+      const nome = encodeURIComponent(doc.titulo || "edital.pdf");
+      const urlBaixar = `/.netlify/functions/pncp-baixar?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}&documento=${doc.sequencialDocumento}&nome=${nome}`;
+      window.location.href = urlBaixar;
+    } catch (e) {
+      window.open(edital.link, "_blank", "noopener");
+    } finally {
+      botao.disabled = false;
+      botao.textContent = textoOriginal;
+    }
+  }
+
   function abrirModalIA(edital) {
     iaEditalAtual = edital;
     iaHistorico = [];
+    iaTextoEdital = null;
     document.getElementById("modal-ia-objeto").textContent = edital.objeto || "";
     document.getElementById("modal-ia-conversa").innerHTML = "";
     document.getElementById("modal-ia-pergunta").value = "";
@@ -1922,7 +2073,7 @@
           <div class="boletim-rodape">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
-              ${r.link ? `<a class="btn-ia-edital" style="text-decoration:none;" href="${r.link}" target="_blank" rel="noopener">📥 Baixar Edital</a>` : ""}
+              ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
             </div>
             ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
           </div>
@@ -1965,6 +2116,14 @@
           ev.stopPropagation();
           const idx = Number(card.dataset.idx);
           abrirModalIA(resultados[idx]);
+        });
+      }
+      const btnBaixar = card.querySelector(".btn-baixar-edital");
+      if (btnBaixar) {
+        btnBaixar.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          const idx = Number(card.dataset.idx);
+          await baixarEditalDireto(resultados[idx], btnBaixar);
         });
       }
       const selectStatus = card.querySelector(".select-status-licitacao");
