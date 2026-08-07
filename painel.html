@@ -989,6 +989,17 @@
   </div>
 </div>
 
+<div class="modal-ia-fundo" id="modal-arquivos-fundo">
+  <div class="modal-ia" style="max-width:520px;height:auto;max-height:80vh;">
+    <div class="modal-ia-topo">
+      <h3 style="margin:0;">📂 Arquivos do Edital</h3>
+      <button type="button" id="modal-arquivos-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <p class="dica-clique" style="margin:0 0 10px;">Essa licitação tem mais de um documento anexado no PNCP — clique pra baixar cada um.</p>
+    <div id="modal-arquivos-lista" style="overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+</div>
+
 <div class="rodape">HC Licitações · dados públicos do PNCP e Portal da Transparência.</div>
 
 <script>
@@ -1350,6 +1361,34 @@
     }
   }
 
+  function montarUrlBaixarDoc(partes, doc) {
+    const nome = encodeURIComponent(doc.titulo || "documento");
+    return `/.netlify/functions/pncp-baixar?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}&documento=${doc.sequencialDocumento}&nome=${nome}`;
+  }
+
+  function abrirModalArquivos(partes, lista) {
+    const alvo = document.getElementById("modal-arquivos-lista");
+    alvo.innerHTML = "";
+    lista.forEach((doc) => {
+      const linha = document.createElement("a");
+      linha.href = montarUrlBaixarDoc(partes, doc);
+      linha.target = "_blank";
+      linha.rel = "noopener";
+      linha.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#0d1826;border:1px solid var(--borda);border-radius:8px;color:var(--texto);text-decoration:none;font-size:13px;";
+      linha.innerHTML = `<span>${escapeHtml(doc.titulo || doc.tipoDocumentoNome || "Documento")}<br><span style="color:var(--texto-fraco);font-size:11.5px;">${escapeHtml(doc.tipoDocumentoNome || "")}</span></span><span>📥 Baixar</span>`;
+      alvo.appendChild(linha);
+    });
+    document.getElementById("modal-arquivos-fundo").classList.add("aberto");
+  }
+
+  document.getElementById("modal-arquivos-fechar").addEventListener("click", () => {
+    document.getElementById("modal-arquivos-fundo").classList.remove("aberto");
+  });
+
+  // Busca todos os documentos anexados no PNCP pra essa licitação. Se tiver só um, baixa
+  // direto (like antes); se tiver mais de um (edital + termo de referência + relatório de
+  // participantes etc., como costuma acontecer), mostra uma listinha pra baixar cada um —
+  // em vez de adivinhar qual é "o certo" e ignorar os outros.
   async function baixarEditalDireto(edital, botao) {
     const textoOriginal = botao.textContent;
     const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
@@ -1358,25 +1397,20 @@
       return;
     }
     botao.disabled = true;
-    botao.textContent = "Buscando arquivo...";
+    botao.textContent = "Buscando arquivos...";
     try {
       const resp = await fetch(`/.netlify/functions/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
       const dados = await resp.json();
       const lista = dados.arquivos || [];
-      // O documento principal muda de nome conforme a modalidade (Edital, Aviso de
-      // Contratação Direta/Dispensa, Ato que autoriza a Contratação Direta, Carta Convite,
-      // Instrumento de Credenciamento etc.) e o arquivo quase sempre é um .zip ou não tem
-      // ".pdf" no nome — então não dá pra exigir essas duas coisas pra achar o arquivo certo.
-      const PALAVRAS_DOC = /edital|aviso|instrumento convocat[oó]rio|termo de refer[eê]ncia|projeto b[aá]sico|carta[- ]convite|credenciamento|dispensa|inexigibilidade|chamamento|contrata[çc][ãa]o direta|ato que autoriza/i;
-      let doc = lista.find((a) => PALAVRAS_DOC.test(a.tipoDocumentoNome || "") || PALAVRAS_DOC.test(a.titulo || ""));
-      if (!doc) doc = lista[0];
-      if (!doc) {
+      if (lista.length === 0) {
         window.open(edital.link, "_blank", "noopener");
         return;
       }
-      const nome = encodeURIComponent(doc.titulo || "edital.pdf");
-      const urlBaixar = `/.netlify/functions/pncp-baixar?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}&documento=${doc.sequencialDocumento}&nome=${nome}`;
-      window.location.href = urlBaixar;
+      if (lista.length === 1) {
+        window.location.href = montarUrlBaixarDoc(partes, lista[0]);
+        return;
+      }
+      abrirModalArquivos(partes, lista);
     } catch (e) {
       window.open(edital.link, "_blank", "noopener");
     } finally {

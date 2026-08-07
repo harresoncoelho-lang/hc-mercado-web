@@ -28,11 +28,49 @@ exports.handler = async (event) => {
     }
     const buffer = Buffer.from(await resp.arrayBuffer());
     const tipo = resp.headers.get("content-type") || "application/octet-stream";
+
+    // O PNCP costuma nomear o arquivo só "Edital" (sem extensão nenhuma), então o Windows
+    // não sabe abrir/reconhecer o tipo do arquivo baixado. Em vez de confiar no nome que veio
+    // do PNCP, detecta o formato de verdade pela assinatura binária e garante que o arquivo
+    // baixado sempre tenha a extensão certa (.pdf, .zip, .docx etc.), igual o pncp-arquivos.js
+    // já faz pro resumo por IA.
+    function detectarExtensao(buf) {
+      if (buf.slice(0, 5).toString("latin1") === "%PDF-") return ".pdf";
+      const b = buf.slice(0, 4);
+      const ehZip = b[0] === 0x50 && b[1] === 0x4b && (b[2] === 0x03 || b[2] === 0x05 || b[2] === 0x07);
+      if (ehZip) {
+        try {
+          const AdmZip = require("adm-zip");
+          const zip = new AdmZip(buf);
+          const nomes = zip.getEntries().map((e) => e.entryName);
+          if (nomes.includes("word/document.xml")) return ".docx";
+          if (nomes.includes("xl/workbook.xml")) return ".xlsx";
+          if (nomes.includes("ppt/presentation.xml")) return ".pptx";
+        } catch (e) {
+          // não deu pra abrir como zip — segue como .zip mesmo
+        }
+        return ".zip";
+      }
+      if (buf.slice(0, 4).toString("latin1") === "Rar!") return ".rar";
+      if (buf.slice(0, 2).toString("latin1") === "PK") return ".zip";
+      return ""; // desconhecido — mantém sem extensão em vez de arriscar errado
+    }
+
+    const extensaoCorreta = detectarExtensao(buffer);
+    let nomeFinal = nomeArquivo;
+    if (extensaoCorreta) {
+      const jaTemExtensao = new RegExp(`\\${extensaoCorreta}$`, "i").test(nomeFinal);
+      if (!jaTemExtensao) {
+        // remove qualquer extensão errada que já esteja no nome antes de acrescentar a certa
+        nomeFinal = nomeFinal.replace(/\.[a-zA-Z0-9]{1,5}$/, "") + extensaoCorreta;
+      }
+    }
+
     return {
       statusCode: 200,
       headers: {
         "Content-Type": tipo,
-        "Content-Disposition": `attachment; filename="${nomeArquivo}"`,
+        "Content-Disposition": `attachment; filename="${nomeFinal}"`,
         "Access-Control-Allow-Origin": "*",
       },
       body: buffer.toString("base64"),
