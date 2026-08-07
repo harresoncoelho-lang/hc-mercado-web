@@ -478,6 +478,17 @@
     padding: 7px 12px; border-radius: 7px; font-size: 12.5px; font-weight: 700; cursor: pointer;
   }
   .btn-ia-edital:hover { background: rgba(46,141,255,0.22); }
+  .btn-ia-edital:disabled { opacity: 0.6; cursor: default; }
+  .boletim-itens { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--borda); }
+  .itens-vazio { color: var(--texto-fraco); font-size: 12.5px; margin: 0; }
+  .itens-licitacao-lista { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
+  .item-licitacao { background: #0d1826; border: 1px solid var(--borda); border-radius: 8px; padding: 9px 11px; }
+  .item-licitacao-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .item-licitacao-numero { font-size: 11.5px; font-weight: 700; color: var(--azul); }
+  .item-licitacao-tipo { font-size: 10.5px; padding: 2px 7px; border-radius: 10px; background: rgba(255,255,255,0.06); color: var(--texto-fraco); }
+  .item-licitacao-desc { font-size: 12.5px; color: var(--texto); margin: 0 0 6px; line-height: 1.4; }
+  .item-licitacao-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--texto-fraco); }
+  .item-licitacao-meta strong { color: var(--texto); }
   .modal-ia-fundo {
     display: none; position: fixed; inset: 0; background: rgba(5,10,16,0.72);
     z-index: 200; align-items: center; justify-content: center; padding: 20px;
@@ -2498,15 +2509,81 @@
           <div class="boletim-rodape">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
+              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação">📋 Ver Itens</button>` : ""}
               ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
             </div>
             ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
           </div>
+          <div class="boletim-itens" style="display:none;"></div>
         </div>
       </div>`;
     });
     html += "</div>";
     return html;
+  }
+
+  function formatarMoedaItem(v) {
+    if (v === null || v === undefined || v === "") return "";
+    const n = Number(v);
+    if (isNaN(n)) return "";
+    return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+
+  function montarHtmlItens(itens) {
+    if (!itens.length) return `<p class="itens-vazio">Nenhum item encontrado pra essa licitação no PNCP.</p>`;
+    const linhas = itens.map((it) => `
+      <div class="item-licitacao">
+        <div class="item-licitacao-topo">
+          <span class="item-licitacao-numero">Item ${escapeHtml(it.numero ?? "-")}</span>
+          ${it.materialOuServico ? `<span class="item-licitacao-tipo">${escapeHtml(it.materialOuServico)}</span>` : ""}
+        </div>
+        <p class="item-licitacao-desc">${escapeHtml(it.descricao || "-")}</p>
+        <div class="item-licitacao-meta">
+          <span>Qtd: <strong>${escapeHtml(it.quantidade ?? "-")} ${escapeHtml(it.unidade || "")}</strong></span>
+          ${it.valorUnitarioEstimado ? `<span>Valor unit. estimado: <strong>${formatarMoedaItem(it.valorUnitarioEstimado)}</strong></span>` : ""}
+          ${it.valorTotal ? `<span>Valor total: <strong>${formatarMoedaItem(it.valorTotal)}</strong></span>` : ""}
+        </div>
+      </div>`).join("");
+    return `<div class="itens-licitacao-lista">${linhas}</div>`;
+  }
+
+  // Busca e alterna (mostra/esconde) o painel de itens de uma licitação, dentro do próprio
+  // card — igual ao "Ver itens" do ConLicitação. Busca só na primeira vez que abre; depois
+  // só alterna a exibição, sem gastar chamada de API de novo.
+  async function alternarVerItens(card, edital, botao) {
+    const painel = card.querySelector(".boletim-itens");
+    if (!painel) return;
+    if (painel.style.display !== "none") {
+      painel.style.display = "none";
+      botao.textContent = "📋 Ver Itens";
+      return;
+    }
+    if (painel.dataset.carregado === "1") {
+      painel.style.display = "block";
+      botao.textContent = "📋 Ocultar Itens";
+      return;
+    }
+    const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
+    if (!partes) {
+      painel.innerHTML = `<p class="itens-vazio">Não foi possível identificar essa licitação pra buscar os itens.</p>`;
+      painel.style.display = "block";
+      painel.dataset.carregado = "1";
+      return;
+    }
+    const textoOriginal = botao.textContent;
+    botao.textContent = "⏳ Carregando...";
+    botao.disabled = true;
+    try {
+      const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const dados = await resp.json();
+      painel.innerHTML = montarHtmlItens(Array.isArray(dados.itens) ? dados.itens : []);
+    } catch (e) {
+      painel.innerHTML = `<p class="itens-vazio">Erro ao buscar os itens. Tenta de novo em alguns segundos.</p>`;
+    }
+    painel.style.display = "block";
+    painel.dataset.carregado = "1";
+    botao.disabled = false;
+    botao.textContent = "📋 Ocultar Itens";
   }
 
   // Liga os botões de favoritar/marcar como lido dentro de um container de cards de boletim.
@@ -2561,6 +2638,14 @@
           ev.stopPropagation();
           const idx = Number(card.dataset.idx);
           await baixarEditalDireto(resultados[idx], btnBaixar);
+        });
+      }
+      const btnVerItens = card.querySelector(".btn-ver-itens");
+      if (btnVerItens) {
+        btnVerItens.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          const idx = Number(card.dataset.idx);
+          await alternarVerItens(card, resultados[idx], btnVerItens);
         });
       }
       const selectStatus = card.querySelector(".select-status-licitacao");
