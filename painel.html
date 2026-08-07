@@ -1100,10 +1100,10 @@
 <div class="modal-ia-fundo" id="modal-verarquivos-fundo">
   <div class="modal-ia" style="max-width:600px;height:auto;max-height:82vh;">
     <div class="modal-ia-topo">
-      <h3 style="margin:0;">📁 Ver Arquivos</h3>
+      <h3 style="margin:0;">📁 Acompanhamento do Processo</h3>
       <button type="button" id="modal-verarquivos-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
-    <p class="dica-clique" style="margin:0 0 10px;">Todos os documentos publicados pelo órgão nessa licitação, organizados por tipo — avisos, esclarecimentos, impugnações, recursos e outros.</p>
+    <p class="dica-clique" style="margin:0 0 10px;">Acompanhamento do processo depois da publicação: avisos, esclarecimentos, impugnações, recursos e retificações. O edital, termo de referência e demais documentos ficam em "Baixar Edital".</p>
     <div id="modal-verarquivos-status"></div>
     <div id="modal-verarquivos-lista" style="overflow-y:auto;display:flex;flex-direction:column;gap:16px;"></div>
   </div>
@@ -1522,14 +1522,24 @@
     return CATEGORIAS_ARQUIVO[CATEGORIAS_ARQUIVO.length - 1];
   }
 
+  // "Ver Arquivos" é sobre ACOMPANHAMENTO do processo, não sobre a documentação da
+  // licitação em si (isso já é o "Baixar Edital"). Por isso as categorias "Documento
+  // principal" (edital/TR/anexos) e "Outros documentos" (planilhas, minutas etc.) ficam de
+  // fora daqui de propósito — só entram avisos, esclarecimentos, impugnações, recursos,
+  // retificações e resultados, que é o que muda DEPOIS que o edital já foi publicado.
+  const CATEGORIAS_ACOMPANHAMENTO = ["impugnacao", "recurso", "esclarecimento", "aviso", "retificacao", "resultado"];
+
   function montarHtmlArquivosCategorizados(arquivos, partes) {
-    if (!arquivos.length) return `<p class="itens-vazio">Nenhum documento encontrado pra essa licitação no PNCP.</p>`;
     const grupos = new Map();
     arquivos.forEach((doc) => {
       const cat = categorizarDocumento(doc);
+      if (!CATEGORIAS_ACOMPANHAMENTO.includes(cat.chave)) return; // fora do escopo do Ver Arquivos
       if (!grupos.has(cat.chave)) grupos.set(cat.chave, { rotulo: cat.rotulo, docs: [] });
       grupos.get(cat.chave).docs.push(doc);
     });
+    if (grupos.size === 0) {
+      return `<p class="itens-vazio">Nenhum aviso, esclarecimento, impugnação, recurso ou retificação publicado ainda nessa licitação. (O edital e demais documentos ficam em "Baixar Edital".)</p>`;
+    }
     const ordem = CATEGORIAS_ARQUIVO.map((c) => c.chave);
     const chavesOrdenadas = [...grupos.keys()].sort((a, b) => ordem.indexOf(a) - ordem.indexOf(b));
     return chavesOrdenadas.map((chave) => {
@@ -2628,7 +2638,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
               ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação">📋 Ver Itens</button>` : ""}
-              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Ver avisos, esclarecimentos, impugnações, recursos e outros documentos">📁 Ver Arquivos</button>` : ""}
+              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações">📁 Acompanhamento</button>` : ""}
               ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
             </div>
             ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
