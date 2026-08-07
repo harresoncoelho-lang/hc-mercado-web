@@ -198,6 +198,107 @@ async function buscarPaginasEmLote(montarUrl, paginaInicial, totalPaginasConheci
   return { paginasVarridas, totalPaginas, parcial: parouPorTempo || proximaPagina <= totalPaginas };
 }
 
+// ---------- Coleta complementar por UF (corrige o viés do scan nacional) ----------
+// O endpoint /v1/contratos (usado acima) NÃO aceita filtro de UF — ele devolve uma página
+// "nacional" cuja ordem é decidida pelo próprio PNCP, e isso tem gerado uma amostra bem
+// desequilibrada entre estados (ex: SC sozinho respondendo por ~30% dos registros
+// coletados, enquanto estados como AM ficam com menos de 1%, mesmo tendo mercado real —
+// confirmado buscando direto no PNCP: só de material/serviço de informática em Manaus,
+// existem centenas de contratos assinados). Isso fazia o Diagnóstico de Mercado parecer
+// vazio pra segmentos que na verdade têm bastante atividade em estados menores.
+//
+// Pra corrigir sem descartar o scan nacional (que é a única fonte com fornecedor/CNPJ pra
+// TODO contrato, usado pela aba "Analisar Empresa"), rodamos uma segunda passada: usamos o
+// endpoint api/search (o mesmo que o site pncp.gov.br usa na busca, e que o Boletim/
+// Encontrar Licitações já usam com sucesso) que ACEITA filtro de UF, priorizando sempre os
+// estados com menos registros na base atual — assim cada execução do robô vai enchendo os
+// "buracos" dos estados mais esquecidos, em vez de gastar tempo de novo nos que já estão
+// bem cobertos (como SC/SP). Cada contrato novo encontrado é enriquecido com uma chamada
+// extra (fornecedor, valor, objeto) pra manter o mesmo formato de registro de sempre.
+const LIMITE_MINUTOS_CONTRATOS_UF = parseFloat(process.env.LIMITE_MINUTOS_CONTRATOS_UF || "10");
+const CONCORRENCIA_UF_CONTRATOS = parseInt(process.env.CONCORRENCIA_UF_CONTRATOS || "4", 10);
+const MAX_PAGINAS_POR_UF_CONTRATOS = parseInt(process.env.MAX_PAGINAS_POR_UF_CONTRATOS || "6", 10);
+
+function contarRegistrosPorUf(registros) {
+  const contagem = new Map();
+  for (const uf of UFS) contagem.set(uf, 0);
+  for (const r of registros) {
+    if (r.uf && contagem.has(r.uf)) contagem.set(r.uf, contagem.get(r.uf) + 1);
+  }
+  return contagem;
+}
+
+async function buscarDetalheContrato(numeroControlePNCP) {
+  const partes = partesNumeroControle(numeroControlePNCP);
+  if (!partes) return null;
+  const dados = await fetchComRetentativa(
+    `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/contratos/${partes.ano}/${partes.sequencial}`,
+    2, 15000, "detalhe contrato"
+  );
+  return dados;
+}
+
+async function coletarContratosComplementarPorUf(registrosExistentes) {
+  iniciarFase(LIMITE_MINUTOS_CONTRATOS_UF);
+  const conhecidos = new Set(registrosExistentes.map((r) => r.numeroControlePNCP).filter(Boolean));
+  const contagemPorUf = contarRegistrosPorUf(registrosExistentes);
+  // Prioriza sempre os estados com MENOS registros hoje — é assim que os "buracos" (ex: AM)
+  // vão sendo preenchidos primeiro, em vez de sempre reprocessar os estados já robustos.
+  const filaUfs = [...UFS].sort((a, b) => contagemPorUf.get(a) - contagemPorUf.get(b));
+  const novos = [];
+  let ufsProcessadas = 0;
+
+  async function processarUf(uf) {
+    let pagina = 1;
+    while (pagina <= MAX_PAGINAS_POR_UF_CONTRATOS) {
+      if (tempoRestanteMs() < 10000) return;
+      const params = new URLSearchParams({
+        tipos_documento: "contrato", status: "todos", ufs: uf,
+        ordenacao: "-data", tam_pagina: "50", pagina: String(pagina),
+      });
+      const dados = await fetchComRetentativa(`https://pncp.gov.br/api/search/?${params}`, 2, 15000, `contratos ${uf}`);
+      if (!dados || !Array.isArray(dados.items) || dados.items.length === 0) return;
+      for (const item of dados.items) {
+        if (tempoRestanteMs() < 8000) return;
+        const numero = item.numero_controle_pncp;
+        if (!numero || conhecidos.has(numero)) continue;
+        conhecidos.add(numero); // evita re-tentar o mesmo contrato 2x na mesma execução
+        const detalhe = await buscarDetalheContrato(numero);
+        if (!detalhe) continue;
+        const objeto = detalhe.objetoContrato || item.description || item.title || "";
+        novos.push({
+          objeto,
+          orgao: (detalhe.orgaoEntidade && detalhe.orgaoEntidade.razaoSocial) || item.orgao_nome || "",
+          cnpjOrgao: (detalhe.orgaoEntidade && detalhe.orgaoEntidade.cnpj) || item.orgao_cnpj || "",
+          uf: (detalhe.unidadeOrgao && detalhe.unidadeOrgao.ufSigla) || uf,
+          municipio: (detalhe.unidadeOrgao && detalhe.unidadeOrgao.municipioNome) || item.municipio_nome || "",
+          cnpjFornecedor: detalhe.niFornecedor || "",
+          nomeFornecedor: detalhe.nomeRazaoSocialFornecedor || "",
+          valor: Number(detalhe.valorGlobal || item.valor_global || 0),
+          dataAssinatura: detalhe.dataAssinatura || item.data_assinatura || null,
+          numeroControlePNCP: numero,
+          segmentos: segmentosQueBatem(objeto),
+        });
+      }
+      pagina += 1;
+    }
+  }
+
+  async function trabalhador() {
+    while (filaUfs.length > 0) {
+      if (tempoRestanteMs() < 10000) return;
+      const uf = filaUfs.shift();
+      if (!uf) return;
+      await processarUf(uf);
+      ufsProcessadas += 1;
+    }
+  }
+
+  await Promise.all(Array.from({ length: CONCORRENCIA_UF_CONTRATOS }, () => trabalhador()));
+  console.log(`[contratos-uf] Complementar concluído: ${novos.length} contrato(s) novo(s) em ${ufsProcessadas} UF(s) processada(s) (priorizando as menos cobertas).`);
+  return novos;
+}
+
 // ---------- Contratos históricos (nacional, acumulados de forma incremental) ----------
 async function coletarContratos(caminhoArquivo) {
   const existentes = await lerJsonExistente(caminhoArquivo);
@@ -246,6 +347,17 @@ async function coletarContratos(caminhoArquivo) {
     for (const r of existentes.registros) mapa.set(chaveRegistro(r), r);
   }
   for (const r of novos) mapa.set(chaveRegistro(r), r);
+
+  // Passada complementar por UF (ver coletarContratosComplementarPorUf acima) — preenche os
+  // estados que o scan nacional deixou de fora, usando o que já temos (existentes + novos
+  // desta execução) pra saber quais estados priorizar.
+  try {
+    const baseParaContagem = Array.from(mapa.values());
+    const complementares = await coletarContratosComplementarPorUf(baseParaContagem);
+    for (const r of complementares) mapa.set(chaveRegistro(r), r);
+  } catch (e) {
+    console.log(`[contratos-uf] Falhou, seguindo só com o scan nacional: ${e && e.message}`);
+  }
 
   const limiteRetencao = new Date(hoje.getTime() - RETENCAO_DIAS * 24 * 60 * 60 * 1000);
   let registros = Array.from(mapa.values()).filter((r) => {
