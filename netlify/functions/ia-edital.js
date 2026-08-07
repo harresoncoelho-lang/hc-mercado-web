@@ -125,12 +125,18 @@ const SCHEMA_ESTRUTURA = `{
   "identificacao": {"objeto": "", "numero": "", "uasg": "", "contratacao": "", "modalidade": "", "portalRealizacao": "", "regulamentacao": ""},
   "sessaoPublica": {"data": "", "horario": "", "modoDisputa": "", "intervaloMinimo": ""},
   "orgao": {"nome": "", "email": "", "endereco": "", "telefone": ""},
-  "detalhes": {"valorEstimado": "", "prazoEntrega": "", "margemPreferencia": "", "exigeVisitaTecnica": "", "exigeAmostra": "", "garantia": "", "criterioJulgamento": "", "preferenciaMeEpp": "", "restricoesRegionalidade": ""},
+  "detalhes": {"valorEstimado": "", "prazoEntrega": "", "margemPreferencia": "", "exigeVisitaTecnica": "", "exigeAmostra": "", "garantia": "", "criterioJulgamento": "", "preferenciaMeEpp": "", "restricoesRegionalidade": "", "provaConceito": ""},
   "prazos": {"limiteEnvioPropostas": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": ""},
-  "itens": {"totalItens": "", "descricaoGeral": "", "categoriasPrincipais": ""},
+  "criteriosProposta": {"validadeProposta": "", "criteriosDesempate": "", "exigenciasPropostaComercial": "", "programaIntegridade": ""},
+  "itens": {"totalItens": "", "descricaoGeral": "", "categoriasPrincipais": "", "observacoes": ""},
   "documentosHabilitacao": ["lista de documentos exigidos, um por item"],
+  "atestadoCapacidadeTecnica": "",
+  "legislacao": "",
+  "anexosDeclaracoes": "",
+  "condicoesPagamento": "",
   "penalidades": "",
   "outrasInformacoesRelevantes": ["lista curta de pontos importantes que não se encaixam nos campos acima"],
+  "analiseCritica": {"conflitoObjetoMinuta": "", "conflitoPrazoVigenciaArp": "", "conflitoPrazosEntrega": "", "permiteSubcontratacao": "", "previsaoReajuste": "", "permiteRenovacao": "", "estabeleceCondicoesPagamento": ""},
   "resumoGeral": "resumo corrido de 4 a 6 frases, em linguagem simples, pra quem está decidindo se participa"
 }`;
 
@@ -240,7 +246,7 @@ exports.handler = async (event) => {
       { role: "system", content: `${REGRAS_BASE}\nVocê recebeu o texto real extraído do PDF do edital. Extraia as informações pedidas e devolva SOMENTE um JSON válido (sem markdown, sem comentários) no formato exato:\n${SCHEMA_ESTRUTURA}` },
       { role: "user", content: `Dados já conhecidos:\n${ficha}\n\nTexto extraído do edital (pode estar truncado):\n${textoEdital}` },
     ];
-    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 1800, timeoutMs: 25000, json: true });
+    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 2600, timeoutMs: 28000, json: true });
     if (r.ok) {
       try {
         const estrutura = JSON.parse(r.texto);
