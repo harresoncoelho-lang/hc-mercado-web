@@ -2369,8 +2369,9 @@
   }
 
   // Carrega data/mercado_segmentos.json (atas de registro de preço + empresas vencedoras,
-  // já cruzadas pelo robô — só cobre os segmentos fixos que a HC monitora, ver SEGMENTOS
-  // em scripts/atualizar_dados.js). Formato diferente do carregarCache() acima (não tem
+  // já cruzadas pelo robô). Cobre TODOS os segmentos, sem lista fixa — a cobertura de cada
+  // mercado cresce aos poucos conforme o robô processa (ver coletarMercadoSegmentos em
+  // scripts/atualizar_dados.js). Formato diferente do carregarCache() acima (não tem
   // "registros", tem "atas" e "empresas").
   async function carregarMercadoSegmentos() {
     try {
@@ -3540,11 +3541,10 @@
 
     if (d.mercado) {
       const m = d.mercado;
-      const bateComAlgumMonitorado = m.segmentosMonitorados.some((s) => d.palavras.some((p) => normalizar(s).includes(normalizar(p)) || normalizar(p).includes(normalizar(s))));
       if (!m.atualizadoEm) {
         html += '<div class="aviso">O robô ainda não coletou atas de registro de preço (empresas vencedoras por segmento) — essa parte do diagnóstico fica disponível assim que a primeira coleta rodar.</div>';
-      } else if (!bateComAlgumMonitorado) {
-        html += `<div class="aviso">O cruzamento de empresas por ata de registro de preço hoje cobre só estes segmentos fixos: ${escapeHtml(m.segmentosMonitorados.join(", "))}. Sua busca ("${escapeHtml(d.palavras.join(", "))}") não bate com nenhum deles, então essa parte do painel fica vazia — o ranking de concorrentes acima (baseado em contratos assinados) continua valendo pra qualquer palavra-chave.</div>`;
+      } else if (m.empresas.length === 0) {
+        html += `<div class="aviso">Ainda não encontramos atas de registro de preço pra "${escapeHtml(d.palavras.join(", "))}"${d.uf ? " em " + escapeHtml(d.uf) : ""} na coleta atual. O robô varre atas de TODOS os segmentos (não só uma lista fixa), aos poucos, item por item — se esse mercado existir no PNCP, ele tende a aparecer aqui nas próximas atualizações diárias. O ranking de concorrentes acima (baseado em contratos assinados) já cobre qualquer palavra-chave desde já.</div>`;
       } else {
         if (m.parcial) {
           html += '<div class="aviso">Coleta de atas ainda em andamento (o robô processa aos poucos, item por item, pra não estourar os limites da API do PNCP) — o ranking abaixo tende a crescer nas próximas atualizações diárias.</div>';
@@ -3804,10 +3804,11 @@
         }
       }
 
-      // Atas de registro de preço + empresas vencedoras, restrito aos segmentos fixos que
-      // o robô monitora (ver SEGMENTOS em scripts/atualizar_dados.js). Só entra em jogo
-      // quando a busca do usuário bate com algum desses segmentos — pra qualquer outra
-      // palavra-chave, esse painel simplesmente fica vazio (com aviso explicando o porquê).
+      // Atas de registro de preço + empresas vencedoras — cobre qualquer segmento (sem
+      // lista fixa), mas a cobertura de cada mercado específico cresce aos poucos, conforme
+      // o robô vai processando as atas (ver coletarMercadoSegmentos em
+      // scripts/atualizar_dados.js). Pra segmentos ainda não alcançados, o painel mostra um
+      // aviso explicando que a coleta está em andamento (não que o segmento é ignorado).
       let atasFiltradas = [];
       let empresasMercado = [];
       let mercadoSegmentosMonitorados = [];

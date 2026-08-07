@@ -508,9 +508,17 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
 }
 
 // ---------- Mercado por segmento: atas de registro de preço + empresas vencedoras ----------
-// Só processa atas cujo objeto bate com algum dos SEGMENTOS monitorados — cada ata que bate
-// custa consultas extras (itens + resultados de cada item), então não dá pra fazer isso pra
-// TODAS as atas do Brasil sem estourar o orçamento de tempo/limites da API do PNCP.
+// Antes só processava atas cujo objeto batesse com uma lista fixa de ~10 segmentos — o
+// problema é que qualquer cliente cujo ramo não estivesse nessa lista via o painel
+// permanentemente vazio, mesmo que o mercado dele existisse de verdade no PNCP (foi
+// exatamente o que aconteceu com informática/AM e depois com construção civil). Trocamos
+// pra registrar e enfileirar TODA ata encontrada, de qualquer segmento — sem lista fixa. O
+// que já limitava o custo (consultas extras de itens + resultados por ata) continua
+// limitando: o orçamento de tempo por execução + a fila persistente (filaPendente) fazem o
+// robô processar o que der a cada dia e continuar de onde parou no dia seguinte. Com isso,
+// qualquer mercado pesquisado no Diagnóstico acaba sendo coberto mais cedo ou mais tarde,
+// sem precisar cadastrar palavra-chave nenhuma de antemão. SEGMENTOS continua existindo só
+// como rótulo informativo (usado também pra marcar os contratos nacionais).
 async function coletarMercadoSegmentos(caminhoArquivo) {
   const existentes = await lerJsonExistente(caminhoArquivo);
   const hoje = new Date();
@@ -684,8 +692,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 
       for (const item of itens) {
         const objeto = item.objetoContratacao || "";
-        const segs = segmentosQueBatem(objeto);
-        if (segs.length === 0) continue;
+        const segs = segmentosQueBatem(objeto); // só rótulo informativo agora, não filtra mais
         const chave = item.numeroControlePNCPAta;
         if (!chave || atasMapa.has(chave)) continue;
 
