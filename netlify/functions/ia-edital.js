@@ -70,27 +70,40 @@ async function buscarTextoEdital(numeroControlePNCP) {
     const lista = await respLista.json();
     if (!Array.isArray(lista) || lista.length === 0) return null;
 
-    // Prioriza o documento do tipo "Edital"; se não achar, pega o primeiro PDF da lista.
-    let doc = lista.find((a) => /edital/i.test(a.tipoDocumentoNome || a.tipoDocumentoDescricao || ""));
-    if (!doc) doc = lista.find((a) => /\.pdf$/i.test(a.titulo || ""));
-    if (!doc) return null;
-
-    const ctrl2 = new AbortController();
-    const t2 = setTimeout(() => ctrl2.abort(), 12000);
-    const respArquivo = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
-      signal: ctrl2.signal,
-    });
-    clearTimeout(t2);
-    if (!respArquivo.ok) return null;
-    const tipo = respArquivo.headers.get("content-type") || "";
-    const buffer = Buffer.from(await respArquivo.arrayBuffer());
-    if (!/pdf/i.test(tipo) && !/\.pdf$/i.test(doc.titulo || "")) return null; // só sabemos ler PDF por enquanto
+    // Prioriza documentos do tipo "Edital"; se não achar nenhum, tenta qualquer coisa com nome
+    // terminando em .pdf. Pode haver mais de um documento chamado "Edital" (retificações etc.)
+    // — tenta até 3 candidatos em ordem até um realmente abrir como PDF.
+    const candidatos = [
+      ...lista.filter((a) => /edital/i.test(a.tipoDocumentoNome || a.tipoDocumentoDescricao || "")),
+      ...lista.filter((a) => /\.pdf$/i.test(a.titulo || "")),
+    ].slice(0, 3);
+    if (candidatos.length === 0) return null;
 
     const pdfParse = require("pdf-parse");
-    const resultado = await pdfParse(buffer);
-    const texto = (resultado.text || "").replace(/\s+/g, " ").trim();
-    if (!texto || texto.length < 200) return null; // provavelmente PDF escaneado/imagem, sem texto extraível
-    return texto.slice(0, MAX_CARACTERES_TEXTO);
+    for (const doc of candidatos) {
+      try {
+        const ctrl2 = new AbortController();
+        const t2 = setTimeout(() => ctrl2.abort(), 12000);
+        const respArquivo = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
+          signal: ctrl2.signal,
+        });
+        clearTimeout(t2);
+        if (!respArquivo.ok) continue;
+        const buffer = Buffer.from(await respArquivo.arrayBuffer());
+        // O PNCP costuma devolver Content-Type genérico (application/octet-stream) e às vezes
+        // sem extensão no nome do arquivo, mesmo quando é um PDF de verdade — então não dá pra
+        // confiar no Content-Type/nome pra decidir se tenta ler. Em vez disso, checa a assinatura
+        // binária do PDF (todo PDF de verdade começa com "%PDF-") antes de gastar tempo tentando
+        // extrair texto de algo que pode ser um .docx/.rar/.xlsx disfarçado de "Edital".
+        if (buffer.slice(0, 5).toString("latin1") !== "%PDF-") continue;
+        const resultado = await pdfParse(buffer);
+        const texto = (resultado.text || "").replace(/\s+/g, " ").trim();
+        if (texto && texto.length >= 200) return texto.slice(0, MAX_CARACTERES_TEXTO);
+      } catch (e) {
+        // tenta o próximo candidato
+      }
+    }
+    return null;
   } catch (e) {
     return null;
   }
