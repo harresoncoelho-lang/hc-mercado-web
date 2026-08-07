@@ -1,9 +1,17 @@
 // Netlify Function: lista os documentos anexados a uma contratação no PNCP (edital, projeto
-// básico, planilhas etc.) — proxy simples pra fugir de CORS, já que o navegador não consegue
-// chamar pncp.gov.br diretamente do nosso domínio. API pública, sem necessidade de token.
+// básico, avisos, esclarecimentos, impugnações, recursos etc.) — proxy simples pra fugir de
+// CORS, já que o navegador não consegue chamar pncp.gov.br diretamente do nosso domínio.
+// API pública, sem necessidade de token.
+//
+// Também devolve a situação atual da licitação (Divulgada no PNCP, Revogada, Anulada,
+// Suspensa etc.) — é assim que a gente consegue avisar o cliente quando uma licitação que
+// ele está acompanhando muda de status, sem precisar de "monitoramento de chat" em tempo
+// real (que dependeria de integrar com cada portal de disputa individualmente, sem API
+// pública — Comprasnet, BLL, Licitanet etc. cada um com seu próprio sistema fechado).
 //
 // Uso: GET /.netlify/functions/pncp-arquivos?cnpj=...&ano=...&sequencial=...
 const BASE_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
+const BASE_URL_COMPRA = "https://pncp.gov.br/api/consulta/v1/orgaos";
 
 exports.handler = async (event) => {
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
@@ -12,8 +20,10 @@ exports.handler = async (event) => {
   const ano = parseInt(q.ano, 10);
   const sequencial = parseInt(q.sequencial, 10);
   if (cnpj.length !== 14 || !ano || !sequencial) {
-    return { statusCode: 400, headers, body: JSON.stringify({ erro: "Informe cnpj, ano e sequencial válidos.", arquivos: [] }) };
+    return { statusCode: 400, headers, body: JSON.stringify({ erro: "Informe cnpj, ano e sequencial válidos.", arquivos: [], situacaoCompraNome: null, situacaoCompraId: null }) };
   }
+
+  let arquivos = [];
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15000);
@@ -22,17 +32,39 @@ exports.handler = async (event) => {
       signal: ctrl.signal,
     });
     clearTimeout(t);
-    if (!resp.ok) {
-      return { statusCode: 200, headers, body: JSON.stringify({ erro: null, arquivos: [] }) };
+    if (resp.ok) {
+      const dados = await resp.json();
+      arquivos = (Array.isArray(dados) ? dados : []).map((a) => ({
+        sequencialDocumento: a.sequencialDocumento,
+        titulo: a.titulo || "",
+        tipoDocumentoNome: a.tipoDocumentoNome || a.tipoDocumentoDescricao || "",
+        dataPublicacaoPncp: a.dataPublicacaoPncp || null,
+      }));
     }
-    const dados = await resp.json();
-    const arquivos = (Array.isArray(dados) ? dados : []).map((a) => ({
-      sequencialDocumento: a.sequencialDocumento,
-      titulo: a.titulo || "",
-      tipoDocumentoNome: a.tipoDocumentoNome || a.tipoDocumentoDescricao || "",
-    }));
-    return { statusCode: 200, headers, body: JSON.stringify({ erro: null, arquivos }) };
   } catch (e) {
-    return { statusCode: 200, headers, body: JSON.stringify({ erro: String((e && e.message) || e), arquivos: [] }) };
+    // segue mesmo sem lista de arquivos — não impede de mostrar a situação da compra
   }
+
+  // Busca a situação atual da compra (separado, não crítico: se falhar, só não mostra o
+  // aviso de status, mas a lista de arquivos continua funcionando normalmente).
+  let situacaoCompraNome = null;
+  let situacaoCompraId = null;
+  try {
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => ctrl2.abort(), 10000);
+    const respCompra = await fetch(`${BASE_URL_COMPRA}/${cnpj}/compras/${ano}/${sequencial}`, {
+      headers: { Accept: "application/json" },
+      signal: ctrl2.signal,
+    });
+    clearTimeout(t2);
+    if (respCompra.ok) {
+      const dadosCompra = await respCompra.json();
+      situacaoCompraNome = dadosCompra.situacaoCompraNome || null;
+      situacaoCompraId = dadosCompra.situacaoCompraId ?? null;
+    }
+  } catch (e) {
+    // não crítico
+  }
+
+  return { statusCode: 200, headers, body: JSON.stringify({ erro: null, arquivos, situacaoCompraNome, situacaoCompraId }) };
 };

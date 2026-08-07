@@ -489,6 +489,24 @@
   .item-licitacao-desc { font-size: 12.5px; color: var(--texto); margin: 0 0 6px; line-height: 1.4; }
   .item-licitacao-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--texto-fraco); }
   .item-licitacao-meta strong { color: var(--texto); }
+  .arquivos-categoria-titulo { margin: 0 0 8px; font-size: 12.5px; font-weight: 700; color: var(--texto); }
+  .arquivos-categoria-contagem { font-size: 11px; font-weight: 700; color: var(--texto-fraco); }
+  .arquivos-categoria-lista { display: flex; flex-direction: column; gap: 7px; }
+  .arquivo-linha {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 9px 11px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
+    color: var(--texto); text-decoration: none; font-size: 12.5px;
+  }
+  .arquivo-linha:hover { border-color: var(--azul); }
+  .arquivo-linha-data { color: var(--texto-fraco); font-size: 11px; }
+  .status-compra-alerta {
+    background: rgba(232,97,122,0.14); border: 1px solid rgba(232,97,122,0.4); color: var(--vermelho);
+    padding: 9px 12px; border-radius: 8px; font-size: 12.5px; margin-bottom: 12px;
+  }
+  .status-compra-ok {
+    background: rgba(46,141,255,0.1); border: 1px solid rgba(46,141,255,0.3); color: var(--azul);
+    padding: 7px 12px; border-radius: 8px; font-size: 12px; margin-bottom: 12px;
+  }
   .modal-ia-fundo {
     display: none; position: fixed; inset: 0; background: rgba(5,10,16,0.72);
     z-index: 200; align-items: center; justify-content: center; padding: 20px;
@@ -1079,6 +1097,18 @@
   </div>
 </div>
 
+<div class="modal-ia-fundo" id="modal-verarquivos-fundo">
+  <div class="modal-ia" style="max-width:600px;height:auto;max-height:82vh;">
+    <div class="modal-ia-topo">
+      <h3 style="margin:0;">📁 Ver Arquivos</h3>
+      <button type="button" id="modal-verarquivos-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <p class="dica-clique" style="margin:0 0 10px;">Todos os documentos publicados pelo órgão nessa licitação, organizados por tipo — avisos, esclarecimentos, impugnações, recursos e outros.</p>
+    <div id="modal-verarquivos-status"></div>
+    <div id="modal-verarquivos-lista" style="overflow-y:auto;display:flex;flex-direction:column;gap:16px;"></div>
+  </div>
+</div>
+
 <div class="rodape">HC Licitações · dados públicos do PNCP e Portal da Transparência.</div>
 
 <script>
@@ -1463,6 +1493,94 @@
 
   document.getElementById("modal-arquivos-fechar").addEventListener("click", () => {
     document.getElementById("modal-arquivos-fundo").classList.remove("aberto");
+  });
+
+  // Categoriza um documento pelo nome/tipo — pra agrupar igual o "Ver arquivos" do
+  // ConLicitação (Acompanhamentos, Avisos, Esclarecimentos, Impugnações, Recursos etc.),
+  // em vez de mostrar tudo numa lista só. Cobre os tipos mais comuns publicados pelo órgão
+  // ao longo do processo (não só o edital em si) — é assim que dá pra perceber, por exemplo,
+  // que saiu uma impugnação ou um aviso de suspensão/revogação sem precisar entrar no PNCP.
+  // Mesma lista ampla de palavras-chave do documento principal usada no back-end
+  // (ia-edital.js), reaproveitada aqui só pra categorizar visualmente.
+  const PALAVRAS_DOCUMENTO_PRINCIPAL_CLIENTE = /edital|instrumento convocat[oó]rio|termo de refer[eê]ncia|projeto b[aá]sico|carta[- ]convite|credenciamento|dispensa|inexigibilidade|chamamento|contrata[çc][ãa]o direta/i;
+  const CATEGORIAS_ARQUIVO = [
+    { chave: "impugnacao", rotulo: "⚠️ Impugnações", teste: /impugna[çc][ãa]o/i },
+    { chave: "recurso", rotulo: "⚠️ Recursos e Contrarrazões", teste: /recurso|contrarraz[ãa]o/i },
+    { chave: "esclarecimento", rotulo: "💬 Esclarecimentos", teste: /esclarec/i },
+    { chave: "aviso", rotulo: "📢 Avisos", teste: /aviso|suspens[ãa]o|revoga[çc][ãa]o|anula[çc][ãa]o|cancelamento|adiamento/i },
+    { chave: "retificacao", rotulo: "✏️ Retificações e Errata", teste: /retifica|errata/i },
+    { chave: "resultado", rotulo: "🏁 Resultados e Homologação", teste: /resultado|julgamento|homologa[çc][ãa]o|adjudica[çc][ãa]o|ata\b/i },
+    { chave: "principal", rotulo: "📄 Documento principal", teste: PALAVRAS_DOCUMENTO_PRINCIPAL_CLIENTE },
+    { chave: "outros", rotulo: "📎 Outros documentos", teste: null },
+  ];
+
+  function categorizarDocumento(doc) {
+    const nome = `${doc.tipoDocumentoNome || ""} ${doc.titulo || ""}`;
+    for (const cat of CATEGORIAS_ARQUIVO) {
+      if (cat.teste && cat.teste.test(nome)) return cat;
+    }
+    return CATEGORIAS_ARQUIVO[CATEGORIAS_ARQUIVO.length - 1];
+  }
+
+  function montarHtmlArquivosCategorizados(arquivos, partes) {
+    if (!arquivos.length) return `<p class="itens-vazio">Nenhum documento encontrado pra essa licitação no PNCP.</p>`;
+    const grupos = new Map();
+    arquivos.forEach((doc) => {
+      const cat = categorizarDocumento(doc);
+      if (!grupos.has(cat.chave)) grupos.set(cat.chave, { rotulo: cat.rotulo, docs: [] });
+      grupos.get(cat.chave).docs.push(doc);
+    });
+    const ordem = CATEGORIAS_ARQUIVO.map((c) => c.chave);
+    const chavesOrdenadas = [...grupos.keys()].sort((a, b) => ordem.indexOf(a) - ordem.indexOf(b));
+    return chavesOrdenadas.map((chave) => {
+      const grupo = grupos.get(chave);
+      const linhas = grupo.docs.map((doc) => `
+        <a href="${montarUrlBaixarDoc(partes, doc)}" target="_blank" rel="noopener" class="arquivo-linha">
+          <span>${escapeHtml(doc.titulo || doc.tipoDocumentoNome || "Documento")}${doc.dataPublicacaoPncp ? `<br><span class="arquivo-linha-data">Publicado em ${escapeHtml(formatarPrazoPropostas(doc.dataPublicacaoPncp))}</span>` : ""}</span>
+          <span>📥 Baixar</span>
+        </a>`).join("");
+      return `<div class="arquivos-categoria">
+        <p class="arquivos-categoria-titulo">${grupo.rotulo} <span class="arquivos-categoria-contagem">${grupo.docs.length}</span></p>
+        <div class="arquivos-categoria-lista">${linhas}</div>
+      </div>`;
+    }).join("");
+  }
+
+  async function abrirModalVerArquivos(edital, botao) {
+    const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
+    const painelStatus = document.getElementById("modal-verarquivos-status");
+    const painelLista = document.getElementById("modal-verarquivos-lista");
+    if (!partes) {
+      painelStatus.innerHTML = "";
+      painelLista.innerHTML = `<p class="itens-vazio">Não foi possível identificar essa licitação pra buscar os arquivos.</p>`;
+      document.getElementById("modal-verarquivos-fundo").classList.add("aberto");
+      return;
+    }
+    const textoOriginal = botao ? botao.textContent : "";
+    if (botao) { botao.disabled = true; botao.textContent = "⏳ Carregando..."; }
+    painelStatus.innerHTML = "";
+    painelLista.innerHTML = `<p class="itens-vazio">Carregando...</p>`;
+    document.getElementById("modal-verarquivos-fundo").classList.add("aberto");
+    try {
+      const resp = await fetch(`/.netlify/functions/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const dados = await resp.json();
+      // situacaoCompraId 1 = "Divulgada no PNCP" (normal). Qualquer outro valor é sinal de
+      // que algo mudou no processo — revogação, suspensão, anulação etc. — vale destacar.
+      if (dados.situacaoCompraNome && dados.situacaoCompraId !== 1) {
+        painelStatus.innerHTML = `<div class="status-compra-alerta">⚠️ Situação atual da licitação: <strong>${escapeHtml(dados.situacaoCompraNome)}</strong></div>`;
+      } else if (dados.situacaoCompraNome) {
+        painelStatus.innerHTML = `<div class="status-compra-ok">✓ Situação atual: ${escapeHtml(dados.situacaoCompraNome)}</div>`;
+      }
+      painelLista.innerHTML = montarHtmlArquivosCategorizados(dados.arquivos || [], partes);
+    } catch (e) {
+      painelLista.innerHTML = `<p class="itens-vazio">Erro ao buscar os arquivos. Tenta de novo em alguns segundos.</p>`;
+    } finally {
+      if (botao) { botao.disabled = false; botao.textContent = textoOriginal; }
+    }
+  }
+
+  document.getElementById("modal-verarquivos-fechar").addEventListener("click", () => {
+    document.getElementById("modal-verarquivos-fundo").classList.remove("aberto");
   });
 
   // Busca todos os documentos anexados no PNCP pra essa licitação. Se tiver só um, baixa
@@ -2510,6 +2628,7 @@
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
               ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação">📋 Ver Itens</button>` : ""}
+              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Ver avisos, esclarecimentos, impugnações, recursos e outros documentos">📁 Ver Arquivos</button>` : ""}
               ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
             </div>
             ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
@@ -2646,6 +2765,14 @@
           ev.stopPropagation();
           const idx = Number(card.dataset.idx);
           await alternarVerItens(card, resultados[idx], btnVerItens);
+        });
+      }
+      const btnVerArquivos = card.querySelector(".btn-ver-arquivos");
+      if (btnVerArquivos) {
+        btnVerArquivos.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          const idx = Number(card.dataset.idx);
+          await abrirModalVerArquivos(resultados[idx], btnVerArquivos);
         });
       }
       const selectStatus = card.querySelector(".select-status-licitacao");
