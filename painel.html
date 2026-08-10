@@ -2389,6 +2389,19 @@
   // mercado cresce aos poucos conforme o robô processa (ver coletarMercadoSegmentos em
   // scripts/atualizar_dados.js). Formato diferente do carregarCache() acima (não tem
   // "registros", tem "atas" e "empresas").
+
+  async function carregarMeta(caminho) {
+    try {
+      const resp = await fetch(caminho);
+      if (!resp.ok) return null;
+      const dados = await resp.json();
+      if (!dados || typeof dados !== "object") return null;
+      return dados;
+    } catch (e) {
+      return null;
+    }
+  }
+  
   // Tira os caracteres que a sintaxe .or() do Postgrest usa como separador/reservado,
   // pra não quebrar a consulta quando o usuário digita algo com vírgula/parênteses.
   function sanitizarParaIlike(palavra) {
@@ -2404,7 +2417,7 @@
   // normalmente por ser pequeno.
   async function carregarMercadoSegmentos(palavras, uf) {
     try {
-      const meta = await carregarCache("data/mercado_meta.json");
+      const meta = await carregarMeta("data/mercado_meta.json");
       let query = window.__sbClient.from("mercado_atas").select("dado").limit(4000);
       if (uf) query = query.eq("uf_orgao", uf);
       const termos = (palavras || []).map(sanitizarParaIlike).filter(Boolean);
@@ -3797,7 +3810,7 @@
     try {
       let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
 
-      const metaContratos = await carregarCache("data/contratos_meta.json");
+      const metaContratos = await carregarMeta("data/contratos_meta.json");
       if (metaContratos) {
         const res = await consultarContratosSupabase({ palavras, dias });
         encontrados = res.registros;
@@ -3987,7 +4000,7 @@
       const palavras = segmentoRaw ? segmentoRaw.split(",").map((p) => p.trim()).filter(Boolean) : null;
 
       let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
-      const metaContratos = await carregarCache("data/contratos_meta.json");
+      const metaContratos = await carregarMeta("data/contratos_meta.json");
       if (metaContratos) {
         const res = await consultarContratosSupabase({ cnpjFornecedor: cnpj, dias, limite: 2000 });
         encontrados = res.registros;
