@@ -80,4 +80,24 @@ async function removerMaisAntigosQue(tabela, colunaData, dataLimiteIso) {
   await restFetch(`${tabela}?${colunaData}=lt.${dataLimiteIso}`, { method: "DELETE" });
 }
 
-module.exports = { upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue, chaveServico };
+
+// Helpers genericos "chave -> blob json" pra arquivos pequenos que antes eram
+// commitados direto no git (convenios.json, sistema_s_am.json, editais_vistos.json).
+// Guarda tudo na tabela public.dados_robo (chave text primary key, dado jsonb).
+// Isso evita que o robo precise commitar/dar push no repositorio a cada execucao —
+// e cada commit desses disparava uma publicacao completa do site no Netlify.
+async function buscarBlob(tabela, chave) {
+  const resp = await restFetch(`${tabela}?chave=eq.${encodeURIComponent(chave)}&select=dado`);
+  const linhas = await resp.json();
+  return linhas.length > 0 ? linhas[0].dado : null;
+}
+
+async function salvarBlob(tabela, chave, dado) {
+  await restFetch(`${tabela}?on_conflict=chave`, {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify([{ chave, dado, atualizado_em: new Date().toISOString() }]),
+  });
+}
+
+module.exports = { upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue, chaveServico, buscarBlob, salvarBlob };
