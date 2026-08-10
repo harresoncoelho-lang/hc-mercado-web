@@ -195,10 +195,7 @@ async function coletarSescAM() {
 }
 
 async function main() {
-  const fs = await import("node:fs/promises");
-  const path = await import("node:path");
-  const dirDados = path.join(process.cwd(), "data");
-  await fs.mkdir(dirDados, { recursive: true });
+  const { salvarBlob } = require("./supabase_dados");
 
   console.log(`Iniciando coleta Sistema S/AM. Orcamento: ${LIMITE_MINUTOS} min.`);
 
@@ -212,8 +209,8 @@ async function main() {
     registros,
   };
 
-  await fs.writeFile(path.join(dirDados, "sistema_s_am.json"), JSON.stringify(resultado), "utf8");
-  console.log(`Gravado data/sistema_s_am.json com ${registros.length} registro(s).`);
+  await salvarBlob("dados_robo", "sistema_s_am", resultado);
+  console.log(`Gravado no Supabase (dados_robo / sistema_s_am) com ${registros.length} registro(s).`);
 
   if (registros.length === 0) {
     console.log("AVISO: nenhum registro coletado - verifique se a estrutura das paginas mudou.");
