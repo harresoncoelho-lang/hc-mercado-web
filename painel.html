@@ -1203,8 +1203,8 @@
     { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "📄" },
     { arquivo: "data/mercado_meta.json", nome: "Diagnóstico de Mercado", icone: "📊" },
     { arquivo: "data/transparencia_licitacoes.json", nome: "Licitações federais (Portal da Transparência)", icone: "🏛️" },
-    { arquivo: "data/convenios.json", nome: "Convênios e repasses", icone: "💰" },
-    { arquivo: "data/sistema_s_am.json", nome: "Sistema S/AM (SENAC/SESC)", icone: "🏫" },
+    { supabase: "convenios", nome: "Convênios e repasses", icone: "💰" },
+    { supabase: "sistema_s_am", nome: "Sistema S/AM (SENAC/SESC)", icone: "🏫" },
   ];
 
   function formatarHaQuanto(iso) {
@@ -1227,6 +1227,11 @@
 
     const resultados = await Promise.all(FONTES_STATUS.map(async (fonte) => {
       try {
+        if (fonte.supabase) {
+          const dados = await carregarBlobSupabase(fonte.supabase);
+          if (!dados) return { ...fonte, ok: false };
+          return { ...fonte, ok: true, atualizadoEm: dados.atualizadoEm || null };
+        }
         const resp = await fetch(fonte.arquivo);
         if (!resp.ok) return { ...fonte, ok: false };
         const dados = await resp.json();
@@ -2340,7 +2345,7 @@
   // filtro de UF e palavras-chave usado na busca de oportunidades do PNCP.
   async function buscarExtrasSistemaS(uf, palavras) {
     try {
-      const cache = await carregarCache("data/sistema_s_am.json");
+      const cache = await carregarBlobSupabase("sistema_s_am");
       if (!cache || !Array.isArray(cache.registros)) return [];
       return cache.registros
         .filter(sistemaSEstaAberta)
@@ -2397,12 +2402,31 @@
       const dados = await resp.json();
       if (!dados || typeof dados !== "object") return null;
       return dados;
-    } catch (e) {
-      return null;
+      } catch (e) {
+        return null;
+      }
     }
-  }
-  
-  // Tira os caracteres que a sintaxe .or() do Postgrest usa como separador/reservado,
+
+    // Carrega um blob salvo pelo robô direto na tabela public.dados_robo do Supabase
+    // (chave -> json). Usado pelos arquivos pequenos que antes eram servidos como
+    // data/convenios.json e data/sistema_s_am.json — migrados pro banco pra parar de
+    // disparar uma publicação completa do site a cada execução do robô (só o dado
+    // muda, o código do site não).
+    async function carregarBlobSupabase(chave) {
+      try {
+        const { data, error } = await window.__sbClient
+          .from("dados_robo")
+          .select("dado")
+          .eq("chave", chave)
+          .maybeSingle();
+        if (error || !data) return null;
+        return data.dado || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Tira os caracteres que a sintaxe .or() do Postgrest usa como separador/reservado,
   // pra não quebrar a consulta quando o usuário digita algo com vírgula/parênteses.
   function sanitizarParaIlike(palavra) {
     return palavra.replace(/[,()%]/g, "").trim();
@@ -4270,7 +4294,7 @@
 
     if (cacheConvenios === null) {
       document.getElementById("cv-resultado").innerHTML = '<div class="carregando">Carregando convênios...</div>';
-      cacheConvenios = (await carregarCache("data/convenios.json")) || false;
+      cacheConvenios = (await carregarBlobSupabase("convenios")) || false;
     }
     renderizarConvenios(cacheConvenios || null, uf, municipioFiltro, palavras);
   }
