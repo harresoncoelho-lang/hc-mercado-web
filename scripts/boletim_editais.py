@@ -89,23 +89,65 @@ def log(msg):
     print(linha)
 
 
+# O historico de editais ja vistos costumava ficar em data/editais_vistos.json,
+# commitado no git a cada execucao do robo - isso disparava uma publicacao completa
+# do site no Netlify toda vez (mesmo o historico sendo so um arquivinho de controle
+# interno que ninguem ve). Agora ele mora na tabela public.dados_robo do Supabase
+# (mesmo padrao usado pelos robos em Node - ver scripts/supabase_dados.js), entao
+# o robo do boletim para de fazer commit/push no repositorio.
+SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co"
+
+
+def _chave_servico():
+    chave = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not chave:
+        raise RuntimeError(
+            "SUPABASE_SERVICE_ROLE_KEY nao configurada (Settings > Secrets and "
+            "variables > Actions no repositorio do GitHub)."
+        )
+    return chave
+
+
 def carregar_historico():
-    if os.path.exists(ARQUIVO_HISTORICO):
-        with open(ARQUIVO_HISTORICO, "r", encoding="utf-8") as f:
-            dados = json.load(f)
-        if isinstance(dados, list):
-            novo = {}
-            for d in DESTINATARIOS:
-                novo[d["email"]] = list(dados)
-            return novo
-        return dados
-    return {}
+    chave = _chave_servico()
+    url = SUPABASE_URL + "/rest/v1/dados_robo?chave=eq.editais_vistos&select=dado"
+    req = urllib.request.Request(url, headers={
+        "apikey": chave,
+        "Authorization": "Bearer " + chave,
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            linhas = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        log("AVISO: falha ao carregar historico do Supabase (" + str(e) + "), comecando vazio.")
+        return {}
+    if not linhas:
+        return {}
+    dados = linhas[0].get("dado")
+    if isinstance(dados, list):
+        novo = {}
+        for d in DESTINATARIOS:
+            novo[d["email"]] = list(dados)
+        return novo
+    return dados or {}
 
 
 def salvar_historico(vistos):
-    os.makedirs(DIR_DADOS, exist_ok=True)
-    with open(ARQUIVO_HISTORICO, "w", encoding="utf-8") as f:
-        json.dump(vistos, f, ensure_ascii=False, indent=2)
+    chave = _chave_servico()
+    url = SUPABASE_URL + "/rest/v1/dados_robo?on_conflict=chave"
+    corpo = json.dumps([{
+        "chave": "editais_vistos",
+        "dado": vistos,
+        "atualizado_em": datetime.utcnow().isoformat() + "Z",
+    }]).encode("utf-8")
+    req = urllib.request.Request(url, data=corpo, method="POST", headers={
+        "apikey": chave,
+        "Authorization": "Bearer " + chave,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    })
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        resp.read()
 
 
 def data_final_busca():
