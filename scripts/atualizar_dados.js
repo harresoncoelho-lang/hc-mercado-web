@@ -825,6 +825,106 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
   };
 }
 
+// ----------------------------------------------------------------------------
+// Ponte com o Supabase (ver scripts/supabase_dados.js e
+// supabase/schema_dados_mercado.sql). Desde esta versão, contratos_recentes.json
+// e mercado_segmentos.json NÃO são mais comitados no git — cada um pesava
+// dezenas de MB e, comitado todo dia, disparava um "Production deploy" caro no
+// Netlify mesmo sem nenhum usuário acessando o site (Achado #1 do Diagnóstico
+// Crítico). Em vez disso: só um arquivo pequeno de "metadados" (sem os
+// registros/atas em si) é comitado, e os registros ficam só no banco.
+//
+// Estratégia (mantém o algoritmo incremental de coletarContratos/
+// coletarMercadoSegmentos 100% intocado — eles continuam lendo/escrevendo um
+// arquivo local local normalmente):
+//   1) ANTES de coletar: reconstrói o arquivo local juntando o metadado (git)
+//      com os registros baixados do Supabase — assim o algoritmo enxerga
+//      exatamente o mesmo estado "anterior" que enxergaria lendo do git antes.
+//   2) Roda a coleta normalmente (sem nenhuma mudança de lógica).
+//   3) DEPOIS: separa o resultado em metadado (pequeno, vai pro git) + registros
+//      (vão só pro Supabase via upsert), e apaga do banco o que passou da
+//      retenção.
+const { upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue } = require("./supabase_dados");
+
+async function hidratarContratosDoSupabase(caminhoArquivo, caminhoMeta) {
+  const meta = await lerJsonExistente(caminhoMeta);
+  if (!meta) {
+    console.log("[supabase] Sem metadado anterior de contratos — tratando como 1ª execução.");
+    return;
+  }
+  try {
+    const linhas = await baixarTodasAsLinhas("contratos", "dado");
+    const registros = linhas.map((l) => l.dado);
+    const fs = await import("node:fs/promises");
+    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
+    console.log(`[supabase] Hidratado ${registros.length} contrato(s) do Supabase pra continuar o incremental.`);
+  } catch (e) {
+    console.log(`[supabase] Falha ao baixar contratos existentes (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
+  }
+}
+
+async function sincronizarContratosNoSupabase(contratos) {
+  const linhas = contratos.registros
+    .filter((r) => r.numeroControlePNCP)
+    .map((r) => ({
+      numero_controle_pncp: r.numeroControlePNCP,
+      objeto: r.objeto || "",
+      uf: r.uf || null,
+      cnpj_fornecedor: r.cnpjFornecedor || null,
+      data_assinatura: r.dataAssinatura || null,
+      dado: r,
+    }));
+  try {
+    const enviadas = await upsertEmLotes("contratos", linhas, "numero_controle_pncp");
+    console.log(`[supabase] ${enviadas} contrato(s) sincronizado(s) na tabela "contratos".`);
+    const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await removerMaisAntigosQue("contratos", "data_assinatura", limiteRetencaoIso);
+  } catch (e) {
+    console.log(`[supabase] Falha ao sincronizar contratos (${e && e.message}) — dados continuam só no arquivo local desta execução.`);
+  }
+}
+
+async function hidratarMercadoDoSupabase(caminhoArquivo, caminhoMeta) {
+  const meta = await lerJsonExistente(caminhoMeta);
+  if (!meta) {
+    console.log("[supabase] Sem metadado anterior de mercado/atas — tratando como 1ª execução.");
+    return;
+  }
+  try {
+    const linhas = await baixarTodasAsLinhas("mercado_atas", "dado");
+    const atas = linhas.map((l) => l.dado);
+    const fs = await import("node:fs/promises");
+    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, atas }), "utf8");
+    console.log(`[supabase] Hidratada(s) ${atas.length} ata(s) do Supabase pra continuar o incremental.`);
+  } catch (e) {
+    console.log(`[supabase] Falha ao baixar atas existentes (${e && e.message}) — seguindo sem hidratar.`);
+  }
+}
+
+async function sincronizarMercadoNoSupabase(mercado) {
+  const linhas = (mercado.atas || [])
+    .filter((a) => a.numeroControlePNCPAta)
+    .map((a) => ({
+      numero_controle_pncp_ata: a.numeroControlePNCPAta,
+      numero_controle_pncp_compra: a.numeroControlePNCPCompra || null,
+      objeto: a.objeto || "",
+      uf_orgao: a.ufOrgao || null,
+      municipio_orgao: a.municipioOrgao || null,
+      segmentos: a.segmentos || [],
+      data_assinatura: a.dataAssinatura || null,
+      vigencia_fim: a.vigenciaFim || null,
+      cancelado: !!a.cancelado,
+      enriquecida: !!a.enriquecida,
+      dado: a,
+    }));
+  try {
+    const enviadas = await upsertEmLotes("mercado_atas", linhas, "numero_controle_pncp_ata");
+    console.log(`[supabase] ${enviadas} ata(s) sincronizada(s) na tabela "mercado_atas".`);
+  } catch (e) {
+    console.log(`[supabase] Falha ao sincronizar atas (${e && e.message}) — dados continuam só no arquivo local desta execução.`);
+  }
+}
+
 async function main() {
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
@@ -834,22 +934,37 @@ async function main() {
 
   console.log(`Iniciando coleta incremental. Retenção: ${RETENCAO_DIAS} dias.`);
 
-  iniciarFase(LIMITE_MINUTOS_CONTRATOS);
   const caminhoContratos = path.join(dirDados, "contratos_recentes.json");
+  const caminhoContratosMeta = path.join(dirDados, "contratos_meta.json");
+  await hidratarContratosDoSupabase(caminhoContratos, caminhoContratosMeta);
+
+  iniciarFase(LIMITE_MINUTOS_CONTRATOS);
   const contratos = await coletarContratos(caminhoContratos);
   await fs.writeFile(caminhoContratos, JSON.stringify(contratos), "utf8");
-  console.log("Gravado data/contratos_recentes.json");
+  const { registros: _registrosContratos, ...contratosMeta } = contratos;
+  await fs.writeFile(caminhoContratosMeta, JSON.stringify(contratosMeta), "utf8");
+  console.log("Gravado data/contratos_meta.json (metadado leve, vai pro git)");
+  await sincronizarContratosNoSupabase(contratos);
 
   const caminhoOportunidades = path.join(dirDados, "oportunidades_abertas.json");
   const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   console.log("Gravado data/oportunidades_abertas.json");
 
-  iniciarFase(LIMITE_MINUTOS_MERCADO);
   const caminhoMercado = path.join(dirDados, "mercado_segmentos.json");
+  const caminhoMercadoMeta = path.join(dirDados, "mercado_meta.json");
+  await hidratarMercadoDoSupabase(caminhoMercado, caminhoMercadoMeta);
+
+  iniciarFase(LIMITE_MINUTOS_MERCADO);
   const mercado = await coletarMercadoSegmentos(caminhoMercado);
   await fs.writeFile(caminhoMercado, JSON.stringify(mercado), "utf8");
-  console.log("Gravado data/mercado_segmentos.json");
+  // "empresas" não é persistido (nem no git, nem no Supabase): o painel já recalcula esse
+  // ranking sozinho a partir das atas filtradas (calcularEmpresasMercado em painel.html) —
+  // guardar de novo aqui só duplicava dado (era 6,3 MB dos 9,6 MB do arquivo antigo, à toa).
+  const { atas: _atasMercado, empresas: _empresasMercado, ...mercadoMeta } = mercado;
+  await fs.writeFile(caminhoMercadoMeta, JSON.stringify(mercadoMeta), "utf8");
+  console.log("Gravado data/mercado_meta.json (metadado leve, vai pro git)");
+  await sincronizarMercadoNoSupabase(mercado);
 
   console.log("Coleta finalizada com sucesso.");
 }

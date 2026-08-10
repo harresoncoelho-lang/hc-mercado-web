@@ -1,1 +1,8 @@
 node_modules/
+
+# Arquivos de dados grandes do robô — agora vivem no Supabase (tabelas contratos e
+# mercado_atas), não mais no git. Ver scripts/atualizar_dados.js e
+# supabase/schema_dados_mercado.sql. Só o metadado pequeno (contratos_meta.json /
+# mercado_meta.json) continua versionado.
+data/contratos_recentes.json
+data/mercado_segmentos.json

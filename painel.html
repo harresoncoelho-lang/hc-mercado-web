@@ -1200,8 +1200,8 @@
   // ---- Status das Ferramentas: mostra a última atualização bem-sucedida de cada fonte ----
   const FONTES_STATUS = [
     { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "📋" },
-    { arquivo: "data/contratos_recentes.json", nome: "Contratos assinados (PNCP)", icone: "📄" },
-    { arquivo: "data/mercado_segmentos.json", nome: "Diagnóstico de Mercado", icone: "📊" },
+    { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "📄" },
+    { arquivo: "data/mercado_meta.json", nome: "Diagnóstico de Mercado", icone: "📊" },
     { arquivo: "data/transparencia_licitacoes.json", nome: "Licitações federais (Portal da Transparência)", icone: "🏛️" },
     { arquivo: "data/convenios.json", nome: "Convênios e repasses", icone: "💰" },
     { arquivo: "data/sistema_s_am.json", nome: "Sistema S/AM (SENAC/SESC)", icone: "🏫" },
@@ -2389,14 +2389,41 @@
   // mercado cresce aos poucos conforme o robô processa (ver coletarMercadoSegmentos em
   // scripts/atualizar_dados.js). Formato diferente do carregarCache() acima (não tem
   // "registros", tem "atas" e "empresas").
-  async function carregarMercadoSegmentos() {
+  // Tira os caracteres que a sintaxe .or() do Postgrest usa como separador/reservado,
+  // pra não quebrar a consulta quando o usuário digita algo com vírgula/parênteses.
+  function sanitizarParaIlike(palavra) {
+    return palavra.replace(/[,()%]/g, "").trim();
+  }
+
+  // Desde a migração pro Supabase (ver supabase/schema_dados_mercado.sql), as atas de
+  // registro de preço não vêm mais de um arquivo estático mercado_segmentos.json (que
+  // chegou a pesar ~10 MB e era baixado inteiro a cada busca) — agora são consultadas
+  // direto no banco, já filtradas por segmento/UF, trazendo só o que interessa pra essa
+  // busca específica. O metadado leve (atualizadoEm, segmentosMonitorados, parcial)
+  // continua vindo de um arquivinho estático (data/mercado_meta.json), que é comitado
+  // normalmente por ser pequeno.
+  async function carregarMercadoSegmentos(palavras, uf) {
     try {
-      const resp = await fetch("data/mercado_segmentos.json");
-      if (!resp.ok) return null;
-      const dados = await resp.json();
-      if (!dados || !Array.isArray(dados.atas)) return null;
-      return dados;
+      const meta = await carregarCache("data/mercado_meta.json");
+      let query = window.__sbClient.from("mercado_atas").select("dado").limit(4000);
+      if (uf) query = query.eq("uf_orgao", uf);
+      const termos = (palavras || []).map(sanitizarParaIlike).filter(Boolean);
+      if (termos.length > 0) {
+        query = query.or(termos.map((t) => `objeto.ilike.%${t}%`).join(","));
+      }
+      const { data, error } = await query;
+      if (error) {
+        console.error("[mercado_atas] erro na consulta:", error);
+        return null;
+      }
+      return {
+        atas: (data || []).map((linha) => linha.dado),
+        segmentosMonitorados: (meta && meta.segmentosMonitorados) || [],
+        atualizadoEm: meta ? meta.atualizadoEm : null,
+        parcial: meta ? !!meta.parcial : false,
+      };
     } catch (e) {
+      console.error("[mercado_atas] falha ao consultar:", e);
       return null;
     }
   }
@@ -3720,6 +3747,31 @@
   }
   let dgJaBuscado = false;
 
+  // Consulta a tabela "contratos" no Supabase com os filtros já resolvidos no servidor
+  // (data mínima + palavras-chave), no lugar de baixar o arquivo estático inteiro (que
+  // chegava a ~22 MB) e filtrar em JS. "incluirSemData" mantém o mesmo comportamento de
+  // antes: registros sem dataAssinatura sempre entravam, independente do filtro de dias.
+  async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, limite = 5000 }) {
+    let query = window.__sbClient.from("contratos").select("dado").limit(limite);
+    if (typeof dias === "number" && dias > 0) {
+      const limiteDataIso = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      query = query.or(`data_assinatura.gte.${limiteDataIso},data_assinatura.is.null`);
+    }
+    if (cnpjFornecedor) {
+      query = query.eq("cnpj_fornecedor", cnpjFornecedor);
+    }
+    const termos = (palavras || []).map(sanitizarParaIlike).filter(Boolean);
+    if (termos.length > 0) {
+      query = query.or(termos.map((t) => `objeto.ilike.%${t}%`).join(","));
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error("[contratos] erro na consulta:", error);
+      return { registros: [], erro: true };
+    }
+    return { registros: (data || []).map((linha) => linha.dado), erro: false };
+  }
+
   document.getElementById("dg-buscar").addEventListener("click", async () => {
     dgJaBuscado = true;
     const segmentoRaw = document.getElementById("dg-segmento").value.trim();
@@ -3745,25 +3797,18 @@
     try {
       let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
 
-      const cacheContratos = await carregarCache("data/contratos_recentes.json");
-      if (cacheContratos) {
-        const limiteData = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
-        encontrados = cacheContratos.registros.filter((r) => {
-          if (!bateComSegmento(r.objeto, palavras)) return false;
-          if (r.dataAssinatura) {
-            const d = new Date(r.dataAssinatura);
-            if (!isNaN(d) && d < limiteData) return false;
-          }
-          return true;
-        });
-        paginasVarridas = cacheContratos.paginasVarridas;
-        totalPaginas = cacheContratos.totalPaginasDisponiveis;
-        parcial = cacheContratos.parcial;
-        falhaConexao = false;
+      const metaContratos = await carregarCache("data/contratos_meta.json");
+      if (metaContratos) {
+        const res = await consultarContratosSupabase({ palavras, dias });
+        encontrados = res.registros;
+        paginasVarridas = metaContratos.paginasVarridas;
+        totalPaginas = metaContratos.totalPaginasDisponiveis;
+        parcial = metaContratos.parcial;
+        falhaConexao = res.erro;
         fonte = {
           tipo: "cache",
-          atualizadoEm: cacheContratos.atualizadoEm,
-          diasHistoricoCache: cacheContratos.retencaoDias,
+          atualizadoEm: metaContratos.atualizadoEm,
+          diasHistoricoCache: metaContratos.retencaoDias,
         };
       } else {
         alvo.innerHTML = '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador (isso pode levar até 1 minuto)...</div>';
@@ -3830,16 +3875,12 @@
       let mercadoSegmentosMonitorados = [];
       let mercadoAtualizadoEm = null;
       let mercadoParcial = false;
-      const cacheMercado = await carregarMercadoSegmentos();
+      const cacheMercado = await carregarMercadoSegmentos(palavras, uf || null);
       if (cacheMercado) {
         mercadoSegmentosMonitorados = cacheMercado.segmentosMonitorados || [];
         mercadoAtualizadoEm = cacheMercado.atualizadoEm;
         mercadoParcial = !!cacheMercado.parcial;
-        atasFiltradas = cacheMercado.atas.filter((a) => {
-          if (!bateComSegmento(a.objeto, palavras)) return false;
-          if (uf && (a.ufOrgao || "").toUpperCase() !== uf) return false;
-          return true;
-        });
+        atasFiltradas = cacheMercado.atas;
         empresasMercado = calcularEmpresasMercado(atasFiltradas);
       }
 
@@ -3946,22 +3987,15 @@
       const palavras = segmentoRaw ? segmentoRaw.split(",").map((p) => p.trim()).filter(Boolean) : null;
 
       let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
-      const cacheContratos = await carregarCache("data/contratos_recentes.json");
-      if (cacheContratos) {
-        const limiteData = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
-        encontrados = cacheContratos.registros.filter((r) => {
-          if (soDigitos(r.cnpjFornecedor) !== cnpj) return false;
-          if (r.dataAssinatura) {
-            const d = new Date(r.dataAssinatura);
-            if (!isNaN(d) && d < limiteData) return false;
-          }
-          return true;
-        });
-        paginasVarridas = cacheContratos.paginasVarridas;
-        totalPaginas = cacheContratos.totalPaginasDisponiveis;
-        parcial = cacheContratos.parcial;
-        falhaConexao = false;
-        fonte = { tipo: "cache", atualizadoEm: cacheContratos.atualizadoEm };
+      const metaContratos = await carregarCache("data/contratos_meta.json");
+      if (metaContratos) {
+        const res = await consultarContratosSupabase({ cnpjFornecedor: cnpj, dias, limite: 2000 });
+        encontrados = res.registros;
+        paginasVarridas = metaContratos.paginasVarridas;
+        totalPaginas = metaContratos.totalPaginasDisponiveis;
+        parcial = metaContratos.parcial;
+        falhaConexao = res.erro;
+        fonte = { tipo: "cache", atualizadoEm: metaContratos.atualizadoEm };
       } else {
         const painelPart = alvo.querySelector('.acc[data-acc="emp-part"] .acc-corpo');
         if (painelPart) painelPart.innerHTML = '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador...</div>';
