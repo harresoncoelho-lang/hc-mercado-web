@@ -2,7 +2,31 @@
   publish = "."
   functions = "netlify/functions"
 
+# Cabeçalhos de segurança padrão pra todo o site. CSP ainda permite 'unsafe-inline' em
+# script/style porque o site é feito de páginas HTML únicas com JS/CSS embutido (não dá pra
+# travar isso sem reescrever a arquitetura de front-end inteira) — mas connect-src, frame-src,
+# object-src, base-uri e frame-ancestors já ficam restritos ao necessário, o que já bloqueia a
+# maioria dos ataques comuns (clickjacking, injeção de recurso externo, MIME sniffing).
 [[headers]]
   for = "/*"
   [headers.values]
     Cache-Control = "no-cache"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
+# Os arquivos de dados do robô (data/*.json) podem ser cacheados por alguns minutos com
+# revalidação — antes o site inteiro (inclusive esses arquivos de até 20+ MB) usava
+# Cache-Control: no-cache, e o próprio código do painel ainda forçava cache:"no-store" nas
+# chamadas fetch, ou seja: toda visita ao Diagnóstico de Mercado ou Encontrar Licitações
+# baixava ~30 MB do zero, sem nenhum reaproveitamento. Isso já foi corrigido no lado do
+# JavaScript (ver painel.html) — este cabeçalho garante que o navegador tenha permissão de
+# reaproveitar a cópia local por 5 minutos, e usar uma versão "meio velha" por até 1h enquanto
+# busca uma atualizada em segundo plano, sem travar a navegação do usuário.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=3600"

@@ -1227,7 +1227,7 @@
 
     const resultados = await Promise.all(FONTES_STATUS.map(async (fonte) => {
       try {
-        const resp = await fetch(fonte.arquivo, { cache: "no-store" });
+        const resp = await fetch(fonte.arquivo);
         if (!resp.ok) return { ...fonte, ok: false };
         const dados = await resp.json();
         return { ...fonte, ok: true, atualizadoEm: dados.atualizadoEm || null };
@@ -1409,15 +1409,27 @@
     conversa.scrollTop = conversa.scrollHeight;
   }
 
+  // Pega o token da sessão logada pra mandar no cabeçalho Authorization das Netlify Functions
+  // que agora exigem login (ia-edital, sancoes, despesas-fornecedor — ver netlify/functions/_auth.js).
+  async function obterTokenSessao() {
+    try {
+      const { data } = await window.__sbClient.auth.getSession();
+      return data?.session?.access_token || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
   async function chamarIA(modo, pergunta) {
     if (iaCarregando) return;
     iaCarregando = true;
     const mensagemEspera = modo === "resumo" ? "Lendo o edital e gerando o resumo... (pode levar alguns segundos)" : "Pensando...";
     const carregando = escreverMensagemIA(mensagemEspera, "msg-carregando");
     try {
+      const token = await obterTokenSessao();
       const resp = await fetch("/.netlify/functions/ia-edital", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico, textoEdital: iaTextoEdital }),
       });
       const dados = await resp.json();
@@ -1955,7 +1967,10 @@
   // (ex: TRANSPARENCIA_TOKEN ainda não configurado no Netlify).
   async function carregarSancoes(cnpj) {
     try {
-      const resp = await fetch(`/.netlify/functions/sancoes?cnpj=${cnpj}`);
+      const token = await obterTokenSessao();
+      const resp = await fetch(`/.netlify/functions/sancoes?cnpj=${cnpj}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!resp.ok) return null;
       return await resp.json();
     } catch (e) {
@@ -2359,7 +2374,7 @@
   // chamou deve cair de volta para a busca ao vivo no PNCP.
   async function carregarCache(caminho) {
     try {
-      const resp = await fetch(caminho, { cache: "no-store" });
+      const resp = await fetch(caminho);
       if (!resp.ok) return null;
       const dados = await resp.json();
       if (!dados || !Array.isArray(dados.registros)) return null;
@@ -2376,7 +2391,7 @@
   // "registros", tem "atas" e "empresas").
   async function carregarMercadoSegmentos() {
     try {
-      const resp = await fetch("data/mercado_segmentos.json", { cache: "no-store" });
+      const resp = await fetch("data/mercado_segmentos.json");
       if (!resp.ok) return null;
       const dados = await resp.json();
       if (!dados || !Array.isArray(dados.atas)) return null;
@@ -4284,7 +4299,10 @@
     salvarFiltroRaioX(document.getElementById("fn-cnpj").value);
     alvo.innerHTML = '<div class="carregando">Consultando pagamentos no Portal da Transparência...</div>';
     try {
-      const resp = await fetch(`/.netlify/functions/despesas-fornecedor?cnpj=${cnpj}`);
+      const token = await obterTokenSessao();
+      const resp = await fetch(`/.netlify/functions/despesas-fornecedor?cnpj=${cnpj}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const dados = await resp.json();
       renderizarRaioXFornecedor(dados);
     } catch (e) {

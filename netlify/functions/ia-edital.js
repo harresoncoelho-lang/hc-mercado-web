@@ -24,6 +24,7 @@ const CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const PNCP_ARQUIVOS_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 const MAX_CARACTERES_TEXTO = 8000;
+const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -313,14 +314,14 @@ function formatarEstruturaComoTexto(est) {
 }
 
 exports.handler = async (event) => {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
+  const headers = cabecalhosPadrao(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: JSON.stringify({ erro: "Use POST." }) };
+
+  const sessao = await exigirUsuarioLogado(event);
+  if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
+  const limite = await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
+  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {

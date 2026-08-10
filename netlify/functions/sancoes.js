@@ -7,6 +7,7 @@
 // Resposta: { temSancao: boolean, ceis: [...], cnep: [...], erro: string|null }
 
 const BASE_URL = "https://api.portaldatransparencia.gov.br/api-de-dados";
+const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
 async function consultar(caminho, token) {
   try {
@@ -24,10 +25,13 @@ async function consultar(caminho, token) {
 }
 
 exports.handler = async (event) => {
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  };
+  const headers = cabecalhosPadrao(event);
+  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
+
+  const sessao = await exigirUsuarioLogado(event);
+  if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
+  const limite = await verificarLimiteDiario(sessao.userId, "sancoes", 100);
+  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
 
   const token = process.env.TRANSPARENCIA_TOKEN;
   if (!token) {
