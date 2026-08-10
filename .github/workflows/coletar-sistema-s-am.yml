@@ -23,16 +23,9 @@ jobs:
           node-version: "20"
 
       - name: Rodar robo de coleta do Sistema S/AM
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/coletar_sistema_s_am.js
-
-      - name: Commitar dados coletados
-        run: |
-          git config user.name "hc-licitacoes-bot"
-          git config user.email "actions@github.com"
-          git add data/sistema_s_am.json
-          if git diff --cached --quiet; then
-            echo "Nenhuma mudanca nos dados hoje."
-          else
-            git commit -m "Atualiza dados do Sistema S/AM - $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git push
-          fi
+        # Os dados agora vao direto pro Supabase (tabela dados_robo) em vez de
+        # data/sistema_s_am.json commitado no git - assim essa execucao nao dispara
+        # mais uma publicacao completa do site no Netlify a cada rodada.
