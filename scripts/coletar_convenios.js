@@ -77,15 +77,7 @@ async function fetchApi(caminho, tentativas = 3) {
   return null;
 }
 
-async function lerJsonExistente(caminho) {
-  try {
-    const fs = await import("node:fs/promises");
-    const texto = await fs.readFile(caminho, "utf8");
-    return JSON.parse(texto);
-  } catch (e) {
-    return null;
-  }
-}
+const { buscarBlob, salvarBlob } = require("./supabase_dados");
 
 function chaveConvenio(r) {
   return r.id || `${r.numeroProcesso}|${r.convenente}|${r.dataPublicacao}`;
@@ -94,8 +86,8 @@ function chaveConvenio(r) {
 // Varre /convenios pra TODO o Brasil (sem restringir UF) dentro da janela de datas,
 // pra caber no proposito nacional do site (nao so Manaus/AM). Pagina ate estourar o
 // orcamento de tempo ou acabar os resultados.
-async function coletarConvenios(caminhoArquivo) {
-  const existentes = await lerJsonExistente(caminhoArquivo);
+async function coletarConvenios() {
+  const existentes = await buscarBlob("dados_robo", "convenios");
   const hoje = new Date();
 
   let inicio;
@@ -200,17 +192,11 @@ async function main() {
     process.exit(1);
   }
 
-  const fs = await import("node:fs/promises");
-  const path = await import("node:path");
-  const dirDados = path.join(process.cwd(), "data");
-  await fs.mkdir(dirDados, { recursive: true });
-
   console.log(`Iniciando coleta de convenios/repasses. Retencao: ${RETENCAO_DIAS} dias. Orcamento: ${LIMITE_MINUTOS} min.`);
 
-  const caminhoArquivo = path.join(dirDados, "convenios.json");
-  const resultado = await coletarConvenios(caminhoArquivo);
-  await fs.writeFile(caminhoArquivo, JSON.stringify(resultado), "utf8");
-  console.log("Gravado data/convenios.json");
+  const resultado = await coletarConvenios();
+  await salvarBlob("dados_robo", "convenios", resultado);
+  console.log("Gravado no Supabase (dados_robo / convenios).");
   console.log("Coleta finalizada com sucesso.");
 }
 
