@@ -28,16 +28,9 @@ jobs:
         env:
           EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
           EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python scripts/boletim_editais.py
-
-      - name: Commitar historico de editais ja enviados
-        run: |
-          git config user.name "hc-licitacoes-bot"
-          git config user.email "actions@github.com"
-          git add data/editais_vistos.json
-          if git diff --cached --quiet; then
-            echo "Nenhuma mudanca no historico hoje."
-          else
-            git commit -m "Atualiza historico do boletim de editais"
-            git push
-          fi
+        # O historico de editais ja vistos agora vai direto pro Supabase (tabela
+        # dados_robo) em vez de data/editais_vistos.json commitado no git - assim
+        # essa execucao nao dispara mais uma publicacao completa do site no Netlify
+        # (isso rodava 3x/dia, era a maior fatia dos disparos automaticos).
