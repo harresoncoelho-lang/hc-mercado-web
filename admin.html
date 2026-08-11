@@ -270,7 +270,12 @@
       return;
     }
     mfaEnrollFactorId = data.id;
-    document.getElementById("mfa-qrcode").innerHTML = data.totp.qr_code;
+    // O Supabase às vezes devolve totp.qr_code como markup SVG puro, às vezes como uma
+    // data URI (string começando com "data:") — nesse segundo caso precisa ir no src de
+    // uma <img>, não direto no innerHTML (senão aparece o texto bruto da URI na tela).
+    document.getElementById("mfa-qrcode").innerHTML = data.totp.qr_code.startsWith("data:")
+      ? `<img src="${data.totp.qr_code}" alt="QR code" style="max-width:100%;">`
+      : data.totp.qr_code;
     document.getElementById("mfa-secret").textContent = data.totp.secret;
   }
 
