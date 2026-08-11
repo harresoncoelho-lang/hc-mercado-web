@@ -63,8 +63,24 @@
   .btn-aprovar { background: var(--verde); color: #06301b; }
   .btn-rejeitar { background: var(--vermelho); color: #3a0713; }
   .btn-reverter { background: var(--cartao-claro); color: var(--texto-fraco); border: 1px solid var(--borda) !important; }
+  .btn-detalhe { background: var(--cartao-claro); color: var(--azul); border: 1px solid var(--azul) !important; }
   .vazio { padding: 40px; text-align: center; color: var(--texto-fraco); }
   .carregando { padding: 40px; text-align: center; color: var(--texto-fraco); }
+  .modal-detalhe-fundo {
+    display: none; position: fixed; inset: 0; background: rgba(5,10,16,0.72);
+    z-index: 200; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-detalhe-fundo.aberto { display: flex; }
+  .modal-detalhe {
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
+    width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; padding: 24px;
+  }
+  .modal-detalhe-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .modal-detalhe-topo button { background: none; border: none; color: var(--texto-fraco); font-size: 22px; cursor: pointer; line-height: 1; padding: 4px; }
+  .linha-detalhe { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--borda); font-size: 13.5px; }
+  .linha-detalhe:last-child { border-bottom: none; }
+  .linha-detalhe span:first-child { color: var(--texto-fraco); }
+  .linha-detalhe span:last-child { font-weight: 600; text-align: right; }
   #tela-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   #tela-login .caixa { width: 100%; max-width: 380px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 32px; }
   #tela-login label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
@@ -111,6 +127,16 @@
   </main>
 </div>
 
+<div class="modal-detalhe-fundo" id="modal-detalhe-fundo">
+  <div class="modal-detalhe">
+    <div class="modal-detalhe-topo">
+      <h3 style="margin:0;font-size:16px;">Detalhes do cadastro</h3>
+      <button type="button" id="modal-detalhe-fechar" title="Fechar">&#10005;</button>
+    </div>
+    <div id="modal-detalhe-corpo"></div>
+  </div>
+</div>
+
 <script>
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   let filtroAtual = "pendente";
@@ -124,6 +150,42 @@
   function escapeHtml(s) {
     return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
+
+  // 27 estados (mesma lista usada em cadastro.html/painel.html) — só pro limiar de
+  // "Nacional (todos os estados)" ao resumir clientes.estados_interesse.
+  const TOTAL_ESTADOS_BR = 27;
+
+  function formatarEstadosInteresse(lista) {
+    if (!Array.isArray(lista) || lista.length === 0) return null;
+    if (lista.length >= TOTAL_ESTADOS_BR) return "Nacional (todos os estados)";
+    return lista.join(", ");
+  }
+
+  function abrirDetalheCliente(c) {
+    const linhas = [
+      ["Segmento", c.segmento],
+      ["Estados de interesse", formatarEstadosInteresse(c.estados_interesse)],
+      ["Como conheceu o LicitaPlena", c.como_conheceu],
+      ["Quantidade de funcionários", c.quantidade_funcionarios],
+      ["Licitações por mês", c.licitacoes_por_mes],
+      ["Faturamento anual", c.faturamento_anual],
+      ["Como pretende usar", c.como_pretende_usar],
+    ];
+    const linhasHtml = linhas
+      .map(([label, valor]) => `<div class="linha-detalhe"><span>${label}</span><span>${valor ? escapeHtml(String(valor)) : "&mdash;"}</span></div>`)
+      .join("");
+    const atividadesHtml = c.atividades
+      ? `<div style="margin-top:14px;"><div style="font-size:12px;color:var(--texto-fraco);text-transform:uppercase;margin-bottom:4px;">Atividades detalhadas</div><div style="font-size:13.5px;line-height:1.5;">${escapeHtml(String(c.atividades))}</div></div>`
+      : "";
+    document.getElementById("modal-detalhe-corpo").innerHTML = linhasHtml + atividadesHtml;
+    document.getElementById("modal-detalhe-fundo").classList.add("aberto");
+  }
+
+  const modalDetalheFundo = document.getElementById("modal-detalhe-fundo");
+  document.getElementById("modal-detalhe-fechar").addEventListener("click", () => modalDetalheFundo.classList.remove("aberto"));
+  modalDetalheFundo.addEventListener("click", (ev) => {
+    if (ev.target === modalDetalheFundo) modalDetalheFundo.classList.remove("aberto");
+  });
 
   async function verificarSessaoAdmin() {
     const { data: { session } } = await sb.auth.getSession();
@@ -199,6 +261,7 @@
         <td>${badgeStatus(c.status)}</td>
         <td>${dataCadastro}</td>
         <td><div class="acoes">
+          <button class="btn-detalhe" data-detalhe="${c.id}">Detalhes</button>
           ${c.status !== "aprovado" ? `<button class="btn-aprovar" data-id="${c.id}" data-acao="aprovado">Aprovar</button>` : ""}
           ${c.status !== "rejeitado" ? `<button class="btn-rejeitar" data-id="${c.id}" data-acao="rejeitado">Rejeitar</button>` : ""}
           ${c.status !== "pendente" ? `<button class="btn-reverter" data-id="${c.id}" data-acao="pendente">Voltar p/ pendente</button>` : ""}
@@ -207,6 +270,13 @@
     }
     html += "</tbody></table>";
     alvo.innerHTML = html;
+
+    alvo.querySelectorAll("button[data-detalhe]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const c = todosClientes.find((x) => x.id === btn.dataset.detalhe);
+        if (c) abrirDetalheCliente(c);
+      });
+    });
 
     alvo.querySelectorAll("button[data-acao]").forEach((btn) => {
       btn.addEventListener("click", async () => {

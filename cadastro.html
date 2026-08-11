@@ -63,6 +63,24 @@
   .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .linha-dupla input, .linha-dupla select { margin-bottom: 0; }
   .linha-dupla { margin-bottom: 16px; }
+  textarea {
+    width: 100%; padding: 11px 12px; margin-bottom: 16px;
+    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
+    color: var(--texto); font-size: 14px; font-family: inherit; resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--azul); }
+  p.dica { font-size: 12.5px; color: var(--texto-fraco); margin: -10px 0 14px; }
+  .abr-nacional {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
+    margin-bottom: 14px; font-weight: 700; font-size: 13.5px; cursor: pointer;
+  }
+  .abr-nacional input { width: auto; margin: 0; }
+  .abr-regiao { margin-bottom: 16px; }
+  .abr-regiao-titulo { font-size: 12px; font-weight: 700; color: var(--azul); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 8px; }
+  .abr-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 10px; }
+  .abr-item { display: flex; align-items: center; gap: 7px; font-size: 13.5px; cursor: pointer; }
+  .abr-item input { width: auto; margin: 0; }
   .campo-termos {
     display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 20px;
     font-size: 13px; color: var(--texto-fraco); line-height: 1.5;
@@ -151,6 +169,69 @@
         <option value="Outro">Outro</option>
       </select>
 
+      <label for="atividades">Descreva detalhadamente as atividades da sua empresa (opcional)</label>
+      <textarea id="atividades" rows="4" placeholder="Ex: fornecimento de materiais de limpeza e higiene para órgãos públicos..."></textarea>
+
+      <h2 class="secao">Abrangência de interesse</h2>
+      <p class="dica">Em quais estados sua empresa tem interesse em participar de licitações?</p>
+      <label class="abr-nacional">
+        <input type="checkbox" id="abr-nacional"> Nacional (todos os estados)
+      </label>
+      <div id="abr-regioes"></div>
+
+      <h2 class="secao">Perfil de uso</h2>
+      <label for="como_conheceu">Como conheceu o LicitaPlena?</label>
+      <select id="como_conheceu">
+        <option value="">Selecionar</option>
+        <option value="Indicação de outra empresa">Indicação de outra empresa</option>
+        <option value="Google / busca na internet">Google / busca na internet</option>
+        <option value="Redes sociais">Redes sociais</option>
+        <option value="E-mail marketing">E-mail marketing</option>
+        <option value="WhatsApp">WhatsApp</option>
+        <option value="Evento ou feira">Evento ou feira</option>
+        <option value="Outro">Outro</option>
+      </select>
+
+      <label for="quantidade_funcionarios">Quantidade de funcionários?</label>
+      <select id="quantidade_funcionarios">
+        <option value="">Selecionar</option>
+        <option value="1 a 5">1 a 5</option>
+        <option value="6 a 10">6 a 10</option>
+        <option value="11 a 50">11 a 50</option>
+        <option value="51 a 100">51 a 100</option>
+        <option value="Mais de 100">Mais de 100</option>
+      </select>
+
+      <label for="licitacoes_por_mes">Quantas licitações participa por mês?</label>
+      <select id="licitacoes_por_mes">
+        <option value="">Selecionar</option>
+        <option value="Nenhuma ainda">Nenhuma ainda</option>
+        <option value="1 a 5">1 a 5</option>
+        <option value="6 a 10">6 a 10</option>
+        <option value="11 a 20">11 a 20</option>
+        <option value="Mais de 20">Mais de 20</option>
+      </select>
+
+      <label for="faturamento_anual">Faturamento anual com licitações?</label>
+      <select id="faturamento_anual">
+        <option value="">Selecionar</option>
+        <option value="Até R$ 100 mil">Até R$ 100 mil</option>
+        <option value="R$ 100 mil a R$ 500 mil">R$ 100 mil a R$ 500 mil</option>
+        <option value="R$ 500 mil a R$ 1 milhão">R$ 500 mil a R$ 1 milhão</option>
+        <option value="R$ 1 milhão a R$ 5 milhões">R$ 1 milhão a R$ 5 milhões</option>
+        <option value="Acima de R$ 5 milhões">Acima de R$ 5 milhões</option>
+      </select>
+
+      <label for="como_pretende_usar">Como pretende usar os serviços do LicitaPlena?</label>
+      <select id="como_pretende_usar">
+        <option value="">Selecionar</option>
+        <option value="Encontrar novas licitações">Encontrar novas licitações</option>
+        <option value="Analisar concorrentes">Analisar concorrentes</option>
+        <option value="Consultoria jurídica">Consultoria jurídica</option>
+        <option value="Automatizar rotina de participação">Automatizar rotina de participação</option>
+        <option value="Todas as opções acima">Todas as opções acima</option>
+      </select>
+
       <h2 class="secao">Acesso</h2>
       <label for="email">E-mail</label>
       <input type="email" id="email" required autocomplete="email">
@@ -186,6 +267,51 @@
     el.style.display = "block";
   }
 
+  // Lista dos 27 estados brasileiros agrupados por região, pro bloco "Abrangência de
+  // interesse" — mesma lista usada nos selects de UF do painel (painel.html).
+  const ESTADOS_BR = [
+    ["AC", "Acre"], ["AL", "Alagoas"], ["AP", "Amapá"], ["AM", "Amazonas"],
+    ["BA", "Bahia"], ["CE", "Ceará"], ["DF", "Distrito Federal"], ["ES", "Espírito Santo"],
+    ["GO", "Goiás"], ["MA", "Maranhão"], ["MT", "Mato Grosso"], ["MS", "Mato Grosso do Sul"],
+    ["MG", "Minas Gerais"], ["PA", "Pará"], ["PB", "Paraíba"], ["PR", "Paraná"],
+    ["PE", "Pernambuco"], ["PI", "Piauí"], ["RJ", "Rio de Janeiro"], ["RN", "Rio Grande do Norte"],
+    ["RS", "Rio Grande do Sul"], ["RO", "Rondônia"], ["RR", "Roraima"], ["SC", "Santa Catarina"],
+    ["SP", "São Paulo"], ["SE", "Sergipe"], ["TO", "Tocantins"],
+  ];
+  const REGIOES_BR = [
+    ["Região Centro-Oeste", ["DF", "GO", "MT", "MS"]],
+    ["Região Nordeste", ["AL", "BA", "CE", "MA", "PB", "PE", "PI", "RN", "SE"]],
+    ["Região Norte", ["AC", "AM", "AP", "PA", "RO", "RR", "TO"]],
+    ["Região Sudeste", ["ES", "MG", "RJ", "SP"]],
+    ["Região Sul", ["PR", "RS", "SC"]],
+  ];
+
+  (function popularAbrangencia() {
+    const cont = document.getElementById("abr-regioes");
+    let html = "";
+    REGIOES_BR.forEach(([nomeRegiao, siglas]) => {
+      html += `<div class="abr-regiao"><div class="abr-regiao-titulo">${nomeRegiao}</div><div class="abr-grade">`;
+      siglas.forEach((sigla) => {
+        const par = ESTADOS_BR.find((e) => e[0] === sigla);
+        const nomeEstado = par ? par[1] : sigla;
+        html += `<label class="abr-item"><input type="checkbox" class="abr-estado" value="${sigla}"> ${nomeEstado} (${sigla})</label>`;
+      });
+      html += `</div></div>`;
+    });
+    cont.innerHTML = html;
+
+    const nacionalEl = document.getElementById("abr-nacional");
+    const estadoEls = () => Array.from(document.querySelectorAll(".abr-estado"));
+    nacionalEl.addEventListener("change", () => {
+      estadoEls().forEach((el) => { el.checked = nacionalEl.checked; });
+    });
+    estadoEls().forEach((el) => {
+      el.addEventListener("change", () => {
+        nacionalEl.checked = estadoEls().every((e) => e.checked);
+      });
+    });
+  })();
+
   document.getElementById("form-cadastro").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const btn = document.getElementById("btn-criar");
@@ -198,6 +324,13 @@
     const cnpj = document.getElementById("cnpj").value.trim();
     const porte_empresa = document.getElementById("porte_empresa").value;
     const segmento = document.getElementById("segmento").value;
+    const atividades = document.getElementById("atividades").value.trim();
+    const estados_interesse = Array.from(document.querySelectorAll(".abr-estado:checked")).map((el) => el.value);
+    const como_conheceu = document.getElementById("como_conheceu").value;
+    const quantidade_funcionarios = document.getElementById("quantidade_funcionarios").value;
+    const licitacoes_por_mes = document.getElementById("licitacoes_por_mes").value;
+    const faturamento_anual = document.getElementById("faturamento_anual").value;
+    const como_pretende_usar = document.getElementById("como_pretende_usar").value;
     const telefone = document.getElementById("telefone").value.trim();
     const email = document.getElementById("email").value.trim();
     const senha = document.getElementById("senha").value;
@@ -213,7 +346,13 @@
     const { error } = await sb.auth.signUp({
       email,
       password: senha,
-      options: { data: { nome, cargo, empresa, cnpj, porte_empresa, segmento, telefone, aceite_termos: true } },
+      options: {
+        data: {
+          nome, cargo, empresa, cnpj, porte_empresa, segmento, telefone, aceite_termos: true,
+          atividades, estados_interesse, como_conheceu, quantidade_funcionarios,
+          licitacoes_por_mes, faturamento_anual, como_pretende_usar,
+        },
+      },
     });
 
     if (error) {
