@@ -19,13 +19,17 @@
         window.location.replace("login.html");
         return;
       }
-      const { data: cliente } = await sb.from("clientes").select("status").eq("id", session.user.id).maybeSingle();
-      if (!cliente || cliente.status !== "aprovado") {
-        await sb.auth.signOut();
-        window.location.replace("login.html");
-      }
+      const { data: cliente } = await sb.from("clientes").select("nome, empresa, cnpj, telefone, status").eq("id", session.user.id).maybeSingle();
+            if (!cliente || cliente.status !== "aprovado") {
+                      await sb.auth.signOut();
+                      window.location.replace("login.html");
+                      return;
+            }
+            window.__clienteAtual = cliente;
+            window.__clienteEmailAtual = session.user.email || "";
+            if (typeof window.__preencherIdentidadeUsuario === "function") window.__preencherIdentidadeUsuario();
     });
-    window.__sbClient = sb;
+        window.__sbClient = sb;
   })();
 </script>
 <style>
@@ -781,11 +785,45 @@
     .bol-cal-dia { font-size: 11px; }
     .bol-cal-dia-badge { font-size: 9px; min-width: 14px; height: 14px; }
   }
+
+  /* ---- Dashboard ---- */
+  .dash-boas-vindas { margin-bottom: 20px; }
+  .dash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .dash-cards { grid-template-columns: repeat(2, 1fr); } }
+  .dash-card { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; box-shadow: var(--sombra); }
+  .dash-card-ico { font-size: 20px; margin-bottom: 6px; }
+  .dash-card-num { font-size: 26px; font-weight: 700; color: #fff; line-height: 1.2; }
+  .dash-card-label { font-size: 12px; color: var(--texto-fraco); margin-top: 4px; }
+  .dash-painel { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 18px; box-shadow: var(--sombra); }
+  .dash-painel-titulo { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 14px; }
+  .dash-grafico-linha { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 18px; box-shadow: var(--sombra); margin-bottom: 20px; }
+  .dash-barras { display: flex; align-items: flex-end; gap: 4px; height: 110px; overflow-x: auto; }
+  .dash-barra-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 16px; height: 100%; flex: 1; }
+  .dash-barra { width: 100%; max-width: 18px; background: linear-gradient(180deg, var(--azul), var(--azul-escuro)); border-radius: 3px 3px 0 0; min-height: 2px; }
+  .dash-barra-dia { font-size: 9px; color: var(--texto-fraco); margin-top: 4px; }
+  .dash-duas-colunas { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .dash-duas-colunas { grid-template-columns: 1fr; } }
+  .dash-perfil-wrap { display: flex; align-items: center; gap: 20px; }
+  @media (max-width: 520px) { .dash-perfil-wrap { flex-direction: column; align-items: flex-start; } }
+  .dash-donut { --pct: 0; width: 96px; height: 96px; border-radius: 50%; flex-shrink: 0; background: conic-gradient(var(--azul) calc(var(--pct) * 1%), var(--borda) 0); display: flex; align-items: center; justify-content: center; }
+  .dash-donut-centro { width: 68px; height: 68px; border-radius: 50%; background: var(--cartao); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; color: #fff; }
+  .dash-perfil-item-ok { color: var(--verde); }
+  .dash-perfil-item-falta { color: var(--texto-fraco); }
+  .dash-atalhos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .dash-atalho { display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--cartao-claro); border: 1px solid var(--borda); border-radius: var(--raio-pq); padding: 12px 8px; cursor: pointer; font-size: 12px; color: var(--texto); text-align: center; font-family: inherit; }
+  .dash-atalho:hover { border-color: var(--azul); }
+  .dash-atalho-ico { font-size: 18px; }
+  .dash-filtros-preview { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .dash-filtro-campo label { display: block; font-size: 11px; color: var(--texto-fraco); margin-bottom: 5px; }
+  .dash-filtro-campo input { width: 100%; background: var(--cartao-claro); border: 1px solid var(--borda); border-radius: var(--raio-pq); padding: 9px 10px; color: var(--texto); font-size: 13px; font-family: inherit; cursor: pointer; }
+  .dash-filtro-campo input:hover { border-color: var(--azul); }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
+  
 <header>
   <div class="header-topo">
     <a href="painel.html" style="display:contents;"><img src="logo-icone-branco.svg" alt="LicitaPlena" class="header-logo"></a>
@@ -793,15 +831,29 @@
       <h1>LicitaPlena</h1>
       <p>Inteligência, gestão e automação em licitações — uma solução HC Licitações.</p>
     </div>
-    <div style="display:flex;gap:10px;position:relative;flex-shrink:0;">
-      <button id="btn-sair-painel" style="text-decoration:none;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:9px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Sair</button>
+    <div style="display:flex;gap:10px;position:relative;flex-shrink:0;align-items:center;">
+      <div style="position:relative;">
+        <button id="header-user-btn" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 14px 6px 6px;border-radius:24px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
+          <span id="header-user-iniciais" style="width:28px;height:28px;border-radius:50%;background:#fff;color:var(--azul-escuro);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">--</span>
+          <span id="header-user-nome" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Minha conta</span>
+          <span style="font-size:10px;opacity:.8;">&#9662;</span>
+        </button>
+        <div id="header-user-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:230px;overflow:hidden;z-index:60;">
+          <div style="padding:14px 16px;border-bottom:1px solid #eef1f6;">
+            <div id="header-user-nome-dropdown" style="font-weight:700;font-size:14px;">Minha conta</div>
+            <div id="header-user-email" style="font-size:12px;color:#64748b;margin-top:2px;word-break:break-all;"></div>
+          </div>
+          <button id="btn-sair-painel" style="width:100%;text-align:left;background:none;border:none;padding:12px 16px;font-size:14px;color:#c0392b;cursor:pointer;font-family:inherit;font-weight:600;">Sair</button>
+        </div>
+      </div>
     </div>
   </div>
 </header>
 
 <div class="shell">
 <nav>
-  <button class="ativo" data-alvo="boletim"><span class="nav-ico">📋</span>Boletim</button>
+  <button class="ativo" data-alvo="dashboard"><span class="nav-ico">&#127968;</span>Dashboard</button>
+  <button data-alvo="boletim"><span class="nav-ico">&#128203;</span>Boletim</button>
   <button data-alvo="oportunidades"><span class="nav-ico">🔎</span>Encontrar Licitações</button>
   <button data-alvo="diagnostico"><span class="nav-ico">📊</span>Diagnóstico de Mercado</button>
   <button data-alvo="empresa"><span class="nav-ico">🏢</span>Analisar Empresa</button>
@@ -814,7 +866,77 @@
 
 <main>
 
-  <section id="boletim" class="ativa">
+  <section id="dashboard" class="ativa">
+    <div class="dash-boas-vindas">
+      <div>
+        <h2 style="margin-top:0;margin-bottom:4px;">Ol&aacute;, <span id="dash-nome">tudo bem?</span> &#128075;</h2>
+        <p style="margin:0;color:var(--texto-fraco);font-size:14px;">Aqui est&aacute; um resumo r&aacute;pido da sua conta no LicitaPlena.</p>
+      </div>
+    </div>
+
+    <div class="dash-cards">
+      <div class="dash-card">
+        <div class="dash-card-ico">&#128203;</div>
+        <div class="dash-card-num" id="dash-num-oportunidades">&ndash;</div>
+        <div class="dash-card-label">Oportunidades no seu boletim</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-ico">&#129520;</div>
+        <div class="dash-card-num">9</div>
+        <div class="dash-card-label">Ferramentas dispon&iacute;veis</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-ico">&#128193;</div>
+        <div class="dash-card-num" id="dash-num-kanban">&ndash;</div>
+        <div class="dash-card-label">Licita&ccedil;&otilde;es no seu Kanban</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-ico">&#127760;</div>
+        <div class="dash-card-num">Nacional</div>
+        <div class="dash-card-label">Abrang&ecirc;ncia da cobertura</div>
+      </div>
+    </div>
+
+    <div class="dash-grafico-linha">
+      <div class="dash-painel-titulo">Oportunidades por dia &mdash; m&ecirc;s atual</div>
+      <div id="dash-grafico-dias" class="dash-barras"></div>
+    </div>
+
+    <div class="dash-duas-colunas">
+      <div class="dash-painel">
+        <div class="dash-painel-titulo">Seu perfil</div>
+        <div class="dash-perfil-wrap">
+          <div class="dash-donut" id="dash-donut" style="--pct:0;">
+            <div class="dash-donut-centro"><span id="dash-donut-pct">0%</span></div>
+          </div>
+          <div style="flex:1;">
+            <p style="margin:0 0 10px;font-size:13px;color:var(--texto-fraco);">Complete seus dados cadastrais para aproveitar melhor a plataforma.</p>
+            <div id="dash-perfil-itens" style="display:flex;flex-direction:column;gap:6px;font-size:13px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-painel">
+        <div class="dash-painel-titulo">Acesso r&aacute;pido</div>
+        <div class="dash-atalhos" id="dash-atalhos"></div>
+      </div>
+    </div>
+
+    <div class="dash-painel" style="margin-top:20px;">
+      <div class="dash-painel-titulo">Filtros de busca</div>
+      <p style="margin:0 0 14px;font-size:13px;color:var(--texto-fraco);">Pr&eacute;via dos filtros da aba <strong>Encontrar Licita&ccedil;&otilde;es</strong> &mdash; clique em qualquer campo para ir direto at&eacute; l&aacute;.</p>
+      <div class="dash-filtros-preview" id="dash-filtros-preview">
+        <div class="dash-filtro-campo"><label>Objeto / palavra-chave</label><input type="text" placeholder="Ex: hospitalar, limpeza..." readonly></div>
+        <div class="dash-filtro-campo"><label>Estado (UF)</label><input type="text" placeholder="Todos os estados" readonly></div>
+        <div class="dash-filtro-campo"><label>Cidade</label><input type="text" placeholder="Todas as cidades" readonly></div>
+        <div class="dash-filtro-campo"><label>Data de inclus&atilde;o</label><input type="text" placeholder="Qualquer per&iacute;odo" readonly></div>
+        <div class="dash-filtro-campo"><label>Modalidade</label><input type="text" placeholder="Todas" readonly></div>
+        <div class="dash-filtro-campo"><label>Situa&ccedil;&atilde;o</label><input type="text" placeholder="Vigentes" readonly></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="boletim">
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
@@ -3070,6 +3192,7 @@
   // Desenha o calendário + a lista de cards abaixo dele (filtrada pelo dia selecionado, se houver).
   function renderizarBoletimComCalendario(resultadosCompletos, avisoHtml) {
     bolResultadosCompletos = resultadosCompletos;
+          if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
     const alvoCal = document.getElementById("bol-calendario");
     const alvoLista = document.getElementById("bol-resultado");
 
@@ -3099,6 +3222,8 @@
       metaEl.textContent = "Configure seu filtro (estado + palavras-chave) para o boletim ser gerado automaticamente a cada visita.";
       alvo.innerHTML = '<div class="aviso">Nenhum filtro salvo ainda. Clique em "Configurar filtro do boletim" acima e salve pra começar a receber seu boletim diário.</div>';
       document.getElementById("bol-calendario").innerHTML = "";
+            bolResultadosCompletos = [];
+            if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
       return;
     }
 
@@ -3160,6 +3285,8 @@ let resultados = resultadosBrutos.filter((r) => {
 
       if (resultados.length === 0) {
         alvo.innerHTML = avisoHtml + '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na coleta mais recente.</div>';
+              bolResultadosCompletos = [];
+              if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
         return;
       }
 
@@ -4748,6 +4875,65 @@ let resultados = resultadosBrutos.filter((r) => {
   document.querySelector('nav button[data-alvo="precos"]').addEventListener("click", () => {
     if (!ppJaBuscado) restaurarPrecos();
   });
+window.__atualizarDashboard = function () {
+  const elOp = document.getElementById("dash-num-oportunidades");
+  try {
+    if (typeof bolResultadosCompletos !== "undefined" && elOp) {
+      elOp.textContent = String(bolResultadosCompletos.length);
+    }
+  } catch (e) {}
+
+  const elKanban = document.getElementById("dash-num-kanban");
+  try {
+    if (elKanban && typeof lerMapa === "function") {
+      elKanban.textContent = String(Object.keys(lerMapa("kanban-editais") || {}).length);
+    }
+  } catch (e) {}
+
+  const elGraf = document.getElementById("dash-grafico-dias");
+  try {
+    if (elGraf && typeof bolResultadosCompletos !== "undefined" && typeof bolAgruparPorDia === "function") {
+      const porDia = bolAgruparPorDia(bolResultadosCompletos);
+      const hoje = new Date();
+      const totalDias = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+      const max = Math.max(1, ...Array.from(porDia.values()).map((v) => v.length));
+      let html = "";
+      for (let dia = 1; dia <= totalDias; dia++) {
+        const chave = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+        const qtd = (porDia.get(chave) || []).length;
+        const alturaPct = qtd > 0 ? Math.max(6, Math.round((qtd / max) * 100)) : 2;
+        html += `<div class="dash-barra-col" title="${qtd} oportunidade(s) em ${String(dia).padStart(2, "0")}/${String(hoje.getMonth() + 1).padStart(2, "0")}"><div class="dash-barra" style="height:${alturaPct}%;"></div><span class="dash-barra-dia">${dia}</span></div>`;
+      }
+      elGraf.innerHTML = html;
+    } else if (elGraf) {
+      elGraf.innerHTML = '<p style="font-size:13px;color:var(--texto-fraco);">Configure o filtro do boletim para ver seu gr&aacute;fico de oportunidades por dia.</p>';
+    }
+  } catch (e) {}
+
+  try {
+    const c = window.__clienteAtual || {};
+    const campos = [
+      { chave: "nome", label: "Nome" },
+      { chave: "empresa", label: "Empresa" },
+      { chave: "cnpj", label: "CNPJ" },
+      { chave: "telefone", label: "Telefone" },
+    ];
+    const preenchidos = campos.filter((f) => c[f.chave] && String(c[f.chave]).trim());
+    const pct = Math.round((preenchidos.length / campos.length) * 100);
+    const donut = document.getElementById("dash-donut");
+    const donutPct = document.getElementById("dash-donut-pct");
+    if (donut) donut.style.setProperty("--pct", String(pct));
+    if (donutPct) donutPct.textContent = pct + "%";
+    const itensEl = document.getElementById("dash-perfil-itens");
+    if (itensEl) {
+      itensEl.innerHTML = campos.map((f) => {
+        const ok = f.chave in c ? !!(c[f.chave] && String(c[f.chave]).trim()) : false;
+        return `<div class="${ok ? "dash-perfil-item-ok" : "dash-perfil-item-falta"}">${ok ? "&check;" : "&#9675;"} ${f.label}</div>`;
+      }).join("");
+    }
+  } catch (e) {}
+};
+
 </script>
 
 <script>
@@ -4756,6 +4942,85 @@ let resultados = resultadosBrutos.filter((r) => {
     window.location.href = "login.html";
   });
 </script>
+<script>
+  window.__preencherIdentidadeUsuario = function () {
+    try {
+      const c = window.__clienteAtual || {};
+      const email = window.__clienteEmailAtual || "";
+      const nome = (c.nome && String(c.nome).trim()) || (c.empresa && String(c.empresa).trim()) || (email ? email.split("@")[0] : "Minha conta");
+      const iniciais = nome
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((p) => p[0].toUpperCase())
+        .join("") || "--";
+      const elIni = document.getElementById("header-user-iniciais");
+      const elNome = document.getElementById("header-user-nome");
+      const elNomeDrop = document.getElementById("header-user-nome-dropdown");
+      const elEmail = document.getElementById("header-user-email");
+      if (elIni) elIni.textContent = iniciais;
+      if (elNome) elNome.textContent = nome;
+      if (elNomeDrop) elNomeDrop.textContent = nome;
+      if (elEmail) elEmail.textContent = email;
+      const boasVindas = document.getElementById("dash-nome");
+      if (boasVindas) boasVindas.textContent = nome;
+      if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
+    } catch (e) {}
+  };
+  window.__preencherIdentidadeUsuario();
+
+  (function () {
+    const btn = document.getElementById("header-user-btn");
+    const dropdown = document.getElementById("header-user-dropdown");
+    if (btn && dropdown) {
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+      });
+      document.addEventListener("click", () => {
+        dropdown.style.display = "none";
+      });
+    }
+  })();
+
+  (function () {
+    const cont = document.getElementById("dash-atalhos");
+    if (!cont) return;
+    const atalhos = [
+      { ico: "&#128269;", label: "Encontrar Licitações", alvo: "boletim" },
+      { ico: "&#128202;", label: "Diagnóstico de Mercado", alvo: "diagnostico" },
+      { ico: "&#128203;", label: "Kanban", alvo: "kanban" },
+      { ico: "&#127974;", label: "Base de Empresas", alvo: "empresa" },
+      { ico: "&#9878;", label: "Artigos Jurídicos", alvo: "juridico" },
+      { ico: "&#128176;", label: "Pesquisa de Preços", alvo: "precos" },
+    ];
+    cont.innerHTML = atalhos
+      .map(
+        (a) =>
+          `<button class="dash-atalho" data-alvo-dashboard="${a.alvo}"><span class="dash-atalho-ico">${a.ico}</span>${a.label}</button>`
+      )
+      .join("");
+    cont.querySelectorAll("[data-alvo-dashboard]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const alvo = b.getAttribute("data-alvo-dashboard");
+        const navBtn = document.querySelector(`nav button[data-alvo="${alvo}"]`);
+        if (navBtn) navBtn.click();
+      });
+    });
+  })();
+
+  (function () {
+    const painel = document.getElementById("dash-filtros-preview");
+    if (!painel) return;
+    painel.querySelectorAll("input").forEach((inp) => {
+      inp.addEventListener("click", () => {
+        const navBtn = document.querySelector('nav button[data-alvo="boletim"]');
+        if (navBtn) navBtn.click();
+      });
+    });
+  })();
+</script>
+
 
 </body>
 </html>
