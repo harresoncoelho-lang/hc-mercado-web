@@ -3118,8 +3118,25 @@
       // por e-mail. "Encontrar Licitações" é quem faz a busca livre em todo o histórico.
       const DIAS_BOLETIM = 3;
       const resp = await buscarOportunidadesAbertas(uf, palavras, 15);
+      let resultadosBrutos = resp.encontrados;
+
+      // Corrige bug real: quando a busca ao vivo no PNCP falha (API lenta/fora do ar), o
+      // Boletim ficava vazio mesmo com o robo ja tendo coletado e salvo essas mesmas
+      // oportunidades horas antes -- "Encontrar Licitacoes" ja mesclava com esse cache do
+      // robo, o Boletim nao. Agora os dois usam a mesma protecao: o cache complementa (e
+      // cobre) o que a busca ao vivo nao trouxe, sem duplicar o que ja veio ao vivo.
+      const cacheOportunidades = await carregarCache("data/oportunidades_abertas.json");
+      if (cacheOportunidades && Array.isArray(cacheOportunidades.registros) && cacheOportunidades.registros.length > 0) {
+        const jaVistos = new Set(resultadosBrutos.map((r) => r.numeroControlePNCP).filter(Boolean));
+        const doCache = cacheOportunidades.registros
+          .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
+          .filter((r) => !r.numeroControlePNCP || !jaVistos.has(r.numeroControlePNCP))
+          .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
+        resultadosBrutos = resultadosBrutos.concat(doCache);
+      }
+
       const limiteRecencia = new Date(Date.now() - DIAS_BOLETIM * 24 * 60 * 60 * 1000);
-      let resultados = resp.encontrados.filter((r) => {
+      let resultados = resultadosBrutos.filter((r) => {
         if (!r.publicacao) return true;
         const d = new Date(r.publicacao);
         return isNaN(d) || d >= limiteRecencia;
@@ -3127,7 +3144,7 @@
       const agora = new Date();
       metaEl.textContent = `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · filtro: ${uf ? uf + " · " : ""}${palavras.join(", ")} · últimos ${DIAS_BOLETIM} dias`;
       let avisoHtml = resp.falhaConexao
-        ? '<div class="aviso">A API pública do PNCP não respondeu agora — os resultados abaixo podem estar incompletos.</div>'
+        ? '<div class="aviso">A API pública do PNCP não respondeu agora — mostrando também o que o robô já tinha coletado, então a lista abaixo pode não estar 100% atualizada.</div>'
         : "";
 
       resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));
