@@ -286,13 +286,10 @@
         <span>Li e concordo com os <a href="termos-de-uso.html" target="_blank">Termos de uso</a> e a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> da LicitaPlena.</span>
       </label>
 
-      <!-- ATENÇÃO: esta é a site key PÚBLICA DE TESTE do hCaptcha (10000000-ffff-ffff-ffff-000000000001),
-           documentada pela própria hCaptcha e que sempre passa — não protege nada de verdade.
-           TROCAR PELA SITE KEY REAL DO HCAPTCHA ANTES DE ATIVAR A PROTEÇÃO DE CAPTCHA NO SUPABASE
-           (crie a conta em https://www.hcaptcha.com, pegue a site key do seu site e troque o
-           data-sitekey abaixo — e configure a secret key correspondente em Supabase > Authentication
-           > Attack Protection). -->
-      <div class="h-captcha" data-sitekey="10000000-ffff-ffff-ffff-000000000001" style="margin-bottom:16px;"></div>
+      <!-- Site key real do hCaptcha (conta já criada). Falta só ativar a proteção de
+           captcha em Supabase > Authentication > Attack Protection com a secret key
+           correspondente pra esse token passar a ser validado de verdade no signUp(). -->
+      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-bottom:16px;"></div>
 
       <button type="submit" class="criar" id="btn-criar">Criar cadastro</button>
     </form>
