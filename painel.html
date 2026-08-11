@@ -1853,7 +1853,7 @@
       window.location.href = `mailto:?subject=${assunto}&body=${encodeURIComponent(corpo)}`;
     };
     document.getElementById("modal-ia-checklist-doc").onclick = () => {
-      const corpo = montarChecklistTexto(edital, iaEstruturaAtual).replace(/\n/g, "<br>");
+      const corpo = escapeHtml(montarChecklistTexto(edital, iaEstruturaAtual)).replace(/\n/g, "<br>");
       const html = `<html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;">${corpo}</body></html>`;
       const blob = new Blob(["\ufeff", html], { type: "application/msword" });
       const a = document.createElement("a");
@@ -1864,7 +1864,7 @@
     };
     document.getElementById("modal-ia-imprimir").onclick = () => {
       const janela = window.open("", "_blank");
-      const corpo = montarChecklistTexto(edital, iaEstruturaAtual).replace(/\n/g, "<br>");
+      const corpo = escapeHtml(montarChecklistTexto(edital, iaEstruturaAtual)).replace(/\n/g, "<br>");
       janela.document.write(`<html><head><title>Checklist</title></head><body style="font-family:Arial,sans-serif;padding:24px;">${corpo}</body></html>`);
       janela.document.close();
       janela.focus();
@@ -2172,7 +2172,7 @@
         <td style="color:var(--vermelho)">${escapeHtml(tipo)}</td>
         <td>${escapeHtml(inicio)}</td>
         <td>${escapeHtml(fim)}</td>
-        <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no Portal da Transparência ↗</a>` : "-"}</td>
+        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no Portal da Transparência ↗</a>` : "-"}</td>
       </tr>`;
     }
     html += "</table>";
@@ -2894,7 +2894,7 @@
               ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações">📁 Acompanhamento</button>` : ""}
               ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
             </div>
-            ${r.link ? `<a class="link-pncp" href="${r.link}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
+            ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
           </div>
           <div class="boletim-itens" style="display:none;"></div>
         </div>
@@ -3655,7 +3655,7 @@ let resultados = resultadosBrutos.filter((r) => {
         <td>${escapeHtml(r.uf || "-")}</td>
         <td>${escapeHtml(valor)}</td>
         <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
-        <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
       </tr>`;
     }
     html += "</table>";
@@ -3712,7 +3712,7 @@ let resultados = resultadosBrutos.filter((r) => {
         <td>${escapeHtml(r.uf || "-")}</td>
         <td>${escapeHtml(valor)}</td>
         <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
-        <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
       </tr>`;
     }
     html += "</table>";
@@ -3933,7 +3933,7 @@ let resultados = resultadosBrutos.filter((r) => {
     } else {
       html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
       d.oportunidadesAbertas.forEach((o, i) => {
-        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
+        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
       });
       html += "</table>";
       html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
@@ -3969,7 +3969,7 @@ let resultados = resultadosBrutos.filter((r) => {
           <div><dt>Órgão</dt><dd>${escapeHtml(o.orgao || "-")}</dd></div>
           <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</dd></div>
           <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(o.numeroControlePNCP || "-")}</dd></div>
-          <div><dt>Link</dt><dd>${o.link ? `<a class="link-pncp" href="${o.link}" target="_blank" rel="noopener">Abrir edital no PNCP ↗</a>` : "-"}</dd></div>
+          <div><dt>Link</dt><dd>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener">Abrir edital no PNCP ↗</a>` : "-"}</dd></div>
         </dl>`;
         tr.after(detalhe);
       });
@@ -4315,7 +4315,7 @@ let resultados = resultadosBrutos.filter((r) => {
             <td>${escapeHtml(r.uf || "-")}</td>
             <td>${escapeHtml(formatarValor(r.valor))}</td>
             <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
-            <td>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td>
+            <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td>
           </tr>`;
         });
         html2 += "</table>";
@@ -4354,7 +4354,7 @@ let resultados = resultadosBrutos.filter((r) => {
               <div><dt>Valor</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
               <div><dt>Data de assinatura</dt><dd>${escapeHtml(String(r.dataAssinatura || "-"))}</dd></div>
               <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
-              <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</dd></div>
+              <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</dd></div>
             </dl>`;
             tr.after(detalhe);
           });
@@ -4442,7 +4442,7 @@ let resultados = resultadosBrutos.filter((r) => {
         <td>${escapeHtml(r.orgao || "-")}</td>
         <td>${escapeHtml(siglaUf(r.uf) || r.uf || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
         <td>${formatarValor(r.valorLiberado || r.valor || 0)}</td>
-        <td>${formatarDataIso(r.dataPublicacao)}${link ? ` <a class="link-pncp" href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Ver este convênio no Portal da Transparência">↗</a>` : ""}</td>
+        <td>${formatarDataIso(r.dataPublicacao)}${link ? ` <a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Ver este convênio no Portal da Transparência">↗</a>` : ""}</td>
       </tr>`;
     });
     html += "</table>";
@@ -4474,7 +4474,7 @@ let resultados = resultadosBrutos.filter((r) => {
           <div><dt>Início de vigência</dt><dd>${formatarDataIso(r.dataInicioVigencia)}</dd></div>
           <div><dt>Fim de vigência</dt><dd>${formatarDataIso(r.dataFinalVigencia)}</dd></div>
           <div><dt>Última liberação</dt><dd>${formatarDataIso(r.dataUltimaLiberacao)}</dd></div>
-          <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${link}" target="_blank" rel="noopener">Ver convênio completo no Portal da Transparência ↗</a>` : "-"}</dd></div>
+          <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver convênio completo no Portal da Transparência ↗</a>` : "-"}</dd></div>
         </dl>`;
         tr.after(detalhe);
       });
@@ -4686,7 +4686,7 @@ let resultados = resultadosBrutos.filter((r) => {
       html += `<table id="pp-tabela-itens"><tr><th>Código</th><th>Características</th></tr>`;
       ppItens.forEach((item, i) => {
         html += `<tr class="linha-clicavel pp-item-linha" data-idx="${i}" data-texto="${escapeHtml(normalizar(ppResumoCaracteristicas(item)))}" style="${i >= LIMITE_EXIBIDOS ? "display:none;" : ""}">
-          <td>${item.codigoItem}</td>
+          <td>${escapeHtml(String(item.codigoItem))}</td>
           <td>${escapeHtml(ppResumoCaracteristicas(item))}</td>
         </tr>`;
       });
@@ -4741,7 +4741,7 @@ let resultados = resultadosBrutos.filter((r) => {
       <div class="painel-filtros">
         <div class="campo">
           <label>Item selecionado</label>
-          <div style="padding:9px 0;color:#fff;font-size:14px;">Código ${item.codigoItem} — ${escapeHtml(ppResumoCaracteristicas(item)) || "sem características adicionais"}</div>
+          <div style="padding:9px 0;color:#fff;font-size:14px;">Código ${escapeHtml(String(item.codigoItem))} — ${escapeHtml(ppResumoCaracteristicas(item)) || "sem características adicionais"}</div>
         </div>
       </div>
       <div class="painel-filtros">

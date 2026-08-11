@@ -261,8 +261,14 @@
       <label for="email">E-mail</label>
       <input type="email" id="email" required autocomplete="email">
 
+      <label for="email_confirmar">Confirmar e-mail</label>
+      <input type="email" id="email_confirmar" required autocomplete="off">
+
       <label for="senha">Crie uma senha</label>
       <input type="password" id="senha" required minlength="6" autocomplete="new-password">
+
+      <label for="senha_confirmar">Confirmar senha</label>
+      <input type="password" id="senha_confirmar" required minlength="6" autocomplete="new-password">
 
       <label class="campo-termos">
         <input type="checkbox" id="aceite_termos" required>
@@ -460,8 +466,24 @@
     const como_pretende_usar = document.getElementById("como_pretende_usar").value;
     const telefone = document.getElementById("telefone").value.trim();
     const email = document.getElementById("email").value.trim();
+    const email_confirmar = document.getElementById("email_confirmar").value.trim();
     const senha = document.getElementById("senha").value;
+    const senha_confirmar = document.getElementById("senha_confirmar").value;
     const aceite_termos = document.getElementById("aceite_termos").checked;
+
+    if (email.toLowerCase() !== email_confirmar.toLowerCase()) {
+      mostrarAviso("Os e-mails não coincidem. Confira e tente de novo.", "erro");
+      btn.disabled = false;
+      btn.textContent = "Criar cadastro";
+      return;
+    }
+
+    if (senha !== senha_confirmar) {
+      mostrarAviso("As senhas não coincidem. Confira e tente de novo.", "erro");
+      btn.disabled = false;
+      btn.textContent = "Criar cadastro";
+      return;
+    }
 
     if (!segmento) {
       mostrarAviso("Selecione o segmento de atuação da sua empresa em \"Atividades de interesse\".", "erro");
