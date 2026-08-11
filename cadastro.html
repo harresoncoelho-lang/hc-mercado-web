@@ -32,7 +32,7 @@
   }
   .caixa {
     width: 100%;
-    max-width: 460px;
+    max-width: 480px;
     background: var(--cartao);
     border: 1px solid var(--borda);
     border-radius: var(--raio);
@@ -43,15 +43,33 @@
   .logo-topo img { width: 40px; height: 40px; }
   .logo-topo span { font-weight: 700; font-size: 18px; }
   h1 { font-size: 20px; margin: 0 0 6px; }
-  p.sub { color: var(--texto-fraco); font-size: 14px; margin: 0 0 24px; }
+  p.sub { color: var(--texto-fraco); font-size: 14px; margin: 0 0 20px; }
+  h2.secao {
+    font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--azul); margin: 22px 0 12px; padding-top: 14px; border-top: 1px solid var(--borda);
+  }
+  h2.secao:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
   label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
-  input {
+  input, select {
     width: 100%; padding: 11px 12px; margin-bottom: 16px;
     background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
     color: var(--texto); font-size: 14px; font-family: inherit;
   }
-  input:focus { outline: none; border-color: var(--azul); }
+  select { appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2390a2b8' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat; background-position: right 12px center;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--azul); }
   .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .linha-dupla input, .linha-dupla select { margin-bottom: 0; }
+  .linha-dupla { margin-bottom: 16px; }
+  .campo-termos {
+    display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 20px;
+    font-size: 13px; color: var(--texto-fraco); line-height: 1.5;
+  }
+  .campo-termos input { width: auto; margin: 2px 0 0; flex-shrink: 0; }
+  .campo-termos a { color: var(--azul); text-decoration: none; }
+  .campo-termos a:hover { text-decoration: underline; }
   button.criar {
     width: 100%; padding: 12px; background: var(--laranja); color: #1a1005;
     border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer;
@@ -64,6 +82,9 @@
   .rodape-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--texto-fraco); }
   .rodape-link a { color: var(--azul); text-decoration: none; }
   .rodape-link a:hover { text-decoration: underline; }
+  .rodape-legal { text-align: center; margin-top: 18px; font-size: 12px; color: var(--texto-fraco); }
+  .rodape-legal a { color: var(--texto-fraco); text-decoration: underline; margin: 0 6px; }
+  .rodape-legal a:hover { color: var(--azul); }
 </style>
 </head>
 <body>
@@ -73,13 +94,26 @@
       <span>LicitaPlena</span>
     </div>
     <h1>Cadastre-se gratuitamente</h1>
-    <p class="sub">Seu cadastro fica em análise até ser aprovado — você recebe um aviso assim que liberarmos o acesso.</p>
+    <p class="sub">Seu cadastro fica em análise até ser aprovado — quanto mais completo, mais rápido conseguimos avaliar e liberar seu acesso.</p>
 
     <form id="form-cadastro">
+      <h2 class="secao">Dados de contato</h2>
       <label for="nome">Nome completo</label>
       <input type="text" id="nome" required autocomplete="name">
 
-      <label for="empresa">Empresa</label>
+      <div class="linha-dupla">
+        <div>
+          <label for="cargo">Cargo</label>
+          <input type="text" id="cargo" placeholder="Ex: Sócio, Comprador...">
+        </div>
+        <div>
+          <label for="telefone">Telefone / Celular</label>
+          <input type="text" id="telefone" placeholder="(00) 00000-0000">
+        </div>
+      </div>
+
+      <h2 class="secao">Dados da empresa</h2>
+      <label for="empresa">Razão social / Nome fantasia</label>
       <input type="text" id="empresa" autocomplete="organization">
 
       <div class="linha-dupla">
@@ -88,16 +122,46 @@
           <input type="text" id="cnpj" placeholder="00.000.000/0000-00">
         </div>
         <div>
-          <label for="telefone">Telefone</label>
-          <input type="text" id="telefone" placeholder="(00) 00000-0000">
+          <label for="porte_empresa">Porte da empresa</label>
+          <select id="porte_empresa">
+            <option value="">Selecionar</option>
+            <option value="MEI">MEI</option>
+            <option value="Microempresa (ME)">Microempresa (ME)</option>
+            <option value="Pequena (EPP)">Pequena (EPP)</option>
+            <option value="Média">Média</option>
+            <option value="Grande">Grande</option>
+          </select>
         </div>
       </div>
 
+      <label for="segmento">Segmento de atuação</label>
+      <select id="segmento" required>
+        <option value="">Selecionar</option>
+        <option value="Construção civil e engenharia">Construção civil e engenharia</option>
+        <option value="Tecnologia da informação">Tecnologia da informação</option>
+        <option value="Saúde e produtos hospitalares">Saúde e produtos hospitalares</option>
+        <option value="Alimentação e gêneros alimentícios">Alimentação e gêneros alimentícios</option>
+        <option value="Limpeza e conservação">Limpeza e conservação</option>
+        <option value="Mobiliário e equipamentos">Mobiliário e equipamentos</option>
+        <option value="Serviços gerais e terceirização">Serviços gerais e terceirização</option>
+        <option value="Consultoria e assessoria">Consultoria e assessoria</option>
+        <option value="Educação e material didático">Educação e material didático</option>
+        <option value="Transporte e logística">Transporte e logística</option>
+        <option value="Segurança e vigilância">Segurança e vigilância</option>
+        <option value="Outro">Outro</option>
+      </select>
+
+      <h2 class="secao">Acesso</h2>
       <label for="email">E-mail</label>
       <input type="email" id="email" required autocomplete="email">
 
       <label for="senha">Crie uma senha</label>
       <input type="password" id="senha" required minlength="6" autocomplete="new-password">
+
+      <label class="campo-termos">
+        <input type="checkbox" id="aceite_termos" required>
+        <span>Li e concordo com os <a href="termos-de-uso.html" target="_blank">Termos de uso</a> e a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> da LicitaPlena.</span>
+      </label>
 
       <button type="submit" class="criar" id="btn-criar">Criar cadastro</button>
     </form>
@@ -106,6 +170,9 @@
 
     <div class="rodape-link">
       Já tem conta? <a href="login.html">Acessar conta</a>
+    </div>
+    <div class="rodape-legal">
+      <a href="termos-de-uso.html">Termos de uso</a>·<a href="politica-privacidade.html">Privacidade</a>·<a href="politica-cookies.html">Cookies</a>
     </div>
   </div>
 
@@ -126,16 +193,27 @@
     btn.textContent = "Criando cadastro...";
 
     const nome = document.getElementById("nome").value.trim();
+    const cargo = document.getElementById("cargo").value.trim();
     const empresa = document.getElementById("empresa").value.trim();
     const cnpj = document.getElementById("cnpj").value.trim();
+    const porte_empresa = document.getElementById("porte_empresa").value;
+    const segmento = document.getElementById("segmento").value;
     const telefone = document.getElementById("telefone").value.trim();
     const email = document.getElementById("email").value.trim();
     const senha = document.getElementById("senha").value;
+    const aceite_termos = document.getElementById("aceite_termos").checked;
+
+    if (!aceite_termos) {
+      mostrarAviso("Você precisa aceitar os Termos de uso e a Política de Privacidade para continuar.", "erro");
+      btn.disabled = false;
+      btn.textContent = "Criar cadastro";
+      return;
+    }
 
     const { error } = await sb.auth.signUp({
       email,
       password: senha,
-      options: { data: { nome, empresa, cnpj, telefone } },
+      options: { data: { nome, cargo, empresa, cnpj, porte_empresa, segmento, telefone, aceite_termos: true } },
     });
 
     if (error) {
