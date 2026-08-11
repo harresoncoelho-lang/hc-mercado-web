@@ -81,17 +81,23 @@
   .linha-detalhe:last-child { border-bottom: none; }
   .linha-detalhe span:first-child { color: var(--texto-fraco); }
   .linha-detalhe span:last-child { font-weight: 600; text-align: right; }
-  #tela-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
-  #tela-login .caixa { width: 100%; max-width: 380px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 32px; }
-  #tela-login label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
-  #tela-login input { width: 100%; padding: 11px 12px; margin-bottom: 16px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 14px; }
-  #tela-login button { width: 100%; padding: 12px; background: var(--laranja); color: #1a1005; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
-  #tela-login .erro { margin-top: 14px; font-size: 13px; color: #ffb3c1; display: none; }
+  .tela-auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .tela-auth .caixa { width: 100%; max-width: 380px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 32px; }
+  .tela-auth label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
+  .tela-auth input { width: 100%; padding: 11px 12px; margin-bottom: 16px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 14px; letter-spacing: 0.05em; }
+  .tela-auth button { width: 100%; padding: 12px; background: var(--laranja); color: #1a1005; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  .tela-auth button:disabled { opacity: 0.6; cursor: default; }
+  .tela-auth .erro { margin-top: 14px; font-size: 13px; color: #ffb3c1; display: none; }
+  .mfa-qrcode { background: #fff; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .mfa-qrcode svg { display: block; width: 100%; height: auto; }
+  .mfa-secreto { font-size: 12px; color: var(--texto-fraco); margin: 0 0 16px; word-break: break-all; }
+  .mfa-secreto code { background: #0d1826; padding: 2px 6px; border-radius: 4px; color: var(--texto); }
+  #btn-mfa-config { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: 8px; }
 </style>
 </head>
 <body>
 
-<div id="tela-login">
+<div id="tela-login" class="tela-auth">
   <div class="caixa">
     <h2 style="margin-top:0;">Painel Admin</h2>
     <p style="color:var(--texto-fraco);font-size:14px;">Acesso restrito à administração da LicitaPlena.</p>
@@ -106,13 +112,44 @@
   </div>
 </div>
 
+<div id="tela-mfa-enroll" class="tela-auth" style="display:none;">
+  <div class="caixa">
+    <h2 style="margin-top:0;">Configure a autenticação em duas etapas</h2>
+    <p style="color:var(--texto-fraco);font-size:14px;">Escaneie o QR code abaixo com um app autenticador (Google Authenticator, Authy etc.) e digite o código de 6 dígitos pra confirmar. Isso é obrigatório pra acessar o painel administrativo.</p>
+    <div class="mfa-qrcode" id="mfa-qrcode"></div>
+    <p class="mfa-secreto">Não consegue escanear? Digite manualmente no app: <code id="mfa-secret"></code></p>
+    <form id="form-mfa-enroll">
+      <label>Código de 6 dígitos</label>
+      <input type="text" id="mfa-enroll-codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required>
+      <button type="submit" id="btn-mfa-enroll-confirmar">Confirmar e ativar</button>
+    </form>
+    <div class="erro" id="mfa-enroll-erro"></div>
+  </div>
+</div>
+
+<div id="tela-mfa-verify" class="tela-auth" style="display:none;">
+  <div class="caixa">
+    <h2 style="margin-top:0;">Verificação em duas etapas</h2>
+    <p style="color:var(--texto-fraco);font-size:14px;">Digite o código de 6 dígitos do seu app autenticador.</p>
+    <form id="form-mfa-verify">
+      <label>Código de 6 dígitos</label>
+      <input type="text" id="mfa-verify-codigo" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required>
+      <button type="submit" id="btn-mfa-verify-confirmar">Verificar</button>
+    </form>
+    <div class="erro" id="mfa-verify-erro"></div>
+  </div>
+</div>
+
 <div id="painel" style="display:none;">
   <header>
     <div class="titulo">
       <img src="logo-icone-branco.svg" alt="">
       <h1>Painel Admin — Clientes</h1>
     </div>
-    <button id="btn-sair">Sair</button>
+    <div>
+      <button id="btn-mfa-config" title="Configurar/desativar autenticação em duas etapas">🔒 2FA</button>
+      <button id="btn-sair">Sair</button>
+    </div>
   </header>
   <main>
     <div class="tabs">
@@ -194,15 +231,140 @@
     return !!admin;
   }
 
+  // ---- Autenticação em duas etapas (MFA/TOTP) — só pra este painel admin, não afeta
+  // login.html/cadastro.html/painel.html dos clientes comuns. Usa supabase.auth.mfa.*
+  // nativo do SDK, sem lib externa.
+  //
+  // IMPORTANTE: isso é uma trava do lado do cliente (JavaScript) — funciona pro fluxo
+  // normal de login, mas nenhuma policy de RLS hoje exige aal2 pra ler/escrever nas
+  // tabelas. Alguém com um token de sessão roubado ainda poderia chamar a API REST do
+  // Supabase direto, sem passar por essa checagem. Pra reforço de verdade no banco,
+  // seria preciso uma policy adicional checando auth.jwt()->>'aal' = 'aal2'.
+  const TELAS = ["tela-login", "tela-mfa-enroll", "tela-mfa-verify", "painel"];
+  function mostrarTela(id) {
+    TELAS.forEach((t) => { document.getElementById(t).style.display = "none"; });
+    document.getElementById(id).style.display = id === "painel" ? "block" : "flex";
+  }
+
+  let mfaEnrollFactorId = null;
+  async function iniciarEnrollMfa() {
+    const erroEl = document.getElementById("mfa-enroll-erro");
+    erroEl.style.display = "none";
+    document.getElementById("mfa-enroll-codigo").value = "";
+    const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp" });
+    if (error) {
+      erroEl.textContent = "Não foi possível iniciar a configuração do 2FA: " + error.message;
+      erroEl.style.display = "block";
+      return;
+    }
+    mfaEnrollFactorId = data.id;
+    // data.totp.qr_code vem pronto como SVG do próprio servidor do Supabase (não é dado
+    // de terceiro nem input de usuário) — é seguro jogar direto no innerHTML, é assim que
+    // a própria documentação do Supabase recomenda usar.
+    document.getElementById("mfa-qrcode").innerHTML = data.totp.qr_code;
+    document.getElementById("mfa-secret").textContent = data.totp.secret;
+  }
+
+  document.getElementById("form-mfa-enroll").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const codigo = document.getElementById("mfa-enroll-codigo").value.trim();
+    const btn = document.getElementById("btn-mfa-enroll-confirmar");
+    const erroEl = document.getElementById("mfa-enroll-erro");
+    erroEl.style.display = "none";
+    btn.disabled = true;
+    try {
+      const { data: desafio, error: erroDesafio } = await sb.auth.mfa.challenge({ factorId: mfaEnrollFactorId });
+      if (erroDesafio) throw erroDesafio;
+      const { error: erroVerificar } = await sb.auth.mfa.verify({ factorId: mfaEnrollFactorId, challengeId: desafio.id, code: codigo });
+      if (erroVerificar) throw erroVerificar;
+      mostrarTela("painel");
+      carregarClientes();
+    } catch (e) {
+      erroEl.textContent = "Código inválido. Confira o app autenticador e tente de novo.";
+      erroEl.style.display = "block";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  let mfaVerifyFactorId = null;
+  let mfaVerifyChallengeId = null;
+  async function iniciarChallengeMfa(factorId) {
+    mfaVerifyFactorId = factorId;
+    const erroEl = document.getElementById("mfa-verify-erro");
+    erroEl.style.display = "none";
+    document.getElementById("mfa-verify-codigo").value = "";
+    const { data, error } = await sb.auth.mfa.challenge({ factorId });
+    if (error) {
+      erroEl.textContent = "Não foi possível iniciar a verificação: " + error.message;
+      erroEl.style.display = "block";
+      return;
+    }
+    mfaVerifyChallengeId = data.id;
+  }
+
+  document.getElementById("form-mfa-verify").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const codigo = document.getElementById("mfa-verify-codigo").value.trim();
+    const btn = document.getElementById("btn-mfa-verify-confirmar");
+    const erroEl = document.getElementById("mfa-verify-erro");
+    erroEl.style.display = "none";
+    btn.disabled = true;
+    const { error } = await sb.auth.mfa.verify({ factorId: mfaVerifyFactorId, challengeId: mfaVerifyChallengeId, code: codigo });
+    btn.disabled = false;
+    if (error) {
+      erroEl.textContent = "Código inválido. Tente de novo.";
+      erroEl.style.display = "block";
+      // O desafio anterior já foi consumido/expirou — gera um novo pra próxima tentativa.
+      await iniciarChallengeMfa(mfaVerifyFactorId);
+      return;
+    }
+    mostrarTela("painel");
+    carregarClientes();
+  });
+
+  document.getElementById("btn-mfa-config").addEventListener("click", async () => {
+    const confirmar = window.confirm("Isso desativa a autenticação em duas etapas atual e pede pra você configurar de novo (ex: se trocou de celular). Continuar?");
+    if (!confirmar) return;
+    const { data: fatoresData } = await sb.auth.mfa.listFactors();
+    const fatores = (fatoresData && fatoresData.totp) || [];
+    for (const f of fatores) {
+      await sb.auth.mfa.unenroll({ factorId: f.id });
+    }
+    await iniciarEnrollMfa();
+    mostrarTela("tela-mfa-enroll");
+  });
+
+  // Depois de confirmar que a sessão é de um admin de verdade, decide qual tela mostrar:
+  // sem fator TOTP verificado ainda -> pede pra configurar; tem fator mas a sessão atual
+  // ainda não foi elevada pra aal2 -> pede o código; já em aal2 -> libera o painel.
+  async function verificarEtapaMfa() {
+    const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    const { data: fatoresData } = await sb.auth.mfa.listFactors();
+    const fatorVerificado = ((fatoresData && fatoresData.totp) || []).find((f) => f.status === "verified");
+
+    if (!fatorVerificado) {
+      await iniciarEnrollMfa();
+      mostrarTela("tela-mfa-enroll");
+      return;
+    }
+
+    if (aal && aal.currentLevel !== "aal2" && aal.nextLevel === "aal2") {
+      await iniciarChallengeMfa(fatorVerificado.id);
+      mostrarTela("tela-mfa-verify");
+      return;
+    }
+
+    mostrarTela("painel");
+    carregarClientes();
+  }
+
   async function mostrarPainelSeAdmin() {
     const ehAdmin = await verificarSessaoAdmin();
     if (ehAdmin) {
-      document.getElementById("tela-login").style.display = "none";
-      document.getElementById("painel").style.display = "block";
-      carregarClientes();
+      await verificarEtapaMfa();
     } else {
-      document.getElementById("tela-login").style.display = "flex";
-      document.getElementById("painel").style.display = "none";
+      mostrarTela("tela-login");
     }
   }
 
@@ -224,7 +386,7 @@
       await sb.auth.signOut();
       return;
     }
-    mostrarPainelSeAdmin();
+    await verificarEtapaMfa();
   });
 
   document.getElementById("btn-sair").addEventListener("click", async () => {
