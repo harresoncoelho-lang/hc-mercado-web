@@ -270,7 +270,7 @@
     try {
       const { data: fatoresData, error: erroFatores } = await sb.auth.mfa.listFactors();
       if (erroFatores) throw erroFatores;
-      const naoVerificados = (fatoresData && fatoresData.totp || []).filter((f) => f.factorType === "totp" && f.status === "unverified");
+      const naoVerificados = ((fatoresData && fatoresData.totp) || []).filter((f) => f.status === "unverified");
       for (const f of naoVerificados) {
         const { error: erroUnenroll } = await sb.auth.mfa.unenroll({ factorId: f.id });
         if (erroUnenroll) console.error("Falha ao limpar fator TOTP não verificado:", erroUnenroll);
