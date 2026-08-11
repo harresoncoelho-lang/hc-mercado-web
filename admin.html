@@ -263,6 +263,22 @@
     const erroEl = document.getElementById("mfa-enroll-erro");
     erroEl.style.display = "none";
     document.getElementById("mfa-enroll-codigo").value = "";
+
+    // Limpa fatores TOTP não verificados de tentativas anteriores (ex: usuário abriu a
+    // tela de enroll, não terminou, tentou de novo) — sem isso o enroll novo falha com
+    // "A factor with the friendly name already exists".
+    try {
+      const { data: fatoresData, error: erroFatores } = await sb.auth.mfa.listFactors();
+      if (erroFatores) throw erroFatores;
+      const naoVerificados = (fatoresData && fatoresData.totp || []).filter((f) => f.factorType === "totp" && f.status === "unverified");
+      for (const f of naoVerificados) {
+        const { error: erroUnenroll } = await sb.auth.mfa.unenroll({ factorId: f.id });
+        if (erroUnenroll) console.error("Falha ao limpar fator TOTP não verificado:", erroUnenroll);
+      }
+    } catch (e) {
+      console.error("Falha ao listar/limpar fatores TOTP não verificados:", e);
+    }
+
     const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp" });
     if (error) {
       erroEl.textContent = "Não foi possível iniciar a configuração do 2FA: " + error.message;
@@ -271,11 +287,21 @@
     }
     mfaEnrollFactorId = data.id;
     // O Supabase às vezes devolve totp.qr_code como markup SVG puro, às vezes como uma
-    // data URI (string começando com "data:") — nesse segundo caso precisa ir no src de
-    // uma <img>, não direto no innerHTML (senão aparece o texto bruto da URI na tela).
-    document.getElementById("mfa-qrcode").innerHTML = data.totp.qr_code.startsWith("data:")
-      ? `<img src="${data.totp.qr_code}" alt="QR code" style="max-width:100%;">`
-      : data.totp.qr_code;
+    // data URI (string começando com "data:"). No caso da data URI, monta a <img> via DOM
+    // (não como string interpolada no innerHTML) porque a URI costuma ter aspas duplas
+    // internas que fechariam o atributo src="..." no meio e deixavam texto solto na tela —
+    // atribuir .src como propriedade evita esse problema.
+    const qrCodeEl = document.getElementById("mfa-qrcode");
+    qrCodeEl.innerHTML = "";
+    if (data.totp.qr_code.startsWith("data:")) {
+      const img = document.createElement("img");
+      img.src = data.totp.qr_code;
+      img.alt = "QR code";
+      img.style.maxWidth = "100%";
+      qrCodeEl.appendChild(img);
+    } else {
+      qrCodeEl.innerHTML = data.totp.qr_code;
+    }
     document.getElementById("mfa-secret").textContent = data.totp.secret;
   }
 
