@@ -140,15 +140,10 @@
     const email = document.getElementById("email").value.trim();
     const senha = document.getElementById("senha").value;
 
-    // Token do hCaptcha — obrigatório porque o Supabase (Authentication > Attack
-    // Protection) exige captchaToken em todo signInWithPassword do projeto.
+    // Token do hCaptcha, enviado se o widget estiver presente/resolvido — a exigência de
+    // captcha está temporariamente desativada no Supabase (Attack Protection), então não
+    // bloqueia mais o login localmente se vier vazio.
     const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
-    if (typeof hcaptcha !== "undefined" && !captchaToken) {
-      mostrarAviso("Confirme que você não é um robô antes de continuar.", "erro");
-      btn.disabled = false;
-      btn.textContent = "Entrar";
-      return;
-    }
 
     const { data, error } = await sb.auth.signInWithPassword({ email, password: senha, options: { captchaToken } });
 
