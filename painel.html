@@ -855,21 +855,28 @@
       <h1>LicitaPlena</h1>
       <p>Inteligência, gestão e automação em licitações — uma solução HC Licitações.</p>
     </div>
-    <div style="display:flex;gap:10px;position:relative;flex-shrink:0;align-items:center;">
-      <div style="position:relative;">
-        <button id="header-user-btn" title="Minha conta" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:0;">
-          <span id="header-user-iniciais">--</span>
-        </button>
-        <div id="header-user-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:190px;overflow:hidden;z-index:60;">
-          <button type="button" class="menu-conta-item" data-acao="conta">Minha conta</button>
-          <button type="button" class="menu-conta-item" data-acao="planos">Planos e preços</button>
-          <button type="button" class="menu-conta-item" data-acao="feedback">Envie seu feedback</button>
-          <button type="button" id="btn-sair-painel" class="menu-conta-item" style="color:#c0392b;">Sair</button>
-        </div>
-      </div>
+    <div style="display:flex;gap:8px;position:relative;flex-shrink:0;align-items:center;">
+      <button id="header-bell-btn" title="Notifica&ccedil;&otilde;es" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;position:relative;">
+        &#128276;
+        <span id="header-bell-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#e8617a;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;line-height:16px;">0</span>
+      </button>
+      <button id="header-user-btn" title="Minha conta" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:0;">
+        <span id="header-user-iniciais">--</span>
+      </button>
     </div>
   </div>
 </header>
+
+<div id="header-user-dropdown" style="display:none;position:fixed;background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:190px;overflow:hidden;z-index:500;">
+  <button type="button" class="menu-conta-item" data-acao="conta">Minha conta</button>
+  <button type="button" class="menu-conta-item" data-acao="planos">Planos e pre&ccedil;os</button>
+  <button type="button" class="menu-conta-item" data-acao="feedback">Envie seu feedback</button>
+  <button type="button" id="btn-sair-painel" class="menu-conta-item" style="color:#c0392b;">Sair</button>
+</div>
+<div id="header-bell-dropdown" style="display:none;position:fixed;background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:260px;max-width:300px;overflow:hidden;z-index:500;">
+  <div style="padding:14px 16px;border-bottom:1px solid #eef1f6;font-weight:700;font-size:13.5px;">Notifica&ccedil;&otilde;es</div>
+  <div id="header-bell-corpo" style="padding:14px 16px;font-size:13px;color:#3a4a63;line-height:1.5;"></div>
+</div>
 
 <div class="modal-ia-fundo" id="modal-conta-fundo">
   <div class="modal-ia" style="max-width:420px;height:auto;max-height:80vh;padding:22px;">
@@ -5012,17 +5019,82 @@ window.__preencherIdentidadeUsuario = function () {
 window.__preencherIdentidadeUsuario();
 
 (function () {
+  function posicionarFlutuante(painel, ancoraBtn) {
+    const r = ancoraBtn.getBoundingClientRect();
+    painel.style.top = (r.bottom + 8) + "px";
+    painel.style.right = (window.innerWidth - r.right) + "px";
+  }
+
+  function fecharTudo() {
+    if (dropdown) dropdown.style.display = "none";
+    if (bellDropdown) bellDropdown.style.display = "none";
+  }
+
   const btn = document.getElementById("header-user-btn");
   const dropdown = document.getElementById("header-user-dropdown");
   if (btn && dropdown) {
     btn.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-    });
-    document.addEventListener("click", () => {
-      dropdown.style.display = "none";
+      const abrir = dropdown.style.display !== "block";
+      fecharTudo();
+      if (abrir) {
+        posicionarFlutuante(dropdown, btn);
+        dropdown.style.display = "block";
+      }
     });
   }
+
+  const bellBtn = document.getElementById("header-bell-btn");
+  const bellDropdown = document.getElementById("header-bell-dropdown");
+  const bellBadge = document.getElementById("header-bell-badge");
+
+  function atualizarBadgeNotificacoes() {
+    const el = document.getElementById("dash-num-oportunidades");
+    if (!el || !bellBadge) return;
+    const n = parseInt(el.textContent, 10);
+    if (!isNaN(n) && n > 0) {
+      bellBadge.textContent = n > 99 ? "99+" : String(n);
+      bellBadge.style.display = "flex";
+    } else {
+      bellBadge.style.display = "none";
+    }
+  }
+  atualizarBadgeNotificacoes();
+  setInterval(atualizarBadgeNotificacoes, 4000);
+
+  if (bellBtn && bellDropdown) {
+    bellBtn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const abrir = bellDropdown.style.display !== "block";
+      fecharTudo();
+      if (abrir) {
+        atualizarBadgeNotificacoes();
+        const el = document.getElementById("dash-num-oportunidades");
+        const n = el ? parseInt(el.textContent, 10) : 0;
+        const corpo = document.getElementById("header-bell-corpo");
+        if (corpo) {
+          corpo.innerHTML =
+            !isNaN(n) && n > 0
+              ? `Você tem <strong>${n}</strong> oportunidade${n > 1 ? "s" : ""} no seu boletim.<br><button type="button" id="bell-ver-boletim" style="margin-top:10px;background:var(--azul,#2e8dff);color:#fff;border:none;border-radius:6px;padding:8px 12px;font-size:12.5px;cursor:pointer;font-family:inherit;">Ver Boletim</button>`
+              : "Nenhuma notificação nova por enquanto.";
+          const irBoletim = document.getElementById("bell-ver-boletim");
+          if (irBoletim) {
+            irBoletim.addEventListener("click", () => {
+              fecharTudo();
+              const navBoletim = document.querySelector('nav button[data-alvo="boletim"]');
+              if (navBoletim) navBoletim.click();
+            });
+          }
+        }
+        posicionarFlutuante(bellDropdown, bellBtn);
+        bellDropdown.style.display = "block";
+      }
+    });
+  }
+
+  document.addEventListener("click", fecharTudo);
+  window.addEventListener("resize", fecharTudo);
+  window.addEventListener("scroll", fecharTudo, true);
 
   const modalFundo = document.getElementById("modal-conta-fundo");
   const modalTitulo = document.getElementById("modal-conta-titulo");
@@ -5044,7 +5116,7 @@ window.__preencherIdentidadeUsuario();
 
   document.querySelectorAll(".menu-conta-item[data-acao]").forEach((item) => {
     item.addEventListener("click", () => {
-      if (dropdown) dropdown.style.display = "none";
+      fecharTudo();
       const acao = item.getAttribute("data-acao");
       const c = window.__clienteAtual || {};
       const email = window.__clienteEmailAtual || "";
@@ -5080,7 +5152,6 @@ window.__preencherIdentidadeUsuario();
     });
   });
 })();
-
   (function () {
     const cont = document.getElementById("dash-atalhos");
     if (!cont) return;
