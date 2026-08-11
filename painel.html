@@ -3136,11 +3136,20 @@
       }
 
       const limiteRecencia = new Date(Date.now() - DIAS_BOLETIM * 24 * 60 * 60 * 1000);
-      let resultados = resultadosBrutos.filter((r) => {
-        if (!r.publicacao) return true;
-        const d = new Date(r.publicacao);
-        return isNaN(d) || d >= limiteRecencia;
-      });
+      const agoraFiltro = new Date();
+let resultados = resultadosBrutos.filter((r) => {
+  const publicacaoRecente = (() => {
+    if (!r.publicacao) return true;
+    const d = new Date(r.publicacao);
+    return isNaN(d) || d >= limiteRecencia;
+  })();
+  const aindaAberta = (() => {
+    if (!r.encerramento) return false;
+    const f = new Date(r.encerramento);
+    return !isNaN(f) && f >= agoraFiltro;
+  })();
+  return publicacaoRecente || aindaAberta;
+});
       const agora = new Date();
       metaEl.textContent = `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · filtro: ${uf ? uf + " · " : ""}${palavras.join(", ")} · últimos ${DIAS_BOLETIM} dias`;
       let avisoHtml = resp.falhaConexao
