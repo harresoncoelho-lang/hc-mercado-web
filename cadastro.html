@@ -61,6 +61,15 @@
     background-repeat: no-repeat; background-position: right 12px center;
   }
   input:focus, select:focus { outline: none; border-color: var(--azul); }
+  .campo-senha-wrap { position: relative; }
+  .campo-senha-wrap input { padding-right: 42px; margin-bottom: 0; }
+  .btn-mostrar-senha {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--texto-fraco); padding: 4px; line-height: 1;
+  }
+  .btn-mostrar-senha:hover { color: var(--texto); }
+  .btn-mostrar-senha svg { display: block; width: 18px; height: 18px; }
   .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .linha-dupla input, .linha-dupla select { margin-bottom: 0; }
   .linha-dupla { margin-bottom: 16px; }
@@ -82,10 +91,6 @@
   .abr-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 10px; }
   .abr-item { display: flex; align-items: center; gap: 7px; font-size: 13.5px; cursor: pointer; }
   .abr-item input { width: auto; margin: 0; }
-  /* Honeypot anti-robô: precisa ficar invisível pra humano mas presente no DOM/tab
-     order suficiente pra um preenchedor automático de formulário achar e preencher.
-     Fica fora da tela (não display:none/visibility:hidden) porque alguns robôs mais
-     espertos checam o estilo computado e pulam campos escondidos assim. */
   .campo-honeypot { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .campo-clicavel {
     width: 100%; padding: 11px 12px; margin-bottom: 16px;
@@ -276,19 +281,26 @@
       <input type="email" id="email_confirmar" required autocomplete="off">
 
       <label for="senha">Crie uma senha</label>
-      <input type="password" id="senha" required minlength="6" autocomplete="new-password">
+      <div class="campo-senha-wrap" style="margin-bottom:16px;">
+        <input type="password" id="senha" required minlength="6" autocomplete="new-password">
+        <button type="button" class="btn-mostrar-senha" data-alvo="senha" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
 
       <label for="senha_confirmar">Confirmar senha</label>
-      <input type="password" id="senha_confirmar" required minlength="6" autocomplete="new-password">
+      <div class="campo-senha-wrap" style="margin-bottom:16px;">
+        <input type="password" id="senha_confirmar" required minlength="6" autocomplete="new-password">
+        <button type="button" class="btn-mostrar-senha" data-alvo="senha_confirmar" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
 
       <label class="campo-termos">
         <input type="checkbox" id="aceite_termos" required>
         <span>Li e concordo com os <a href="termos-de-uso.html" target="_blank">Termos de uso</a> e a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> da LicitaPlena.</span>
       </label>
 
-      <!-- Site key real do hCaptcha (conta já criada). Falta só ativar a proteção de
-           captcha em Supabase > Authentication > Attack Protection com a secret key
-           correspondente pra esse token passar a ser validado de verdade no signUp(). -->
       <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-bottom:16px;"></div>
 
       <button type="submit" class="criar" id="btn-criar">Criar cadastro</button>
@@ -339,6 +351,14 @@
 <script>
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // Ícone de olho: alterna type="password" <-> type="text" no campo alvo.
+  document.querySelectorAll(".btn-mostrar-senha").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const alvo = document.getElementById(btn.dataset.alvo);
+      alvo.type = alvo.type === "password" ? "text" : "password";
+    });
+  });
+
   function mostrarAviso(texto, tipo) {
     const el = document.getElementById("aviso");
     el.textContent = texto;
@@ -346,8 +366,6 @@
     el.style.display = "block";
   }
 
-  // Lista dos 27 estados brasileiros agrupados por região, pro bloco "Abrangência de
-  // interesse" — mesma lista usada nos selects de UF do painel (painel.html).
   const ESTADOS_BR = [
     ["AC", "Acre"], ["AL", "Alagoas"], ["AP", "Amapá"], ["AM", "Amazonas"],
     ["BA", "Bahia"], ["CE", "Ceará"], ["DF", "Distrito Federal"], ["ES", "Espírito Santo"],
@@ -391,8 +409,6 @@
     });
   })();
 
-  // Lista completa de segmentos pro modal "Adicione atividades", em ordem alfabética
-  // (mesma lista usada no site do ConLicitação).
   const SEGMENTOS_CADASTRO = [
     "AGROPECUÁRIO", "ALIMENTAÇÃO", "ARMAZENAGEM", "ASSESSORIAS", "CARTÕES", "COMBUSTÍVEIS",
     "COMUNICAÇÃO/IDENTIFICAÇÃO VISUAL", "CONCESSÕES/EXPLORAÇÃO/IMÓVEL", "CONFECÇÕES/DECORAÇÃO",
@@ -464,10 +480,6 @@
   document.getElementById("form-cadastro").addEventListener("submit", async (ev) => {
     ev.preventDefault();
 
-    // Honeypot anti-robô: campo "site" é invisível pra humano (ver .campo-honeypot no
-    // CSS), mas formulários automatizados costumam preencher todo input que encontram.
-    // Se vier preenchido, é robô — ignora silenciosamente, sem erro nem sucesso, pra não
-    // dar pista de que essa checagem existe.
     if (document.getElementById("site").value.trim() !== "") {
       return;
     }
@@ -524,10 +536,6 @@
       return;
     }
 
-    // Token do hCaptcha (ver comentário acima do widget sobre a site key de teste).
-    // Enquanto o Supabase não tiver a proteção de captcha ativada (Authentication >
-    // Attack Protection), esse token é simplesmente ignorado pelo signUp() — mas já
-    // deixamos a verificação client-side pronta pra quando a chave real entrar.
     const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
     if (typeof hcaptcha !== "undefined" && !captchaToken) {
       mostrarAviso("Confirme que você não é um robô antes de continuar.", "erro");
