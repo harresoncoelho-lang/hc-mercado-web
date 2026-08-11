@@ -190,6 +190,23 @@
     border-radius: 6px;
     font-size: 14px;
   }
+  /* O ícone padrão do calendário nativo (input type=date) vem escuro e quase invisível
+     em cima do nosso fundo escuro -- inverte a cor pra ficar claro/visível e aumenta a
+     área clicável, já que era isso que tornava difícil clicar certinho nele. */
+  .campo input[type="date"] {
+    cursor: pointer;
+    color-scheme: dark;
+  }
+  .campo input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.9);
+    cursor: pointer;
+    padding: 5px;
+    margin-right: -4px;
+    border-radius: 4px;
+  }
+  .campo input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    background: rgba(255,255,255,0.12);
+  }
   .btn-buscar {
     background: var(--laranja);
     border: none;
@@ -2657,7 +2674,22 @@
     }
   }
 
-  // Estado global para permitir aprofundar (drill-down) sem nova consulta à API
+  
+  // Faz até 2 tentativas de uma página antes de desistir de vez: a API do PNCP tem
+  // engasgos pontuais (timeout numa única requisição) que não significam "fora do ar" —
+  // sem isso, um único engasgo na 1ª página derrubava a busca inteira e mostrava
+  // "PNCP não respondeu" mesmo quando a API voltava a responder normalmente na tentativa
+  // seguinte, milissegundos depois.
+  async function fetchPaginaComRetry(url, timeoutMs) {
+    for (let tentativa = 0; tentativa < 2; tentativa++) {
+      try {
+        const resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, timeoutMs);
+        if (resp.ok) return resp;
+      } catch (e) { /* engasgo de rede: tenta de novo abaixo */ }
+    }
+    return null;
+  }
+// Estado global para permitir aprofundar (drill-down) sem nova consulta à API
   const estado = {
     diagnostico: null, // { encontrados, palavras, uf, periodo, fornecedorSelecionado }
   };
@@ -2689,11 +2721,8 @@
     while (pagina <= maxPaginas) {
       params.set("pagina", String(pagina));
       const url = `https://pncp.gov.br/api/search/?${params.toString()}`;
-      let resp;
-      try {
-        resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 15000);
-      } catch (e) { falhaConexao = true; break; }
-      if (!resp.ok) { falhaConexao = true; break; }
+      const resp = await fetchPaginaComRetry(url, 15000);
+      if (!resp) { falhaConexao = true; break; }
       const texto = await resp.text();
       if (!texto) break;
       const dados = JSON.parse(texto);
