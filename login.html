@@ -153,7 +153,12 @@
     const { data, error } = await sb.auth.signInWithPassword({ email, password: senha, options: { captchaToken } });
 
     if (error) {
-      mostrarAviso("E-mail ou senha incorretos, ou sua conta ainda não foi aprovada.", "erro");
+      mostrarAviso(
+        error.message && error.message.toLowerCase().includes("captcha")
+          ? "Não foi possível confirmar que você não é um robô. Marca a caixinha do captcha e tenta de novo."
+          : "E-mail ou senha incorretos, ou sua conta ainda não foi aprovada.",
+        "erro"
+      );
       if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       btn.disabled = false;
       btn.textContent = "Entrar";
