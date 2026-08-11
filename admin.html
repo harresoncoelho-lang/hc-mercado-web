@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   :root {
     --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a;
@@ -88,6 +89,15 @@
   .tela-auth button { width: 100%; padding: 12px; background: var(--laranja); color: #1a1005; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
   .tela-auth button:disabled { opacity: 0.6; cursor: default; }
   .tela-auth .erro { margin-top: 14px; font-size: 13px; color: #ffb3c1; display: none; }
+  .campo-senha-wrap { position: relative; }
+  .campo-senha-wrap input { padding-right: 42px; margin-bottom: 0; }
+  .btn-mostrar-senha {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--texto-fraco); padding: 4px; line-height: 1;
+  }
+  .btn-mostrar-senha:hover { color: var(--texto); }
+  .btn-mostrar-senha svg { display: block; width: 18px; height: 18px; }
   .mfa-qrcode { background: #fff; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
   .mfa-qrcode svg { display: block; width: 100%; height: auto; }
   .mfa-secreto { font-size: 12px; color: var(--texto-fraco); margin: 0 0 16px; word-break: break-all; }
@@ -105,7 +115,13 @@
       <label>E-mail</label>
       <input type="email" id="admin-email" required>
       <label>Senha</label>
-      <input type="password" id="admin-senha" required>
+      <div class="campo-senha-wrap">
+        <input type="password" id="admin-senha" required>
+        <button type="button" class="btn-mostrar-senha" data-alvo="admin-senha" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-bottom:16px;"></div>
       <button type="submit">Entrar</button>
     </form>
     <div class="erro" id="erro-login-admin"></div>
@@ -179,6 +195,13 @@
   let filtroAtual = "pendente";
   let todosClientes = [];
 
+  document.querySelectorAll(".btn-mostrar-senha").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const alvo = document.getElementById(btn.dataset.alvo);
+      alvo.type = alvo.type === "password" ? "text" : "password";
+    });
+  });
+
   function badgeStatus(status) {
     const nomes = { pendente: "Pendente", aprovado: "Aprovado", rejeitado: "Rejeitado" };
     return `<span class="badge ${status}">${nomes[status] || status}</span>`;
@@ -188,8 +211,6 @@
     return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
-  // 27 estados (mesma lista usada em cadastro.html/painel.html) — só pro limiar de
-  // "Nacional (todos os estados)" ao resumir clientes.estados_interesse.
   const TOTAL_ESTADOS_BR = 27;
 
   function formatarEstadosInteresse(lista) {
@@ -231,15 +252,6 @@
     return !!admin;
   }
 
-  // ---- Autenticação em duas etapas (MFA/TOTP) — só pra este painel admin, não afeta
-  // login.html/cadastro.html/painel.html dos clientes comuns. Usa supabase.auth.mfa.*
-  // nativo do SDK, sem lib externa.
-  //
-  // IMPORTANTE: isso é uma trava do lado do cliente (JavaScript) — funciona pro fluxo
-  // normal de login, mas nenhuma policy de RLS hoje exige aal2 pra ler/escrever nas
-  // tabelas. Alguém com um token de sessão roubado ainda poderia chamar a API REST do
-  // Supabase direto, sem passar por essa checagem. Pra reforço de verdade no banco,
-  // seria preciso uma policy adicional checando auth.jwt()->>'aal' = 'aal2'.
   const TELAS = ["tela-login", "tela-mfa-enroll", "tela-mfa-verify", "painel"];
   function mostrarTela(id) {
     TELAS.forEach((t) => { document.getElementById(t).style.display = "none"; });
@@ -258,9 +270,6 @@
       return;
     }
     mfaEnrollFactorId = data.id;
-    // data.totp.qr_code vem pronto como SVG do próprio servidor do Supabase (não é dado
-    // de terceiro nem input de usuário) — é seguro jogar direto no innerHTML, é assim que
-    // a própria documentação do Supabase recomenda usar.
     document.getElementById("mfa-qrcode").innerHTML = data.totp.qr_code;
     document.getElementById("mfa-secret").textContent = data.totp.secret;
   }
@@ -315,7 +324,6 @@
     if (error) {
       erroEl.textContent = "Código inválido. Tente de novo.";
       erroEl.style.display = "block";
-      // O desafio anterior já foi consumido/expirou — gera um novo pra próxima tentativa.
       await iniciarChallengeMfa(mfaVerifyFactorId);
       return;
     }
@@ -335,9 +343,6 @@
     mostrarTela("tela-mfa-enroll");
   });
 
-  // Depois de confirmar que a sessão é de um admin de verdade, decide qual tela mostrar:
-  // sem fator TOTP verificado ainda -> pede pra configurar; tem fator mas a sessão atual
-  // ainda não foi elevada pra aal2 -> pede o código; já em aal2 -> libera o painel.
   async function verificarEtapaMfa() {
     const { data: aal } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
     const { data: fatoresData } = await sb.auth.mfa.listFactors();
@@ -372,17 +377,27 @@
     ev.preventDefault();
     const email = document.getElementById("admin-email").value.trim();
     const senha = document.getElementById("admin-senha").value;
-    const { error } = await sb.auth.signInWithPassword({ email, password: senha });
     const erroEl = document.getElementById("erro-login-admin");
+
+    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
+    if (typeof hcaptcha !== "undefined" && !captchaToken) {
+      erroEl.textContent = "Confirme que você não é um robô antes de continuar.";
+      erroEl.style.display = "block";
+      return;
+    }
+
+    const { error } = await sb.auth.signInWithPassword({ email, password: senha, options: { captchaToken } });
     if (error) {
       erroEl.textContent = "E-mail ou senha incorretos.";
       erroEl.style.display = "block";
+      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       return;
     }
     const ehAdmin = await verificarSessaoAdmin();
     if (!ehAdmin) {
       erroEl.textContent = "Essa conta não tem acesso ao painel administrativo.";
       erroEl.style.display = "block";
+      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       await sb.auth.signOut();
       return;
     }
