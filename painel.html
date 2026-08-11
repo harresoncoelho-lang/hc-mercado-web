@@ -528,6 +528,13 @@
     background: rgba(46,141,255,0.1); border: 1px solid rgba(46,141,255,0.3); color: var(--azul);
     padding: 7px 12px; border-radius: 8px; font-size: 12px; margin-bottom: 12px;
   }
+  .menu-conta-item {
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    padding: 11px 16px; font-size: 13.5px; color: #1a2b45; cursor: pointer;
+    font-family: inherit; font-weight: 600;
+  }
+  .menu-conta-item:hover { background: #f3f6fa; }
+  .menu-conta-item + .menu-conta-item { border-top: 1px solid #eef1f6; }
   .modal-ia-fundo {
     display: none; position: fixed; inset: 0; background: rgba(5,10,16,0.72);
     z-index: 200; align-items: center; justify-content: center; padding: 20px;
@@ -850,22 +857,29 @@
     </div>
     <div style="display:flex;gap:10px;position:relative;flex-shrink:0;align-items:center;">
       <div style="position:relative;">
-        <button id="header-user-btn" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 14px 6px 6px;border-radius:24px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">
-          <span id="header-user-iniciais" style="width:28px;height:28px;border-radius:50%;background:#fff;color:var(--azul-escuro);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">--</span>
-          <span id="header-user-nome" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Minha conta</span>
-          <span style="font-size:10px;opacity:.8;">&#9662;</span>
+        <button id="header-user-btn" title="Minha conta" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:0;">
+          <span id="header-user-iniciais">--</span>
         </button>
-        <div id="header-user-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:230px;overflow:hidden;z-index:60;">
-          <div style="padding:14px 16px;border-bottom:1px solid #eef1f6;">
-            <div id="header-user-nome-dropdown" style="font-weight:700;font-size:14px;">Minha conta</div>
-            <div id="header-user-email" style="font-size:12px;color:#64748b;margin-top:2px;word-break:break-all;"></div>
-          </div>
-          <button id="btn-sair-painel" style="width:100%;text-align:left;background:none;border:none;padding:12px 16px;font-size:14px;color:#c0392b;cursor:pointer;font-family:inherit;font-weight:600;">Sair</button>
+        <div id="header-user-dropdown" style="display:none;position:absolute;right:0;top:calc(100% + 8px);background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:190px;overflow:hidden;z-index:60;">
+          <button type="button" class="menu-conta-item" data-acao="conta">Minha conta</button>
+          <button type="button" class="menu-conta-item" data-acao="planos">Planos e preços</button>
+          <button type="button" class="menu-conta-item" data-acao="feedback">Envie seu feedback</button>
+          <button type="button" id="btn-sair-painel" class="menu-conta-item" style="color:#c0392b;">Sair</button>
         </div>
       </div>
     </div>
   </div>
 </header>
+
+<div class="modal-ia-fundo" id="modal-conta-fundo">
+  <div class="modal-ia" style="max-width:420px;height:auto;max-height:80vh;padding:22px;">
+    <div class="modal-ia-topo">
+      <h3 id="modal-conta-titulo" style="margin:0;font-size:16px;">Minha conta</h3>
+      <button type="button" id="modal-conta-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">&#10005;</button>
+    </div>
+    <div id="modal-conta-corpo" style="margin-top:10px;"></div>
+  </div>
+</div>
 
 <div class="shell">
 <nav>
@@ -4972,51 +4986,106 @@ window.__atualizarDashboard = function () {
   });
 </script>
 <script>
-  window.__preencherIdentidadeUsuario = function () {
-    try {
+window.__preencherIdentidadeUsuario = function () {
+  try {
+    const c = window.__clienteAtual || {};
+    const email = window.__clienteEmailAtual || "";
+    let nome = (c.nome && String(c.nome).trim()) || (c.empresa && String(c.empresa).trim()) || "";
+    if (!nome && email) {
+      const usuario = (email.split("@")[0] || "").split(/[._-]/)[0];
+      nome = usuario ? usuario.charAt(0).toUpperCase() + usuario.slice(1).toLowerCase() : "";
+    }
+    if (!nome) nome = "Minha conta";
+    const iniciais = nome
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0].toUpperCase())
+      .join("") || "--";
+    const elIni = document.getElementById("header-user-iniciais");
+    if (elIni) elIni.textContent = iniciais;
+    const boasVindas = document.getElementById("dash-nome");
+    if (boasVindas) boasVindas.textContent = nome;
+    if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
+  } catch (e) {}
+};
+window.__preencherIdentidadeUsuario();
+
+(function () {
+  const btn = document.getElementById("header-user-btn");
+  const dropdown = document.getElementById("header-user-dropdown");
+  if (btn && dropdown) {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    });
+    document.addEventListener("click", () => {
+      dropdown.style.display = "none";
+    });
+  }
+
+  const modalFundo = document.getElementById("modal-conta-fundo");
+  const modalTitulo = document.getElementById("modal-conta-titulo");
+  const modalCorpo = document.getElementById("modal-conta-corpo");
+  const modalFechar = document.getElementById("modal-conta-fechar");
+
+  function abrirModalConta(titulo, htmlCorpo) {
+    if (!modalFundo) return;
+    if (modalTitulo) modalTitulo.textContent = titulo;
+    if (modalCorpo) modalCorpo.innerHTML = htmlCorpo;
+    modalFundo.classList.add("aberto");
+  }
+  if (modalFechar) modalFechar.addEventListener("click", () => modalFundo.classList.remove("aberto"));
+  if (modalFundo) {
+    modalFundo.addEventListener("click", (ev) => {
+      if (ev.target === modalFundo) modalFundo.classList.remove("aberto");
+    });
+  }
+
+  document.querySelectorAll(".menu-conta-item[data-acao]").forEach((item) => {
+    item.addEventListener("click", () => {
+      if (dropdown) dropdown.style.display = "none";
+      const acao = item.getAttribute("data-acao");
       const c = window.__clienteAtual || {};
       const email = window.__clienteEmailAtual || "";
-      const nome = (c.nome && String(c.nome).trim()) || (c.empresa && String(c.empresa).trim()) || (email ? email.split("@")[0] : "Minha conta");
-      const iniciais = nome
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((p) => p[0].toUpperCase())
-        .join("") || "--";
-      const elIni = document.getElementById("header-user-iniciais");
-      const elNome = document.getElementById("header-user-nome");
-      const elNomeDrop = document.getElementById("header-user-nome-dropdown");
-      const elEmail = document.getElementById("header-user-email");
-      if (elIni) elIni.textContent = iniciais;
-      if (elNome) elNome.textContent = nome;
-      if (elNomeDrop) elNomeDrop.textContent = nome;
-      if (elEmail) elEmail.textContent = email;
-      const boasVindas = document.getElementById("dash-nome");
-      if (boasVindas) boasVindas.textContent = nome;
-      if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
-    } catch (e) {}
-  };
-  window.__preencherIdentidadeUsuario();
-
-  (function () {
-    const btn = document.getElementById("header-user-btn");
-    const dropdown = document.getElementById("header-user-dropdown");
-    if (btn && dropdown) {
-      btn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-      });
-      document.addEventListener("click", () => {
-        dropdown.style.display = "none";
-      });
-    }
-  })();
+      if (acao === "conta") {
+        const linhas = [
+          ["Nome", c.nome],
+          ["Empresa", c.empresa],
+          ["CNPJ", c.cnpj],
+          ["Telefone", c.telefone],
+          ["E-mail", email],
+          ["Status", c.status === "aprovado" ? "Aprovado" : (c.status || "-")],
+        ];
+        const html = linhas
+          .map(
+            ([label, valor]) =>
+              `<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #eef1f6;font-size:13.5px;"><span style="color:#64748b;">${label}</span><span style="font-weight:600;text-align:right;">${valor ? escapeHtml(String(valor)) : "&mdash;"}</span></div>`
+          )
+          .join("");
+        abrirModalConta("Minha conta", html);
+      } else if (acao === "planos") {
+        const plano = c.plano || "Padrão";
+        const html = `
+          <div style="font-size:13.5px;line-height:1.6;">
+            <p style="margin:0 0 10px;">Seu plano atual: <strong>${escapeHtml(String(plano))}</strong></p>
+            <p style="margin:0;color:#64748b;">Pra conhecer outros planos ou fazer upgrade, fale com a gente pelo WhatsApp ou e-mail.</p>
+          </div>`;
+        abrirModalConta("Planos e preços", html);
+      } else if (acao === "feedback") {
+        const assunto = encodeURIComponent("Feedback - LicitaPlena");
+        const corpo = encodeURIComponent("Olá! Meu feedback:\n\n");
+        window.location.href = `mailto:harreson.coelho@gmail.com?subject=${assunto}&body=${corpo}`;
+      }
+    });
+  });
+})();
 
   (function () {
     const cont = document.getElementById("dash-atalhos");
     if (!cont) return;
     const atalhos = [
-      { ico: "&#128269;", label: "Encontrar Licitações", alvo: "boletim" },
+      { ico: "&#128269;", label: "Encontrar Licitações", alvo: "oportunidades" },
       { ico: "&#128202;", label: "Diagnóstico de Mercado", alvo: "diagnostico" },
       { ico: "&#128203;", label: "Kanban", alvo: "kanban" },
       { ico: "&#127974;", label: "Base de Empresas", alvo: "empresa" },
