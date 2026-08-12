@@ -27,7 +27,7 @@ DIR_DADOS = os.path.join(PASTA_REPO, "data")
 BASE_URL = "https://pncp.gov.br/api/consulta/v1/contratacoes/proposta"
 ARQUIVO_HISTORICO = os.path.join(DIR_DADOS, "editais_vistos.json")
 
-NOME_REMETENTE = "HC Licitacoes - Alertas de Editais"
+NOME_REMETENTE = "LicitaPlena - Alertas de Editais"
 
 TODAS_UFS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB",
              "PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"]
@@ -348,7 +348,7 @@ def montar_email_html(nome_destinatario, editais_novos):
         'Encontramos <b>' + str(len(editais_novos)) + '</b> nova(s) oportunidade(s) de licitacao para voce hoje.</div>'
         + cards +
         '<div style="font-family:Arial,sans-serif;font-size:12px;color:#9aa0a6;margin-top:20px;">'
-        'Alerta automatico gerado por HC Licitacoes com base em dados publicos do PNCP.</div>'
+        'Alerta automatico gerado por LicitaPlena com base em dados publicos do PNCP.</div>'
         '</div></body></html>'
     )
 
@@ -394,7 +394,7 @@ def montar_mensagem_whatsapp(nome_destinatario, editais_novos):
     # gigante (o e-mail continua trazendo a lista completa).
     limite = 8
     linhas = [
-        "🔔 *HC Licitacoes* - Novas oportunidades",
+        "🔔 *LicitaPlena* - Novas oportunidades",
         f"Ola, {nome_destinatario}! Encontramos {len(editais_novos)} nova(s) oportunidade(s):",
         "",
     ]

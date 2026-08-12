@@ -3,7 +3,7 @@ name: Boletim diario de editais
 on:
   schedule:
     # Roda 3x ao dia, no horario de Brasilia (UTC-4, sem horario de verao):
-    - cron: "0 11 * * *"  # 07:00 Brasilia
+    - cron: "0 10 * * *"  # 06:00 Brasilia (antecipado para chegar por volta das 7h-8h, ja compensando o atraso normal de fila do GitHub Actions)
     - cron: "0 16 * * *"  # 12:00 Brasilia
     - cron: "0 21 * * *"  # 17:00 Brasilia
   workflow_dispatch: {}
