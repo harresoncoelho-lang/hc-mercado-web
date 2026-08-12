@@ -57,6 +57,8 @@
   .badge.pendente { background: rgba(242,137,26,0.15); color: var(--laranja); }
   .badge.aprovado { background: rgba(52,193,124,0.15); color: var(--verde); }
   .badge.rejeitado { background: rgba(232,97,122,0.15); color: var(--vermelho); }
+  .badge.owner { background: rgba(46,141,255,0.15); color: var(--azul); }
+  .badge.membro { background: rgba(144,162,184,0.15); color: var(--texto-fraco); }
   .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
   .acoes button {
     border: none; padding: 7px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -65,6 +67,23 @@
   .btn-rejeitar { background: var(--vermelho); color: #3a0713; }
   .btn-reverter { background: var(--cartao-claro); color: var(--texto-fraco); border: 1px solid var(--borda) !important; }
   .btn-detalhe { background: var(--cartao-claro); color: var(--azul); border: 1px solid var(--azul) !important; }
+  .btn-remover { background: var(--vermelho); color: #3a0713; }
+  .btn-adicionar { background: var(--azul); color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-adicionar:disabled { opacity: 0.6; cursor: default; }
+  .nota-equipe {
+    background: rgba(46,141,255,0.08); border: 1px solid rgba(46,141,255,0.35);
+    color: var(--texto-fraco); font-size: 13px; line-height: 1.5;
+    padding: 12px 14px; border-radius: var(--raio-pq); margin-bottom: 18px;
+  }
+  .form-equipe label { display: block; font-size: 13px; color: var(--texto-fraco); margin: 14px 0 6px; }
+  .form-equipe label:first-child { margin-top: 0; }
+  .form-equipe input[type="email"], .form-equipe input[type="text"] {
+    width: 100%; max-width: 360px; padding: 10px 12px; background: #0d1826;
+    border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 14px;
+  }
+  .form-equipe .checkbox-linha { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
+  .form-equipe .checkbox-linha input { width: 16px; height: 16px; }
+  .form-equipe .checkbox-linha label { margin: 0; color: var(--texto); font-size: 14px; }
   .vazio { padding: 40px; text-align: center; color: var(--texto-fraco); }
   .carregando { padding: 40px; text-align: center; color: var(--texto-fraco); }
   .modal-detalhe-fundo {
@@ -173,9 +192,35 @@
       <button data-status="aprovado">Aprovados</button>
       <button data-status="rejeitado">Rejeitados</button>
       <button data-status="todos">Todos</button>
+      <button data-status="equipe" id="tab-equipe" style="display:none;">Equipe</button>
     </div>
-    <div class="cartao-lista">
+    <div class="cartao-lista" id="secao-clientes">
       <div id="conteudo-lista" class="carregando">Carregando clientes...</div>
+    </div>
+    <div id="secao-equipe" style="display:none;">
+      <div class="cartao-lista" style="margin-bottom:20px;">
+        <div id="conteudo-equipe" class="carregando">Carregando equipe...</div>
+      </div>
+      <div class="cartao-lista" style="padding:24px;">
+        <h3 style="margin-top:0;">Adicionar novo membro</h3>
+        <div class="nota-equipe">
+          A pessoa adicionada aqui precisa já ter uma conta criada no Supabase Auth (cadastro próprio, por exemplo pelo cadastro.html, ou convite manual). Este formulário só libera o acesso administrativo pra um e-mail que já tem conta — ele não cria a conta.
+        </div>
+        <form id="form-add-membro" class="form-equipe">
+          <label>E-mail</label>
+          <input type="email" id="membro-email" required placeholder="email@exemplo.com">
+          <label>Nome</label>
+          <input type="text" id="membro-nome" required placeholder="Nome completo">
+          <div class="checkbox-linha">
+            <input type="checkbox" id="membro-perm-aprovar-cadastros">
+            <label for="membro-perm-aprovar-cadastros">Pode ver, aprovar e rejeitar cadastros de clientes</label>
+          </div>
+          <div style="margin-top:20px;">
+            <button type="submit" class="btn-adicionar">Adicionar membro</button>
+          </div>
+        </form>
+        <div class="erro" id="erro-add-membro"></div>
+      </div>
     </div>
   </main>
 </div>
@@ -245,17 +290,24 @@
     if (ev.target === modalDetalheFundo) modalDetalheFundo.classList.remove("aberto");
   });
 
+  let adminAtual = null;
   async function verificarSessaoAdmin() {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return false;
-    const { data: admin } = await sb.from("admins").select("email").eq("email", session.user.email).maybeSingle();
+    const { data: admin } = await sb.from("admins").select("email, nome, role, permissoes").eq("email", session.user.email).maybeSingle();
+    adminAtual = admin || null;
     return !!admin;
+  }
+
+  function configurarAcessoEquipe() {
+    document.getElementById("tab-equipe").style.display = adminAtual && adminAtual.role === "owner" ? "" : "none";
   }
 
   const TELAS = ["tela-login", "tela-mfa-enroll", "tela-mfa-verify", "painel"];
   function mostrarTela(id) {
     TELAS.forEach((t) => { document.getElementById(t).style.display = "none"; });
     document.getElementById(id).style.display = id === "painel" ? "block" : "flex";
+    if (id === "painel") configurarAcessoEquipe();
   }
 
   let mfaEnrollFactorId = null;
@@ -510,12 +562,103 @@
     });
   }
 
+  function nomePermissao(p) {
+    const nomes = { aprovar_cadastros: "Aprovar cadastros" };
+    return nomes[p] || p;
+  }
+
+  let todosMembros = [];
+  async function carregarEquipe() {
+    document.getElementById("conteudo-equipe").innerHTML = '<div class="carregando">Carregando equipe...</div>';
+    const { data, error } = await sb.from("admins").select("email, nome, role, permissoes").order("criado_em", { ascending: true });
+    if (error) {
+      document.getElementById("conteudo-equipe").innerHTML = '<div class="vazio">Erro ao carregar: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+    todosMembros = data || [];
+    renderizarEquipe();
+  }
+
+  function renderizarEquipe() {
+    const alvo = document.getElementById("conteudo-equipe");
+    if (todosMembros.length === 0) {
+      alvo.innerHTML = '<div class="vazio">Nenhum membro cadastrado ainda.</div>';
+      return;
+    }
+
+    let html = '<table><thead><tr><th>E-mail</th><th>Nome</th><th>Papel</th><th>Permissões</th><th>Ações</th></tr></thead><tbody>';
+    for (const m of todosMembros) {
+      const permissoesTexto = Array.isArray(m.permissoes) && m.permissoes.length > 0
+        ? m.permissoes.map(nomePermissao).join(", ")
+        : "&mdash;";
+      const ehProprioUsuario = !!(adminAtual && m.email === adminAtual.email);
+      html += `<tr>
+        <td>${escapeHtml(m.email)}</td>
+        <td>${escapeHtml(m.nome || "-")}</td>
+        <td><span class="badge ${m.role}">${m.role === "owner" ? "Owner" : "Membro"}</span></td>
+        <td>${permissoesTexto}</td>
+        <td><div class="acoes">${ehProprioUsuario ? "" : `<button class="btn-remover" data-email="${escapeHtml(m.email)}">Remover</button>`}</div></td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    alvo.innerHTML = html;
+
+    alvo.querySelectorAll("button[data-email]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const email = btn.dataset.email;
+        const confirmar = window.confirm("Remover " + email + " do painel administrativo? Essa pessoa perde acesso imediatamente.");
+        if (!confirmar) return;
+        btn.disabled = true;
+        const { error } = await sb.from("admins").delete().eq("email", email);
+        if (error) {
+          window.alert("Erro ao remover: " + error.message);
+          btn.disabled = false;
+          return;
+        }
+        carregarEquipe();
+      });
+    });
+  }
+
+  document.getElementById("form-add-membro").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const email = document.getElementById("membro-email").value.trim().toLowerCase();
+    const nome = document.getElementById("membro-nome").value.trim();
+    const podeAprovarCadastros = document.getElementById("membro-perm-aprovar-cadastros").checked;
+    const permissoes = podeAprovarCadastros ? ["aprovar_cadastros"] : [];
+    const btn = ev.target.querySelector('button[type="submit"]');
+    const erroEl = document.getElementById("erro-add-membro");
+    erroEl.style.display = "none";
+    btn.disabled = true;
+    const { data: { session } } = await sb.auth.getSession();
+    const { error } = await sb.from("admins").insert({
+      email, nome, role: "membro", permissoes, criado_por: session.user.email,
+    });
+    btn.disabled = false;
+    if (error) {
+      erroEl.textContent = "Erro ao adicionar: " + error.message;
+      erroEl.style.display = "block";
+      return;
+    }
+    ev.target.reset();
+    carregarEquipe();
+  });
+
   document.querySelectorAll(".tabs button").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("ativo"));
       btn.classList.add("ativo");
-      filtroAtual = btn.dataset.status;
-      renderizarLista();
+      const status = btn.dataset.status;
+      if (status === "equipe") {
+        document.getElementById("secao-clientes").style.display = "none";
+        document.getElementById("secao-equipe").style.display = "block";
+        carregarEquipe();
+      } else {
+        document.getElementById("secao-equipe").style.display = "none";
+        document.getElementById("secao-clientes").style.display = "block";
+        filtroAtual = status;
+        renderizarLista();
+      }
     });
   });
 
