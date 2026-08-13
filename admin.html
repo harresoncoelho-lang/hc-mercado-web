@@ -121,6 +121,19 @@
   .modal-detalhe-rodape { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
   .btn-salvar-cliente { background: var(--azul); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
   .btn-salvar-cliente:disabled { opacity: 0.6; cursor: default; }
+  .faixa-auto-aprovacao {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 18px; margin-bottom: 14px;
+  }
+  .faixa-auto-aprovacao .titulo-auto { font-weight: 700; font-size: 14px; }
+  .faixa-auto-aprovacao .nota-auto { color: var(--texto-fraco); font-size: 12.5px; margin-top: 2px; }
+  .switch-aprovacao {
+    padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; cursor: pointer;
+    background: var(--cartao-claro); color: var(--texto-fraco); border: 1px solid var(--borda) !important;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .switch-aprovacao[data-ativo="true"] { background: var(--verde); color: #06301b; border-color: var(--verde) !important; }
+  .switch-aprovacao:disabled { opacity: 0.6; cursor: default; }
   .tela-auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .tela-auth .caixa { width: 100%; max-width: 380px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 32px; }
   .tela-auth label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
@@ -214,6 +227,14 @@
       <button data-status="todos">Todos</button>
       <button data-status="equipe" id="tab-equipe" style="display:none;">Equipe</button>
     </div>
+    <div class="cartao-lista faixa-auto-aprovacao">
+      <div>
+        <div class="titulo-auto">Aprovação automática de cadastros</div>
+        <div class="nota-auto">Quando ligada, todo cadastro novo já entra aprovado na hora, sem precisar clicar em "Aprovar".</div>
+      </div>
+      <button type="button" id="btn-toggle-auto-aprovacao" class="switch-aprovacao" data-ativo="false">Desligada</button>
+    </div>
+    <div class="erro" id="erro-auto-aprovacao" style="margin-bottom:14px;"></div>
     <div class="cartao-lista" id="secao-clientes">
       <div id="conteudo-lista" class="carregando">Carregando clientes...</div>
     </div>
@@ -425,11 +446,52 @@
     document.getElementById("tab-equipe").style.display = adminAtual && adminAtual.role === "owner" ? "" : "none";
   }
 
+  // Chave "config_admin" em public.dados_robo (mesma tabela chave->jsonb usada pelo
+  // historico do boletim) - guarda ajustes gerais do painel. Hoje so tem
+  // "aprovacao_automatica", mas o formato em objeto permite acrescentar outras
+  // chaves no futuro sem precisar de coluna/tabela nova.
+  async function carregarConfigAdmin() {
+    const { data } = await sb.from("dados_robo").select("dado").eq("chave", "config_admin").maybeSingle();
+    return (data && data.dado) || {};
+  }
+
+  async function atualizarBotaoAutoAprovacao() {
+    const btn = document.getElementById("btn-toggle-auto-aprovacao");
+    const cfg = await carregarConfigAdmin();
+    const ativo = !!cfg.aprovacao_automatica;
+    btn.dataset.ativo = String(ativo);
+    btn.textContent = ativo ? "Ligada" : "Desligada";
+  }
+
+  document.getElementById("btn-toggle-auto-aprovacao").addEventListener("click", async () => {
+    const btn = document.getElementById("btn-toggle-auto-aprovacao");
+    const erroEl = document.getElementById("erro-auto-aprovacao");
+    erroEl.style.display = "none";
+    const novoValor = btn.dataset.ativo !== "true";
+    btn.disabled = true;
+    const cfgAtual = await carregarConfigAdmin();
+    const novoConfig = Object.assign({}, cfgAtual, { aprovacao_automatica: novoValor });
+    const { error } = await sb.from("dados_robo").upsert(
+      { chave: "config_admin", dado: novoConfig, atualizado_em: new Date().toISOString() },
+      { onConflict: "chave" }
+    );
+    btn.disabled = false;
+    if (error) {
+      erroEl.textContent = "Erro ao atualizar: " + error.message;
+      erroEl.style.display = "block";
+      return;
+    }
+    await atualizarBotaoAutoAprovacao();
+  });
+
   const TELAS = ["tela-login", "tela-mfa-enroll", "tela-mfa-verify", "painel"];
   function mostrarTela(id) {
     TELAS.forEach((t) => { document.getElementById(t).style.display = "none"; });
     document.getElementById(id).style.display = id === "painel" ? "block" : "flex";
-    if (id === "painel") configurarAcessoEquipe();
+    if (id === "painel") {
+      configurarAcessoEquipe();
+      atualizarBotaoAutoAprovacao();
+    }
   }
 
   let mfaEnrollFactorId = null;
