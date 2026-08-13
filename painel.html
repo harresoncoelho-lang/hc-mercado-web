@@ -5122,6 +5122,10 @@ window.__preencherIdentidadeUsuario();
     return lista.join(", ");
   }
 
+  function formatarSegmento(lista) {
+    return Array.isArray(lista) ? lista.join(", ") : (lista || null);
+  }
+
   document.querySelectorAll(".menu-conta-item[data-acao]").forEach((item) => {
     item.addEventListener("click", () => {
       fecharTudo();
@@ -5138,7 +5142,7 @@ window.__preencherIdentidadeUsuario();
           ["Telefone", c.telefone],
           ["E-mail", email],
           ["Status", c.status === "aprovado" ? "Aprovado" : (c.status || "-")],
-          ["Segmento", c.segmento],
+          ["Segmento", formatarSegmento(c.segmento)],
           ["Estados de interesse", formatarEstadosInteresse(c.estados_interesse)],
           ["Como conheceu o LicitaPlena", c.como_conheceu],
           ["Quantidade de funcionários", c.quantidade_funcionarios],
