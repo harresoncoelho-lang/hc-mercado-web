@@ -97,10 +97,30 @@
   }
   .modal-detalhe-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .modal-detalhe-topo button { background: none; border: none; color: var(--texto-fraco); font-size: 22px; cursor: pointer; line-height: 1; padding: 4px; }
-  .linha-detalhe { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--borda); font-size: 13.5px; }
-  .linha-detalhe:last-child { border-bottom: none; }
-  .linha-detalhe span:first-child { color: var(--texto-fraco); }
-  .linha-detalhe span:last-child { font-weight: 600; text-align: right; }
+  .modal-detalhe label {
+    display: block; font-size: 12px; color: var(--texto-fraco); text-transform: uppercase;
+    margin: 14px 0 6px;
+  }
+  .modal-detalhe label:first-child { margin-top: 0; }
+  .modal-detalhe input[type="text"], .modal-detalhe input[type="email"],
+  .modal-detalhe select, .modal-detalhe textarea {
+    width: 100%; padding: 10px 12px; background: #0d1826; border: 1px solid var(--borda);
+    border-radius: 8px; color: var(--texto); font-size: 14px; font-family: inherit;
+  }
+  .modal-detalhe textarea { resize: vertical; min-height: 60px; }
+  .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .grade-checkbox {
+    display: flex; flex-wrap: wrap; gap: 6px 16px; max-height: 170px; overflow-y: auto;
+    padding: 10px 12px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
+  }
+  .grade-checkbox label {
+    display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texto);
+    text-transform: none; margin: 0; white-space: nowrap;
+  }
+  .grade-checkbox input { width: 14px; height: 14px; }
+  .modal-detalhe-rodape { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+  .btn-salvar-cliente { background: var(--azul); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-salvar-cliente:disabled { opacity: 0.6; cursor: default; }
   .tela-auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .tela-auth .caixa { width: 100%; max-width: 380px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 32px; }
   .tela-auth label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
@@ -232,6 +252,10 @@
       <button type="button" id="modal-detalhe-fechar" title="Fechar">&#10005;</button>
     </div>
     <div id="modal-detalhe-corpo"></div>
+    <div class="modal-detalhe-rodape">
+      <button type="button" class="btn-salvar-cliente" id="btn-salvar-cliente">Salvar alterações</button>
+    </div>
+    <div class="erro" id="erro-detalhe-cliente"></div>
   </div>
 </div>
 
@@ -256,35 +280,89 @@
     return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
-  const TOTAL_ESTADOS_BR = 27;
+  // Mesmas listas fechadas usadas no formulario publico de cadastro (cadastro.html) -
+  // mantidas iguais aqui pra edicao no admin gravar os mesmos valores que o robo do
+  // boletim (scripts/boletim_editais.py) e o proprio cadastro.html sabem interpretar.
+  const SEGMENTOS_CADASTRO = [
+    "AGROPECUÁRIO", "ALIMENTAÇÃO", "ARMAZENAGEM", "ASSESSORIAS", "CARTÕES", "COMBUSTÍVEIS",
+    "COMUNICAÇÃO/IDENTIFICAÇÃO VISUAL", "CONCESSÕES/EXPLORAÇÃO/IMÓVEL", "CONFECÇÕES/DECORAÇÃO",
+    "DIDÁTICO", "ELETRO ELETRÔNICOS/ÓTICA", "EMBALAGENS E LACRES", "ENGENHARIA - Materiais",
+    "ENGENHARIA - Serviços", "EQUIPAMENTOS/FERRAMENTAS", "ESCRITÓRIO E GRÁFICA", "ESPECIALIZADOS",
+    "ESPORTIVOS/MUSICAIS", "EVENTOS", "FERROVIÁRIOS", "FUNERÁRIA", "HOSPEDAGEM",
+    "INFANTIL/PLAYGROUND", "INFORMÁTICA", "INSTALAÇÕES", "LEILÕES", "MOBILIÁRIOS", "PASSAGENS",
+    "PETROBRAS", "PRESTAÇÃO DE SERVIÇOS - Mão de Obra", "PRODUTOS DE LIMPEZA", "PUBLICIDADE",
+    "QUÍMICOS", "SAÚDE", "SEGURANÇA/PROTEÇÃO", "SEGUROS", "SISTEMA DE VALES",
+    "TRANSPORTES AÉREOS", "TRANSPORTES NÁUTICOS", "TRANSPORTES RODOVIÁRIOS",
+  ];
+  const ESTADOS_BR = [
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB",
+    "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+  ];
+  const OPCOES_PORTE = ["MEI", "Microempresa (ME)", "Pequena (EPP)", "Média", "Grande"];
+  const OPCOES_COMO_CONHECEU = [
+    "Indicação de outra empresa", "Google / busca na internet", "Redes sociais",
+    "E-mail marketing", "WhatsApp", "Evento ou feira", "Outro",
+  ];
+  const OPCOES_FUNCIONARIOS = ["1 a 5", "6 a 10", "11 a 50", "51 a 100", "Mais de 100"];
+  const OPCOES_LICITACOES_MES = ["Nenhuma ainda", "1 a 5", "6 a 10", "11 a 20", "Mais de 20"];
+  const OPCOES_FATURAMENTO = [
+    "Até R$ 100 mil", "R$ 100 mil a R$ 500 mil", "R$ 500 mil a R$ 1 milhão",
+    "R$ 1 milhão a R$ 5 milhões", "Acima de R$ 5 milhões",
+  ];
+  const OPCOES_COMO_USAR = [
+    "Encontrar novas licitações", "Analisar concorrentes", "Consultoria jurídica",
+    "Automatizar rotina de participação", "Todas as opções acima",
+  ];
 
-  function formatarEstadosInteresse(lista) {
-    if (!Array.isArray(lista) || lista.length === 0) return null;
-    if (lista.length >= TOTAL_ESTADOS_BR) return "Nacional (todos os estados)";
-    return lista.join(", ");
+  function campoTexto(id, label, valor, tipo) {
+    return `<label for="${id}">${label}</label><input type="${tipo || "text"}" id="${id}" value="${escapeHtml(valor || "")}">`;
   }
 
-  function formatarSegmento(lista) {
-    return Array.isArray(lista) ? lista.join(", ") : (lista || null);
+  function campoSelect(id, label, opcoes, valorAtual) {
+    const options = ['<option value="">Selecionar</option>']
+      .concat(opcoes.map((o) => `<option value="${escapeHtml(o)}"${o === valorAtual ? " selected" : ""}>${escapeHtml(o)}</option>`));
+    return `<label for="${id}">${label}</label><select id="${id}">${options.join("")}</select>`;
   }
+
+  function campoTextarea(id, label, valor) {
+    return `<label for="${id}">${label}</label><textarea id="${id}">${escapeHtml(valor || "")}</textarea>`;
+  }
+
+  function campoCheckboxGrade(classePrefixo, label, opcoes, selecionados) {
+    const marcados = new Set(Array.isArray(selecionados) ? selecionados : []);
+    const itens = opcoes
+      .map((o) => `<label><input type="checkbox" class="${classePrefixo}-opcao" value="${escapeHtml(o)}"${marcados.has(o) ? " checked" : ""}> ${escapeHtml(o)}</label>`)
+      .join("");
+    return `<label>${label}</label><div class="grade-checkbox">${itens}</div>`;
+  }
+
+  let clienteEmEdicao = null;
 
   function abrirDetalheCliente(c) {
-    const linhas = [
-      ["Segmento", formatarSegmento(c.segmento)],
-      ["Estados de interesse", formatarEstadosInteresse(c.estados_interesse)],
-      ["Como conheceu o LicitaPlena", c.como_conheceu],
-      ["Quantidade de funcionários", c.quantidade_funcionarios],
-      ["Licitações por mês", c.licitacoes_por_mes],
-      ["Faturamento anual", c.faturamento_anual],
-      ["Como pretende usar", c.como_pretende_usar],
-    ];
-    const linhasHtml = linhas
-      .map(([label, valor]) => `<div class="linha-detalhe"><span>${label}</span><span>${valor ? escapeHtml(String(valor)) : "&mdash;"}</span></div>`)
-      .join("");
-    const atividadesHtml = c.atividades
-      ? `<div style="margin-top:14px;"><div style="font-size:12px;color:var(--texto-fraco);text-transform:uppercase;margin-bottom:4px;">Atividades detalhadas</div><div style="font-size:13.5px;line-height:1.5;">${escapeHtml(String(c.atividades))}</div></div>`
-      : "";
-    document.getElementById("modal-detalhe-corpo").innerHTML = linhasHtml + atividadesHtml;
+    clienteEmEdicao = c;
+    document.getElementById("erro-detalhe-cliente").style.display = "none";
+    document.getElementById("modal-detalhe-corpo").innerHTML =
+      campoTexto("edit-nome", "Nome", c.nome) +
+      campoTexto("edit-empresa", "Empresa", c.empresa) +
+      `<div class="linha-dupla">` +
+        `<div>${campoTexto("edit-cnpj", "CNPJ", c.cnpj)}</div>` +
+        `<div>${campoTexto("edit-cargo", "Cargo", c.cargo)}</div>` +
+      `</div>` +
+      `<div class="linha-dupla">` +
+        `<div>${campoTexto("edit-telefone", "Telefone", c.telefone)}</div>` +
+        `<div>${campoTexto("edit-email", "E-mail", c.email, "email")}</div>` +
+      `</div>` +
+      campoSelect("edit-porte", "Porte da empresa", OPCOES_PORTE, c.porte_empresa) +
+      campoCheckboxGrade("edit-segmento", "Segmento", SEGMENTOS_CADASTRO, c.segmento) +
+      campoCheckboxGrade("edit-estado", "Estados de interesse", ESTADOS_BR, c.estados_interesse) +
+      campoTextarea("edit-atividades", "Atividades detalhadas", c.atividades) +
+      campoSelect("edit-como-conheceu", "Como conheceu o LicitaPlena", OPCOES_COMO_CONHECEU, c.como_conheceu) +
+      campoSelect("edit-funcionarios", "Quantidade de funcionários", OPCOES_FUNCIONARIOS, c.quantidade_funcionarios) +
+      campoSelect("edit-licitacoes-mes", "Licitações por mês", OPCOES_LICITACOES_MES, c.licitacoes_por_mes) +
+      campoSelect("edit-faturamento", "Faturamento anual", OPCOES_FATURAMENTO, c.faturamento_anual) +
+      campoSelect("edit-como-usar", "Como pretende usar", OPCOES_COMO_USAR, c.como_pretende_usar) +
+      campoTexto("edit-plano", "Plano", c.plano) +
+      campoTextarea("edit-observacoes", "Observações internas (só a equipe vê)", c.observacoes_admin);
     document.getElementById("modal-detalhe-fundo").classList.add("aberto");
   }
 
@@ -292,6 +370,46 @@
   document.getElementById("modal-detalhe-fechar").addEventListener("click", () => modalDetalheFundo.classList.remove("aberto"));
   modalDetalheFundo.addEventListener("click", (ev) => {
     if (ev.target === modalDetalheFundo) modalDetalheFundo.classList.remove("aberto");
+  });
+
+  document.getElementById("btn-salvar-cliente").addEventListener("click", async () => {
+    if (!clienteEmEdicao) return;
+    const btn = document.getElementById("btn-salvar-cliente");
+    const erroEl = document.getElementById("erro-detalhe-cliente");
+    erroEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Salvando...";
+
+    const dados = {
+      nome: document.getElementById("edit-nome").value.trim(),
+      empresa: document.getElementById("edit-empresa").value.trim(),
+      cnpj: document.getElementById("edit-cnpj").value.trim(),
+      cargo: document.getElementById("edit-cargo").value.trim(),
+      telefone: document.getElementById("edit-telefone").value.trim(),
+      email: document.getElementById("edit-email").value.trim(),
+      porte_empresa: document.getElementById("edit-porte").value,
+      segmento: Array.from(document.querySelectorAll(".edit-segmento-opcao:checked")).map((el) => el.value),
+      estados_interesse: Array.from(document.querySelectorAll(".edit-estado-opcao:checked")).map((el) => el.value),
+      atividades: document.getElementById("edit-atividades").value.trim(),
+      como_conheceu: document.getElementById("edit-como-conheceu").value,
+      quantidade_funcionarios: document.getElementById("edit-funcionarios").value,
+      licitacoes_por_mes: document.getElementById("edit-licitacoes-mes").value,
+      faturamento_anual: document.getElementById("edit-faturamento").value,
+      como_pretende_usar: document.getElementById("edit-como-usar").value,
+      plano: document.getElementById("edit-plano").value.trim(),
+      observacoes_admin: document.getElementById("edit-observacoes").value.trim(),
+    };
+
+    const { error } = await sb.from("clientes").update(dados).eq("id", clienteEmEdicao.id);
+    btn.disabled = false;
+    btn.textContent = "Salvar alterações";
+    if (error) {
+      erroEl.textContent = "Erro ao salvar: " + error.message;
+      erroEl.style.display = "block";
+      return;
+    }
+    modalDetalheFundo.classList.remove("aberto");
+    carregarClientes();
   });
 
   let adminAtual = null;
