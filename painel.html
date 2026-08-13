@@ -2741,7 +2741,7 @@
 
     while (pagina <= maxPaginas) {
       params.set("pagina", String(pagina));
-      const url = `https://pncp.gov.br/api/search/?${params.toString()}`;
+      const url = `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${params.toString()}`)}`;
       const resp = await fetchPaginaComRetry(url, 15000);
       if (!resp) { falhaConexao = true; break; }
       const texto = await resp.text();
@@ -2784,7 +2784,7 @@
 
     while (pagina <= totalPaginas) {
       if (Date.now() - inicioMs > tempoLimiteMs) { parcial = true; break; }
-      const url = `https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`;
+      const url = `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`)}`;
       let resp;
       try {
         resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
@@ -2819,7 +2819,7 @@
 
     while (pagina <= totalPaginas) {
       if (Date.now() - inicioMs > tempoLimiteMs) { parcial = true; break; }
-      const url = `https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`;
+      const url = `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`)}`;
       let resp;
       try {
         resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
