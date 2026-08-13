@@ -66,24 +66,57 @@ DESTINATARIOS = [
         ],
         "whatsapp": None,  # preencha {"telefone": "55...", "apikey": "..."} depois de liberar o CallMeBot
     },
-    {
-        "nome": "Plug Engenharia",
-        "email": "COLOQUE_O_EMAIL_DO_CLIENTE_AQUI@exemplo.com",
-        "ufs": None,
-        "palavras_chave": [
-            "fotovoltaic",
-            "solar",
-            "geracao distribuida",
-            "eletric",
-            "subestacao",
-            "transmissao",
-            "iluminacao",
-            "usina",
-        ],
-        "whatsapp": None,
-    },
 ]
 # ---------------------------------------------------------------------
+
+# Alem da lista fixa acima, o boletim tambem manda pra clientes aprovados no painel
+# de admin (tabela public.clientes no Supabase, status="aprovado" - ver admin.html).
+# Cada cliente escolhe um ou mais "segmento" no cadastro (lista fechada, ver
+# SEGMENTOS_CADASTRO em cadastro.html); o mapa abaixo traduz cada segmento pros
+# radicais de palavra que o filtro do boletim usa. Ajuste os radicais aqui se um
+# segmento estiver trazendo edital errado ou de menos.
+SEGMENTO_PARA_PALAVRAS_CHAVE = {
+    "AGROPECUÁRIO": ["agropecuari", "agricola", "rural", "pecuaria", "fertilizante", "semente", "racao"],
+    "ALIMENTAÇÃO": ["aliment", "merenda", "refeicao", "hortifruti", "genero aliment"],
+    "ARMAZENAGEM": ["armazen", "deposito", "estoc", "prateleira"],
+    "ASSESSORIAS": ["assessoria", "consultoria", "auditoria", "juridic", "contabil"],
+    "CARTÕES": ["cartao"],
+    "COMBUSTÍVEIS": ["combustivel", "gasolina", "diesel", "etanol", "gnv"],
+    "COMUNICAÇÃO/IDENTIFICAÇÃO VISUAL": ["comunicacao visual", "sinalizacao", "placa", "adesivo", "grafica"],
+    "CONCESSÕES/EXPLORAÇÃO/IMÓVEL": ["concessao", "locacao de imovel", "imobiliari"],
+    "CONFECÇÕES/DECORAÇÃO": ["confeccao", "uniforme", "tecido", "decoracao", "enxoval"],
+    "DIDÁTICO": ["didatico", "material escolar", "livro", "apostila"],
+    "ELETRO ELETRÔNICOS/ÓTICA": ["eletroeletronic", "eletronico", "otica", "oculos"],
+    "EMBALAGENS E LACRES": ["embalagem", "lacre"],
+    "ENGENHARIA - Materiais": ["material de construcao", "cimento", "concreto", "ferragem"],
+    "ENGENHARIA - Serviços": ["engenharia", "obra", "reforma", "construcao civil", "pavimentacao"],
+    "EQUIPAMENTOS/FERRAMENTAS": ["equipamento", "ferramenta", "maquinario"],
+    "ESCRITÓRIO E GRÁFICA": ["material de escritorio", "papelaria", "expediente", "grafica"],
+    "ESPECIALIZADOS": [],  # generico demais - sem radical proprio, revise o cadastro manualmente
+    "ESPORTIVOS/MUSICAIS": ["esportivo", "instrumento musical", "academia"],
+    "EVENTOS": ["evento", "cerimonial"],
+    "FERROVIÁRIOS": ["ferroviari"],
+    "FUNERÁRIA": ["funerari", "funeral"],
+    "HOSPEDAGEM": ["hospedagem", "hotel", "pousada"],
+    "INFANTIL/PLAYGROUND": ["infantil", "playground", "brinquedo"],
+    "INFORMÁTICA": ["informatica", "computador", "software", "notebook"],
+    "INSTALAÇÕES": ["instalacao eletric", "instalacao hidraulic", "ar condicionado", "manutencao predial"],
+    "LEILÕES": ["leilao"],
+    "MOBILIÁRIOS": ["mobiliari", "movel planejado", "cadeira", "armario"],
+    "PASSAGENS": ["passagem aerea", "passagem rodoviaria"],
+    "PETROBRAS": ["petrobras", "petroleo"],
+    "PRESTAÇÃO DE SERVIÇOS - Mão de Obra": ["mao de obra", "terceirizacao", "prestacao de servico"],
+    "PRODUTOS DE LIMPEZA": ["limpeza", "higiene", "produto de limpeza"],
+    "PUBLICIDADE": ["publicidade", "propaganda", "midia"],
+    "QUÍMICOS": ["quimico", "reagente"],
+    "SAÚDE": ["hospitalar", "saude", "medic", "medicament", "farmaceutic", "enfermagem", "clinic", "odontolog"],
+    "SEGURANÇA/PROTEÇÃO": ["seguranca", "vigilancia", "alarme", "cftv"],
+    "SEGUROS": ["seguro"],
+    "SISTEMA DE VALES": ["vale alimentacao", "vale refeicao", "vale transporte", "cartao beneficio"],
+    "TRANSPORTES AÉREOS": ["transporte aereo", "aviacao", "aeronave"],
+    "TRANSPORTES NÁUTICOS": ["transporte nautico", "embarcacao", "naval"],
+    "TRANSPORTES RODOVIÁRIOS": ["transporte rodoviario", "veiculo", "onibus", "frete"],
+}
 
 
 def log(msg):
@@ -150,6 +183,66 @@ def salvar_historico(vistos):
     })
     with urllib.request.urlopen(req, timeout=20) as resp:
         resp.read()
+
+
+def carregar_clientes_aprovados():
+    # Cliente aprovado no painel de admin (public.clientes, status="aprovado") passa a
+    # entrar no boletim automaticamente - sem precisar editar DESTINATARIOS a mao. Se o
+    # cadastro dele nao tiver segmento ou estado de interesse definido, ele fica de fora
+    # (com aviso no log) ate o cadastro ser completado, em vez de mandar edital de
+    # qualquer UF/assunto pra ele.
+    chave = _chave_servico()
+    url = (SUPABASE_URL + "/rest/v1/clientes?status=eq.aprovado"
+           "&select=nome,empresa,email,segmento,estados_interesse")
+    req = urllib.request.Request(url, headers={
+        "apikey": chave,
+        "Authorization": "Bearer " + chave,
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            clientes = json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        log("AVISO: falha ao carregar clientes aprovados do Supabase (" + str(e) + ").")
+        return []
+
+    destinatarios = []
+    for c in clientes:
+        email = (c.get("email") or "").strip()
+        nome = (c.get("empresa") or c.get("nome") or email or "Cliente").strip()
+        if not email:
+            continue
+
+        palavras = []
+        for seg in (c.get("segmento") or []):
+            palavras.extend(SEGMENTO_PARA_PALAVRAS_CHAVE.get(seg, []))
+        palavras = list(dict.fromkeys(palavras))  # remove duplicatas mantendo a ordem
+        if not palavras:
+            log("AVISO: cliente '" + nome + "' (" + email + ") aprovado mas sem segmento "
+                "reconhecido no cadastro - boletim nao enviado pra ele ate o cadastro ser revisado.")
+            continue
+
+        estados = c.get("estados_interesse") or []
+        if not estados:
+            log("AVISO: cliente '" + nome + "' (" + email + ") aprovado mas sem estado de "
+                "interesse definido no cadastro - boletim nao enviado pra ele ate o cadastro ser revisado.")
+            continue
+        ufs = None if len(estados) >= len(TODAS_UFS) else estados
+
+        destinatarios.append({
+            "nome": nome,
+            "email": email,
+            "ufs": ufs,
+            "palavras_chave": palavras,
+            "whatsapp": None,
+        })
+    return destinatarios
+
+
+def montar_lista_destinatarios():
+    dinamicos = carregar_clientes_aprovados()
+    emails_fixos = {d["email"].strip().lower() for d in DESTINATARIOS}
+    extras = [d for d in dinamicos if d["email"].strip().lower() not in emails_fixos]
+    return DESTINATARIOS + extras
 
 
 def data_final_busca():
@@ -461,9 +554,13 @@ def main():
     log("=== Iniciando busca de editais ===")
     historico = carregar_historico()
 
+    destinatarios = montar_lista_destinatarios()
+    log("Destinatarios do boletim: " + str(len(destinatarios)) + " (" + str(len(DESTINATARIOS)) +
+        " fixo(s) + " + str(len(destinatarios) - len(DESTINATARIOS)) + " cliente(s) aprovado(s) no Supabase).")
+
     ufs_necessarias = set()
     precisa_todas = False
-    for d in DESTINATARIOS:
+    for d in destinatarios:
         if d["ufs"] is None:
             precisa_todas = True
         else:
@@ -475,7 +572,7 @@ def main():
 
     pool = buscar_pool_por_uf(ufs_para_buscar)
 
-    for d in DESTINATARIOS:
+    for d in destinatarios:
         try:
             if d["ufs"] is None:
                 editais = []
