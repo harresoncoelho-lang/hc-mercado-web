@@ -26,6 +26,11 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 const MAX_CARACTERES_TEXTO = 8000;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
+// Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
+// navegador. Manda em todo fetch pro PNCP por segurança.
+const USER_AGENT_NAVEGADOR =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 function montarFichaEdital(edital) {
   const campos = [
     ["Objeto", edital.objeto],
@@ -74,7 +79,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
     const ctrl1 = new AbortController();
     const t1 = setTimeout(() => ctrl1.abort(), 8000);
     const respLista = await fetch(`${PNCP_ARQUIVOS_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos`, {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
       signal: ctrl1.signal,
     });
     clearTimeout(t1);
@@ -200,6 +205,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
         const ctrl2 = new AbortController();
         const t2 = setTimeout(() => ctrl2.abort(), 15000);
         const respArquivo = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
+          headers: { "User-Agent": USER_AGENT_NAVEGADOR },
           signal: ctrl2.signal,
         });
         clearTimeout(t2);

@@ -6,3 +6,6 @@ node_modules/
 # mercado_meta.json) continua versionado.
 data/contratos_recentes.json
 data/mercado_segmentos.json
+
+# Local Netlify folder
+.netlify

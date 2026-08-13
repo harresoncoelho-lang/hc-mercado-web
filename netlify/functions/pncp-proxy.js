@@ -10,6 +10,13 @@
 // cujo host seja pncp.gov.br.
 const HOST_PERMITIDO = "pncp.gov.br";
 
+// O endpoint api/search/ do PNCP reseta a conexão na hora (sem timeout, sem erro HTTP) quando
+// a requisição não tem um User-Agent de navegador — confirmado testando com e sem o header
+// várias vezes seguidas. Sem isso, toda busca ao vivo do Boletim e do Encontrar Licitações
+// falhava com "API do PNCP não respondeu", mesmo com o PNCP no ar.
+const USER_AGENT_NAVEGADOR =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 exports.handler = async (event) => {
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
   const alvo = (event.queryStringParameters && event.queryStringParameters.url) || "";
@@ -27,7 +34,10 @@ exports.handler = async (event) => {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 14000);
-    const resp = await fetch(destino.toString(), { headers: { Accept: "application/json" }, signal: ctrl.signal });
+    const resp = await fetch(destino.toString(), {
+      headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
+      signal: ctrl.signal,
+    });
     clearTimeout(t);
     const texto = await resp.text();
     return { statusCode: resp.status, headers, body: texto || JSON.stringify({}) };

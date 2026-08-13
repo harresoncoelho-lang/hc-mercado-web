@@ -6,6 +6,11 @@
 // Uso: GET /.netlify/functions/pncp-baixar?cnpj=...&ano=...&sequencial=...&documento=...&nome=...
 const BASE_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 
+// Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
+// navegador. Manda em todo fetch pro PNCP por segurança.
+const USER_AGENT_NAVEGADOR =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 exports.handler = async (event) => {
   const q = event.queryStringParameters || {};
   const cnpj = (q.cnpj || "").replace(/\D/g, "");
@@ -21,7 +26,10 @@ exports.handler = async (event) => {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 25000);
-    const resp = await fetch(`${BASE_URL}/${cnpj}/compras/${ano}/${sequencial}/arquivos/${documento}`, { signal: ctrl.signal });
+    const resp = await fetch(`${BASE_URL}/${cnpj}/compras/${ano}/${sequencial}/arquivos/${documento}`, {
+      headers: { "User-Agent": USER_AGENT_NAVEGADOR },
+      signal: ctrl.signal,
+    });
     clearTimeout(t);
     if (!resp.ok) {
       return { statusCode: 502, headers: { "Content-Type": "text/plain" }, body: "Não foi possível baixar o arquivo no PNCP." };

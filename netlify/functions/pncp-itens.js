@@ -6,6 +6,12 @@
 // Uso: GET /.netlify/functions/pncp-itens?cnpj=...&ano=...&sequencial=...
 const BASE_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 
+// Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
+// navegador. Manda em todo fetch pro PNCP por segurança, mesmo que este endpoint específico
+// não tenha mostrado o problema nos testes.
+const USER_AGENT_NAVEGADOR =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 exports.handler = async (event) => {
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
   const q = event.queryStringParameters || {};
@@ -19,7 +25,7 @@ exports.handler = async (event) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15000);
     const resp = await fetch(`${BASE_URL}/${cnpj}/compras/${ano}/${sequencial}/itens`, {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
       signal: ctrl.signal,
     });
     clearTimeout(t);
