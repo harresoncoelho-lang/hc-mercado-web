@@ -91,6 +91,10 @@
   .abr-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 10px; }
   .abr-item { display: flex; align-items: center; gap: 7px; font-size: 13.5px; cursor: pointer; }
   .abr-item input { width: auto; margin: 0; }
+  .segmento-lista {
+    max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;
+  }
   .campo-honeypot { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .campo-clicavel {
     width: 100%; padding: 11px 12px; margin-bottom: 16px;
@@ -322,8 +326,8 @@
         <h3>Adicione atividades</h3>
         <button type="button" id="modal-segmento-fechar" title="Fechar">&#10005;</button>
       </div>
-      <label for="modal-segmento-select">Selecione o segmento</label>
-      <select id="modal-segmento-select"></select>
+      <label>Selecione os segmentos (pode marcar mais de um)</label>
+      <div class="segmento-lista" id="modal-segmento-lista"></div>
       <label for="modal-segmento-atividades">Se desejar, descreva detalhadamente as atividades da sua empresa</label>
       <textarea id="modal-segmento-atividades" rows="4" style="margin-bottom:0;"></textarea>
       <div class="modal-cadastro-rodape">
@@ -422,9 +426,9 @@
   ];
 
   (function popularSegmentos() {
-    const sel = document.getElementById("modal-segmento-select");
-    sel.innerHTML = ['<option value="">Selecionar</option>']
-      .concat(SEGMENTOS_CADASTRO.map((s) => `<option value="${s}">${s}</option>`))
+    const cont = document.getElementById("modal-segmento-lista");
+    cont.innerHTML = SEGMENTOS_CADASTRO
+      .map((s) => `<label class="abr-item"><input type="checkbox" class="segmento-opcao" value="${s}"> ${s}</label>`)
       .join("");
   })();
 
@@ -441,21 +445,26 @@
   const displayEstados = document.getElementById("campo-estados-display");
 
   displaySegmento.addEventListener("click", () => {
-    document.getElementById("modal-segmento-select").value = displaySegmento.dataset.segmento || "";
+    const selecionados = JSON.parse(displaySegmento.dataset.segmento || "[]");
+    document.querySelectorAll(".segmento-opcao").forEach((el) => {
+      el.checked = selecionados.includes(el.value);
+    });
     document.getElementById("modal-segmento-atividades").value = displaySegmento.dataset.atividades || "";
     abrirModal("modal-segmento-fundo");
   });
   document.getElementById("modal-segmento-adicionar").addEventListener("click", () => {
-    const segmento = document.getElementById("modal-segmento-select").value;
+    const selecionados = Array.from(document.querySelectorAll(".segmento-opcao:checked")).map((el) => el.value);
     const atividades = document.getElementById("modal-segmento-atividades").value.trim();
-    if (!segmento) {
-      document.getElementById("modal-segmento-select").focus();
+    if (selecionados.length === 0) {
+      mostrarAviso("Selecione ao menos um segmento.", "erro");
       return;
     }
-    displaySegmento.dataset.segmento = segmento;
+    displaySegmento.dataset.segmento = JSON.stringify(selecionados);
     displaySegmento.dataset.atividades = atividades;
     const span = displaySegmento.querySelector(".texto");
-    span.textContent = segmento;
+    span.textContent = selecionados.length === 1
+      ? selecionados[0]
+      : `${selecionados.length} segmentos selecionados`;
     span.classList.remove("placeholder");
     fecharModal("modal-segmento-fundo");
   });
@@ -493,7 +502,7 @@
     const empresa = document.getElementById("empresa").value.trim();
     const cnpj = document.getElementById("cnpj").value.trim();
     const porte_empresa = document.getElementById("porte_empresa").value;
-    const segmento = displaySegmento.dataset.segmento || "";
+    const segmento = JSON.parse(displaySegmento.dataset.segmento || "[]");
     const atividades = displaySegmento.dataset.atividades || "";
     const estados_interesse = JSON.parse(displayEstados.dataset.estados || "[]");
     const como_conheceu = document.getElementById("como_conheceu").value;
@@ -522,7 +531,7 @@
       return;
     }
 
-    if (!segmento) {
+    if (segmento.length === 0) {
       mostrarAviso("Selecione o segmento de atuação da sua empresa em \"Atividades de interesse\".", "erro");
       btn.disabled = false;
       btn.textContent = "Criar cadastro";
