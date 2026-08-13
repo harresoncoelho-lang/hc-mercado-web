@@ -11,6 +11,7 @@ import re
 import json
 import html
 import time
+import socket
 import unicodedata
 import smtplib
 import urllib.request
@@ -26,6 +27,7 @@ PASTA_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR_DADOS = os.path.join(PASTA_REPO, "data")
 BASE_URL = "https://pncp.gov.br/api/consulta/v1/contratacoes/proposta"
 ARQUIVO_HISTORICO = os.path.join(DIR_DADOS, "editais_vistos.json")
+USER_AGENT_NAVEGADOR = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 NOME_REMETENTE = "LicitaPlena - Alertas de Editais"
 
@@ -166,8 +168,13 @@ def buscar_pagina(uf, pagina):
         "tamanhoPagina": 50,
     }
     url = BASE_URL + "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
+    req = urllib.request.Request(url, headers={
+        "Accept": "application/json",
+        "User-Agent": USER_AGENT_NAVEGADOR,
+    })
     tentativas_429 = 0
+    esperas_retry = [3, 6, 12, 24]
+    tentativas_retry = 0
     while True:
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
@@ -179,6 +186,16 @@ def buscar_pagina(uf, pagina):
             if e.code == 429 and tentativas_429 < 5:
                 tentativas_429 += 1
                 time.sleep(3 * tentativas_429)
+                continue
+            if e.code == 503 and tentativas_retry < len(esperas_retry):
+                time.sleep(esperas_retry[tentativas_retry])
+                tentativas_retry += 1
+                continue
+            raise
+        except (socket.timeout, urllib.error.URLError) as e:
+            if tentativas_retry < len(esperas_retry):
+                time.sleep(esperas_retry[tentativas_retry])
+                tentativas_retry += 1
                 continue
             raise
 
@@ -338,6 +355,18 @@ def montar_card_html(e):
 
 
 def montar_email_html(nome_destinatario, editais_novos):
+    if not editais_novos:
+        return (
+            '<html><body style="margin:0;padding:0;background:#f4f4f4;">'
+            '<div style="max-width:640px;margin:0 auto;padding:24px 16px;">'
+            '<div style="font-family:Arial,sans-serif;font-size:20px;color:#202124;margin-bottom:4px;">'
+            'Ola, ' + html.escape(nome_destinatario) + '!</div>'
+            '<div style="font-family:Arial,sans-serif;font-size:14px;color:#5f6368;margin-bottom:20px;">'
+            'Nao encontramos nenhuma oportunidade nova hoje que bata com o seu filtro.</div>'
+            '<div style="font-family:Arial,sans-serif;font-size:12px;color:#9aa0a6;margin-top:20px;">'
+            'Alerta automatico gerado por LicitaPlena com base em dados publicos do PNCP.</div>'
+            '</div></body></html>'
+        )
     cards = "".join(montar_card_html(e) for e in editais_novos)
     return (
         '<html><body style="margin:0;padding:0;background:#f4f4f4;">'
@@ -354,6 +383,11 @@ def montar_email_html(nome_destinatario, editais_novos):
 
 
 def montar_email_texto(nome_destinatario, editais_novos):
+    if not editais_novos:
+        return (
+            "Ola, " + nome_destinatario + "!\n\n"
+            "Nao encontramos nenhuma oportunidade nova hoje que bata com o seu filtro.\n"
+        )
     linhas = ["Ola, " + nome_destinatario + "!", "",
               "Encontramos " + str(len(editais_novos)) + " nova(s) oportunidade(s) de licitacao:", ""]
     for e in editais_novos:
@@ -373,7 +407,10 @@ def enviar_email(destino_email, nome_destinatario, editais_novos):
     remetente = os.environ["EMAIL_REMETENTE"]
     senha_app = os.environ["EMAIL_SENHA_APP"]
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Novos editais encontrados (" + str(len(editais_novos)) + ")"
+    if editais_novos:
+        msg["Subject"] = "Novos editais encontrados (" + str(len(editais_novos)) + ")"
+    else:
+        msg["Subject"] = "Nenhuma oportunidade nova hoje"
     msg["From"] = formataddr((str(Header(NOME_REMETENTE, "utf-8")), remetente))
     msg["To"] = destino_email
     msg.attach(MIMEText(montar_email_texto(nome_destinatario, editais_novos), "plain", "utf-8"))
@@ -452,30 +489,28 @@ def main():
             editais_recentes = filtrar_por_publicacao_recente(editais)
             filtrados = filtrar_por_palavra_chave(editais_recentes, d["palavras_chave"])
 
-            vistos_deste = set(historico.get(d["email"], []))
-            novos = [e for e in filtrados if e.get("numeroControlePNCP") not in vistos_deste]
+            log(d["nome"] + ": " + str(len(filtrados)) + " editais no filtro.")
 
-            log(d["nome"] + ": " + str(len(filtrados)) + " editais no filtro, " + str(len(novos)) + " novo(s).")
-
-            if novos:
-                enviar_email(d["email"], d["nome"], novos)
-                log("E-mail enviado para " + d["email"] + " com " + str(len(novos)) + " edital(is).")
+            enviar_email(d["email"], d["nome"], filtrados)
+            if filtrados:
+                log("E-mail enviado para " + d["email"] + " com " + str(len(filtrados)) + " edital(is).")
 
                 whatsapp_cfg = d.get("whatsapp")
                 if whatsapp_cfg and whatsapp_cfg.get("telefone") and whatsapp_cfg.get("apikey"):
                     try:
-                        mensagem = montar_mensagem_whatsapp(d["nome"], novos)
+                        mensagem = montar_mensagem_whatsapp(d["nome"], filtrados)
                         enviar_whatsapp(whatsapp_cfg["telefone"], whatsapp_cfg["apikey"], mensagem)
                         log("WhatsApp enviado para " + whatsapp_cfg["telefone"] + ".")
                     except Exception as e:
                         # Falha no WhatsApp nao pode derrubar o e-mail, que ja foi enviado.
                         log("ERRO ao enviar WhatsApp para " + d["nome"] + ": " + str(e))
-
-                for e in novos:
-                    vistos_deste.add(e.get("numeroControlePNCP"))
-                historico[d["email"]] = list(vistos_deste)
             else:
-                log("Nenhum edital novo para " + d["nome"] + ".")
+                log("E-mail enviado para " + d["email"] + " avisando que nao ha oportunidades novas.")
+
+            vistos_deste = set(historico.get(d["email"], []))
+            for e in filtrados:
+                vistos_deste.add(e.get("numeroControlePNCP"))
+            historico[d["email"]] = list(vistos_deste)
         except Exception as e:
             log("ERRO ao processar destinatario " + d["nome"] + ": " + str(e))
 
