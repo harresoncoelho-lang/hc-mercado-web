@@ -88,7 +88,7 @@ DESTINATARIOS = [
 
 def log(msg):
     linha = "[" + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "] " + msg
-    print(linha)
+    print(linha, flush=True)
 
 
 # O historico de editais ja vistos costumava ficar em data/editais_vistos.json,
