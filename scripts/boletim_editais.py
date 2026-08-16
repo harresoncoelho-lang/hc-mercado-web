@@ -122,6 +122,17 @@ SEGMENTO_PARA_PALAVRAS_CHAVE = {
 def log(msg):
     linha = "[" + datetime.now().strftime("%d/%m/%Y %H:%M:%S") + "] " + msg
     print(linha, flush=True)
+def hoje_e_feriado_nacional():
+    try:
+        import holidays
+    except ImportError:
+        log("AVISO: biblioteca 'holidays' nao encontrada, pulando checagem de feriado.")
+        return None
+    hoje = date.today()
+    feriados_br = holidays.Brazil()
+    if hoje in feriados_br:
+        return feriados_br.get(hoje)
+    return None
 
 
 # O historico de editais ja vistos costumava ficar em data/editais_vistos.json,
@@ -552,6 +563,10 @@ def enviar_whatsapp(telefone, apikey, mensagem):
 
 def main():
     log("=== Iniciando busca de editais ===")
+    nome_feriado = hoje_e_feriado_nacional()
+    if nome_feriado:
+        log("Hoje e feriado nacional (" + nome_feriado + "), boletim nao sera enviado.")
+        return
     historico = carregar_historico()
 
     destinatarios = montar_lista_destinatarios()
