@@ -140,6 +140,20 @@
   .rodape-link a:hover { text-decoration: underline; }
   .rodape-legal { text-align: center; margin-top: 18px; font-size: 12px; color: var(--texto-fraco); }
   .rodape-legal a { color: var(--texto-fraco); text-decoration: underline; margin: 0 6px; }
+
+  /* Tablet (768px) */
+  @media (max-width: 768px) {
+    body { padding: 16px; align-items: flex-start; }
+  }
+  /* Celular grande (414px) e pequeno (375px): campos e botões ocupam 100% da
+     largura sem gerar overflow horizontal; a dupla de campos vira 1 coluna. */
+  @media (max-width: 480px) {
+    body { padding: 10px; }
+    .caixa { padding: 22px 18px; }
+    .linha-dupla { grid-template-columns: 1fr; gap: 0; }
+    .linha-dupla > div { margin-bottom: 16px; }
+    .modal-cadastro { max-width: 92vw !important; padding: 18px; }
+  }
   .rodape-legal a:hover { color: var(--azul); }
 </style>
 </head>

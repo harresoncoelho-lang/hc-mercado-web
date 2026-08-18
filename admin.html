@@ -155,6 +155,27 @@
   .mfa-secreto { font-size: 12px; color: var(--texto-fraco); margin: 0 0 16px; word-break: break-all; }
   .mfa-secreto code { background: #0d1826; padding: 2px 6px; border-radius: 4px; color: var(--texto); }
   #btn-mfa-config { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: 8px; }
+
+  /* Tablet (768px) */
+  @media (max-width: 880px) {
+    header { padding: 16px 20px; flex-wrap: wrap; row-gap: 10px; }
+    header h1 { font-size: 16px; }
+    main { max-width: 100%; padding: 20px 16px; }
+    .tabs { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+    .tabs button { flex-shrink: 0; }
+    .cartao-lista { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cartao-lista table { min-width: 640px; }
+    .faixa-auto-aprovacao { flex-wrap: wrap; }
+  }
+  /* Celular grande (414px) e pequeno (375px) */
+  @media (max-width: 480px) {
+    header .titulo h1 { font-size: 14px; }
+    header img { width: 28px; height: 28px; }
+    .modal-detalhe { max-width: 92vw; padding: 18px; }
+    .linha-dupla { grid-template-columns: 1fr; gap: 0; }
+    .tela-auth .caixa { padding: 24px 18px; }
+    .form-equipe input[type="email"], .form-equipe input[type="text"] { max-width: 100%; }
+  }
 </style>
 </head>
 <body>
