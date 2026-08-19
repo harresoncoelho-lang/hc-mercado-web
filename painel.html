@@ -5263,11 +5263,14 @@ window.__preencherIdentidadeUsuario();
   (function () {
     const painel = document.getElementById("dash-filtros-preview");
     if (!painel) return;
-    painel.querySelectorAll("input").forEach((inp) => {
-      inp.addEventListener("click", () => {
-        const navBtn = document.querySelector('nav button[data-alvo="boletim"]');
-        if (navBtn) navBtn.click();
-      });
+    // O card inteiro (título, texto de apoio e a grade de campos) navega pra "Encontrar
+    // Licitações" ao ser clicado em qualquer ponto — não só nos 6 inputs — já que os
+    // campos aqui são só uma prévia somente-leitura, não um formulário de verdade.
+    const card = painel.closest(".dash-painel") || painel;
+    card.style.cursor = "pointer";
+    card.addEventListener("click", () => {
+      const navBtn = document.querySelector('nav button[data-alvo="oportunidades"]');
+      if (navBtn) navBtn.click();
     });
   })();
 </script>
