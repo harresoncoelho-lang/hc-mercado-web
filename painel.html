@@ -1390,7 +1390,14 @@
     { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "📋" },
     { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "📄" },
     { arquivo: "data/mercado_meta.json", nome: "Diagnóstico de Mercado", icone: "📊" },
-    { arquivo: "data/transparencia_licitacoes.json", nome: "Licitações federais (Portal da Transparência)", icone: "🏛️" },
+    // "Licitações federais (Portal da Transparência)" existiu até 05/08/2026, quando o
+    // commit f5b6299 ("Redesenha Portal da Transparência...") aposentou de propósito
+    // scripts/coletar_transparencia.js (e seu workflow) em favor do radar de convênios/
+    // repasses abaixo — mais útil como sinal de demanda futura do que a lista bruta de
+    // licitações federais que esse coletor trazia. O index.html foi atualizado nesse
+    // commit, mas essa lista aqui no painel.html não, então o card ficou órfão apontando
+    // pra um arquivo (data/transparencia_licitacoes.json) que nada mais escreve — por
+    // isso "atualizado há 14 dia(s)" nunca mudava, mesmo com o robô do PNCP rodando OK.
     { supabase: "convenios", nome: "Convênios e repasses", icone: "💰" },
     { supabase: "sistema_s_am", nome: "Sistema S/AM (SENAC/SESC)", icone: "🏫" },
   ];
