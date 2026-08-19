@@ -77,19 +77,27 @@
     background: radial-gradient(600px 200px at 90% -40%, rgba(255,255,255,0.18), transparent 60%);
     pointer-events: none;
   }
-  header h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.3px; position: relative; }
-  header p { margin: 6px 0 0; color: #d9e8fd; font-size: 14px; position: relative; }
-  .header-topo { display: flex; align-items: center; gap: 16px; position: relative; }
+  .header-topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; position: relative; }
   .header-logo {
     width: 56px; height: 56px; flex-shrink: 0;
     filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35));
   }
-  @media (max-width: 560px) {
-    .header-logo { width: 40px; height: 40px; }
-    header { padding: 16px 16px; }
+  .header-acoes { display: flex; gap: 8px; position: relative; flex-shrink: 0; align-items: center; }
+  .header-icone-btn { width: 34px; height: 34px; flex-shrink: 0; }
+  /* Sino de notificações + avatar de perfil: precisam continuar visíveis e clicáveis em
+     qualquer largura de tela — sem esse breakpoint eles ficavam cortados fora da viewport
+     no iPhone (o header não reduzia padding/ícones o suficiente pra caber numa linha só). */
+  @media (max-width: 768px) {
+    header { padding: 14px 14px; }
     .header-topo { gap: 10px; }
-    header h1 { font-size: 17px; }
-    header p { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .header-logo { width: 38px; height: 38px; }
+    .header-acoes { gap: 6px; }
+    .header-icone-btn { width: 30px; height: 30px; }
+  }
+  @media (max-width: 560px) {
+    .header-logo { width: 34px; height: 34px; }
+    header { padding: 12px 14px; }
+    .header-topo { gap: 8px; }
   }
 
   .shell {
@@ -879,16 +887,12 @@
 <header>
   <div class="header-topo">
     <a href="painel.html" style="display:contents;"><img src="logo-icone-branco.svg" alt="LicitaPlena" class="header-logo"></a>
-    <div style="flex:1;">
-      <h1>LicitaPlena</h1>
-      <p>Inteligência, gestão e automação em licitações — uma solução HC Licitações.</p>
-    </div>
-    <div style="display:flex;gap:8px;position:relative;flex-shrink:0;align-items:center;">
-      <button id="header-bell-btn" title="Notifica&ccedil;&otilde;es" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;position:relative;">
+    <div class="header-acoes">
+      <button id="header-bell-btn" class="header-icone-btn" title="Notifica&ccedil;&otilde;es" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;position:relative;">
         &#128276;
         <span id="header-bell-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#e8617a;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;line-height:16px;">0</span>
       </button>
-      <button id="header-user-btn" title="Minha conta" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:0;">
+      <button id="header-user-btn" class="header-icone-btn" title="Minha conta" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:0;">
         <span id="header-user-iniciais">--</span>
       </button>
     </div>
