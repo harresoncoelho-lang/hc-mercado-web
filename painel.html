@@ -2872,6 +2872,14 @@
     return { encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao };
   }
 
+  // Monta um par rótulo:valor do dl.boletim-meta, mostrando "Não informado" em vez de
+  // esconder o campo quando a API do PNCP não trouxe valor pra ele (mesmo padrão que o
+  // próprio PNCP usa na página do edital).
+  function campoBoletimMeta(rotulo, valor) {
+    const texto = (valor === null || valor === undefined || valor === "") ? "Não informado" : valor;
+    return `<div><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(String(texto))}</dd></div>`;
+  }
+
   // Monta a lista de oportunidades no formato "cartão de boletim" (inspirado na página
   // de Boletins de Licitações do ConLicitação: card numerado, ações rápidas de favoritar/
   // marcar como lido, e todos os campos principais já visíveis sem precisar clicar).
@@ -2907,8 +2915,19 @@
           <dl class="boletim-meta">
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
             <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
+            ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome)}
+            ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome)}
+            ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome)}
+            ${r.fonte ? "" : campoBoletimMeta("Registro de preço", r.srp === true ? "Sim" : (r.srp === false ? "Não" : null))}
+            ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome)}
+            ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal)}
+            ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria)}
             ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : ""}
             <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
+            ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado))}
+            ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado))}
+            ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null)}
+            ${r.fonte ? "" : campoBoletimMeta("Processo", r.processo)}
             <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
           <div class="boletim-gerenciar">

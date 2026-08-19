@@ -415,6 +415,28 @@ async function coletarContratos(caminhoArquivo) {
 // arquivo só quando ficam mais velhos que RETENCAO_DIAS_OPORTUNIDADES.
 const RETENCAO_DIAS_OPORTUNIDADES = parseInt(process.env.RETENCAO_DIAS_OPORTUNIDADES || "120", 10);
 
+// amparoLegal costuma vir como objeto único ({ nome, descricao }), mas usa nome se tiver
+// (mais curto/direto, ex: "Lei 14.133/2021, Art. 75, II") e cai pra descrição só se faltar.
+function extrairAmparoLegal(amparoLegal) {
+  if (!amparoLegal || typeof amparoLegal !== "object") return null;
+  return amparoLegal.nome || amparoLegal.descricao || null;
+}
+
+// A API já teve o campo tanto como string única (fonteOrcamentaria) quanto como lista
+// (fontesOrcamentarias, itens com nome/descricao) — aceita os dois formatos.
+function extrairFonteOrcamentaria(item) {
+  if (typeof item.fonteOrcamentaria === "string" && item.fonteOrcamentaria.trim()) {
+    return item.fonteOrcamentaria.trim();
+  }
+  if (Array.isArray(item.fontesOrcamentarias) && item.fontesOrcamentarias.length > 0) {
+    const nomes = item.fontesOrcamentarias
+      .map((f) => (typeof f === "string" ? f : (f && (f.nome || f.descricao)) || ""))
+      .filter(Boolean);
+    if (nomes.length > 0) return nomes.join(", ");
+  }
+  return null;
+}
+
 async function coletarOportunidadesAbertas(caminhoArquivo) {
   // Orçamento maior (era 6 min fixo) e busca em PARALELO por UF (era 1 UF de cada vez) —
   // com 27 UFs e a API do PNCP às vezes lenta, rodar sequencial estourava o orçamento
@@ -455,6 +477,18 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
           encerramento: item.dataEncerramentoProposta || null,
           publicacao: item.dataPublicacaoPncp || null,
           numeroControlePNCP: item.numeroControlePNCP || null,
+          modalidadeNome: item.modalidadeNome || null,
+          tipoInstrumentoConvocatorioNome: item.tipoInstrumentoConvocatorioNome || null,
+          amparoLegal: extrairAmparoLegal(item.amparoLegal),
+          modoDisputaNome: item.modoDisputaNome || null,
+          srp: typeof item.srp === "boolean" ? item.srp : null,
+          fonteOrcamentaria: extrairFonteOrcamentaria(item),
+          situacaoCompraNome: item.situacaoCompraNome || null,
+          valorTotalEstimado: item.valorTotalEstimado ?? null,
+          valorTotalHomologado: item.valorTotalHomologado ?? null,
+          numeroCompra: item.numeroCompra || null,
+          anoCompra: item.anoCompra || null,
+          processo: item.processo || null,
         });
       }
       pagina += 1;
