@@ -2804,6 +2804,21 @@
             link: item.numero_controle_pncp
               ? linkPncp(item.numero_controle_pncp)
               : (item.item_url ? `https://pncp.gov.br${item.item_url}` : null),
+            // A busca ao vivo (api/search) usa nomes de campo diferentes do robô (que lê
+            // direto de api/consulta/v1/contratacoes/proposta) pros MESMOS dados — aqui é
+            // snake_case (modalidade_licitacao_nome, tipo_nome, ...), lá é camelCase
+            // (modalidadeNome, tipoInstrumentoConvocatorioNome, ...). Sem esse mapeamento,
+            // esses 4 campos apareciam como "Não informado" em qualquer licitação vinda só
+            // da busca ao vivo (ainda não coletada pelo robô), mesmo a API já os trazendo.
+            // Amparo legal, modo de disputa, registro de preço, valores e número/ano/processo
+            // não existem nessa resposta enxuta de busca (só no endpoint completo de detalhe,
+            // que o robô consulta) — por isso continuam "Não informado" até o robô coletar.
+            modalidadeNome: item.modalidade_licitacao_nome || null,
+            tipoInstrumentoConvocatorioNome: item.tipo_nome || null,
+            fonteOrcamentaria: Array.isArray(item.fonte_orcamentaria_nome) && item.fonte_orcamentaria_nome.length > 0
+              ? item.fonte_orcamentaria_nome.join(", ")
+              : null,
+            situacaoCompraNome: item.situacao_nome || null,
           });
         }
       }
