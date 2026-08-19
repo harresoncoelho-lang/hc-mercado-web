@@ -37,3 +37,12 @@
   for = "/data/*"
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
+
+# Mesma lógica do bloco acima, pra prévia pública de Convênios e Emendas Federais na landing
+# page (index.html -> netlify/functions/convenios-publico.js): sem essa regra, a política
+# "/*" no topo deste arquivo (Cache-Control: no-cache) faria toda visita à landing bater no
+# Supabase de novo, mesmo o dado só mudando uma vez por dia (robô roda via cron).
+[[headers]]
+  for = "/.netlify/functions/convenios-publico"
+  [headers.values]
+    Cache-Control = "public, max-age=300, stale-while-revalidate=3600"

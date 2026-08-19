@@ -323,7 +323,7 @@
   .situacao-ativa { color: var(--verde); background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.35); }
   .situacao-outra { color: var(--laranja); background: rgba(232,113,10,0.12); border: 1px solid rgba(232,113,10,0.35); }
 
-  /* Badges genéricos de modalidade (usados na tabela do Portal da Transparência) */
+  /* Badges genéricos de modalidade (usados na tabela de Convênios e Emendas Federais) */
   .badge-modalidade {
     display: inline-block; font-size: 11px; font-weight: 600;
     padding: 3px 9px; border-radius: 999px; background: #0f2a4a; color: #6fa8f5; border: 1px solid #24476f;
@@ -927,7 +927,7 @@
   <button data-alvo="oportunidades"><span class="nav-ico">🔎</span>Encontrar Licitações</button>
   <button data-alvo="diagnostico"><span class="nav-ico">📊</span>Diagnóstico de Mercado</button>
   <button data-alvo="empresa"><span class="nav-ico">🏢</span>Analisar Empresa</button>
-  <button data-alvo="transparencia"><span class="nav-ico">🏛️</span>Portal da Transparência</button>
+  <button data-alvo="transparencia"><span class="nav-ico">🤝</span>Convênios e Emendas Federais</button>
   <button data-alvo="precos"><span class="nav-ico">💰</span>Pesquisa de Preços</button>
   <button data-alvo="kanban"><span class="nav-ico">🗂️</span>Kanban</button>
   <button data-alvo="juridico"><span class="nav-ico">⚖️</span>Jurídico &amp; Dúvidas</button>
@@ -1147,7 +1147,10 @@
   </section>
 
   <section id="transparencia">
-    <h2 style="margin-top:0;">Radar de Convênios e Repasses</h2>
+    <h2 style="margin-top:0;">Convênios e Emendas Federais</h2>
+    <p class="dica-clique" style="margin:0 0 18px;">Dados via Portal da Transparência.</p>
+
+    <h2>Radar de Convênios e Repasses</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Convênios e repasses federais recebidos por municípios/órgãos — dinheiro chegando costuma anteceder licitação (a obra/serviço financiado tende a virar edital dali a semanas ou meses). Isso é diferente de "Encontrar Licitações": aqui você vê o repasse que ainda vai gerar a licitação, não a licitação já publicada.</p>
     <div class="painel-filtros">
       <div class="campo">
@@ -1402,7 +1405,7 @@
     // commit, mas essa lista aqui no painel.html não, então o card ficou órfão apontando
     // pra um arquivo (data/transparencia_licitacoes.json) que nada mais escreve — por
     // isso "atualizado há 14 dia(s)" nunca mudava, mesmo com o robô do PNCP rodando OK.
-    { supabase: "convenios", nome: "Convênios e repasses", icone: "💰" },
+    { supabase: "convenios", nome: "Convênios e Emendas Federais", icone: "🤝" },
     { supabase: "sistema_s_am", nome: "Sistema S/AM (SENAC/SESC)", icone: "🏫" },
   ];
 
@@ -4440,7 +4443,7 @@ let resultados = resultadosBrutos.filter((r) => {
     }
   });
 
-  // ---------- Portal da Transparência: Radar de Convênios + Raio-X de Fornecedor ----------
+  // ---------- Convênios e Emendas Federais: Radar de Convênios + Raio-X de Fornecedor (dados via Portal da Transparência) ----------
   let cacheConvenios = null;
 
   // O robô de convênios grava a UF como nome completo (ex: "AMAZONAS", às vezes sem acento
@@ -4973,7 +4976,7 @@ let resultados = resultadosBrutos.filter((r) => {
       } catch (e) { /* segue sem restaurar o município */ }
     }
     // Não precisa chamar executarBuscaConvenios() aqui: o nav já chama sempre que a aba
-    // Portal da Transparência é aberta, e os campos acima de agora vão junto nessa busca.
+    // Convênios e Emendas Federais é aberta, e os campos acima de agora vão junto nessa busca.
   }
   restaurarConvenios();
 

@@ -98,6 +98,22 @@
   .grade-numeros .num { font-size: 28px; font-weight: 800; color: var(--laranja-forte); }
   .grade-numeros .rot { color: var(--texto-fraco); font-size: 13px; margin-top: 4px; }
 
+  /* Prévia pública de Convênios e Emendas Federais (lê netlify/functions/convenios-publico.js) */
+  .cv-preview-resumo { text-align: center; margin-bottom: 32px; }
+  .cv-preview-resumo .num { font-size: 40px; font-weight: 800; color: var(--laranja-forte); }
+  .cv-preview-resumo .rot { color: var(--texto-fraco); font-size: 14px; margin-top: 4px; }
+  .cv-preview-lista { display: grid; gap: 12px; max-width: 720px; margin: 0 auto 32px; }
+  .cv-preview-status { text-align: center; color: var(--texto-fraco); font-size: 14px; }
+  .cv-preview-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px 20px;
+  }
+  .cv-preview-item .cv-preview-item-org { font-weight: 600; font-size: 14.5px; }
+  .cv-preview-item .cv-preview-item-meta { color: var(--texto-fraco); font-size: 13px; margin-top: 3px; }
+  .cv-preview-item .cv-preview-item-valor { font-weight: 700; color: var(--verde); font-size: 15px; white-space: nowrap; }
+  .cv-preview-cta { text-align: center; }
+  .cv-preview-cta p { color: var(--texto-fraco); margin: 0 0 14px; font-size: 14.5px; }
+
   /* Seções */
   section.bloco { padding: 76px 0; }
   .titulo-secao { text-align: center; max-width: 640px; margin: 0 auto 48px; }
@@ -169,6 +185,8 @@
     .cta-final h2 { font-size: 22px; }
     .cta-final p { font-size: 14px; }
     .rodape-inner { flex-direction: column; text-align: center; }
+    .cv-preview-item { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .cv-preview-item .cv-preview-item-valor { align-self: flex-end; }
   }
 </style>
 </head>
@@ -224,7 +242,7 @@
           <div class="card-mock"><div class="ico">🔎</div>Encontrar Licitações</div>
           <div class="card-mock"><div class="ico">📊</div>Diagnóstico de Mercado</div>
           <div class="card-mock"><div class="ico">🏢</div>Analisar Empresa</div>
-          <div class="card-mock"><div class="ico">🏛️</div>Portal da Transparência</div>
+          <div class="card-mock"><div class="ico">🤝</div>Convênios e Emendas Federais</div>
           <div class="card-mock"><div class="ico">💰</div>Pesquisa de Preços</div>
         </div>
       </div>
@@ -240,6 +258,27 @@
     <div><div class="num">100%</div><div class="rot">Dados públicos e oficiais</div></div>
   </div>
 </div>
+
+<section class="bloco" id="convenios-preview" style="padding-bottom:56px;">
+  <div class="container">
+    <div class="titulo-secao">
+      <span class="tag">Dados reais, ao vivo</span>
+      <h2>Convênios e Emendas Federais monitorados agora</h2>
+      <p>Recursos federais liberados pra municípios e órgãos — sinal de que uma licitação pode estar a caminho. Prévia pública, sem precisar criar conta. Dados via Portal da Transparência.</p>
+    </div>
+    <div class="cv-preview-resumo">
+      <div class="num" id="cv-preview-total">—</div>
+      <div class="rot">convênios e emendas monitorados</div>
+    </div>
+    <div class="cv-preview-lista" id="cv-preview-lista">
+      <p class="cv-preview-status">Carregando dados...</p>
+    </div>
+    <div class="cv-preview-cta">
+      <p>Quer ver todos os convênios da sua região?</p>
+      <a href="cadastro.html" class="btn btn-laranja btn-grande">Crie sua conta grátis</a>
+    </div>
+  </div>
+</section>
 
 <section class="bloco" id="ferramentas">
   <div class="container">
@@ -270,9 +309,9 @@
         <p>Ficha cadastral completa de qualquer fornecedor: contratos, histórico, sanções e órgãos com quem já negociou.</p>
       </div>
       <div class="ferramenta">
-        <div class="ico">🏛️</div>
-        <h3>Portal da Transparência</h3>
-        <p>Radar de convênios, emendas parlamentares e despesas por fornecedor, direto das fontes oficiais.</p>
+        <div class="ico">🤝</div>
+        <h3>Convênios e Emendas Federais</h3>
+        <p>Radar de convênios, emendas parlamentares e despesas por fornecedor, com dados via Portal da Transparência.</p>
       </div>
       <div class="ferramenta">
         <div class="ico">💰</div>
@@ -329,6 +368,61 @@
   </div>
       <div style="text-align:center;margin-top:10px;font-size:12.5px;color:var(--texto-fraco);"><a href="termos-de-uso.html" style="color:inherit;text-decoration:underline;margin:0 6px;">Termos de uso</a><a href="politica-privacidade.html" style="color:inherit;text-decoration:underline;margin:0 6px;">Privacidade</a><a href="politica-cookies.html" style="color:inherit;text-decoration:underline;margin:0 6px;">Cookies</a></div>
 </footer>
+
+<script>
+  // Prévia pública de "Convênios e Emendas Federais" — lê o resumo mínimo (total + 5 mais
+  // recentes) da netlify/functions/convenios-publico.js, que por sua vez lê a mesma chave
+  // "convenios" do Supabase que scripts/coletar_convenios.js já mantém atualizada (nenhuma
+  // lógica de coleta nova aqui, só leitura pública e limitada do que já existe).
+  (function () {
+    function escapeHtml(s) {
+      if (s === null || s === undefined) return "";
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+    function formatarValor(v) {
+      const n = Number(v) || 0;
+      return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+    }
+    function formatarData(iso) {
+      if (!iso) return "";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "";
+      return d.toLocaleDateString("pt-BR");
+    }
+
+    async function carregarPreviaConvenios() {
+      const elTotal = document.getElementById("cv-preview-total");
+      const elLista = document.getElementById("cv-preview-lista");
+      if (!elTotal || !elLista) return;
+      try {
+        const resp = await fetch("/.netlify/functions/convenios-publico");
+        if (!resp.ok) throw new Error("resposta não-ok");
+        const dados = await resp.json();
+        elTotal.textContent = (dados.total || 0).toLocaleString("pt-BR");
+        if (!dados.recentes || dados.recentes.length === 0) {
+          elLista.innerHTML = '<p class="cv-preview-status">Nenhum convênio monitorado ainda — volte em breve.</p>';
+          return;
+        }
+        elLista.innerHTML = dados.recentes.map((r) => `
+          <div class="cv-preview-item">
+            <div>
+              <div class="cv-preview-item-org">${escapeHtml(r.orgao)}</div>
+              <div class="cv-preview-item-meta">${escapeHtml(r.uf || "-")} · ${escapeHtml(formatarData(r.dataPublicacao)) || "Data não informada"}</div>
+            </div>
+            <div class="cv-preview-item-valor">${r.valor ? formatarValor(r.valor) : "Valor não informado"}</div>
+          </div>
+        `).join("");
+      } catch (e) {
+        elTotal.textContent = "—";
+        elLista.innerHTML = '<p class="cv-preview-status">Não foi possível carregar a prévia agora. Tente novamente em instantes.</p>';
+      }
+    }
+
+    carregarPreviaConvenios();
+  })();
+</script>
 
 </body>
 </html>
