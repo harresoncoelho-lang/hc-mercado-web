@@ -3878,6 +3878,10 @@ let resultados = resultadosBrutos.filter((r) => {
       html += `<div class="aviso">Amostra parcial: o navegador escaneou ${d.amostra.paginasVarridas} de ${d.amostra.totalPaginasDisponiveis} páginas disponíveis no período, dentro do limite de tempo (45s) para não travar a página. Para um histórico mais completo, use a versão desktop ou reduza o período.</div>`;
     }
 
+    if (d.amostra && d.amostra.consultaTruncada) {
+      html += `<div class="aviso">Amostra grande demais pra esse filtro: mostrando os ${d.amostra.totalRetornado.toLocaleString("pt-BR")} contratos mais recentes de um total de ${d.amostra.totalCorrespondente.toLocaleString("pt-BR")} que batem com essa busca no período. Os rankings e a série mensal abaixo refletem só essa amostra recente — reduza o período ou refine as palavras-chave pra ver o quadro completo.</div>`;
+    }
+
     if (d.amostra && d.amostra.ufOportunidadesFalhouHoje) {
       html += `<div class="aviso">A coleta de oportunidades abertas para ${escapeHtml(d.uf || "")} falhou na última execução do robô (o PNCP não respondeu para esse estado). Ela será tentada novamente na próxima atualização diária.</div>`;
     }
@@ -4067,8 +4071,8 @@ let resultados = resultadosBrutos.filter((r) => {
   // (data mínima + palavras-chave), no lugar de baixar o arquivo estático inteiro (que
   // chegava a ~22 MB) e filtrar em JS. "incluirSemData" mantém o mesmo comportamento de
   // antes: registros sem dataAssinatura sempre entravam, independente do filtro de dias.
-  async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, limite = 5000 }) {
-    let query = window.__sbClient.from("contratos").select("dado").limit(limite);
+  async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, uf, limite = 5000 }) {
+    let query = window.__sbClient.from("contratos").select("dado", { count: "exact" }).limit(limite);
     if (typeof dias === "number" && dias > 0) {
       const limiteDataIso = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       query = query.or(`data_assinatura.gte.${limiteDataIso},data_assinatura.is.null`);
@@ -4076,16 +4080,30 @@ let resultados = resultadosBrutos.filter((r) => {
     if (cnpjFornecedor) {
       query = query.eq("cnpj_fornecedor", cnpjFornecedor);
     }
+    // Filtra UF no servidor em vez de no cliente: antes o pedido de "só AM" baixava até
+    // "limite" linhas NACIONAIS pra só depois descartar quase tudo — desperdiçava banda e
+    // podia fazer contratos relevantes daquele estado nem chegarem a aparecer, porque o
+    // corte de "limite" já tinha acontecido antes do filtro de UF.
+    if (uf) {
+      query = query.eq("uf", uf);
+    }
     const termos = (palavras || []).map(sanitizarParaIlike).filter(Boolean);
     if (termos.length > 0) {
       query = query.or(termos.map((t) => `objeto.ilike.%${t}%`).join(","));
     }
-    const { data, error } = await query;
+    // Ordena pelos mais recentes ANTES do corte de "limite" — sem isso, qual fatia de um
+    // resultado maior que "limite" volta é arbitrária (ordem física do Postgres), o que
+    // enviesava silenciosamente rankings e série mensal pra segmentos amplos, sem o usuário
+    // saber que a amostra tinha sido truncada de forma não-determinística.
+    query = query.order("data_assinatura", { ascending: false, nullsFirst: false });
+    const { data, error, count } = await query;
     if (error) {
       console.error("[contratos] erro na consulta:", error);
-      return { registros: [], erro: true };
+      return { registros: [], erro: true, totalCorrespondente: null, truncado: false };
     }
-    return { registros: (data || []).map((linha) => linha.dado), erro: false };
+    const registros = (data || []).map((linha) => linha.dado);
+    const totalCorrespondente = typeof count === "number" ? count : registros.length;
+    return { registros, erro: false, totalCorrespondente, truncado: totalCorrespondente > registros.length };
   }
 
   document.getElementById("dg-buscar").addEventListener("click", async () => {
@@ -4112,6 +4130,7 @@ let resultados = resultadosBrutos.filter((r) => {
 
     try {
       let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
+      let consultaTruncada = false, totalCorrespondente = null, totalRetornado = null;
 
       const metaContratos = await carregarMeta("data/contratos_meta.json");
       if (metaContratos) {
@@ -4126,6 +4145,9 @@ let resultados = resultadosBrutos.filter((r) => {
           atualizadoEm: metaContratos.atualizadoEm,
           diasHistoricoCache: metaContratos.retencaoDias,
         };
+        consultaTruncada = res.truncado;
+        totalCorrespondente = res.totalCorrespondente;
+        totalRetornado = res.registros.length;
       } else {
         alvo.innerHTML = '<div class="carregando">Dados em cache ainda não disponíveis — escaneando o PNCP ao vivo no seu navegador (isso pode levar até 1 minuto)...</div>';
         const inicioMs = Date.now();
@@ -4150,7 +4172,14 @@ let resultados = resultadosBrutos.filter((r) => {
       // específico, mesmo havendo mercado nacional grande pro mesmo segmento.
       const encontradosNacional = encontrados;
 
-      if (uf) {
+      if (uf && metaContratos) {
+        // Filtra no servidor (ver consultarContratosSupabase) em vez de descartar em cima da
+        // amostra nacional já truncada em 5000 — evita perder contratos do estado escolhido
+        // que ficaram de fora só porque o corte de 5000 nacional aconteceu antes do filtro.
+        const resUf = await consultarContratosSupabase({ palavras, dias, uf });
+        encontrados = resUf.registros;
+        if (resUf.truncado) { consultaTruncada = true; totalCorrespondente = resUf.totalCorrespondente; totalRetornado = resUf.registros.length; }
+      } else if (uf) {
         encontrados = encontrados.filter((r) => (r.uf || "").toUpperCase() === uf);
       }
       if (municipioFiltro) {
@@ -4212,6 +4241,9 @@ let resultados = resultadosBrutos.filter((r) => {
           totalPaginasDisponiveis: totalPaginas,
           falhaConexao: falhaConexao || falhaConexaoOportunidades,
           ufOportunidadesFalhouHoje,
+          consultaTruncada,
+          totalCorrespondente,
+          totalRetornado,
         },
         fonte,
         concorrentes,

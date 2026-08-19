@@ -91,9 +91,14 @@ Brasília-time conversion, no DST). Key ones:
   `dados_robo` blob table (see above), not to git.
 - `boletim_editais.py` — sends the daily email digest to clients; also uses `SUPABASE_SERVICE_ROLE_KEY` for
   the "already seen" history instead of a committed JSON file.
-- Segment matching (which licitações count as relevant to HC's monitored categories) is defined by a fixed
-  keyword list (`SEGMENTOS` in `atualizar_dados.js`) — kept intentionally narrow because the atas/vencedores
-  lookup is expensive per record; it does not do free-text keyword search across all segments.
+- `SEGMENTOS` in `atualizar_dados.js` (a fixed keyword list) is now only an informational label attached to
+  each ata — it no longer filters what gets collected (see the comment on `segmentosQueBatem()`). Both
+  `coletarContratos` and `coletarMercadoSegmentos` collect nationally across every segment; the actual
+  per-search filtering happens later, as a free-text `ILIKE` query (see `consultarContratosSupabase` /
+  `carregarMercadoSegmentos` in `painel.html`) against whatever keywords the user types in Diagnóstico de
+  Mercado or Analisar Empresa — not against the fixed list. The per-ata enrichment (UF lookup + itens +
+  resultados, up to ~32 PNCP calls per ata) is still the real bottleneck, which is why `mercado_atas` stays
+  `parcial: true` with a persistent backlog queue (`filaPendente`) for a while after each deploy.
 
 ### Netlify Functions (`netlify/functions/`)
 

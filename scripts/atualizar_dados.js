@@ -778,70 +778,27 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     return isNaN(d) || d >= limiteRetencao;
   });
 
-  // Agrega por empresa (CNPJ vencedor), cruzando todos os itens de todas as atas.
-  const empresas = new Map();
-  const agora = hoje.getTime();
+  // Conta empresas vencedoras distintas só pro log — o ranking completo (valores, atas
+  // vigentes/encerradas por empresa) é recalculado em painel.html (calcularEmpresasMercado),
+  // sempre já filtrado pela busca atual do usuário (segmento/UF/período). Calcular esse
+  // ranking aqui de novo era trabalho puro perdido: o resultado (empresasArray) nunca era
+  // gravado em lugar nenhum (nem Supabase, nem mercado_meta.json) — só virava essa linha de
+  // log e era descartado. Ver diagnóstico de estrutura de dados do Diagnóstico de Mercado.
+  const cnpjsVencedoresDistintos = new Set();
   for (const ata of atas) {
     if (!ata.enriquecida || !Array.isArray(ata.itens)) continue;
-    const vigente = !ata.cancelado && ata.vigenciaFim && new Date(ata.vigenciaFim).getTime() >= agora;
     for (const item of ata.itens) {
       for (const v of item.vencedores || []) {
-        if (!v.cnpj) continue;
-        if (!empresas.has(v.cnpj)) {
-          empresas.set(v.cnpj, {
-            cnpj: v.cnpj,
-            nome: v.nome,
-            segmentos: new Set(),
-            ufs: new Set(),
-            atasVigentes: [],
-            atasEncerradas: [],
-            valorTotalVigente: 0,
-            valorTotalHistorico: 0,
-            itensGanhos: 0,
-          });
-        }
-        const emp = empresas.get(v.cnpj);
-        if (v.nome) emp.nome = v.nome;
-        for (const s of ata.segmentos || []) emp.segmentos.add(s);
-        if (ata.ufOrgao) emp.ufs.add(ata.ufOrgao);
-        emp.itensGanhos += 1;
-        emp.valorTotalHistorico += v.valorTotal || 0;
-        const refEntry = {
-          numeroControlePNCPAta: ata.numeroControlePNCPAta,
-          orgao: ata.orgao,
-          uf: ata.ufOrgao,
-          municipio: ata.municipioOrgao,
-          objeto: ata.objeto,
-          item: item.descricao,
-          valorTotal: v.valorTotal,
-          quantidade: v.quantidade,
-          vigenciaInicio: ata.vigenciaInicio,
-          vigenciaFim: ata.vigenciaFim,
-          cancelado: ata.cancelado,
-        };
-        if (vigente) {
-          emp.valorTotalVigente += v.valorTotal || 0;
-          emp.atasVigentes.push(refEntry);
-        } else {
-          emp.atasEncerradas.push(refEntry);
-        }
+        if (v.cnpj) cnpjsVencedoresDistintos.add(v.cnpj);
       }
     }
   }
-
-  const empresasArray = Array.from(empresas.values())
-    .map((e) => ({
-      ...e,
-      segmentos: Array.from(e.segmentos),
-      ufs: Array.from(e.ufs),
-    }))
-    .sort((a, b) => b.valorTotalHistorico - a.valorTotalHistorico);
 
   console.log(
     `[mercado] Concluído: ${janelasProcessadasNestaExecucao} janela(s) de datas varridas nesta execução ` +
     `(${janelasPendentes.length} janela(s) restando pro backfill), ${atasNovas} atas novas enriquecidas, ` +
     `${atasEnfileiradas} enfileiradas pra próxima execução, ${filaPendente.length} pendentes no total, ` +
-    `${paginasVarridas} páginas de atas varridas. Total acumulado: ${atas.length} atas, ${empresasArray.length} empresas identificadas.`
+    `${paginasVarridas} páginas de atas varridas. Total acumulado: ${atas.length} atas, ${cnpjsVencedoresDistintos.size} empresas vencedoras distintas.`
   );
 
   return {
@@ -855,7 +812,6 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     parcial: filaPendente.length > 0 || janelasPendentes.length > 0,
     totalAtas: atas.length,
     atas,
-    empresas: empresasArray,
   };
 }
 
@@ -992,10 +948,12 @@ async function main() {
   iniciarFase(LIMITE_MINUTOS_MERCADO);
   const mercado = await coletarMercadoSegmentos(caminhoMercado);
   await fs.writeFile(caminhoMercado, JSON.stringify(mercado), "utf8");
-  // "empresas" não é persistido (nem no git, nem no Supabase): o painel já recalcula esse
-  // ranking sozinho a partir das atas filtradas (calcularEmpresasMercado em painel.html) —
-  // guardar de novo aqui só duplicava dado (era 6,3 MB dos 9,6 MB do arquivo antigo, à toa).
-  const { atas: _atasMercado, empresas: _empresasMercado, ...mercadoMeta } = mercado;
+  // "empresas" não é mais nem calculado aqui (ver coletarMercadoSegmentos): o painel já
+  // recalcula esse ranking sozinho a partir das atas filtradas (calcularEmpresasMercado em
+  // painel.html) — calcular nunca era gravado (nem no git, nem no Supabase) e só desperdiçava
+  // CPU do robô a cada execução (era 6,3 MB dos 9,6 MB do arquivo antigo, quando ainda ia pro
+  // disco à toa).
+  const { atas: _atasMercado, ...mercadoMeta } = mercado;
   await fs.writeFile(caminhoMercadoMeta, JSON.stringify(mercadoMeta), "utf8");
   console.log("Gravado data/mercado_meta.json (metadado leve, vai pro git)");
   await sincronizarMercadoNoSupabase(mercado);

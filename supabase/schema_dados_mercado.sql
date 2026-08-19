@@ -53,7 +53,10 @@ create policy "contratos_select_autenticado"
 -- cliente (chave anon) nunca consegue alterar essa tabela, só ler.
 
 -- ----------------------------------------------------------------------------
--- 2) Atas de registro de preço (só dos segmentos monitorados) + itens/vencedores
+-- 2) Atas de registro de preço (TODOS os segmentos, não só uma lista fixa — a
+--    coluna "segmentos" abaixo é só um rótulo informativo herdado da lista
+--    SEGMENTOS de scripts/atualizar_dados.js; ela não filtra mais a coleta,
+--    ver comentário em segmentosQueBatem() nesse arquivo) + itens/vencedores.
 --    Fonte: scripts/atualizar_dados.js -> coletarMercadoSegmentos()
 --    "dado" guarda o objeto inteiro da ata (itens, vencedores etc.) como veio do
 --    robô — mais simples e fiel ao formato que o painel já sabe processar
