@@ -29,6 +29,7 @@ jobs:
           LIMITE_MINUTOS_CONTRATOS: "13"
           LIMITE_MINUTOS_MERCADO: "13"
           CONCORRENCIA_PAGINAS: "5"
+          CONCORRENCIA_ATAS: "6"
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/atualizar_dados.js
 

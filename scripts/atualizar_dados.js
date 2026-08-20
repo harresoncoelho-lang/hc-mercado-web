@@ -10,6 +10,8 @@
 //   LIMITE_MINUTOS_CONTRATOS=13   -> orçamento de tempo da etapa de contratos nacionais (padrão 13 min)
 //   LIMITE_MINUTOS_MERCADO=13     -> orçamento de tempo da etapa de atas/empresas por segmento (padrão 13 min)
 //   CONCORRENCIA_PAGINAS=5        -> quantas páginas buscar em paralelo na coleta de contratos (padrão 5)
+//   CONCORRENCIA_ATAS=6           -> quantas chamadas de "resultados de item" buscar em paralelo por
+//                                    ata, dentro de enriquecerAta() (padrão 6) — ver comentário lá
 //
 // IMPORTANTE: a partir desta versão o robô é INCREMENTAL — ele não re-varre tudo do zero
 // a cada execução. Ele lê os arquivos já existentes (comitados no repo), busca só o que é
@@ -18,11 +20,11 @@
 //
 // Duas etapas independentes, cada uma com seu próprio orçamento de tempo:
 //   1) coletarContratos()        -> data/contratos_recentes.json (todos os setores, nacional)
-//   2) coletarMercadoSegmentos() -> data/mercado_segmentos.json (atas de registro de preço +
-//      empresas vencedoras, só para os segmentos que a HC realmente monitora — ver SEGMENTOS
-//      abaixo). Essa etapa é mais cara por ata (precisa consultar itens e resultados de cada
-//      contratação vinculada), por isso fica restrita a um conjunto fixo de segmentos em vez
-//      de tentar cobrir livremente qualquer palavra-chave que o usuário digitar no site.
+//   2) coletarMercadoSegmentos() -> data/mercado_segmentos.json (atas de registro de preço).
+//      Coleta atas de TODOS os segmentos, nacional (SEGMENTOS abaixo é só um rótulo
+//      informativo por ata, não filtra mais a coleta — ver segmentosQueBatem()). Essa etapa é
+//      cara por ata (precisa consultar itens e resultados de cada contratação vinculada, até
+//      ~32 chamadas por ata), por isso o gargalo real é tempo de rede, não escopo de busca.
 
 const DIAS_HISTORICO_INICIAL = parseInt(process.env.DIAS_HISTORICO_INICIAL || "30", 10);
 const RETENCAO_DIAS = parseInt(process.env.RETENCAO_DIAS || "730", 10);
@@ -30,6 +32,12 @@ const FOLGA_DIAS = 2; // re-busca os últimos dias pra pegar publicações atras
 const LIMITE_MINUTOS_CONTRATOS = parseFloat(process.env.LIMITE_MINUTOS_CONTRATOS || "13");
 const LIMITE_MINUTOS_MERCADO = parseFloat(process.env.LIMITE_MINUTOS_MERCADO || "13");
 const CONCORRENCIA_PAGINAS = parseInt(process.env.CONCORRENCIA_PAGINAS || "5", 10);
+// Quantas chamadas de "resultados de item" (o passo mais repetitivo do enriquecimento de uma
+// ata — até 30 por ata, uma por item) rodam em paralelo. Cada ata é enriquecida por completo
+// antes de passar pra próxima (não paraleliza ENTRE atas), então nunca mistura itens de atas
+// diferentes — só acelera os até 30 itens de UMA MESMA ata, que antes eram sequenciais.
+// Comece baixo (6) e suba com cuidado se o PNCP não reclamar (ver log de 429/rate-limit).
+const CONCORRENCIA_ATAS = parseInt(process.env.CONCORRENCIA_ATAS || "6", 10);
 const TAMANHO_PAGINA = 100;
 
 const UFS = [
@@ -98,6 +106,15 @@ function gerarJanelas(inicioStr, fimStr, diasPorJanela) {
   return janelas;
 }
 
+// Espera com backoff EXPONENCIAL + jitter entre tentativas (1s, 2s, 4s, ... até um teto de
+// 8s, mais até 300ms aleatórios). O jitter existe pra evitar "thundering herd": com várias
+// chamadas em paralelo (ver CONCORRENCIA_ATAS) todas esbarrando em rate-limit ao mesmo tempo,
+// sem jitter elas re-tentariam todas no mesmíssimo instante e derrubariam a API de novo.
+function esperarComBackoff(tentativaZeroIndexed) {
+  const base = Math.min(1000 * 2 ** tentativaZeroIndexed, 8000);
+  return new Promise((r) => setTimeout(r, base + Math.random() * 300));
+}
+
 async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "") {
   for (let i = 0; i < tentativas; i++) {
     try {
@@ -109,7 +126,11 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotul
       });
       clearTimeout(t);
       if (resp.status === 429) {
-        await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+        if (i === tentativas - 1) {
+          console.log(`[fetch${rotulo ? " " + rotulo : ""}] Rate-limit (429) persistente após ${tentativas} tentativa(s) em ${url}`);
+          return null;
+        }
+        await esperarComBackoff(i);
         continue;
       }
       if (resp.status === 204) return { data: [], totalPaginas: 0 };
@@ -126,7 +147,7 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotul
         console.log(`[fetch${rotulo ? " " + rotulo : ""}] Falhou após ${tentativas} tentativas (${motivo}) em ${url}`);
         return null;
       }
-      await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+      await esperarComBackoff(i);
     }
   }
   return null;
@@ -621,40 +642,61 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     const partes = partesNumeroControle(referenciaAta.numeroControlePNCPCompra);
     if (!partes) return null;
 
-    const { ufOrgao, municipioOrgao } = await buscarUfOrgao(referenciaAta.numeroControlePNCPCompra);
-
-    const itensResp = await fetchComRetentativa(
-      `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens?pagina=1&tamanhoPagina=50`,
-      2, 15000
-    );
+    // UF do órgão e lista de itens são independentes entre si — buscar em paralelo em vez de
+    // em sequência economiza uma ida-e-volta inteira por ata.
+    const [{ ufOrgao, municipioOrgao }, itensResp] = await Promise.all([
+      buscarUfOrgao(referenciaAta.numeroControlePNCPCompra),
+      fetchComRetentativa(
+        `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens?pagina=1&tamanhoPagina=50`,
+        3, 15000, `itens ata ${referenciaAta.numeroControlePNCPAta}`
+      ),
+    ]);
     const listaItens = Array.isArray(itensResp) ? itensResp : (itensResp && itensResp.data) || [];
 
-    const itensComVencedor = [];
     // Limita a no máx. 30 itens por ata pra não estourar o orçamento numa única contratação
     // com centenas de itens (ex: atas de material de expediente com muitos itens).
-    for (const item of listaItens.slice(0, 30)) {
-      if (tempoRestanteMs() < 10000) break;
-      const numeroItem = item.numeroItem || item.numero;
-      if (!numeroItem) continue;
-      const resultados = await fetchComRetentativa(
-        `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens/${numeroItem}/resultados`,
-        2, 15000
-      );
-      const listaResultados = Array.isArray(resultados) ? resultados : (resultados && resultados.data) || [];
-      if (listaResultados.length === 0) continue;
-      itensComVencedor.push({
-        numeroItem,
-        descricao: item.descricao || item.descricaoItem || "",
-        vencedores: listaResultados.map((r) => ({
-          cnpj: r.niFornecedor || "",
-          nome: r.nomeRazaoSocialFornecedor || "",
-          valorUnitario: Number(r.valorUnitarioHomologado || 0),
-          valorTotal: Number(r.valorTotalHomologado || 0),
-          quantidade: Number(r.quantidadeHomologada || 0),
-          data: r.dataResultado || null,
-        })),
-      });
+    const itensParaBuscar = listaItens.slice(0, 30).filter((item) => item.numeroItem || item.numero);
+
+    // Busca o "resultados" (vencedores) de cada item EM PARALELO, em lotes de até
+    // CONCORRENCIA_ATAS requisições simultâneas — antes era 1 chamada de cada vez,
+    // sequencial, e uma única ata com 30 itens podia levar até 30x o tempo de ida-e-volta
+    // até o PNCP. Cada worker escreve só na posição do SEU PRÓPRIO item (array indexado por
+    // posição, não uma lista que cresce por push concorrente), então dois workers nunca
+    // podem pisar no resultado um do outro nem misturar item de uma ata com o de outra —
+    // essa função só processa os itens de UMA ata por vez (o paralelismo é só entre os itens
+    // dessa mesma ata; a próxima ata começa depois que essa terminar).
+    const slots = new Array(itensParaBuscar.length).fill(null);
+    let cursorItem = 0;
+    async function trabalhadorItem() {
+      while (cursorItem < itensParaBuscar.length) {
+        if (tempoRestanteMs() < 10000) return;
+        const indice = cursorItem++;
+        const item = itensParaBuscar[indice];
+        const numeroItem = item.numeroItem || item.numero;
+        const resultados = await fetchComRetentativa(
+          `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens/${numeroItem}/resultados`,
+          3, 15000, `resultados ata ${referenciaAta.numeroControlePNCPAta} item ${numeroItem}`
+        );
+        const listaResultados = Array.isArray(resultados) ? resultados : (resultados && resultados.data) || [];
+        if (listaResultados.length === 0) continue;
+        slots[indice] = {
+          numeroItem,
+          descricao: item.descricao || item.descricaoItem || "",
+          vencedores: listaResultados.map((r) => ({
+            cnpj: r.niFornecedor || "",
+            nome: r.nomeRazaoSocialFornecedor || "",
+            valorUnitario: Number(r.valorUnitarioHomologado || 0),
+            valorTotal: Number(r.valorTotalHomologado || 0),
+            quantidade: Number(r.quantidadeHomologada || 0),
+            data: r.dataResultado || null,
+          })),
+        };
+      }
     }
+    await Promise.all(
+      Array.from({ length: Math.min(CONCORRENCIA_ATAS, itensParaBuscar.length) }, () => trabalhadorItem())
+    );
+    const itensComVencedor = slots.filter(Boolean);
 
     return { ufOrgao, municipioOrgao, itens: itensComVencedor };
   }
