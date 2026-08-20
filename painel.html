@@ -1281,17 +1281,17 @@
   </section>
 
   <section id="boletim">
-    <div class="secao-conteudo-principal">
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
         <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente a cada visita.</p>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    </div>
+    <div class="secao-conteudo-principal">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px;">
         <button class="btn-imprimir" id="bol-atualizar" title="Buscar de novo agora">🔄 Atualizar boletim</button>
         <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
       </div>
-    </div>
     <div class="painel-filtros" id="bol-config-painel" style="display:none;">
       <div class="campo">
         <label>Estado (UF)</label>
@@ -1465,9 +1465,9 @@
     <h2 style="margin-top:0;">Convênios e Emendas Federais</h2>
     <p class="dica-clique" style="margin:0 0 18px;">Dados via Portal da Transparência.</p>
 
-    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Radar de Convênios e Repasses</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Convênios e repasses federais recebidos por municípios/órgãos — dinheiro chegando costuma anteceder licitação (a obra/serviço financiado tende a virar edital dali a semanas ou meses). Isso é diferente de "Encontrar Licitações": aqui você vê o repasse que ainda vai gerar a licitação, não a licitação já publicada.</p>
+    <div class="secao-conteudo-principal">
     <div class="painel-filtros">
       <div class="campo">
         <label>Estado (UF) — opcional</label>
@@ -1489,9 +1489,9 @@
     <div id="cv-resultado"></div>
     </div>
 
-    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Raio-X Financeiro de Fornecedor</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Quanto uma empresa já recebeu de fato em pagamentos do governo federal — execução financeira real, não só o valor do contrato assinado. Complementa a aba "Analisar Empresa".</p>
+    <div class="secao-conteudo-principal">
     <div class="painel-filtros">
       <div class="campo" style="flex:2">
         <label>CNPJ da empresa</label>
@@ -1506,10 +1506,10 @@
   </section>
 
   <section id="precos">
-    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Pesquisa de Preços de Mercado</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Descubra quanto o governo está pagando, agora, por um item — direto da base oficial do Compras.gov.br (a mesma que substituiu o antigo "Painel de Preços"). Busque um produto, escolha a especificação exata e veja o preço médio, mediano e as compras reais por trás (fornecedor, órgão, valor, link do edital) dos últimos 12 meses.</p>
 
+    <div class="secao-conteudo-principal">
     <div class="painel-filtros">
       <div class="campo" style="flex:3">
         <label>O que você quer pesquisar?</label>
@@ -1538,15 +1538,15 @@
   </section>
 
   <section id="juridico">
-    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Artigos Jurídicos</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Conteúdo de referência sobre licitações públicas — não substitui orientação jurídica pontual sobre o seu processo específico.</p>
+    <div class="secao-conteudo-principal">
     <div id="juridico-artigos"></div>
     </div>
 
-    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Envie sua Dúvida</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Descreva sua dúvida sobre um edital, cadastro ou processo — o Harreson responde direto no seu e-mail.</p>
+    <div class="secao-conteudo-principal">
     <form id="duvida-form" name="duvida-cliente" method="POST" data-netlify="true" netlify-honeypot="duvida-empresa" class="painel-filtros" style="align-items:flex-start;">
       <input type="hidden" name="form-name" value="duvida-cliente">
       <p style="display:none;"><label>Não preencha isso: <input name="duvida-empresa"></label></p>
@@ -1569,9 +1569,9 @@
   </section>
 
   <section id="status">
-    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Status das Ferramentas</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Última vez que cada fonte de dados foi atualizada com sucesso pelo robô. O robô roda automaticamente todo dia — se algo aparecer "há mais de 2 dias", pode avisar o suporte.</p>
+    <div class="secao-conteudo-principal">
     <div id="status-cartoes" class="cartoes"></div>
     </div>
   </section>
