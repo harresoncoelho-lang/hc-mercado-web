@@ -50,6 +50,11 @@
     --raio-pq: 8px;
     --sombra: 0 4px 18px rgba(0,0,0,0.35);
     --sombra-forte: 0 10px 30px rgba(0,0,0,0.45);
+    /* Valor de reserva até o JS medir a altura real do header (ver IIFE logo após o
+       header no <body>) e sobrescrever com o valor exato — a altura muda entre os
+       breakpoints (padding/logo menores no mobile), por isso não dá pra cravar um
+       número fixo aqui que sirva pra tudo. */
+    --altura-header: 89px;
   }
   * { box-sizing: border-box; }
   body {
@@ -67,8 +72,14 @@
     background: linear-gradient(120deg, var(--azul-escuro) 0%, var(--azul) 55%, #1c63c7 100%);
     padding: 28px 36px;
     box-shadow: 0 6px 24px rgba(0,0,0,0.4);
-    position: relative;
-    z-index: 1;
+    position: sticky;
+    top: 0;
+    /* Abaixo dos modais/overlays (z-index 200) e dos dropdowns do próprio header
+       (z-index 500, ver #header-user-dropdown/#header-bell-dropdown — esses são
+       position:fixed e recalculam a posição a cada abertura via
+       getBoundingClientRect(), então continuam funcionando normalmente com o
+       header fixo). Acima de tudo o resto da página (conteúdo, nav, filtros). */
+    z-index: 50;
     overflow: hidden;
   }
   header::after {
@@ -104,7 +115,7 @@
     display: flex;
     align-items: stretch;
     width: 100%;
-    min-height: calc(100vh - 89px);
+    min-height: calc(100vh - var(--altura-header));
   }
 
   nav {
@@ -118,9 +129,11 @@
     width: 128px;
     flex-shrink: 0;
     position: sticky;
-    top: 0;
+    /* Gruda logo abaixo do header (que agora também é sticky), não no topo absoluto —
+       senão a nav ficaria por baixo do header ao rolar, escondida atrás dele. */
+    top: var(--altura-header);
     align-self: flex-start;
-    height: 100vh;
+    height: calc(100vh - var(--altura-header));
     overflow-y: auto;
   }
   nav button {
@@ -657,7 +670,9 @@
   /* ---- Diagnóstico de Mercado: layout em duas colunas (filtros na lateral) ---- */
   .layout-mercado { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: start; }
   .filtros-lateral {
-    position: sticky; top: 16px;
+    /* top soma a altura do header (agora sticky) + os 16px de respiro originais —
+       senão esse painel ficaria grudado por baixo do header ao rolar. */
+    position: sticky; top: calc(var(--altura-header) + 16px);
     background: linear-gradient(160deg, var(--cartao-claro), var(--cartao));
     border: 1px solid var(--borda);
     border-radius: var(--raio);
@@ -898,6 +913,24 @@
     </div>
   </div>
 </header>
+
+<script>
+  // Header agora é sticky (fica fixo no topo ao rolar). O restante do layout (a nav lateral
+  // sticky em desktop, o painel de filtros sticky do Diagnóstico de Mercado, e a altura
+  // mínima do .shell) precisa saber a altura REAL do header pra não ficar escondido atrás
+  // dele nem sobrepor ele — isso muda entre os breakpoints (padding/logo menores no mobile),
+  // por isso mede de verdade em vez de cravar um número fixo no CSS. Roda o quanto antes
+  // (script fica logo após o </header> de propósito) e de novo a cada resize.
+  (function () {
+    const header = document.querySelector("header");
+    if (!header) return;
+    function medir() {
+      document.documentElement.style.setProperty("--altura-header", header.offsetHeight + "px");
+    }
+    medir();
+    window.addEventListener("resize", medir);
+  })();
+</script>
 
 <div id="header-user-dropdown" style="display:none;position:fixed;background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:190px;overflow:hidden;z-index:500;">
   <button type="button" class="menu-conta-item" data-acao="conta">Minha conta</button>
