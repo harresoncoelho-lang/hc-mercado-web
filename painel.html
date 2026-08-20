@@ -1178,6 +1178,10 @@
         <label>Palavras-chave (separadas por vírgula)</label>
         <input id="op-palavras" placeholder="Ex: hospitalar, limpeza, informatica">
       </div>
+      <div class="campo">
+        <label>UASG (só órgãos federais/distritais)</label>
+        <input id="op-uasg" placeholder="Ex: 158465">
+      </div>
       <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
     </div>
     <p class="dica-clique" style="margin:8px 2px 0;">Deixe as duas datas em branco pra buscar em todo o histórico coletado. Preencha pra buscar num período específico (ex: últimos 30 ou 60 dias) — inclui licitações já encerradas nesse período, não só as que ainda estão com prazo aberto.</p>
@@ -2945,6 +2949,8 @@
               ? item.fonte_orcamentaria_nome.join(", ")
               : null,
             situacaoCompraNome: item.situacao_nome || null,
+            codigoUnidade: item.unidade_codigo || null,
+            esferaId: item.esfera_id || null,
           });
         }
       }
@@ -3067,6 +3073,7 @@
           <dl class="boletim-meta">
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
             <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
+            ${(!r.fonte && (r.esferaId === "F" || r.esferaId === "D") && r.codigoUnidade) ? campoBoletimMeta("UASG", r.codigoUnidade) : ""}
             ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome)}
             ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome)}
             ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome)}
@@ -3584,9 +3591,9 @@ let resultados = resultadosBrutos.filter((r) => {
   // Salva o último filtro usado (e, junto com opJaBuscado, evita que o usuário precise
   // refiltrar tudo de novo toda vez que sai da aba e volta, ou recarrega a página — mesma
   // ideia já usada no filtro salvo do Boletim.
-  function salvarFiltroOportunidades(uf, municipio, dataDe, dataAte, palavrasRaw) {
+  function salvarFiltroOportunidades(uf, municipio, dataDe, dataAte, palavrasRaw, uasg) {
     try {
-      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ uf, municipio, dataDe, dataAte, palavrasRaw }));
+      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ uf, municipio, dataDe, dataAte, palavrasRaw, uasg }));
     } catch (e) { /* localStorage indisponível */ }
   }
   function lerFiltroOportunidades() {
@@ -3608,6 +3615,7 @@ let resultados = resultadosBrutos.filter((r) => {
     const dataDe = document.getElementById("op-data-de").value;
     const dataAte = document.getElementById("op-data-ate").value;
     const palavrasRaw = document.getElementById("op-palavras").value.trim();
+    const uasgFiltro = document.getElementById("op-uasg").value.trim();
     const alvo = document.getElementById("op-resultado");
     const btn = document.getElementById("op-buscar");
 
@@ -3616,7 +3624,7 @@ let resultados = resultadosBrutos.filter((r) => {
       return;
     }
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
-    salvarFiltroOportunidades(uf, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw);
+    salvarFiltroOportunidades(uf, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro);
 
     btn.disabled = true;
     alvo.innerHTML = '<div class="carregando">Buscando licitações no PNCP...</div>';
@@ -3647,6 +3655,11 @@ let resultados = resultadosBrutos.filter((r) => {
         // Registros do Sistema S/AM não têm município discriminado (só UF) — mantém
         // esses passando direto pelo filtro em vez de escondê-los por falta de dado.
         resultados = resultados.filter((r) => r.fonte || (r.municipio || "").toLowerCase().includes(municipioFiltro));
+      }
+      if (uasgFiltro) {
+        // UASG só existe pra órgãos federais/distritais — registros sem codigoUnidade
+        // (estaduais/municipais, ou ainda não enriquecidos) ficam de fora do filtro.
+        resultados = resultados.filter((r) => String(r.codigoUnidade || "") === uasgFiltro);
       }
       if (dataDe || dataAte) {
         // Filtra por período de publicação (não pelo prazo de encerramento da proposta),
@@ -3696,6 +3709,7 @@ let resultados = resultadosBrutos.filter((r) => {
     document.getElementById("op-data-de").value = filtro.dataDe || "";
     document.getElementById("op-data-ate").value = filtro.dataAte || "";
     document.getElementById("op-palavras").value = filtro.palavrasRaw || "";
+    document.getElementById("op-uasg").value = filtro.uasg || "";
     if (filtro.municipio) {
       try {
         const municipios = await carregarTodosMunicipios();

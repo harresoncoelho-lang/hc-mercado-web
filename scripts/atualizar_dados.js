@@ -510,6 +510,8 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
           numeroCompra: item.numeroCompra || null,
           anoCompra: item.anoCompra || null,
           processo: item.processo || null,
+          codigoUnidade: (item.unidadeOrgao && item.unidadeOrgao.codigoUnidade) || null,
+          esferaId: (item.orgaoEntidade && item.orgaoEntidade.esferaId) || null,
         });
       }
       pagina += 1;
