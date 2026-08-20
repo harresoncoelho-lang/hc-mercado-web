@@ -953,28 +953,31 @@
   .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 
   /* ---- Banner de limite diário / upsell (inspirado no aviso de cota do Effecti) ----
-     Gruda logo abaixo do header (que já é sticky) usando a mesma --altura-header medida via
-     JS que a nav e o painel de filtros do Diagnóstico de Mercado já usam — formando uma barra
-     dupla fixa no topo (header + banner) enquanto o conteúdo passa por baixo dos dois. Fundo
-     precisa ser opaco (gradiente sólido sobre var(--cartao), não só a rgba translúcida de
-     antes) senão o conteúdo que rola por baixo aparece por trás do banner. */
+     Faixa retangular SÓLIDA, não um cartão: zero border-radius, zero margin, largura 100%.
+     É um único elemento global (fora de <main>, irmão do <header>) — não fica dentro da
+     section/dentro do padding do <main>, por isso encosta nas duas bordas da tela de verdade,
+     igual ao próprio header. JS (perto do listener de troca de aba) mostra/esconde ele
+     conforme a aba ativa é Boletim/Encontrar Licitações ou não. Sticky com a mesma
+     --altura-header medida via JS que a nav já usa, direto colado embaixo do header (mesmo
+     top, zero gap) — formando uma faixa dupla contínua no topo. */
   .banner-limite-diario {
     display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
-    background: linear-gradient(120deg, rgba(46,141,255,0.14), rgba(46,141,255,0.04)), var(--cartao);
-    border: 1px solid var(--azul); border-radius: var(--raio); padding: 12px 16px; margin-bottom: 16px;
+    width: 100%; margin: 0; border-radius: 0;
+    background: var(--azul);
+    padding: 12px 24px;
     position: sticky; top: var(--altura-header); z-index: 40;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.14);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
   }
-  .banner-limite-texto { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--texto); line-height: 1.4; }
+  .banner-limite-texto { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #fff; line-height: 1.4; }
   .banner-limite-icone { font-size: 18px; flex-shrink: 0; }
   .banner-limite-btn {
-    background: linear-gradient(135deg, var(--azul), var(--azul-escuro)); color: #fff; border: none;
+    background: #fff; color: var(--azul-escuro); border: none;
     border-radius: 999px; padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
     white-space: nowrap; font-family: inherit; transition: filter 0.15s ease;
   }
-  .banner-limite-btn:hover { filter: brightness(1.08); }
+  .banner-limite-btn:hover { filter: brightness(0.94); }
   @media (max-width: 560px) {
-    .banner-limite-diario { flex-direction: column; align-items: flex-start; }
+    .banner-limite-diario { flex-direction: column; align-items: flex-start; padding: 12px 16px; }
     .banner-limite-btn { width: 100%; text-align: center; }
   }
 
@@ -1122,6 +1125,11 @@
   </div>
 </div>
 
+<div class="banner-limite-diario" id="banner-limite-diario" style="display:none;">
+  <div class="banner-limite-texto"><span class="banner-limite-icone">🔎</span><span>Você ainda tem <strong class="banner-limite-valor">20</strong> visualizações de licitações disponíveis hoje no plano <strong class="banner-limite-plano">Padrão</strong>.</span></div>
+  <button type="button" class="banner-limite-btn" data-abrir-planos>Elevar meu plano</button>
+</div>
+
 <div class="shell">
 <nav>
   <button id="nav-colapsar-btn" type="button" title="Recolher menu">
@@ -1244,10 +1252,6 @@
   </section>
 
   <section id="boletim">
-    <div class="banner-limite-diario">
-      <div class="banner-limite-texto"><span class="banner-limite-icone">🔎</span><span>Você ainda tem <strong class="banner-limite-valor">20</strong> visualizações de licitações disponíveis hoje no plano <strong class="banner-limite-plano">Padrão</strong>.</span></div>
-      <button type="button" class="banner-limite-btn" data-abrir-planos>Elevar meu plano</button>
-    </div>
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
@@ -1275,10 +1279,6 @@
   </section>
 
   <section id="oportunidades">
-    <div class="banner-limite-diario">
-      <div class="banner-limite-texto"><span class="banner-limite-icone">🔎</span><span>Você ainda tem <strong class="banner-limite-valor">20</strong> visualizações de licitações disponíveis hoje no plano <strong class="banner-limite-plano">Padrão</strong>.</span></div>
-      <button type="button" class="banner-limite-btn" data-abrir-planos>Elevar meu plano</button>
-    </div>
     <div class="painel-filtros">
       <div class="campo">
         <label>Estado (UF) — opcional</label>
@@ -1619,12 +1619,18 @@
   // é uma aba — sem esse filtro, clicar nele tentava ativar a seção com id "undefined" e
   // quebrava com um erro no console.
   const botoesNav = document.querySelectorAll("nav button[data-alvo]");
+  // Banner de limite diário é um elemento global (fora das sections, ver logo após o
+  // </header>) pra poder ocupar 100% da largura da tela sem o padding do <main> — por isso
+  // não usa o mecanismo de section.ativa, e precisa desse show/hide manual aqui.
+  const SECOES_COM_BANNER_LIMITE = new Set(["boletim", "oportunidades"]);
+  const bannerLimiteEl = document.getElementById("banner-limite-diario");
   botoesNav.forEach((b) => {
     b.addEventListener("click", () => {
       botoesNav.forEach((x) => x.classList.remove("ativo"));
       document.querySelectorAll("main section").forEach((s) => s.classList.remove("ativa"));
       b.classList.add("ativo");
       document.getElementById(b.dataset.alvo).classList.add("ativa");
+      if (bannerLimiteEl) bannerLimiteEl.style.display = SECOES_COM_BANNER_LIMITE.has(b.dataset.alvo) ? "flex" : "none";
     });
   });
 
