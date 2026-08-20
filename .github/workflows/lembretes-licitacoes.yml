@@ -1,0 +1,27 @@
+name: Lembretes de licitação
+
+on:
+  schedule:
+    # Roda 1x/dia, 08:00 no horário de Brasília (UTC-4, sem horário de verão).
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  lembretes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verificar lembretes e enviar e-mails
+        env:
+          EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/lembretes_licitacoes.py
