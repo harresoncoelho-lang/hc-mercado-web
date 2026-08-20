@@ -1696,6 +1696,14 @@
   // Banner de limite diário é um elemento global (fora das sections, ver logo após o
   // </header>) pra poder ocupar 100% da largura da tela sem o padding do <main> — por isso
   // não usa o mecanismo de section.ativa, e precisa desse show/hide manual aqui.
+  //
+  // PENDÊNCIA (painel de admin): esse banner foi implementado só como exemplo visual
+  // (inspirado no Effecti), sem lógica real de plano/contagem por trás — desligado por ora
+  // pra não atrapalhar o uso normal. Reativar (MOSTRAR_BANNER_LIMITE = true) quando o
+  // teste grátis de 15 dias for implementado: aí o admin poderá configurar o limite de
+  // visualizações por plano, e o banner volta a mostrar a contagem real do cliente logado
+  // (ver LIMITE_VISUALIZACOES_POR_PLANO mais abaixo no arquivo).
+  const MOSTRAR_BANNER_LIMITE = false;
   const SECOES_COM_BANNER_LIMITE = new Set(["boletim", "oportunidades"]);
   const bannerLimiteEl = document.getElementById("banner-limite-diario");
   botoesNav.forEach((b) => {
@@ -1704,7 +1712,7 @@
       document.querySelectorAll("main section").forEach((s) => s.classList.remove("ativa"));
       b.classList.add("ativo");
       document.getElementById(b.dataset.alvo).classList.add("ativa");
-      if (bannerLimiteEl) bannerLimiteEl.style.display = SECOES_COM_BANNER_LIMITE.has(b.dataset.alvo) ? "flex" : "none";
+      if (bannerLimiteEl) bannerLimiteEl.style.display = (MOSTRAR_BANNER_LIMITE && SECOES_COM_BANNER_LIMITE.has(b.dataset.alvo)) ? "flex" : "none";
     });
   });
 
