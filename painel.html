@@ -982,21 +982,21 @@
     .banner-limite-btn { width: 100%; text-align: center; }
   }
 
-  /* ---- Caixa única de conteúdo por tela (inspirado no detalhe de licitação do Effecti:
-     título, descrição, botões de ação e resultado, tudo dentro de UMA caixa só, em vez de
-     pedaços soltos direto no fundo da página). Valores exatos pedidos (fundo branco, borda
-     #e2e8f0, raio 10px, sombra 0 1px 4px 0.06) valem pro tema claro, que é o padrão desta
-     tela; o tema escuro usa os mesmos var(--cartao)/var(--borda) já usados no resto do
-     painel pra não quebrar o visual escuro com uma caixa branca. */
+  /* ---- Caixa única de conteúdo por tela (inspirado no detalhe de licitação do Effecti).
+     Valores exatos extraídos via getComputedStyle direto no CSS deles: fundo branco puro,
+     sem borda, raio 4px, sombra 0 4px 15px rgba(0,0,0,0.1), padding 16px — valem pro tema
+     claro, que é o padrão do Effecti. Tema escuro mantém var(--cartao)/var(--borda) (a
+     borda substitui a sombra como "delimitador" no escuro, já que sombra baseada em preto
+     quase não aparece sobre fundo escuro). */
   .secao-conteudo-principal {
     background: var(--cartao);
     border: 1px solid var(--borda);
-    border-radius: 10px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-    padding: 24px;
+    border-radius: 4px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 16px;
     margin-bottom: 24px;
   }
-  html.tema-claro .secao-conteudo-principal { background: #ffffff; border-color: #e2e8f0; }
+  html.tema-claro .secao-conteudo-principal { background: rgb(255, 255, 255); border: none; }
   /* .painel-filtros/.filtros-lateral já são "caixas" por conta própria (fundo em degradê,
      borda, sombra) — quando ficam direto dentro da caixa única acima, essa casca própria
      duplicava o efeito de caixa-dentro-de-caixa, então some aqui (só quando aninhado dentro
@@ -1010,17 +1010,19 @@
     background: none; border: none; box-shadow: none;
   }
 
-  /* ---- Caixa interna (Effecti: caixa cinza clara dentro da caixa branca, destacando o
-     núcleo de informação — estatísticas em Encontrar Licitações, calendário no Boletim).
-     var(--cartao-claro) já É #f8fafc no tema claro (o valor pedido, batendo igualzinho);
-     no tema escuro vira o mesmo tom "levemente mais claro que o cartão" já usado em
-     .kanban-card e no hover de .painel-filtros — não inventa cor nova. */
+  /* ---- Caixa interna (Effecti: mesma cor do FUNDO DA PÁGINA "vazando" pra dentro da caixa
+     branca — não é um cinza próprio, é o próprio --fundo por trás, que é o que cria o
+     contraste branco/página que dá o efeito de caixa-dentro-de-caixa). Valor exato
+     extraído: rgb(240,242,249) no tema claro; no escuro usa var(--fundo) pela mesma lógica
+     (a cor de fundo da própria página, não uma cor de cartão nova). */
   .caixa-interna {
-    background: var(--cartao-claro);
-    border-radius: 8px;
-    padding: 16px 20px;
+    background: var(--fundo);
+    border-radius: 4px;
+    padding: 8px;
+    box-shadow: none;
     margin-top: 16px;
   }
+  html.tema-claro .caixa-interna { background: rgb(240, 242, 249); }
   /* .bol-calendario já tem casca própria (fundo, borda, sombra) — dentro da caixa interna
      isso duplicava o efeito de caixa-dentro-de-caixa-dentro-de-caixa, então some aqui. */
   .caixa-interna .bol-calendario {
