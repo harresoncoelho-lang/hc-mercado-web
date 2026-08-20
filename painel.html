@@ -982,6 +982,34 @@
     .banner-limite-btn { width: 100%; text-align: center; }
   }
 
+  /* ---- Caixa única de conteúdo por tela (inspirado no detalhe de licitação do Effecti:
+     título, descrição, botões de ação e resultado, tudo dentro de UMA caixa só, em vez de
+     pedaços soltos direto no fundo da página). Valores exatos pedidos (fundo branco, borda
+     #e2e8f0, raio 10px, sombra 0 1px 4px 0.06) valem pro tema claro, que é o padrão desta
+     tela; o tema escuro usa os mesmos var(--cartao)/var(--borda) já usados no resto do
+     painel pra não quebrar o visual escuro com uma caixa branca. */
+  .secao-conteudo-principal {
+    background: var(--cartao);
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  html.tema-claro .secao-conteudo-principal { background: #ffffff; border-color: #e2e8f0; }
+  /* .painel-filtros/.filtros-lateral já são "caixas" por conta própria (fundo em degradê,
+     borda, sombra) — quando ficam direto dentro da caixa única acima, essa casca própria
+     duplicava o efeito de caixa-dentro-de-caixa, então some aqui (só quando aninhado dentro
+     de .secao-conteudo-principal; em outros lugares do painel continuam com a casca normal).
+     O ">" em .painel-filtros é de propósito: preserva a casca do painel de filtros avançados
+     dentro do <details> em Encontrar Licitações, que não é filho direto. */
+  .secao-conteudo-principal > .painel-filtros {
+    background: none; border: none; box-shadow: none; border-radius: 0; padding: 0;
+  }
+  .secao-conteudo-principal .filtros-lateral {
+    background: none; border: none; box-shadow: none;
+  }
+
   /* ---- Boletim: calendário mensal (inspirado no ConLicitação) ---- */
   .bol-calendario {
     background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
@@ -1253,6 +1281,7 @@
   </section>
 
   <section id="boletim">
+    <div class="secao-conteudo-principal">
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
@@ -1277,9 +1306,11 @@
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="bol-calendario"></div>
     <div id="bol-resultado"></div>
+    </div>
   </section>
 
   <section id="oportunidades">
+    <div class="secao-conteudo-principal">
     <div class="painel-filtros">
       <div class="campo">
         <label>Estado (UF) — opcional</label>
@@ -1344,10 +1375,11 @@
     <p class="dica-clique" style="margin:8px 2px 0;">Deixe as duas datas em branco pra buscar em todo o histórico coletado. Preencha pra buscar num período específico (ex: últimos 30 ou 60 dias) — inclui licitações já encerradas nesse período, não só as que ainda estão com prazo aberto.</p>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="op-resultado"></div>
+    </div>
   </section>
 
   <section id="diagnostico">
-    <div class="layout-mercado">
+    <div class="layout-mercado secao-conteudo-principal">
       <aside class="filtros-lateral">
         <h3 class="filtros-lateral-titulo">Filtros</h3>
         <div class="campo">
@@ -1398,6 +1430,7 @@
   </section>
 
   <section id="empresa">
+    <div class="secao-conteudo-principal">
     <div class="painel-filtros">
       <div class="campo">
         <label>CNPJ da empresa</label>
@@ -1425,13 +1458,15 @@
     </div>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="emp-resultado"></div>
+    </div>
   </section>
 
   <section id="transparencia">
     <h2 style="margin-top:0;">Convênios e Emendas Federais</h2>
     <p class="dica-clique" style="margin:0 0 18px;">Dados via Portal da Transparência.</p>
 
-    <h2>Radar de Convênios e Repasses</h2>
+    <div class="secao-conteudo-principal">
+    <h2 style="margin-top:0;">Radar de Convênios e Repasses</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Convênios e repasses federais recebidos por municípios/órgãos — dinheiro chegando costuma anteceder licitação (a obra/serviço financiado tende a virar edital dali a semanas ou meses). Isso é diferente de "Encontrar Licitações": aqui você vê o repasse que ainda vai gerar a licitação, não a licitação já publicada.</p>
     <div class="painel-filtros">
       <div class="campo">
@@ -1452,8 +1487,10 @@
       <button class="btn-buscar" id="cv-buscar">Buscar convênios</button>
     </div>
     <div id="cv-resultado"></div>
+    </div>
 
-    <h2>Raio-X Financeiro de Fornecedor</h2>
+    <div class="secao-conteudo-principal">
+    <h2 style="margin-top:0;">Raio-X Financeiro de Fornecedor</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Quanto uma empresa já recebeu de fato em pagamentos do governo federal — execução financeira real, não só o valor do contrato assinado. Complementa a aba "Analisar Empresa".</p>
     <div class="painel-filtros">
       <div class="campo" style="flex:2">
@@ -1463,11 +1500,13 @@
       <button class="btn-buscar" id="fn-buscar">Consultar pagamentos</button>
     </div>
     <div id="fn-resultado"></div>
+    </div>
 
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
   </section>
 
   <section id="precos">
+    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Pesquisa de Preços de Mercado</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Descubra quanto o governo está pagando, agora, por um item — direto da base oficial do Compras.gov.br (a mesma que substituiu o antigo "Painel de Preços"). Busque um produto, escolha a especificação exata e veja o preço médio, mediano e as compras reais por trás (fornecedor, órgão, valor, link do edital) dos últimos 12 meses.</p>
 
@@ -1485,6 +1524,7 @@
     <div id="pp-resultado"></div>
 
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    </div>
   </section>
 
   <section id="kanban">
@@ -1498,11 +1538,14 @@
   </section>
 
   <section id="juridico">
+    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Artigos Jurídicos</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Conteúdo de referência sobre licitações públicas — não substitui orientação jurídica pontual sobre o seu processo específico.</p>
     <div id="juridico-artigos"></div>
+    </div>
 
-    <h2>Envie sua Dúvida</h2>
+    <div class="secao-conteudo-principal">
+    <h2 style="margin-top:0;">Envie sua Dúvida</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Descreva sua dúvida sobre um edital, cadastro ou processo — o Harreson responde direto no seu e-mail.</p>
     <form id="duvida-form" name="duvida-cliente" method="POST" data-netlify="true" netlify-honeypot="duvida-empresa" class="painel-filtros" style="align-items:flex-start;">
       <input type="hidden" name="form-name" value="duvida-cliente">
@@ -1522,12 +1565,15 @@
       <button type="submit" class="btn-buscar" id="duvida-enviar">Enviar dúvida</button>
     </form>
     <p class="aviso-duvida" id="duvida-aviso" style="display:none;margin-top:12px;"></p>
+    </div>
   </section>
 
   <section id="status">
+    <div class="secao-conteudo-principal">
     <h2 style="margin-top:0;">Status das Ferramentas</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Última vez que cada fonte de dados foi atualizada com sucesso pelo robô. O robô roda automaticamente todo dia — se algo aparecer "há mais de 2 dias", pode avisar o suporte.</p>
     <div id="status-cartoes" class="cartoes"></div>
+    </div>
   </section>
 
 </main>
