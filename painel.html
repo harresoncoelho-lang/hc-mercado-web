@@ -142,6 +142,10 @@
     --zebra-tint: rgba(0,0,0,0.025);
   }
   * { box-sizing: border-box; }
+  /* Ícones Phosphor (peso "fill", ver sprite logo após <body>): monocromático por padrão,
+     cor herdada de "color" (currentColor) — muda de cor sozinho em qualquer contexto que já
+     define color pra destaque/ativo, sem precisar de CSS extra por ícone. */
+  .icone-ph { width: 1em; height: 1em; fill: currentColor; flex-shrink: 0; vertical-align: -0.125em; display: inline-block; }
   body {
     font-family: "Inter", Arial, Helvetica, sans-serif;
     background:
@@ -1113,6 +1117,66 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
+<!-- Sprite de ícones Phosphor (peso "fill") — SVG inline embutido de propósito, sem
+     depender de fonte/CDN externo em runtime (CSP do netlify.toml não libera font-src pra
+     nenhum host externo além do próprio site e fonts.gstatic.com). Cada ícone usado em
+     qualquer lugar do painel referencia um <symbol> daqui via <use href="#ph-nome">. -->
+<svg style="display:none" aria-hidden="true">
+<symbol id="ph-alarm" viewBox="0 0 256 256"><path d="M61.66,37.66l-32,32A8,8,0,0,1,18.34,58.34l32-32A8,8,0,0,1,61.66,37.66Zm176,20.68-32-32a8,8,0,0,0-11.32,11.32l32,32a8,8,0,0,0,11.32-11.32ZM224,136a96,96,0,1,1-96-96A96.11,96.11,0,0,1,224,136Zm-32,0a8,8,0,0,0-8-8H136V80a8,8,0,0,0-16,0v56a8,8,0,0,0,8,8h56A8,8,0,0,0,192,136Z"/></symbol>
+<symbol id="ph-arrow-square-out" viewBox="0 0 256 256"><path d="M192,136v72a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V80A16,16,0,0,1,48,64h72a8,8,0,0,1,0,16H48V208H176V136a8,8,0,0,1,16,0Zm32-96a8,8,0,0,0-8-8H152a8,8,0,0,0-5.66,13.66L172.69,72l-42.35,42.34a8,8,0,0,0,11.32,11.32L184,83.31l26.34,26.35A8,8,0,0,0,224,104Z"/></symbol>
+<symbol id="ph-arrows-clockwise" viewBox="0 0 256 256"><path d="M224,48V96a8,8,0,0,1-8,8H168a8,8,0,0,1-5.66-13.66L180.65,72a79.48,79.48,0,0,0-54.72-22.09h-.45A79.52,79.52,0,0,0,69.59,72.71,8,8,0,0,1,58.41,61.27,96,96,0,0,1,192,60.7l18.36-18.36A8,8,0,0,1,224,48ZM186.41,183.29A80,80,0,0,1,75.35,184l18.31-18.31A8,8,0,0,0,88,152H40a8,8,0,0,0-8,8v48a8,8,0,0,0,13.66,5.66L64,195.3a95.42,95.42,0,0,0,66,26.76h.53a95.36,95.36,0,0,0,67.07-27.33,8,8,0,0,0-11.18-11.44Z"/></symbol>
+<symbol id="ph-bank" viewBox="0 0 256 256"><path d="M248,208a8,8,0,0,1-8,8H16a8,8,0,0,1,0-16H240A8,8,0,0,1,248,208ZM16.3,98.18a8,8,0,0,1,3.51-9l104-64a8,8,0,0,1,8.38,0l104,64A8,8,0,0,1,232,104H208v64h16a8,8,0,0,1,0,16H32a8,8,0,0,1,0-16H48V104H24A8,8,0,0,1,16.3,98.18ZM144,160a8,8,0,0,0,16,0V112a8,8,0,0,0-16,0Zm-48,0a8,8,0,0,0,16,0V112a8,8,0,0,0-16,0Z"/></symbol>
+<symbol id="ph-bell" viewBox="0 0 256 256"><path d="M221.8,175.94C216.25,166.38,208,139.33,208,104a80,80,0,1,0-160,0c0,35.34-8.26,62.38-13.81,71.94A16,16,0,0,0,48,200H88.81a40,40,0,0,0,78.38,0H208a16,16,0,0,0,13.8-24.06ZM128,216a24,24,0,0,1-22.62-16h45.24A24,24,0,0,1,128,216Z"/></symbol>
+<symbol id="ph-briefcase" viewBox="0 0 256 256"><path d="M152,112a8,8,0,0,1-8,8H112a8,8,0,0,1,0-16h32A8,8,0,0,1,152,112Zm80-40V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V72A16,16,0,0,1,40,56H80V48a24,24,0,0,1,24-24h48a24,24,0,0,1,24,24v8h40A16,16,0,0,1,232,72ZM96,56h64V48a8,8,0,0,0-8-8H104a8,8,0,0,0-8,8Zm120,57.61V72H40v41.61A184,184,0,0,0,128,136,184,184,0,0,0,216,113.61Z"/></symbol>
+<symbol id="ph-buildings" viewBox="0 0 256 256"><path d="M239.73,208H224V96a16,16,0,0,0-16-16H164a4,4,0,0,0-4,4V208H144V32.41a16.43,16.43,0,0,0-6.16-13,16,16,0,0,0-18.72-.69L39.12,72A16,16,0,0,0,32,85.34V208H16.27A8.18,8.18,0,0,0,8,215.47,8,8,0,0,0,16,224H240a8,8,0,0,0,8-8.53A8.18,8.18,0,0,0,239.73,208ZM76,184a8,8,0,0,1-8.53,8A8.18,8.18,0,0,1,60,183.72V168.27A8.19,8.19,0,0,1,67.47,160,8,8,0,0,1,76,168Zm0-56a8,8,0,0,1-8.53,8A8.19,8.19,0,0,1,60,127.72V112.27A8.19,8.19,0,0,1,67.47,104,8,8,0,0,1,76,112Zm40,56a8,8,0,0,1-8.53,8,8.18,8.18,0,0,1-7.47-8.26V168.27a8.19,8.19,0,0,1,7.47-8.26,8,8,0,0,1,8.53,8Zm0-56a8,8,0,0,1-8.53,8,8.19,8.19,0,0,1-7.47-8.26V112.27a8.19,8.19,0,0,1,7.47-8.26,8,8,0,0,1,8.53,8Z"/></symbol>
+<symbol id="ph-calendar" viewBox="0 0 256 256"><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM112,184a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm56-8a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136a23.76,23.76,0,0,1-4.84,14.45L152,176ZM48,80V48H72v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80Z"/></symbol>
+<symbol id="ph-chalkboard-teacher" viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H53.39a8,8,0,0,0,7.23-4.57,48,48,0,0,1,86.76,0,8,8,0,0,0,7.23,4.57H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM104,168a32,32,0,1,1,32-32A32,32,0,0,1,104,168Zm112,32H159.43a63.93,63.93,0,0,0-13.16-16H192a8,8,0,0,0,8-8V80a8,8,0,0,0-8-8H64a8,8,0,0,0-8,8v96a8,8,0,0,0,6,7.75A63.72,63.72,0,0,0,48.57,200H40V56H216Z"/></symbol>
+<symbol id="ph-chart-bar" viewBox="0 0 256 256"><path d="M232,208a8,8,0,0,1-8,8H32a8,8,0,0,1,0-16h8V136a8,8,0,0,1,8-8H72a8,8,0,0,1,8,8v64H96V88a8,8,0,0,1,8-8h32a8,8,0,0,1,8,8V200h16V40a8,8,0,0,1,8-8h40a8,8,0,0,1,8,8V200h8A8,8,0,0,1,232,208Z"/></symbol>
+<symbol id="ph-chart-line-up" viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM200,192H56a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v76.69l34.34-34.35a8,8,0,0,1,11.32,0L128,132.69,172.69,88H144a8,8,0,0,1,0-16h48a8,8,0,0,1,8,8v48a8,8,0,0,1-16,0V99.31l-50.34,50.35a8,8,0,0,1-11.32,0L104,131.31l-40,40V176H200a8,8,0,0,1,0,16Z"/></symbol>
+<symbol id="ph-chat-circle" viewBox="0 0 256 256"><path d="M232,128A104,104,0,0,1,79.12,219.82L45.07,231.17a16,16,0,0,1-20.24-20.24l11.35-34.05A104,104,0,1,1,232,128Z"/></symbol>
+<symbol id="ph-check-circle" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+<symbol id="ph-circle" viewBox="0 0 256 256"><path d="M232,128A104,104,0,1,1,128,24,104.13,104.13,0,0,1,232,128Z"/></symbol>
+<symbol id="ph-clipboard-text" viewBox="0 0 256 256"><path d="M200,32H163.74a47.92,47.92,0,0,0-71.48,0H56A16,16,0,0,0,40,48V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V48A16,16,0,0,0,200,32Zm-72,0a32,32,0,0,1,32,32H96A32,32,0,0,1,128,32Zm32,128H96a8,8,0,0,1,0-16h64a8,8,0,0,1,0,16Zm0-32H96a8,8,0,0,1,0-16h64a8,8,0,0,1,0,16Z"/></symbol>
+<symbol id="ph-coins" viewBox="0 0 256 256"><path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM56,146.87C36.41,141.4,24,132.39,24,124V109.93c8.16,5.78,19.09,10.44,32,13.57Zm80-23.37c12.91-3.13,23.84-7.79,32-13.57V124c0,8.39-12.41,17.4-32,22.87Zm-16,71.37C100.41,189.4,88,180.39,88,172v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41Zm0-44.62A163,163,0,0,1,96,152a163,163,0,0,1-24-1.75V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54Zm64,48a165.45,165.45,0,0,1-48,0V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54ZM232,172c0,8.39-12.41,17.4-32,22.87V171.5c12.91-3.13,23.84-7.79,32-13.57Z"/></symbol>
+<symbol id="ph-credit-card" viewBox="0 0 256 256"><path d="M224,48H32A16,16,0,0,0,16,64V192a16,16,0,0,0,16,16H224a16,16,0,0,0,16-16V64A16,16,0,0,0,224,48ZM136,176H120a8,8,0,0,1,0-16h16a8,8,0,0,1,0,16Zm64,0H168a8,8,0,0,1,0-16h32a8,8,0,0,1,0,16ZM32,88V64H224V88Z"/></symbol>
+<symbol id="ph-download-simple" viewBox="0 0 256 256"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40A8,8,0,0,0,168,96H136V32a8,8,0,0,0-16,0V96H88a8,8,0,0,0-5.66,13.66Z"/></symbol>
+<symbol id="ph-envelope-simple" viewBox="0 0 256 256"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48Zm-8,144H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/></symbol>
+<symbol id="ph-eye" viewBox="0 0 256 256"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"/></symbol>
+<symbol id="ph-file-text" viewBox="0 0 256 256"><path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,176H96a8,8,0,0,1,0-16h64a8,8,0,0,1,0,16Zm0-32H96a8,8,0,0,1,0-16h64a8,8,0,0,1,0,16Zm-8-56V44l44,44Z"/></symbol>
+<symbol id="ph-files" viewBox="0 0 256 256"><path d="M213.66,66.34l-40-40A8,8,0,0,0,168,24H88A16,16,0,0,0,72,40V56H56A16,16,0,0,0,40,72V216a16,16,0,0,0,16,16H168a16,16,0,0,0,16-16V200h16a16,16,0,0,0,16-16V72A8,8,0,0,0,213.66,66.34ZM136,192H88a8,8,0,0,1,0-16h48a8,8,0,0,1,0,16Zm0-32H88a8,8,0,0,1,0-16h48a8,8,0,0,1,0,16Zm64,24H184V104a8,8,0,0,0-2.34-5.66l-40-40A8,8,0,0,0,136,56H88V40h76.69L200,75.31Z"/></symbol>
+<symbol id="ph-flag-checkered" viewBox="0 0 256 256"><path d="M227.32,48.75A8,8,0,0,0,218.76,50c-28,24.22-51.72,12.48-79.21-1.13C111.07,34.76,78.78,18.79,42.76,50h0A8,8,0,0,0,40,56V224a8,8,0,0,0,16,0V179.77c26.79-21.16,49.87-9.75,76.45,3.41,16.4,8.11,34.06,16.85,53,16.85,13.93,0,28.54-4.75,43.82-18a8,8,0,0,0,2.76-6V56A8,8,0,0,0,227.32,48.75ZM56,160.44V109.88c16.85-11.28,32.64-11.59,48-7.34v51.74C88.87,150.47,72.87,150.71,56,160.44ZM104,50.87c9.25,2.83,18.61,7.45,28.45,12.32,11.26,5.57,23.11,11.43,35.55,14.56v51.74c15.35,4.25,31.14,3.94,48-7.35v50.11c-16.87,13.32-32.27,13.72-48,8.91V129.49c-21.62-6-42.38-21-64-26.95Z"/></symbol>
+<symbol id="ph-folder-open" viewBox="0 0 256 256"><path d="M245,110.64A16,16,0,0,0,232,104H216V88a16,16,0,0,0-16-16H130.67L102.94,51.2a16.14,16.14,0,0,0-9.6-3.2H40A16,16,0,0,0,24,64V208h0a8,8,0,0,0,8,8H211.1a8,8,0,0,0,7.59-5.47l28.49-85.47A16.05,16.05,0,0,0,245,110.64ZM93.34,64,123.2,86.4A8,8,0,0,0,128,88h72v16H69.77a16,16,0,0,0-15.18,10.94L40,158.7V64Z"/></symbol>
+<symbol id="ph-folder" viewBox="0 0 256 256"><path d="M216,72H131.31L104,44.69A15.88,15.88,0,0,0,92.69,40H40A16,16,0,0,0,24,56V200.62A15.41,15.41,0,0,0,39.39,216h177.5A15.13,15.13,0,0,0,232,200.89V88A16,16,0,0,0,216,72ZM40,56H92.69l16,16H40Z"/></symbol>
+<symbol id="ph-folders" viewBox="0 0 256 256"><path d="M224,64H154.67L126.93,43.2a16.12,16.12,0,0,0-9.6-3.2H72A16,16,0,0,0,56,56V72H40A16,16,0,0,0,24,88V200a16,16,0,0,0,16,16H192.89A15.13,15.13,0,0,0,208,200.89V184h16.89A15.13,15.13,0,0,0,240,168.89V80A16,16,0,0,0,224,64Zm0,104H208V112a16,16,0,0,0-16-16H122.67L94.93,75.2a16.12,16.12,0,0,0-9.6-3.2H72V56h45.33L147.2,78.4A8,8,0,0,0,152,80h72Z"/></symbol>
+<symbol id="ph-gear" viewBox="0 0 256 256"><path d="M216,130.16q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.6,107.6,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.29,107.29,0,0,0-26.25-10.86,8,8,0,0,0-7.06,1.48L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.6,107.6,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"/></symbol>
+<symbol id="ph-globe" viewBox="0 0 256 256"><path d="M128,24h0A104,104,0,1,0,232,128,104.12,104.12,0,0,0,128,24Zm78.36,64H170.71a135.28,135.28,0,0,0-22.3-45.6A88.29,88.29,0,0,1,206.37,88ZM216,128a87.61,87.61,0,0,1-3.33,24H174.16a157.44,157.44,0,0,0,0-48h38.51A87.61,87.61,0,0,1,216,128ZM128,43a115.27,115.27,0,0,1,26,45H102A115.11,115.11,0,0,1,128,43ZM102,168H154a115.11,115.11,0,0,1-26,45A115.27,115.27,0,0,1,102,168Zm-3.9-16a140.84,140.84,0,0,1,0-48h59.88a140.84,140.84,0,0,1,0,48Zm50.35,61.6a135.28,135.28,0,0,0,22.3-45.6h35.66A88.29,88.29,0,0,1,148.41,213.6Z"/></symbol>
+<symbol id="ph-graduation-cap" viewBox="0 0 256 256"><path d="M176,207.24a119,119,0,0,0,16-7.73V240a8,8,0,0,1-16,0Zm11.76-88.43-56-29.87a8,8,0,0,0-7.52,14.12L171,128l17-9.06Zm64-29.87-120-64a8,8,0,0,0-7.52,0l-120,64a8,8,0,0,0,0,14.12L32,117.87v48.42a15.91,15.91,0,0,0,4.06,10.65C49.16,191.53,78.51,216,128,216a130,130,0,0,0,48-8.76V130.67L171,128l-43,22.93L43.83,106l0,0L25,96,128,41.07,231,96l-18.78,10-.06,0L188,118.94a8,8,0,0,1,4,6.93v73.64a115.63,115.63,0,0,0,27.94-22.57A15.91,15.91,0,0,0,224,166.29V117.87l27.76-14.81a8,8,0,0,0,0-14.12Z"/></symbol>
+<symbol id="ph-handshake" viewBox="0 0 256 256"><path d="M254.3,107.91,228.78,56.85a16,16,0,0,0-21.47-7.15L182.44,62.13,130.05,48.27a8.14,8.14,0,0,0-4.1,0L73.56,62.13,48.69,49.7a16,16,0,0,0-21.47,7.15L1.7,107.9a16,16,0,0,0,7.15,21.47l27,13.51,55.49,39.63a8.06,8.06,0,0,0,2.71,1.25l64,16a8,8,0,0,0,7.6-2.1l40-40,15.08-15.08,26.42-13.21a16,16,0,0,0,7.15-21.46Zm-54.89,33.37L165,113.72a8,8,0,0,0-10.68.61C136.51,132.27,116.66,130,104,122L147.24,80h31.81l27.21,54.41Zm-41.87,41.86L99.42,168.61l-49.2-35.14,28-56L128,64.28l9.8,2.59-45,43.68-.08.09a16,16,0,0,0,2.72,24.81c20.56,13.13,45.37,11,64.91-5L188,152.66Zm-25.72,34.8a8,8,0,0,1-7.75,6.06,8.13,8.13,0,0,1-1.95-.24L80.41,213.33a7.89,7.89,0,0,1-2.71-1.25L51.35,193.26a8,8,0,0,1,9.3-13l25.11,17.94L126,208.24A8,8,0,0,1,131.82,217.94Z"/></symbol>
+<symbol id="ph-hourglass" viewBox="0 0 256 256"><path d="M200,75.64V40a16,16,0,0,0-16-16H72A16,16,0,0,0,56,40V76a16.08,16.08,0,0,0,6.41,12.8L114.67,128,62.4,167.2A16.07,16.07,0,0,0,56,180v36a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V180.36a16,16,0,0,0-6.36-12.77L141.26,128l52.38-39.59A16.05,16.05,0,0,0,200,75.64Z"/></symbol>
+<symbol id="ph-house" viewBox="0 0 256 256"><path d="M224,120v96a8,8,0,0,1-8,8H160a8,8,0,0,1-8-8V164a4,4,0,0,0-4-4H108a4,4,0,0,0-4,4v52a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V120a16,16,0,0,1,4.69-11.31l80-80a16,16,0,0,1,22.62,0l80,80A16,16,0,0,1,224,120Z"/></symbol>
+<symbol id="ph-info" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm-4,48a12,12,0,1,1-12,12A12,12,0,0,1,124,72Zm12,112a16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40a8,8,0,0,1,0,16Z"/></symbol>
+<symbol id="ph-magnifying-glass" viewBox="0 0 256 256"><path d="M168,112a56,56,0,1,1-56-56A56,56,0,0,1,168,112Zm61.66,117.66a8,8,0,0,1-11.32,0l-50.06-50.07a88,88,0,1,1,11.32-11.31l50.06,50.06A8,8,0,0,1,229.66,229.66ZM112,184a72,72,0,1,0-72-72A72.08,72.08,0,0,0,112,184Z"/></symbol>
+<symbol id="ph-map-pin" viewBox="0 0 256 256"><path d="M128,16a88.1,88.1,0,0,0-88,88c0,75.3,80,132.17,83.41,134.55a8,8,0,0,0,9.18,0C136,236.17,216,179.3,216,104A88.1,88.1,0,0,0,128,16Zm0,56a32,32,0,1,1-32,32A32,32,0,0,1,128,72Z"/></symbol>
+<symbol id="ph-megaphone" viewBox="0 0 256 256"><path d="M200,72H160.2c-2.91-.17-53.62-3.74-101.91-44.24A16,16,0,0,0,32,40V200a16,16,0,0,0,26.29,12.25c37.77-31.68,77-40.76,93.71-43.3v31.72A16,16,0,0,0,159.12,214l11,7.33A16,16,0,0,0,194.5,212l11.77-44.36A48,48,0,0,0,200,72ZM179,207.89l0,.11-11-7.33V168h21.6ZM200,152H168V88h32a32,32,0,1,1,0,64Z"/></symbol>
+<symbol id="ph-moon" viewBox="0 0 256 256"><path d="M235.54,150.21a104.84,104.84,0,0,1-37,52.91A104,104,0,0,1,32,120,103.09,103.09,0,0,1,52.88,57.48a104.84,104.84,0,0,1,52.91-37,8,8,0,0,1,10,10,88.08,88.08,0,0,0,109.8,109.8,8,8,0,0,1,10,10Z"/></symbol>
+<symbol id="ph-note-pencil" viewBox="0 0 256 256"><path d="M224,128v80a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32h80a8,8,0,0,1,0,16H48V208H208V128a8,8,0,0,1,16,0Zm5.66-58.34-96,96A8,8,0,0,1,128,168H96a8,8,0,0,1-8-8V128a8,8,0,0,1,2.34-5.66l96-96a8,8,0,0,1,11.32,0l32,32A8,8,0,0,1,229.66,69.66Zm-17-5.66L192,43.31,179.31,56,200,76.69Z"/></symbol>
+<symbol id="ph-package" viewBox="0 0 256 256"><path d="M223.68,66.15,135.68,18a15.88,15.88,0,0,0-15.36,0l-88,48.17a16,16,0,0,0-8.32,14v95.64a16,16,0,0,0,8.32,14l88,48.17a15.88,15.88,0,0,0,15.36,0l88-48.17a16,16,0,0,0,8.32-14V80.18A16,16,0,0,0,223.68,66.15ZM128,32l80.35,44L178.57,92.29l-80.35-44Zm0,88L47.65,76,81.56,57.43l80.35,44Zm88,55.85h0l-80,43.79V133.83l32-17.51V152a8,8,0,0,0,16,0V107.56l32-17.51v85.76Z"/></symbol>
+<symbol id="ph-paperclip" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm37.66,50.34a8,8,0,0,0-11.32,0L87.09,143A24,24,0,1,0,121,177l49.32-50.32a8,8,0,1,1,11.42,11.2l-49.37,50.38a40,40,0,1,1-56.62-56.51L143,63.09A24,24,0,1,1,177,97L109.71,165.6a8,8,0,1,1-11.42-11.2L165.6,85.71a8,8,0,0,0,.06-11.37Z"/></symbol>
+<symbol id="ph-pencil-simple" viewBox="0 0 256 256"><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM192,108.68,147.31,64l24-24L216,84.68Z"/></symbol>
+<symbol id="ph-printer" viewBox="0 0 256 256"><path d="M240,96v80a8,8,0,0,1-8,8H200v32a8,8,0,0,1-8,8H64a8,8,0,0,1-8-8V184H24a8,8,0,0,1-8-8V96c0-13.23,11.36-24,25.33-24H56V40a8,8,0,0,1,8-8H192a8,8,0,0,1,8,8V72h14.67C228.64,72,240,82.77,240,96ZM72,72H184V48H72Zm112,88H72v48H184Zm16-44a12,12,0,1,0-12,12A12,12,0,0,0,200,116Z"/></symbol>
+<symbol id="ph-receipt" viewBox="0 0 256 256"><path d="M216,40H40A16,16,0,0,0,24,56V208a8,8,0,0,0,11.58,7.15L64,200.94l28.42,14.21a8,8,0,0,0,7.16,0L128,200.94l28.42,14.21a8,8,0,0,0,7.16,0L192,200.94l28.42,14.21A8,8,0,0,0,232,208V56A16,16,0,0,0,216,40ZM176,144H80a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16Zm0-32H80a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16Z"/></symbol>
+<symbol id="ph-robot" viewBox="0 0 256 256"><path d="M200,48H136V16a8,8,0,0,0-16,0V48H56A32,32,0,0,0,24,80V192a32,32,0,0,0,32,32H200a32,32,0,0,0,32-32V80A32,32,0,0,0,200,48ZM172,96a12,12,0,1,1-12,12A12,12,0,0,1,172,96ZM96,184H80a16,16,0,0,1,0-32H96ZM84,120a12,12,0,1,1,12-12A12,12,0,0,1,84,120Zm60,64H112V152h32Zm32,0H160V152h16a16,16,0,0,1,0,32Z"/></symbol>
+<symbol id="ph-rocket-launch" viewBox="0 0 256 256"><path d="M101.85,191.14C97.34,201,82.29,224,40,224a8,8,0,0,1-8-8c0-42.29,23-57.34,32.86-61.85a8,8,0,0,1,6.64,14.56c-6.43,2.93-20.62,12.36-23.12,38.91,26.55-2.5,36-16.69,38.91-23.12a8,8,0,1,1,14.56,6.64Zm122-144a16,16,0,0,0-15-15c-12.58-.75-44.73.4-71.4,27.07h0L88,108.7A8,8,0,0,1,76.67,97.39l26.56-26.57A4,4,0,0,0,100.41,64H74.35A15.9,15.9,0,0,0,63,68.68L28.7,103a16,16,0,0,0,9.07,27.16l38.47,5.37,44.21,44.21,5.37,38.49a15.94,15.94,0,0,0,10.78,12.92,16.11,16.11,0,0,0,5.1.83A15.91,15.91,0,0,0,153,227.3L187.32,193A16,16,0,0,0,192,181.65V155.59a4,4,0,0,0-6.83-2.82l-26.57,26.56a8,8,0,0,1-11.71-.42,8.2,8.2,0,0,1,.6-11.1l49.27-49.27h0C223.45,91.86,224.6,59.71,223.85,47.12Z"/></symbol>
+<symbol id="ph-scales" viewBox="0 0 256 256"><path d="M239.43,133l-32-80A8,8,0,0,0,200,48a8.27,8.27,0,0,0-1.73.21L136,62V40a8,8,0,0,0-16,0V65.58L54.27,80.21A8,8,0,0,0,48.57,85l-32,80a7.92,7.92,0,0,0-.57,3c0,23.31,24.54,32,40,32s40-8.69,40-32a7.92,7.92,0,0,0-.57-3L66.92,93.77,120,82V208H104a8,8,0,0,0,0,16h48a8,8,0,0,0,0-16H136V78.42L187,67.1,160.57,133a7.92,7.92,0,0,0-.57,3c0,23.31,24.54,32,40,32s40-8.69,40-32A7.92,7.92,0,0,0,239.43,133Zm-160,35H32.62L56,109.54Zm97.24-32L200,77.54,223.38,136Z"/></symbol>
+<symbol id="ph-star" viewBox="0 0 256 256"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"/></symbol>
+<symbol id="ph-sun" viewBox="0 0 256 256"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm8,24a64,64,0,1,0,64,64A64.07,64.07,0,0,0,128,64ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/></symbol>
+<symbol id="ph-timer" viewBox="0 0 256 256"><path d="M128,40a96,96,0,1,0,96,96A96.11,96.11,0,0,0,128,40Zm45.66,61.66-40,40a8,8,0,0,1-11.32-11.32l40-40a8,8,0,0,1,11.32,11.32ZM96,16a8,8,0,0,1,8-8h48a8,8,0,0,1,0,16H104A8,8,0,0,1,96,16Z"/></symbol>
+<symbol id="ph-toolbox" viewBox="0 0 256 256"><path d="M224,64H176V56a24,24,0,0,0-24-24H104A24,24,0,0,0,80,56v8H32A16,16,0,0,0,16,80v28a4,4,0,0,0,4,4H64V96.27A8.17,8.17,0,0,1,71.47,88,8,8,0,0,1,80,96v16h96V96.27A8.17,8.17,0,0,1,183.47,88,8,8,0,0,1,192,96v16h44a4,4,0,0,0,4-4V80A16,16,0,0,0,224,64Zm-64,0H96V56a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8Zm80,68v60a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V132a4,4,0,0,1,4-4H64v16a8,8,0,0,0,8.53,8A8.17,8.17,0,0,0,80,143.73V128h96v16a8,8,0,0,0,8.53,8,8.17,8.17,0,0,0,7.47-8.25V128h44A4,4,0,0,1,240,132Z"/></symbol>
+<symbol id="ph-trophy" viewBox="0 0 256 256"><path d="M232,64H208V48a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8V64H24A16,16,0,0,0,8,80V96a40,40,0,0,0,40,40h3.65A80.13,80.13,0,0,0,120,191.61V216H96a8,8,0,0,0,0,16h64a8,8,0,0,0,0-16H136V191.58c31.94-3.23,58.44-25.64,68.08-55.58H208a40,40,0,0,0,40-40V80A16,16,0,0,0,232,64ZM48,120A24,24,0,0,1,24,96V80H48v32q0,4,.39,8ZM232,96a24,24,0,0,1-24,24h-.5a81.81,81.81,0,0,0,.5-8.9V80h24Z"/></symbol>
+<symbol id="ph-warning" viewBox="0 0 256 256"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"/></symbol>
+<symbol id="ph-x-circle" viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm37.66,130.34a8,8,0,0,1-11.32,11.32L128,139.31l-26.34,26.35a8,8,0,0,1-11.32-11.32L116.69,128,90.34,101.66a8,8,0,0,1,11.32-11.32L128,116.69l26.34-26.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+<symbol id="ph-x" viewBox="0 0 256 256"><path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM181.66,170.34a8,8,0,0,1-11.32,11.32L128,139.31,85.66,181.66a8,8,0,0,1-11.32-11.32L116.69,128,74.34,85.66A8,8,0,0,1,85.66,74.34L128,116.69l42.34-42.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+</svg>
 
   
 <header>
@@ -1122,14 +1186,14 @@
       <span class="header-nome">LicitaPlena</span>
     </a>
     <div class="header-acoes">
-      <span class="header-badge" id="header-badge-empresa" title="Empresa">🏢 --</span>
+      <span class="header-badge" id="header-badge-empresa" title="Empresa"><svg class='icone-ph'><use href='#ph-buildings'></use></svg> --</span>
       <span class="header-badge header-badge-plano" id="header-badge-plano" title="Plano atual">--</span>
       <button id="header-ajuda-btn" class="header-icone-btn" title="Ajuda / D&uacute;vidas" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;padding:0;">?</button>
       <button id="header-bell-btn" class="header-icone-btn" title="Notifica&ccedil;&otilde;es" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;position:relative;">
-        &#128276;
+        <svg class='icone-ph'><use href='#ph-bell'></use></svg>
         <span id="header-bell-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#e8617a;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;line-height:16px;">0</span>
       </button>
-      <button id="header-tema-btn" class="header-icone-btn" title="Alternar tema claro/escuro" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;">🌙</button>
+      <button id="header-tema-btn" class="header-icone-btn" title="Alternar tema claro/escuro" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;"><span class="icone-tema"><svg class='icone-ph'><use href='#ph-moon'></use></svg></span></button>
       <button id="header-user-btn" class="header-icone-btn" title="Minha conta" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:0;">
         <span id="header-user-iniciais">--</span>
       </button>
@@ -1157,7 +1221,7 @@
 
 <div id="header-user-dropdown" style="display:none;position:fixed;background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:190px;overflow:hidden;z-index:500;">
   <button type="button" class="menu-conta-item" data-acao="conta">Minha conta</button>
-  <button type="button" class="menu-conta-item" data-acao="lembretes">🔔 Meus lembretes</button>
+  <button type="button" class="menu-conta-item" data-acao="lembretes"><svg class='icone-ph'><use href='#ph-bell'></use></svg> Meus lembretes</button>
   <button type="button" class="menu-conta-item" data-acao="planos">Planos e pre&ccedil;os</button>
   <button type="button" class="menu-conta-item" data-acao="feedback">Envie seu feedback</button>
   <button type="button" id="btn-sair-painel" class="menu-conta-item" style="color:#c0392b;">Sair</button>
@@ -1171,14 +1235,14 @@
   <div class="modal-ia" style="max-width:420px;height:auto;max-height:80vh;padding:22px;">
     <div class="modal-ia-topo">
       <h3 id="modal-conta-titulo" style="margin:0;font-size:16px;">Minha conta</h3>
-      <button type="button" id="modal-conta-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">&#10005;</button>
+      <button type="button" id="modal-conta-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;"><svg class='icone-ph'><use href='#ph-x'></use></svg></button>
     </div>
     <div id="modal-conta-corpo" style="margin-top:10px;"></div>
   </div>
 </div>
 
 <div class="banner-limite-diario" id="banner-limite-diario" style="display:none;">
-  <div class="banner-limite-texto"><span class="banner-limite-icone">🔎</span><span>Você ainda tem <strong class="banner-limite-valor">20</strong> visualizações de licitações disponíveis hoje no plano <strong class="banner-limite-plano">Padrão</strong>.</span></div>
+  <div class="banner-limite-texto"><span class="banner-limite-icone"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span>Você ainda tem <strong class="banner-limite-valor">20</strong> visualizações de licitações disponíveis hoje no plano <strong class="banner-limite-plano">Padrão</strong>.</span></div>
   <button type="button" class="banner-limite-btn" data-abrir-planos>Elevar meu plano</button>
 </div>
 
@@ -1187,16 +1251,16 @@
   <button id="nav-colapsar-btn" type="button" title="Recolher menu">
     <span class="nav-ico">&#171;</span><span class="nav-label">Recolher</span>
   </button>
-  <button class="ativo" data-alvo="dashboard" title="Dashboard"><span class="nav-ico">&#127968;</span><span class="nav-label">Dashboard</span></button>
-  <button data-alvo="boletim" title="Boletim"><span class="nav-ico">&#128203;</span><span class="nav-label">Boletim</span></button>
-  <button data-alvo="oportunidades" title="Encontrar Licitações"><span class="nav-ico">🔎</span><span class="nav-label">Encontrar Licitações</span></button>
-  <button data-alvo="diagnostico" title="Diagnóstico de Mercado"><span class="nav-ico">📊</span><span class="nav-label">Diagnóstico de Mercado</span></button>
-  <button data-alvo="empresa" title="Analisar Empresa"><span class="nav-ico">🏢</span><span class="nav-label">Analisar Empresa</span></button>
-  <button data-alvo="transparencia" title="Convênios e Emendas Federais"><span class="nav-ico">🤝</span><span class="nav-label">Convênios e Emendas Federais</span></button>
-  <button data-alvo="precos" title="Pesquisa de Preços"><span class="nav-ico">💰</span><span class="nav-label">Pesquisa de Preços</span></button>
-  <button data-alvo="kanban" title="Kanban"><span class="nav-ico">🗂️</span><span class="nav-label">Kanban</span></button>
-  <button data-alvo="juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico">⚖️</span><span class="nav-label">Jurídico &amp; Dúvidas</span></button>
-  <button data-alvo="status" title="Status das Ferramentas"><span class="nav-ico">🟢</span><span class="nav-label">Status das Ferramentas</span></button>
+  <button class="ativo" data-alvo="dashboard" title="Dashboard"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-house'></use></svg></span><span class="nav-label">Dashboard</span></button>
+  <button data-alvo="boletim" title="Boletim"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg></span><span class="nav-label">Boletim</span></button>
+  <button data-alvo="oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span class="nav-label">Encontrar Licitações</span></button>
+  <button data-alvo="diagnostico" title="Diagnóstico de Mercado"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-chart-bar'></use></svg></span><span class="nav-label">Diagnóstico de Mercado</span></button>
+  <button data-alvo="empresa" title="Analisar Empresa"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-buildings'></use></svg></span><span class="nav-label">Analisar Empresa</span></button>
+  <button data-alvo="transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-handshake'></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></button>
+  <button data-alvo="precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-coins'></use></svg></span><span class="nav-label">Pesquisa de Preços</span></button>
+  <button data-alvo="kanban" title="Kanban"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-folders'></use></svg></span><span class="nav-label">Kanban</span></button>
+  <button data-alvo="juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-scales'></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></button>
+  <button data-alvo="status" title="Status das Ferramentas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-circle'></use></svg></span><span class="nav-label">Status das Ferramentas</span></button>
 </nav>
 
 <script>
@@ -1244,22 +1308,22 @@
     <div class="secao-conteudo-principal">
     <div class="dash-cards">
       <div class="dash-card">
-        <div class="dash-card-ico">&#128203;</div>
+        <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg></div>
         <div class="dash-card-num" id="dash-num-oportunidades">&ndash;</div>
         <div class="dash-card-label">Oportunidades no seu boletim</div>
       </div>
       <div class="dash-card">
-        <div class="dash-card-ico">&#129520;</div>
+        <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-toolbox'></use></svg></div>
         <div class="dash-card-num">9</div>
         <div class="dash-card-label">Ferramentas dispon&iacute;veis</div>
       </div>
       <div class="dash-card">
-        <div class="dash-card-ico">&#128193;</div>
+        <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-folder'></use></svg></div>
         <div class="dash-card-num" id="dash-num-kanban">&ndash;</div>
         <div class="dash-card-label">Licita&ccedil;&otilde;es no seu Kanban</div>
       </div>
       <div class="dash-card">
-        <div class="dash-card-ico">&#127760;</div>
+        <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-globe'></use></svg></div>
         <div class="dash-card-num">Nacional</div>
         <div class="dash-card-label">Abrang&ecirc;ncia da cobertura</div>
       </div>
@@ -1314,8 +1378,8 @@
     </div>
     <div class="secao-conteudo-principal">
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px;">
-        <button class="btn-imprimir" id="bol-atualizar" title="Buscar de novo agora">🔄 Atualizar boletim</button>
-        <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle">⚙️ Configurar filtro do boletim</button>
+        <button class="btn-imprimir" id="bol-atualizar" title="Buscar de novo agora"><svg class='icone-ph'><use href='#ph-arrows-clockwise'></use></svg> Atualizar boletim</button>
+        <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle"><svg class='icone-ph'><use href='#ph-gear'></use></svg> Configurar filtro do boletim</button>
       </div>
     <div class="painel-filtros" id="bol-config-painel" style="display:none;">
       <div class="campo">
@@ -1328,7 +1392,7 @@
       </div>
       <button class="btn-buscar" id="bol-salvar">Salvar filtro do boletim</button>
     </div>
-    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
     <div id="bol-calendario" class="caixa-interna"></div>
     <div id="bol-resultado"></div>
     </div>
@@ -1367,7 +1431,7 @@
       <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
     </div>
     <details class="painel-filtros-avancados" style="margin:8px 2px 0;">
-      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--azul,#2e8dff);">🔎 Filtros avançados</summary>
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--azul,#2e8dff);"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Filtros avançados</summary>
       <div class="painel-filtros" style="margin-top:10px;">
         <div class="campo">
           <label>Esfera</label>
@@ -1398,7 +1462,7 @@
       <p class="dica-clique" style="margin:8px 2px 0;">Esfera: quando o dado direto do PNCP não está disponível (licitações ainda não recapturadas pelo robô), classificamos pelo nome do órgão — pode ficar "Não classificado" em casos raros. Valor e código dependem de dados que só a busca já coletada pelo robô traz completos; licitações vindas só da busca ao vivo podem não ter esses campos ainda.</p>
     </details>
     <p class="dica-clique" style="margin:8px 2px 0;">Deixe as duas datas em branco pra buscar em todo o histórico coletado. Preencha pra buscar num período específico (ex: últimos 30 ou 60 dias) — inclui licitações já encerradas nesse período, não só as que ainda estão com prazo aberto.</p>
-    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
     <div id="op-resultado"></div>
     </div>
   </section>
@@ -1446,7 +1510,7 @@
       <div class="conteudo-mercado">
         <div class="dg-topo-acoes">
           <div id="dg-chips" class="chips"></div>
-          <button id="dg-imprimir" class="btn-imprimir" title="Gerar PDF/impressão deste diagnóstico">🖨️ Imprimir / Gerar PDF</button>
+          <button id="dg-imprimir" class="btn-imprimir" title="Gerar PDF/impressão deste diagnóstico"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button>
         </div>
         <div id="dg-resultado"></div>
         <div id="dg-detalhe"></div>
@@ -1481,7 +1545,7 @@
       </div>
       <button class="btn-buscar" id="emp-buscar">Analisar empresa</button>
     </div>
-    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
     <div id="emp-resultado"></div>
     </div>
   </section>
@@ -1527,7 +1591,7 @@
     <div id="fn-resultado"></div>
     </div>
 
-    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
   </section>
 
   <section id="precos">
@@ -1548,14 +1612,14 @@
     <div id="pp-selecao"></div>
     <div id="pp-resultado"></div>
 
-    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
+    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
     </div>
   </section>
 
   <section id="kanban">
     <div class="boletim-cabecalho">
       <div>
-        <h2 style="margin:0;">🗂️ Quadro Kanban</h2>
+        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-folders'></use></svg> Quadro Kanban</h2>
         <p class="dica-clique" style="margin:4px 0 0;">Arraste os cartões entre as colunas pra acompanhar o andamento de cada licitação. Pra uma licitação aparecer aqui, marque um status nela no Boletim ou em Encontrar Licitações.</p>
       </div>
     </div>
@@ -1609,7 +1673,7 @@
 <div class="modal-ia-fundo" id="modal-ia-fundo">
   <div class="modal-ia">
     <div class="modal-ia-topo">
-      <h3 style="margin:0;">🤖 Resumo do Edital</h3>
+      <h3 style="margin:0;"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumo do Edital</h3>
       <button type="button" id="modal-ia-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <p class="modal-ia-objeto" id="modal-ia-objeto" style="color:var(--texto-fraco);font-size:13px;margin:0 0 8px;"></p>
@@ -1617,7 +1681,7 @@
     <div class="modal-ia-conversa" id="modal-ia-conversa"></div>
 
     <details style="margin-top:10px;">
-      <summary style="cursor:pointer;font-weight:700;font-size:13px;">⭐ Análise e Considerações do Licitante</summary>
+      <summary style="cursor:pointer;font-weight:700;font-size:13px;"><svg class='icone-ph'><use href='#ph-star'></use></svg> Análise e Considerações do Licitante</summary>
       <textarea class="modal-ia-consideracoes" id="modal-ia-consideracoes" placeholder="Escreva aqui suas considerações sobre esta oportunidade..."></textarea>
     </details>
 
@@ -1628,10 +1692,10 @@
     </form>
 
     <div class="modal-ia-acoes-rodape">
-      <button type="button" id="modal-ia-baixar">📥 Baixar Edital Completo</button>
-      <button type="button" id="modal-ia-checklist-email">📧 Enviar Checklist por E-mail</button>
-      <button type="button" id="modal-ia-checklist-doc">📄 Gerar Checklist (.doc)</button>
-      <button type="button" id="modal-ia-imprimir">🖨️ Imprimir Checklist</button>
+      <button type="button" id="modal-ia-baixar"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital Completo</button>
+      <button type="button" id="modal-ia-checklist-email"><svg class='icone-ph'><use href='#ph-envelope-simple'></use></svg> Enviar Checklist por E-mail</button>
+      <button type="button" id="modal-ia-checklist-doc"><svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist (.doc)</button>
+      <button type="button" id="modal-ia-imprimir"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir Checklist</button>
     </div>
   </div>
 </div>
@@ -1639,7 +1703,7 @@
 <div class="modal-ia-fundo" id="modal-arquivos-fundo">
   <div class="modal-ia" style="max-width:520px;height:auto;max-height:80vh;">
     <div class="modal-ia-topo">
-      <h3 style="margin:0;">📂 Arquivos do Edital</h3>
+      <h3 style="margin:0;"><svg class='icone-ph'><use href='#ph-folder-open'></use></svg> Arquivos do Edital</h3>
       <button type="button" id="modal-arquivos-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <p class="dica-clique" style="margin:0 0 10px;">Essa licitação tem mais de um documento anexado no PNCP — clique pra baixar cada um.</p>
@@ -1650,7 +1714,7 @@
 <div class="modal-ia-fundo" id="modal-verarquivos-fundo">
   <div class="modal-ia" style="max-width:600px;height:auto;max-height:82vh;">
     <div class="modal-ia-topo">
-      <h3 style="margin:0;">📁 Acompanhamento do Processo</h3>
+      <h3 style="margin:0;"><svg class='icone-ph'><use href='#ph-folder'></use></svg> Acompanhamento do Processo</h3>
       <button type="button" id="modal-verarquivos-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <p class="dica-clique" style="margin:0 0 10px;">Acompanhamento do processo depois da publicação: avisos, esclarecimentos, impugnações, recursos e retificações. O edital, termo de referência e demais documentos ficam em "Baixar Edital".</p>
@@ -1662,7 +1726,7 @@
 <div class="modal-ia-fundo" id="modal-lembrete-fundo">
   <div class="modal-ia" style="max-width:420px;height:auto;max-height:80vh;">
     <div class="modal-ia-topo">
-      <h3 style="margin:0;">🔔 Criar lembrete</h3>
+      <h3 style="margin:0;"><svg class='icone-ph'><use href='#ph-bell'></use></svg> Criar lembrete</h3>
       <button type="button" id="modal-lembrete-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <p id="modal-lembrete-objeto" class="dica-clique" style="margin:0 0 10px;"></p>
@@ -1681,7 +1745,7 @@
     </div>
     <p id="modal-lembrete-aviso" class="aviso" style="display:none;"></p>
     <div class="modal-ia-acoes-rodape">
-      <button type="button" id="modal-lembrete-salvar">🔔 Salvar lembrete</button>
+      <button type="button" id="modal-lembrete-salvar"><svg class='icone-ph'><use href='#ph-bell'></use></svg> Salvar lembrete</button>
     </div>
   </div>
 </div>
@@ -1792,9 +1856,9 @@
 
   // ---- Status das Ferramentas: mostra a última atualização bem-sucedida de cada fonte ----
   const FONTES_STATUS = [
-    { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "📋" },
-    { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "📄" },
-    { arquivo: "data/mercado_meta.json", nome: "Diagnóstico de Mercado", icone: "📊" },
+    { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
+    { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg>" },
+    { arquivo: "data/mercado_meta.json", nome: "Diagnóstico de Mercado", icone: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>" },
     // "Licitações federais (Portal da Transparência)" existiu até 05/08/2026, quando o
     // commit f5b6299 ("Redesenha Portal da Transparência...") aposentou de propósito
     // scripts/coletar_transparencia.js (e seu workflow) em favor do radar de convênios/
@@ -1803,8 +1867,8 @@
     // commit, mas essa lista aqui no painel.html não, então o card ficou órfão apontando
     // pra um arquivo (data/transparencia_licitacoes.json) que nada mais escreve — por
     // isso "atualizado há 14 dia(s)" nunca mudava, mesmo com o robô do PNCP rodando OK.
-    { supabase: "convenios", nome: "Convênios e Emendas Federais", icone: "🤝" },
-    { supabase: "sistema_s_am", nome: "Sistema S/AM (SENAC/SESC)", icone: "🏫" },
+    { supabase: "convenios", nome: "Convênios e Emendas Federais", icone: "<svg class='icone-ph'><use href='#ph-handshake'></use></svg>" },
+    { supabase: "sistema_s_am", nome: "Sistema S/AM (SENAC/SESC)", icone: "<svg class='icone-ph'><use href='#ph-graduation-cap'></use></svg>" },
   ];
 
   function formatarHaQuanto(iso) {
@@ -1878,21 +1942,21 @@
   }
 
   const RÓTULOS_ESTRUTURA_IA = {
-    identificacao: { titulo: "📋 Identificação da Licitação", campos: { numero: "Número", uasg: "UASG", contratacao: "Contratação", modalidade: "Modalidade", portalRealizacao: "Portal de realização", regulamentacao: "Regulamentação" } },
-    sessaoPublica: { titulo: "🗓️ Sessão Pública", campos: { data: "Data", horario: "Horário", modoDisputa: "Modo de disputa", intervaloMinimo: "Intervalo mínimo" } },
-    orgao: { titulo: "🏛️ Órgão Responsável", campos: { nome: "Órgão", email: "E-mail", endereco: "Endereço", telefone: "Telefone" } },
-    detalhes: { titulo: "💼 Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade", provaConceito: "Exigência de prova de conceito" } },
-    prazos: { titulo: "⏰ Prazos Importantes", campos: { limiteEnvioPropostas: "Limite p/ envio de propostas", prazoRecurso: "Prazo p/ recurso", prazoContrarrazoes: "Prazo p/ contrarrazões", limiteEsclarecimentos: "Limite p/ esclarecimentos", limiteImpugnacao: "Limite p/ impugnação", vigenciaContrato: "Vigência do contrato" } },
-    criteriosProposta: { titulo: "🧾 Critérios da Proposta e Julgamento", campos: { validadeProposta: "Validade da proposta", criteriosDesempate: "Critérios de desempate", exigenciasPropostaComercial: "Exigências da proposta comercial", programaIntegridade: "Programa de integridade" } },
-    itens: { titulo: "📦 Resumo dos Itens", campos: { totalItens: "Total de itens", descricaoGeral: "Descrição geral", categoriasPrincipais: "Categorias principais", observacoes: "Observações" } },
-    analiseCritica: { titulo: "⚠️ Análise Crítica", campos: { conflitoObjetoMinuta: "Conflito objeto/minuta", conflitoPrazoVigenciaArp: "Conflito prazo vigência/ARP", conflitoPrazosEntrega: "Conflito prazos de entrega", permiteSubcontratacao: "Permite subcontratação", previsaoReajuste: "Previsão de reajuste/repactuação", permiteRenovacao: "Permite renovação de contrato", estabeleceCondicoesPagamento: "Estabelece condições de pagamento" } },
+    identificacao: { titulo: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Identificação da Licitação", campos: { numero: "Número", uasg: "UASG", contratacao: "Contratação", modalidade: "Modalidade", portalRealizacao: "Portal de realização", regulamentacao: "Regulamentação" } },
+    sessaoPublica: { titulo: "<svg class='icone-ph'><use href='#ph-calendar'></use></svg> Sessão Pública", campos: { data: "Data", horario: "Horário", modoDisputa: "Modo de disputa", intervaloMinimo: "Intervalo mínimo" } },
+    orgao: { titulo: "<svg class='icone-ph'><use href='#ph-bank'></use></svg> Órgão Responsável", campos: { nome: "Órgão", email: "E-mail", endereco: "Endereço", telefone: "Telefone" } },
+    detalhes: { titulo: "<svg class='icone-ph'><use href='#ph-briefcase'></use></svg> Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade", provaConceito: "Exigência de prova de conceito" } },
+    prazos: { titulo: "<svg class='icone-ph'><use href='#ph-alarm'></use></svg> Prazos Importantes", campos: { limiteEnvioPropostas: "Limite p/ envio de propostas", prazoRecurso: "Prazo p/ recurso", prazoContrarrazoes: "Prazo p/ contrarrazões", limiteEsclarecimentos: "Limite p/ esclarecimentos", limiteImpugnacao: "Limite p/ impugnação", vigenciaContrato: "Vigência do contrato" } },
+    criteriosProposta: { titulo: "<svg class='icone-ph'><use href='#ph-receipt'></use></svg> Critérios da Proposta e Julgamento", campos: { validadeProposta: "Validade da proposta", criteriosDesempate: "Critérios de desempate", exigenciasPropostaComercial: "Exigências da proposta comercial", programaIntegridade: "Programa de integridade" } },
+    itens: { titulo: "<svg class='icone-ph'><use href='#ph-package'></use></svg> Resumo dos Itens", campos: { totalItens: "Total de itens", descricaoGeral: "Descrição geral", categoriasPrincipais: "Categorias principais", observacoes: "Observações" } },
+    analiseCritica: { titulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Análise Crítica", campos: { conflitoObjetoMinuta: "Conflito objeto/minuta", conflitoPrazoVigenciaArp: "Conflito prazo vigência/ARP", conflitoPrazosEntrega: "Conflito prazos de entrega", permiteSubcontratacao: "Permite subcontratação", previsaoReajuste: "Previsão de reajuste/repactuação", permiteRenovacao: "Permite renovação de contrato", estabeleceCondicoesPagamento: "Estabelece condições de pagamento" } },
   };
 
   const CAMPOS_TEXTO_LIVRE_IA = [
-    ["atestadoCapacidadeTecnica", "🎓 Atestado de Capacidade Técnica"],
-    ["legislacao", "⚖️ Legislação"],
-    ["anexosDeclaracoes", "📎 Anexos e Declarações"],
-    ["condicoesPagamento", "💳 Condições de Pagamento"],
+    ["atestadoCapacidadeTecnica", "<svg class='icone-ph'><use href='#ph-graduation-cap'></use></svg> Atestado de Capacidade Técnica"],
+    ["legislacao", "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação"],
+    ["anexosDeclaracoes", "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Anexos e Declarações"],
+    ["condicoesPagamento", "<svg class='icone-ph'><use href='#ph-credit-card'></use></svg> Condições de Pagamento"],
   ];
 
   function renderizarCartoesTopoIA(est) {
@@ -1915,11 +1979,15 @@
   // Cria uma seção fixa (sempre aberta, sem seta/clique) — igual ao padrão ConLicitação
   // que o usuário pediu: o resumo já chega pronto, sem precisar expandir nada.
   function criarSecaoIA(titulo) {
+    // titulo é sempre string fixa do código (nunca dado vindo do usuário/servidor) — os
+    // vários pontos que chamam essa função embutem um ícone SVG no início do texto, por
+    // isso precisa de innerHTML aqui em vez de textContent (que só aceitaria texto puro e
+    // mostraria a tag do ícone como texto literal em vez de renderizar).
     const secao = document.createElement("div");
     secao.className = "secao-ia";
     const h4 = document.createElement("h4");
     h4.className = "secao-ia-titulo";
-    h4.textContent = titulo;
+    h4.innerHTML = titulo;
     secao.appendChild(h4);
     return secao;
   }
@@ -1964,7 +2032,7 @@
     }
 
     if (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
-      const secao = criarSecaoIA("📑 Documentos de Habilitação Exigidos");
+      const secao = criarSecaoIA("<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos");
       const ul = document.createElement("ul");
       ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
       est.documentosHabilitacao.forEach((d) => {
@@ -1977,7 +2045,7 @@
     }
 
     if (Array.isArray(est.outrasInformacoesRelevantes) && est.outrasInformacoesRelevantes.length) {
-      const secao = criarSecaoIA("ℹ️ Outras Informações Relevantes");
+      const secao = criarSecaoIA("<svg class='icone-ph'><use href='#ph-info'></use></svg> Outras Informações Relevantes");
       const ul = document.createElement("ul");
       ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
       est.outrasInformacoesRelevantes.forEach((d) => {
@@ -1990,7 +2058,7 @@
     }
 
     if (est.penalidades && !/^n[ãa]o informado$/i.test(String(est.penalidades).trim())) {
-      const secao = criarSecaoIA("⚠️ Penalidades");
+      const secao = criarSecaoIA("<svg class='icone-ph'><use href='#ph-warning'></use></svg> Penalidades");
       const p = document.createElement("p");
       p.style.cssText = "margin:8px 0 0;font-size:13px;";
       p.textContent = est.penalidades;
@@ -2103,7 +2171,7 @@
       linha.target = "_blank";
       linha.rel = "noopener";
       linha.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);text-decoration:none;font-size:13px;";
-      linha.innerHTML = `<span>${escapeHtml(doc.titulo || doc.tipoDocumentoNome || "Documento")}<br><span style="color:var(--texto-fraco);font-size:11.5px;">${escapeHtml(doc.tipoDocumentoNome || "")}</span></span><span>📥 Baixar</span>`;
+      linha.innerHTML = `<span>${escapeHtml(doc.titulo || doc.tipoDocumentoNome || "Documento")}<br><span style="color:var(--texto-fraco);font-size:11.5px;">${escapeHtml(doc.tipoDocumentoNome || "")}</span></span><span><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar</span>`;
       alvo.appendChild(linha);
     });
     document.getElementById("modal-arquivos-fundo").classList.add("aberto");
@@ -2122,14 +2190,14 @@
   // (ia-edital.js), reaproveitada aqui só pra categorizar visualmente.
   const PALAVRAS_DOCUMENTO_PRINCIPAL_CLIENTE = /edital|instrumento convocat[oó]rio|termo de refer[eê]ncia|projeto b[aá]sico|carta[- ]convite|credenciamento|dispensa|inexigibilidade|chamamento|contrata[çc][ãa]o direta/i;
   const CATEGORIAS_ARQUIVO = [
-    { chave: "impugnacao", rotulo: "⚠️ Impugnações", teste: /impugna[çc][ãa]o/i },
-    { chave: "recurso", rotulo: "⚠️ Recursos e Contrarrazões", teste: /recurso|contrarraz[ãa]o/i },
-    { chave: "esclarecimento", rotulo: "💬 Esclarecimentos", teste: /esclarec/i },
-    { chave: "aviso", rotulo: "📢 Avisos", teste: /aviso|suspens[ãa]o|revoga[çc][ãa]o|anula[çc][ãa]o|cancelamento|adiamento/i },
-    { chave: "retificacao", rotulo: "✏️ Retificações e Errata", teste: /retifica|errata/i },
-    { chave: "resultado", rotulo: "🏁 Resultados e Homologação", teste: /resultado|julgamento|homologa[çc][ãa]o|adjudica[çc][ãa]o|ata\b/i },
-    { chave: "principal", rotulo: "📄 Documento principal", teste: PALAVRAS_DOCUMENTO_PRINCIPAL_CLIENTE },
-    { chave: "outros", rotulo: "📎 Outros documentos", teste: null },
+    { chave: "impugnacao", rotulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Impugnações", teste: /impugna[çc][ãa]o/i },
+    { chave: "recurso", rotulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Recursos e Contrarrazões", teste: /recurso|contrarraz[ãa]o/i },
+    { chave: "esclarecimento", rotulo: "<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Esclarecimentos", teste: /esclarec/i },
+    { chave: "aviso", rotulo: "<svg class='icone-ph'><use href='#ph-megaphone'></use></svg> Avisos", teste: /aviso|suspens[ãa]o|revoga[çc][ãa]o|anula[çc][ãa]o|cancelamento|adiamento/i },
+    { chave: "retificacao", rotulo: "<svg class='icone-ph'><use href='#ph-pencil-simple'></use></svg> Retificações e Errata", teste: /retifica|errata/i },
+    { chave: "resultado", rotulo: "<svg class='icone-ph'><use href='#ph-flag-checkered'></use></svg> Resultados e Homologação", teste: /resultado|julgamento|homologa[çc][ãa]o|adjudica[çc][ãa]o|ata\b/i },
+    { chave: "principal", rotulo: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Documento principal", teste: PALAVRAS_DOCUMENTO_PRINCIPAL_CLIENTE },
+    { chave: "outros", rotulo: "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Outros documentos", teste: null },
   ];
 
   function categorizarDocumento(doc) {
@@ -2165,7 +2233,7 @@
       const linhas = grupo.docs.map((doc) => `
         <a href="${montarUrlBaixarDoc(partes, doc)}" target="_blank" rel="noopener" class="arquivo-linha">
           <span>${escapeHtml(doc.titulo || doc.tipoDocumentoNome || "Documento")}${doc.dataPublicacaoPncp ? `<br><span class="arquivo-linha-data">Publicado em ${escapeHtml(formatarPrazoPropostas(doc.dataPublicacaoPncp))}</span>` : ""}</span>
-          <span>📥 Baixar</span>
+          <span><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar</span>
         </a>`).join("");
       return `<div class="arquivos-categoria">
         <p class="arquivos-categoria-titulo">${grupo.rotulo} <span class="arquivos-categoria-contagem">${grupo.docs.length}</span></p>
@@ -2185,7 +2253,7 @@
       return;
     }
     const textoOriginal = botao ? botao.textContent : "";
-    if (botao) { botao.disabled = true; botao.textContent = "⏳ Carregando..."; }
+    if (botao) { botao.disabled = true; botao.textContent = " Carregando..."; }
     painelStatus.innerHTML = "";
     painelLista.innerHTML = `<p class="itens-vazio">Carregando...</p>`;
     document.getElementById("modal-verarquivos-fundo").classList.add("aberto");
@@ -2195,7 +2263,7 @@
       // situacaoCompraId 1 = "Divulgada no PNCP" (normal). Qualquer outro valor é sinal de
       // que algo mudou no processo — revogação, suspensão, anulação etc. — vale destacar.
       if (dados.situacaoCompraNome && dados.situacaoCompraId !== 1) {
-        painelStatus.innerHTML = `<div class="status-compra-alerta">⚠️ Situação atual da licitação: <strong>${escapeHtml(dados.situacaoCompraNome)}</strong></div>`;
+        painelStatus.innerHTML = `<div class="status-compra-alerta"><svg class='icone-ph'><use href='#ph-warning'></use></svg> Situação atual da licitação: <strong>${escapeHtml(dados.situacaoCompraNome)}</strong></div>`;
       } else if (dados.situacaoCompraNome) {
         painelStatus.innerHTML = `<div class="status-compra-ok">✓ Situação atual: ${escapeHtml(dados.situacaoCompraNome)}</div>`;
       }
@@ -2663,7 +2731,7 @@
         <td style="color:var(--vermelho)">${escapeHtml(tipo)}</td>
         <td>${escapeHtml(inicio)}</td>
         <td>${escapeHtml(fim)}</td>
-        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no Portal da Transparência ↗</a>` : "-"}</td>
+        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no Portal da Transparência <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td>
       </tr>`;
     }
     html += "</table>";
@@ -2777,20 +2845,25 @@
     salvarMapa(nome, mapa);
   }
 
+  // Sem ícone de propósito: esses textos viram <option> de <select> em vários lugares
+  // (ver abaixo e KANBAN_COLUNAS), e <option> não renderiza HTML/SVG — só mostraria a tag
+  // como texto literal quebrado. Título plano é o normal pra dropdown nativo.
   const OPCOES_STATUS_LICITACAO = [
     ["", "Status: nenhum"],
-    ["interesse", "⭐ Tenho interesse"],
-    ["participando", "🚀 Participando"],
-    ["ganhei", "🏆 Ganhei"],
-    ["perdi", "❌ Perdi"],
+    ["interesse", "Tenho interesse"],
+    ["participando", "Participando"],
+    ["ganhei", "Ganhei"],
+    ["perdi", "Perdi"],
   ];
 
   // ---- Quadro Kanban ----
+  // titulo fica sem ícone (mesmo motivo do array acima — também vira <option> num select);
+  // icone é o slug usado só na exibição rica do cabeçalho da coluna (.kanban-coluna-titulo).
   const KANBAN_COLUNAS = [
-    { valor: "interesse", titulo: "⭐ Tenho interesse", cor: "var(--laranja-forte)" },
-    { valor: "participando", titulo: "🚀 Participando", cor: "var(--azul)" },
-    { valor: "ganhei", titulo: "🏆 Ganhei", cor: "var(--verde)" },
-    { valor: "perdi", titulo: "❌ Perdi", cor: "var(--vermelho)" },
+    { valor: "interesse", titulo: "Tenho interesse", icone: "star", cor: "var(--laranja-forte)" },
+    { valor: "participando", titulo: "Participando", icone: "rocket-launch", cor: "var(--azul)" },
+    { valor: "ganhei", titulo: "Ganhei", icone: "trophy", cor: "var(--verde)" },
+    { valor: "perdi", titulo: "Perdi", icone: "x-circle", cor: "var(--vermelho)" },
   ];
 
   // Guarda os dados necessários pra desenhar o card no Kanban mesmo depois que a licitação
@@ -2826,7 +2899,7 @@
   function montarCardKanban(id, edital, valorStatus, anotacaoAtual) {
     const classePrazo = classePrazoKanban(edital.encerramento);
     const prazoHtml = edital.encerramento
-      ? `<span class="kanban-card-prazo ${classePrazo || ""}">⏱ ${escapeHtml(formatarPrazoPropostas(edital.encerramento).split(" (")[0])}</span>`
+      ? `<span class="kanban-card-prazo ${classePrazo || ""}"><svg class='icone-ph'><use href='#ph-timer'></use></svg> ${escapeHtml(formatarPrazoPropostas(edital.encerramento).split(" (")[0])}</span>`
       : "";
     // Além de arrastar (que em alguns navegadores/touchpads pode ser difícil de acionar),
     // todo cartão tem um seletor "Mover para" — garante que dá pra mudar de coluna de
@@ -2840,15 +2913,15 @@
           <p class="kanban-card-objeto">${escapeHtml(edital.objeto || "Licitação sem título")}</p>
           <button class="kanban-card-remover" type="button" title="Tirar do acompanhamento" data-id="${escapeHtml(id)}">✕</button>
         </div>
-        <p class="kanban-card-meta">🏛️ ${escapeHtml(edital.orgao || "Órgão não informado")}</p>
-        <p class="kanban-card-meta">📍 ${escapeHtml([edital.municipio, edital.uf].filter(Boolean).join(" / ") || "Não informado")}</p>
+        <p class="kanban-card-meta"><svg class='icone-ph'><use href='#ph-bank'></use></svg> ${escapeHtml(edital.orgao || "Órgão não informado")}</p>
+        <p class="kanban-card-meta"><svg class='icone-ph'><use href='#ph-map-pin'></use></svg> ${escapeHtml([edital.municipio, edital.uf].filter(Boolean).join(" / ") || "Não informado")}</p>
         ${prazoHtml}
         <select class="kanban-card-mover" data-id="${escapeHtml(id)}" title="Mover para outra coluna">${opcoesMoverHtml}</select>
         <textarea class="kanban-card-anotacao" data-id="${escapeHtml(id)}" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual || "")}</textarea>
         <div class="kanban-card-acoes">
-          <button type="button" class="kanban-btn-resumir" data-id="${escapeHtml(id)}">🤖 Resumo</button>
-          <button type="button" class="kanban-btn-abrir" data-id="${escapeHtml(id)}">↗️ PNCP</button>
-          ${(edital.numeroControlePNCP && edital.encerramento) ? `<button type="button" class="btn-criar-lembrete" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(edital.numeroControlePNCP)}" data-encerramento="${escapeHtml(edital.encerramento)}" data-objeto="${escapeHtml((edital.objeto || "").slice(0, 200))}">🔔</button>` : ""}
+          <button type="button" class="kanban-btn-resumir" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumo</button>
+          <button type="button" class="kanban-btn-abrir" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg> PNCP</button>
+          ${(edital.numeroControlePNCP && edital.encerramento) ? `<button type="button" class="btn-criar-lembrete" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(edital.numeroControlePNCP)}" data-encerramento="${escapeHtml(edital.encerramento)}" data-objeto="${escapeHtml((edital.objeto || "").slice(0, 200))}"><svg class='icone-ph'><use href='#ph-bell'></use></svg></button>` : ""}
         </div>
       </div>`;
   }
@@ -2868,7 +2941,7 @@
       return `
         <div class="kanban-coluna" data-status="${col.valor}" style="--cor-coluna:${col.cor};">
           <div class="kanban-coluna-topo">
-            <span class="kanban-coluna-titulo">${col.titulo}</span>
+            <span class="kanban-coluna-titulo"><svg class='icone-ph'><use href='#ph-${col.icone}'></use></svg> ${col.titulo}</span>
             <span class="kanban-coluna-contagem">${idsColuna.length}</span>
           </div>
           <div class="kanban-lista" data-status="${col.valor}">${cardsHtml}</div>
@@ -3425,8 +3498,8 @@
         <div class="boletim-topo">
           <span class="boletim-numero">${i + 1}</span>
           <div class="boletim-acoes-rapidas">
-            <button class="boletim-acao-icone btn-favoritar${isFav ? " favorito-ativo" : ""}" title="Marcar como favorito">${isFav ? "★" : "☆"}</button>
-            <button class="boletim-acao-icone btn-marcar-lido${isLido ? " lido-ativo" : ""}" title="Marcar como lido">${isLido ? "✓" : "👁"}</button>
+            <button class="boletim-acao-icone btn-favoritar${isFav ? " favorito-ativo" : ""}" title="Marcar como favorito"><svg class='icone-ph'><use href='#ph-star'></use></svg></button>
+            <button class="boletim-acao-icone btn-marcar-lido${isLido ? " lido-ativo" : ""}" title="Marcar como lido"><svg class='icone-ph'><use href='#ph-${isLido ? "check-circle" : "eye"}'></use></svg></button>
           </div>
         </div>
         <div class="boletim-corpo">
@@ -3456,13 +3529,13 @@
           </div>
           <div class="boletim-rodape">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
-              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação">📋 Ver Itens</button>` : ""}
-              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações">📁 Acompanhamento</button>` : ""}
-              ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
-              ${(r.numeroControlePNCP && r.encerramento) ? `<button class="btn-ia-edital btn-criar-lembrete" type="button" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(r.numeroControlePNCP)}" data-encerramento="${escapeHtml(r.encerramento)}" data-objeto="${escapeHtml((r.objeto || "").slice(0, 200))}">🔔 Lembrete</button>` : ""}
+              <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumir com IA</button>
+              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Ver Itens</button>` : ""}
+              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações"><svg class='icone-ph'><use href='#ph-folder'></use></svg> Acompanhamento</button>` : ""}
+              ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital</button>` : ""}
+              ${(r.numeroControlePNCP && r.encerramento) ? `<button class="btn-ia-edital btn-criar-lembrete" type="button" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(r.numeroControlePNCP)}" data-encerramento="${escapeHtml(r.encerramento)}" data-objeto="${escapeHtml((r.objeto || "").slice(0, 200))}"><svg class='icone-ph'><use href='#ph-bell'></use></svg> Lembrete</button>` : ""}
             </div>
-            ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
+            ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>` : "Ver edital completo no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>"}</a>` : "<span></span>"}
           </div>
           <div class="boletim-itens" style="display:none;"></div>
         </div>
@@ -3505,12 +3578,12 @@
     if (!painel) return;
     if (painel.style.display !== "none") {
       painel.style.display = "none";
-      botao.textContent = "📋 Ver Itens";
+      botao.innerHTML = '<svg class="icone-ph"><use href="#ph-clipboard-text"></use></svg> Ver Itens';
       return;
     }
     if (painel.dataset.carregado === "1") {
       painel.style.display = "block";
-      botao.textContent = "📋 Ocultar Itens";
+      botao.innerHTML = '<svg class="icone-ph"><use href="#ph-clipboard-text"></use></svg> Ocultar Itens';
       return;
     }
     const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
@@ -3521,7 +3594,7 @@
       return;
     }
     const textoOriginal = botao.textContent;
-    botao.textContent = "⏳ Carregando...";
+    botao.textContent = " Carregando...";
     botao.disabled = true;
     try {
       const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
@@ -3533,7 +3606,7 @@
     painel.style.display = "block";
     painel.dataset.carregado = "1";
     botao.disabled = false;
-    botao.textContent = "📋 Ocultar Itens";
+    botao.innerHTML = '<svg class="icone-ph"><use href="#ph-clipboard-text"></use></svg> Ocultar Itens';
   }
 
   // Liga os botões de favoritar/marcar como lido dentro de um container de cards de boletim.
@@ -3559,8 +3632,9 @@
           ev.stopPropagation();
           const ativo = alternarNoConjunto("favoritos", id);
           card.classList.toggle("favorito", ativo);
+          // Ícone não muda de forma (sempre a mesma estrela sólida) — só a cor via classe
+          // favorito-ativo + currentColor, então não precisa trocar o <use> aqui.
           btnFav.classList.toggle("favorito-ativo", ativo);
-          btnFav.textContent = ativo ? "★" : "☆";
           if (aoAtualizar) aoAtualizar();
         });
       }
@@ -3570,7 +3644,8 @@
           const ativo = alternarNoConjunto("lidos", id);
           card.classList.toggle("lido", ativo);
           btnLido.classList.toggle("lido-ativo", ativo);
-          btnLido.textContent = ativo ? "✓" : "👁";
+          const usoLido = btnLido.querySelector("use");
+          if (usoLido) usoLido.setAttribute("href", ativo ? "#ph-check-circle" : "#ph-eye");
           if (aoAtualizar) aoAtualizar();
         });
       }
@@ -4308,7 +4383,7 @@ let resultados = resultadosBrutos.filter((r) => {
         <td>${escapeHtml(r.uf || "-")}</td>
         <td>${escapeHtml(valor)}</td>
         <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
-        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td>
       </tr>`;
     }
     html += "</table>";
@@ -4361,11 +4436,11 @@ let resultados = resultadosBrutos.filter((r) => {
       const cnpjForn = r.cnpjFornecedor || "sem-cnpj";
       html += `<tr>
         <td>${escapeHtml(r.objeto || "-")}</td>
-        <td><a href="#" class="link-pncp fornecedor-clicavel" data-cnpj="${escapeHtml(cnpjForn)}">${escapeHtml(r.nomeFornecedor || cnpjForn)} ↗</a></td>
+        <td><a href="#" class="link-pncp fornecedor-clicavel" data-cnpj="${escapeHtml(cnpjForn)}">${escapeHtml(r.nomeFornecedor || cnpjForn)} <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a></td>
         <td>${escapeHtml(r.uf || "-")}</td>
         <td>${escapeHtml(valor)}</td>
         <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
-        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</td>
+        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td>
       </tr>`;
     }
     html += "</table>";
@@ -4592,7 +4667,7 @@ let resultados = resultadosBrutos.filter((r) => {
     } else {
       html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
       d.oportunidadesAbertas.forEach((o, i) => {
-        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td></tr>`;
+        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td></tr>`;
       });
       html += "</table>";
       html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
@@ -4628,7 +4703,7 @@ let resultados = resultadosBrutos.filter((r) => {
           <div><dt>Órgão</dt><dd>${escapeHtml(o.orgao || "-")}</dd></div>
           <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</dd></div>
           <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(o.numeroControlePNCP || "-")}</dd></div>
-          <div><dt>Link</dt><dd>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener">Abrir edital no PNCP ↗</a>` : "-"}</dd></div>
+          <div><dt>Link</dt><dd>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener">Abrir edital no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</dd></div>
         </dl>`;
         tr.after(detalhe);
       });
@@ -4893,10 +4968,10 @@ let resultados = resultadosBrutos.filter((r) => {
         : `<div class="aviso">${escapeHtml(erroFicha || "Dados cadastrais indisponíveis.")}</div>`;
 
       alvo.innerHTML =
-        montarAcordeon("emp-adm", "📋", "Análise administrativa", htmlFicha, { aberto: true }) +
-        montarAcordeon("emp-sanc", "⚠️", "Sanções / Penalizações", '<p class="carregando">Consultando sanções (CEIS/CNEP)...</p>', { aberto: false }) +
-        montarAcordeon("emp-part", "📊", "Participações", '<div class="carregando">Cruzando com contratos no PNCP...</div>', { aberto: true }) +
-        montarAcordeon("emp-aspec", "📈", "Aspectos estratégicos", montarHtmlAspectosEstrategicos(), { aberto: false });
+        montarAcordeon("emp-adm", "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>", "Análise administrativa", htmlFicha, { aberto: true }) +
+        montarAcordeon("emp-sanc", "<svg class='icone-ph'><use href='#ph-warning'></use></svg>", "Sanções / Penalizações", '<p class="carregando">Consultando sanções (CEIS/CNEP)...</p>', { aberto: false }) +
+        montarAcordeon("emp-part", "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>", "Participações", '<div class="carregando">Cruzando com contratos no PNCP...</div>', { aberto: true }) +
+        montarAcordeon("emp-aspec", "<svg class='icone-ph'><use href='#ph-chart-line-up'></use></svg>", "Aspectos estratégicos", montarHtmlAspectosEstrategicos(), { aberto: false });
       ligarAcordeons(alvo);
 
       if (ficha) {
@@ -5002,7 +5077,7 @@ let resultados = resultadosBrutos.filter((r) => {
             <td>${escapeHtml(r.uf || "-")}</td>
             <td>${escapeHtml(formatarValor(r.valor))}</td>
             <td>${escapeHtml(String(r.dataAssinatura || "-"))}</td>
-            <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP ↗</a>` : "-"}</td>
+            <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td>
           </tr>`;
         });
         html2 += "</table>";
@@ -5041,7 +5116,7 @@ let resultados = resultadosBrutos.filter((r) => {
               <div><dt>Valor</dt><dd>${escapeHtml(formatarValor(r.valor))}</dd></div>
               <div><dt>Data de assinatura</dt><dd>${escapeHtml(String(r.dataAssinatura || "-"))}</dd></div>
               <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
-              <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP ↗</a>` : "-"}</dd></div>
+              <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</dd></div>
             </dl>`;
             tr.after(detalhe);
           });
@@ -5129,7 +5204,7 @@ let resultados = resultadosBrutos.filter((r) => {
         <td>${escapeHtml(r.orgao || "-")}</td>
         <td>${escapeHtml(siglaUf(r.uf) || r.uf || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
         <td>${formatarValor(r.valorLiberado || r.valor || 0)}</td>
-        <td>${formatarDataIso(r.dataPublicacao)}${link ? ` <a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Ver este convênio no Portal da Transparência">↗</a>` : ""}</td>
+        <td>${formatarDataIso(r.dataPublicacao)}${link ? ` <a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Ver este convênio no Portal da Transparência"><svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : ""}</td>
       </tr>`;
     });
     html += "</table>";
@@ -5161,7 +5236,7 @@ let resultados = resultadosBrutos.filter((r) => {
           <div><dt>Início de vigência</dt><dd>${formatarDataIso(r.dataInicioVigencia)}</dd></div>
           <div><dt>Fim de vigência</dt><dd>${formatarDataIso(r.dataFinalVigencia)}</dd></div>
           <div><dt>Última liberação</dt><dd>${formatarDataIso(r.dataUltimaLiberacao)}</dd></div>
-          <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver convênio completo no Portal da Transparência ↗</a>` : "-"}</dd></div>
+          <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Ver convênio completo no Portal da Transparência <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</dd></div>
         </dl>`;
         tr.after(detalhe);
       });
@@ -5497,7 +5572,7 @@ let resultados = resultadosBrutos.filter((r) => {
         <td>${escapeHtml(r.estado || "-")}${r.municipio ? " / " + escapeHtml(r.municipio) : ""}</td>
         <td>${formatarValor(r.precoUnitario)}</td>
         <td>${formatarDataIso(r.dataResultado)}</td>
-        <td>${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver edital ↗</a>` : "-"}</td>
+        <td>${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver edital <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td>
       </tr>`;
     });
     html += `</table>`;
@@ -5665,7 +5740,8 @@ window.__atualizarDashboard = function () {
     if (itensEl) {
       itensEl.innerHTML = campos.map((f) => {
         const ok = f.chave in c ? !!(c[f.chave] && String(c[f.chave]).trim()) : false;
-        return `<div class="${ok ? "dash-perfil-item-ok" : "dash-perfil-item-falta"}">${ok ? "&check;" : "&#9675;"} ${f.label}</div>`;
+        const iconeOk = ok ? "check-circle" : "circle";
+        return `<div class="${ok ? "dash-perfil-item-ok" : "dash-perfil-item-falta"}"><svg class='icone-ph'><use href='#ph-${iconeOk}'></use></svg> ${f.label}</div>`;
       }).join("");
     }
   } catch (e) {}
@@ -5714,7 +5790,7 @@ window.__preencherIdentidadeUsuario = function () {
     const elBadgeEmpresa = document.getElementById("header-badge-empresa");
     if (elBadgeEmpresa) {
       const nomeEmpresa = (c.empresa && String(c.empresa).trim()) || "Empresa não informada";
-      elBadgeEmpresa.textContent = "🏢 " + nomeEmpresa;
+      elBadgeEmpresa.innerHTML = `<svg class='icone-ph'><use href='#ph-buildings'></use></svg> ${escapeHtml(nomeEmpresa)}`;
       elBadgeEmpresa.title = nomeEmpresa;
     }
     const elBadgePlano = document.getElementById("header-badge-plano");
@@ -5829,7 +5905,9 @@ window.__preencherIdentidadeUsuario();
   const temaBtn = document.getElementById("header-tema-btn");
   if (temaBtn) {
     function atualizarIconeTema() {
-      temaBtn.textContent = document.documentElement.classList.contains("tema-claro") ? "☀️" : "🌙";
+      const claro = document.documentElement.classList.contains("tema-claro");
+      const use = temaBtn.querySelector("use");
+      if (use) use.setAttribute("href", claro ? "#ph-sun" : "#ph-moon");
     }
     atualizarIconeTema();
     temaBtn.addEventListener("click", () => {
@@ -5845,8 +5923,10 @@ window.__preencherIdentidadeUsuario();
   const modalFechar = document.getElementById("modal-conta-fechar");
 
   function abrirModalConta(titulo, htmlCorpo) {
+    // titulo é sempre string fixa do código nos pontos que chamam essa função (nunca dado
+    // do usuário) — innerHTML em vez de textContent pra suportar ícone SVG embutido no título.
     if (!modalFundo) return;
-    if (modalTitulo) modalTitulo.textContent = titulo;
+    if (modalTitulo) modalTitulo.innerHTML = titulo;
     if (modalCorpo) modalCorpo.innerHTML = htmlCorpo;
     modalFundo.classList.add("aberto");
   }
@@ -5921,14 +6001,14 @@ window.__preencherIdentidadeUsuario();
           </div>`;
         abrirModalConta("Planos e preços", html);
       } else if (acao === "lembretes") {
-        abrirModalConta("🔔 Meus lembretes", `<p class="itens-vazio">Carregando...</p>`);
+        abrirModalConta("<svg class='icone-ph'><use href='#ph-bell'></use></svg> Meus lembretes", `<p class="itens-vazio">Carregando...</p>`);
         const { data: lembretes, error } = await window.__sbClient
           .from("lembretes")
           .select("id, numero_controle_pncp, objeto_resumo, data_final_proposta, dias_antes, nota, enviado")
           .eq("enviado", false)
           .order("data_final_proposta", { ascending: true });
         if (error || !lembretes || lembretes.length === 0) {
-          abrirModalConta("🔔 Meus lembretes", `<p class="itens-vazio">Nenhum lembrete ativo. Clique em "🔔 Lembrete" num card de licitação pra criar um.</p>`);
+          abrirModalConta("<svg class='icone-ph'><use href='#ph-bell'></use></svg> Meus lembretes", `<p class="itens-vazio">Nenhum lembrete ativo. Clique no ícone de sino (Lembrete) num card de licitação pra criar um.</p>`);
         } else {
           const html = lembretes
             .map((l) => {
@@ -5936,12 +6016,12 @@ window.__preencherIdentidadeUsuario();
               return `<div style="padding:10px 0;border-bottom:1px solid #eef1f6;">
                 <p style="margin:0 0 4px;font-size:13px;font-weight:600;">${escapeHtml(l.objeto_resumo || l.numero_controle_pncp)}</p>
                 <p style="margin:0 0 4px;font-size:12.5px;color:#64748b;">Aviso ${l.dias_antes} dia(s) antes do prazo (${escapeHtml(dataProposta)})</p>
-                ${l.nota ? `<p style="margin:0 0 6px;font-size:12.5px;">📝 ${escapeHtml(l.nota)}</p>` : ""}
+                ${l.nota ? `<p style="margin:0 0 6px;font-size:12.5px;"><svg class='icone-ph'><use href='#ph-note-pencil'></use></svg> ${escapeHtml(l.nota)}</p>` : ""}
                 <button type="button" class="btn-cancelar-lembrete" data-id="${escapeHtml(l.id)}" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:12.5px;padding:0;">✕ Cancelar lembrete</button>
               </div>`;
             })
             .join("");
-          abrirModalConta("🔔 Meus lembretes", html);
+          abrirModalConta("<svg class='icone-ph'><use href='#ph-bell'></use></svg> Meus lembretes", html);
           document.querySelectorAll(".btn-cancelar-lembrete").forEach((btn) => {
             btn.addEventListener("click", async () => {
               btn.disabled = true;
@@ -5963,12 +6043,12 @@ window.__preencherIdentidadeUsuario();
     const cont = document.getElementById("dash-atalhos");
     if (!cont) return;
     const atalhos = [
-      { ico: "&#128269;", label: "Encontrar Licitações", alvo: "oportunidades" },
-      { ico: "&#128202;", label: "Diagnóstico de Mercado", alvo: "diagnostico" },
-      { ico: "&#128203;", label: "Kanban", alvo: "kanban" },
-      { ico: "&#127974;", label: "Base de Empresas", alvo: "empresa" },
-      { ico: "&#9878;", label: "Artigos Jurídicos", alvo: "juridico" },
-      { ico: "&#128176;", label: "Pesquisa de Preços", alvo: "precos" },
+      { ico: "<svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg>", label: "Encontrar Licitações", alvo: "oportunidades" },
+      { ico: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>", label: "Diagnóstico de Mercado", alvo: "diagnostico" },
+      { ico: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>", label: "Kanban", alvo: "kanban" },
+      { ico: "<svg class='icone-ph'><use href='#ph-buildings'></use></svg>", label: "Base de Empresas", alvo: "empresa" },
+      { ico: "<svg class='icone-ph'><use href='#ph-scales'></use></svg>", label: "Artigos Jurídicos", alvo: "juridico" },
+      { ico: "<svg class='icone-ph'><use href='#ph-coins'></use></svg>", label: "Pesquisa de Preços", alvo: "precos" },
     ];
     cont.innerHTML = atalhos
       .map(
