@@ -19,7 +19,7 @@
         window.location.replace("login.html");
         return;
       }
-      const { data: cliente } = await sb.from("clientes").select("nome, empresa, cnpj, telefone, status, segmento, atividades, estados_interesse, como_conheceu, quantidade_funcionarios, licitacoes_por_mes, faturamento_anual, como_pretende_usar").eq("id", session.user.id).maybeSingle();
+      const { data: cliente } = await sb.from("clientes").select("nome, empresa, cnpj, telefone, status, segmento, atividades, estados_interesse, como_conheceu, quantidade_funcionarios, licitacoes_por_mes, faturamento_anual, como_pretende_usar, plano").eq("id", session.user.id).maybeSingle();
             if (!cliente || cliente.status !== "aprovado") {
                       await sb.auth.signOut();
                       window.location.replace("login.html");
@@ -99,17 +99,39 @@
     pointer-events: none;
   }
   .header-topo { display: flex; align-items: center; justify-content: space-between; gap: 16px; position: relative; }
+  .header-marca {
+    display: flex; align-items: center; gap: 10px; min-width: 0;
+    text-decoration: none; color: inherit; flex-shrink: 0;
+  }
   .header-logo {
     width: 36px; height: 36px; flex-shrink: 0;
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
   }
+  .header-nome {
+    font-size: 17px; font-weight: 700; letter-spacing: -0.2px; color: #fff;
+    white-space: nowrap;
+  }
   .header-acoes { display: flex; gap: 8px; position: relative; flex-shrink: 0; align-items: center; }
+  /* Badges discretos de empresa/plano — fundo claro, texto escuro, formato pílula.
+     Somem primeiro em telas pequenas (ver breakpoint abaixo); logo, nome, ajuda, sino e
+     avatar continuam sempre visíveis. */
+  .header-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,0.92); color: #1a2b45;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    padding: 5px 10px; border-radius: 999px;
+  }
+  .header-badge-plano { background: rgba(255,157,51,0.95); }
   /* 40px de área de toque — não encolhe em nenhuma largura de tela, mesmo com o
      header compacto. */
   .header-icone-btn { width: 40px; height: 40px; flex-shrink: 0; }
+  @media (max-width: 768px) {
+    .header-badge { display: none; }
+  }
   @media (max-width: 560px) {
     header { padding: 8px 14px; }
     .header-topo { gap: 10px; }
+    .header-nome { font-size: 15px; }
   }
 
   .shell {
@@ -172,6 +194,26 @@
     box-shadow: 0 2px 8px rgba(46,141,255,0.45);
   }
 
+  #nav-colapsar-btn {
+    padding: 10px 6px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--borda);
+    border-radius: 0;
+  }
+  #nav-colapsar-btn .nav-ico { width: 44px; height: 28px; font-size: 16px; background: transparent; }
+
+  /* Sidebar recolhida: só ícones, sem rótulo (o rótulo continua no DOM, só escondido —
+     o hover mostra o texto completo de novo via o atributo title=, um tooltip nativo do
+     navegador, sem precisar de nenhum componente novo). Só em desktop/tablet largo — no
+     mobile a <nav> já vira uma faixa horizontal (ver @media 768px mais abaixo), onde
+     colapsar não faz sentido; por isso essas regras ficam dentro do min-width:769px. */
+  @media (min-width: 769px) {
+    nav.colapsada { width: 68px; }
+    nav.colapsada button .nav-label { display: none; }
+    nav.colapsada button { padding: 10px 4px; }
+    nav.colapsada #nav-colapsar-btn .nav-ico { transform: scaleX(-1); }
+  }
+
   main { flex: 1; min-width: 0; padding: 28px 40px 70px; }
   section { display: none; }
   section.ativa { display: block; }
@@ -210,6 +252,9 @@
     }
     nav button .nav-ico { width: 30px; height: 30px; font-size: 15px; }
     main { width: 100%; padding: 20px 16px 60px; }
+    /* Colapsar não faz sentido nessa faixa horizontal (não há espaço vertical a
+       recuperar) — some do mobile, só aparece em desktop/tablet largo. */
+    #nav-colapsar-btn { display: none; }
   }
 
   .painel-filtros {
@@ -902,8 +947,14 @@
   
 <header>
   <div class="header-topo">
-    <a href="painel.html" style="display:contents;"><img src="logo-icone-branco.svg" alt="LicitaPlena" class="header-logo"></a>
+    <a href="painel.html" class="header-marca">
+      <img src="logo-icone-branco.svg" alt="LicitaPlena" class="header-logo">
+      <span class="header-nome">LicitaPlena</span>
+    </a>
     <div class="header-acoes">
+      <span class="header-badge" id="header-badge-empresa" title="Empresa">🏢 --</span>
+      <span class="header-badge header-badge-plano" id="header-badge-plano" title="Plano atual">--</span>
+      <button id="header-ajuda-btn" class="header-icone-btn" title="Ajuda / D&uacute;vidas" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;padding:0;">?</button>
       <button id="header-bell-btn" class="header-icone-btn" title="Notifica&ccedil;&otilde;es" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;position:relative;">
         &#128276;
         <span id="header-bell-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#e8617a;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;line-height:16px;">0</span>
@@ -956,17 +1007,52 @@
 
 <div class="shell">
 <nav>
-  <button class="ativo" data-alvo="dashboard"><span class="nav-ico">&#127968;</span>Dashboard</button>
-  <button data-alvo="boletim"><span class="nav-ico">&#128203;</span>Boletim</button>
-  <button data-alvo="oportunidades"><span class="nav-ico">🔎</span>Encontrar Licitações</button>
-  <button data-alvo="diagnostico"><span class="nav-ico">📊</span>Diagnóstico de Mercado</button>
-  <button data-alvo="empresa"><span class="nav-ico">🏢</span>Analisar Empresa</button>
-  <button data-alvo="transparencia"><span class="nav-ico">🤝</span>Convênios e Emendas Federais</button>
-  <button data-alvo="precos"><span class="nav-ico">💰</span>Pesquisa de Preços</button>
-  <button data-alvo="kanban"><span class="nav-ico">🗂️</span>Kanban</button>
-  <button data-alvo="juridico"><span class="nav-ico">⚖️</span>Jurídico &amp; Dúvidas</button>
-  <button data-alvo="status"><span class="nav-ico">🟢</span>Status das Ferramentas</button>
+  <button id="nav-colapsar-btn" type="button" title="Recolher menu">
+    <span class="nav-ico">&#171;</span><span class="nav-label">Recolher</span>
+  </button>
+  <button class="ativo" data-alvo="dashboard" title="Dashboard"><span class="nav-ico">&#127968;</span><span class="nav-label">Dashboard</span></button>
+  <button data-alvo="boletim" title="Boletim"><span class="nav-ico">&#128203;</span><span class="nav-label">Boletim</span></button>
+  <button data-alvo="oportunidades" title="Encontrar Licitações"><span class="nav-ico">🔎</span><span class="nav-label">Encontrar Licitações</span></button>
+  <button data-alvo="diagnostico" title="Diagnóstico de Mercado"><span class="nav-ico">📊</span><span class="nav-label">Diagnóstico de Mercado</span></button>
+  <button data-alvo="empresa" title="Analisar Empresa"><span class="nav-ico">🏢</span><span class="nav-label">Analisar Empresa</span></button>
+  <button data-alvo="transparencia" title="Convênios e Emendas Federais"><span class="nav-ico">🤝</span><span class="nav-label">Convênios e Emendas Federais</span></button>
+  <button data-alvo="precos" title="Pesquisa de Preços"><span class="nav-ico">💰</span><span class="nav-label">Pesquisa de Preços</span></button>
+  <button data-alvo="kanban" title="Kanban"><span class="nav-ico">🗂️</span><span class="nav-label">Kanban</span></button>
+  <button data-alvo="juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico">⚖️</span><span class="nav-label">Jurídico &amp; Dúvidas</span></button>
+  <button data-alvo="status" title="Status das Ferramentas"><span class="nav-ico">🟢</span><span class="nav-label">Status das Ferramentas</span></button>
 </nav>
+
+<script>
+  // Sidebar colapsável: lembra a escolha do usuário entre sessões (localStorage, mesmo
+  // padrão hc_* já usado pro resto do painel). Roda logo após o </nav> de propósito, pra
+  // aplicar o estado salvo o quanto antes e evitar um "pulo" visual (sidebar expandida
+  // aparecendo por um instante antes de recolher). Só tem efeito visual em desktop/tablet
+  // largo (min-width:769px no CSS) — no mobile a nav vira uma faixa horizontal e o botão
+  // de recolher fica escondido (ver @media 768px), então não precisa tratar esse caso aqui.
+  (function () {
+    const nav = document.querySelector("nav");
+    const btn = document.getElementById("nav-colapsar-btn");
+    if (!nav || !btn) return;
+    const CHAVE = "hc_sidebar_colapsada";
+
+    function aplicar(colapsada) {
+      nav.classList.toggle("colapsada", colapsada);
+      btn.title = colapsada ? "Expandir menu" : "Recolher menu";
+      const label = btn.querySelector(".nav-label");
+      if (label) label.textContent = colapsada ? "Expandir" : "Recolher";
+    }
+
+    let colapsada = false;
+    try { colapsada = localStorage.getItem(CHAVE) === "1"; } catch (e) { /* localStorage indisponível */ }
+    aplicar(colapsada);
+
+    btn.addEventListener("click", () => {
+      colapsada = !colapsada;
+      aplicar(colapsada);
+      try { localStorage.setItem(CHAVE, colapsada ? "1" : "0"); } catch (e) { /* segue sem persistir */ }
+    });
+  })();
+</script>
 
 <main>
 
@@ -1342,7 +1428,10 @@
 <div class="rodape">LicitaPlena · <a href="termos-de-uso.html" style="color:inherit;text-decoration:underline;">Termos</a> · <a href="politica-privacidade.html" style="color:inherit;text-decoration:underline;">Privacidade</a> · <a href="politica-cookies.html" style="color:inherit;text-decoration:underline;">Cookies</a></div>
 
 <script>
-  const botoesNav = document.querySelectorAll("nav button");
+  // [data-alvo] exclui o botão de recolher/expandir a sidebar (#nav-colapsar-btn), que não
+  // é uma aba — sem esse filtro, clicar nele tentava ativar a seção com id "undefined" e
+  // quebrava com um erro no console.
+  const botoesNav = document.querySelectorAll("nav button[data-alvo]");
   botoesNav.forEach((b) => {
     b.addEventListener("click", () => {
       botoesNav.forEach((x) => x.classList.remove("ativo"));
@@ -5155,6 +5244,22 @@ window.__preencherIdentidadeUsuario = function () {
     if (elIni) elIni.textContent = iniciais;
     const boasVindas = document.getElementById("dash-nome");
     if (boasVindas) boasVindas.textContent = nome;
+
+    // Badges do header: empresa vem do cadastro (clientes.empresa); plano vem de
+    // clientes.plano (mesmo campo já editável no admin.html e mostrado em "Planos e
+    // preços" — antes essa query nem buscava esse campo, então "Planos e preços" sempre
+    // mostrava "Padrão" mesmo quando o admin tinha definido outro plano; corrigido junto).
+    const elBadgeEmpresa = document.getElementById("header-badge-empresa");
+    if (elBadgeEmpresa) {
+      const nomeEmpresa = (c.empresa && String(c.empresa).trim()) || "Empresa não informada";
+      elBadgeEmpresa.textContent = "🏢 " + nomeEmpresa;
+      elBadgeEmpresa.title = nomeEmpresa;
+    }
+    const elBadgePlano = document.getElementById("header-badge-plano");
+    if (elBadgePlano) {
+      elBadgePlano.textContent = (c.plano && String(c.plano).trim()) || "Padrão";
+    }
+
     if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
   } catch (e) {}
 };
@@ -5237,6 +5342,17 @@ window.__preencherIdentidadeUsuario();
   document.addEventListener("click", fecharTudo);
   window.addEventListener("resize", fecharTudo);
   window.addEventListener("scroll", fecharTudo, true);
+
+  // Botão de ajuda (?) do header: leva direto pra aba "Jurídico & Dúvidas", que já tem um
+  // formulário de contato real (Netlify Forms) — reaproveita o que já existe em vez de
+  // linkar pra uma página nova ou WhatsApp que ainda não existe no projeto.
+  const ajudaBtn = document.getElementById("header-ajuda-btn");
+  if (ajudaBtn) {
+    ajudaBtn.addEventListener("click", () => {
+      const navJuridico = document.querySelector('nav button[data-alvo="juridico"]');
+      if (navJuridico) navJuridico.click();
+    });
+  }
 
   const modalFundo = document.getElementById("modal-conta-fundo");
   const modalTitulo = document.getElementById("modal-conta-titulo");
