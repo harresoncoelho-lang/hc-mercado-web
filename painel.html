@@ -1185,6 +1185,37 @@
       </div>
       <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
     </div>
+    <details class="painel-filtros-avancados" style="margin:8px 2px 0;">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--azul,#2e8dff);">🔎 Filtros avançados</summary>
+      <div class="painel-filtros" style="margin-top:10px;">
+        <div class="campo">
+          <label>Esfera</label>
+          <select id="op-esfera">
+            <option value="">Todas</option>
+            <option value="federal">Federal</option>
+            <option value="estadual">Estadual</option>
+            <option value="municipal">Municipal</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Valor estimado mínimo (R$)</label>
+          <input id="op-valor-min" type="number" min="0" step="0.01" placeholder="Ex: 10000">
+        </div>
+        <div class="campo">
+          <label>Valor estimado máximo (R$)</label>
+          <input id="op-valor-max" type="number" min="0" step="0.01" placeholder="Ex: 500000">
+        </div>
+        <div class="campo">
+          <label>Código/número da licitação</label>
+          <input id="op-codigo" placeholder="Ex: 91077/2025 ou número de controle PNCP">
+        </div>
+        <div class="campo" style="flex:2">
+          <label>Nome do órgão</label>
+          <input id="op-orgao" placeholder="Ex: Ministério da Saúde">
+        </div>
+      </div>
+      <p class="dica-clique" style="margin:8px 2px 0;">Esfera: quando o dado direto do PNCP não está disponível (licitações ainda não recapturadas pelo robô), classificamos pelo nome do órgão — pode ficar "Não classificado" em casos raros. Valor e código dependem de dados que só a busca já coletada pelo robô traz completos; licitações vindas só da busca ao vivo podem não ter esses campos ainda.</p>
+    </details>
     <p class="dica-clique" style="margin:8px 2px 0;">Deixe as duas datas em branco pra buscar em todo o histórico coletado. Preencha pra buscar num período específico (ex: últimos 30 ou 60 dias) — inclui licitações já encerradas nesse período, não só as que ainda estão com prazo aberto.</p>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
     <div id="op-resultado"></div>
@@ -2983,32 +3014,27 @@
   // o que também é o que permite a busca por período (Publicado de/até) ser retroativa de verdade.
   async function buscarOportunidadesAbertas(uf, palavras, maxPaginas) {
     const encontrados = [];
-    let pagina = 1;
-    let totalPaginas = 1;
     let falhaConexao = false;
-    const params = new URLSearchParams({
+    const paramsBase = new URLSearchParams({
       tipos_documento: "edital",
       status: "todos",
       ordenacao: "-data",
       tam_pagina: "50",
     });
-    if (uf) params.set("ufs", uf);
+    if (uf) paramsBase.set("ufs", uf);
     // Sem UF pra restringir, o acervo nacional é grande demais pra paginar ao vivo — nesse
     // caso usamos a 1ª palavra-chave como filtro no servidor (reduz bastante o volume) e
     // ainda assim aplicamos o filtro completo (todas as palavras) no cliente logo abaixo.
-    if (!uf && palavras && palavras[0]) params.set("q", palavras[0]);
+    if (!uf && palavras && palavras[0]) paramsBase.set("q", palavras[0]);
 
-    while (pagina <= maxPaginas) {
-      params.set("pagina", String(pagina));
-      const url = `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${params.toString()}`)}`;
-      const resp = await fetchPaginaComRetry(url, 15000);
-      if (!resp) { falhaConexao = true; break; }
-      const texto = await resp.text();
-      if (!texto) break;
-      const dados = JSON.parse(texto);
-      const itens = dados.items || [];
-      if (itens.length === 0) break;
-      totalPaginas = Math.max(1, Math.ceil((Number(dados.total) || itens.length) / 50));
+    function montarUrlPagina(pagina) {
+      const p = new URLSearchParams(paramsBase);
+      p.set("pagina", String(pagina));
+      return `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${p.toString()}`)}`;
+    }
+
+    function processarPagina(dados) {
+      const itens = (dados && dados.items) || [];
       for (const item of itens) {
         const objeto = item.description || item.title || "";
         const textoBusca = `${item.title || ""} ${objeto}`;
@@ -3044,8 +3070,41 @@
           });
         }
       }
-      pagina += 1;
+      return itens.length;
     }
+
+    async function buscarPagina(pagina) {
+      const resp = await fetchPaginaComRetry(montarUrlPagina(pagina), 15000);
+      if (!resp) return null;
+      const texto = await resp.text();
+      if (!texto) return null;
+      try { return JSON.parse(texto); } catch (e) { return null; }
+    }
+
+    // A 1ª página vem sozinha (sequencial) porque só ela nos diz quantos resultados
+    // existem de verdade ("total") — sem isso não dá pra saber quantas páginas pedir.
+    // Antes, o código pedia até 20 páginas *sempre* uma de cada vez (nunca "secava" antes
+    // disso, porque qualquer busca real do PNCP tem milhares de resultados totais) — 19 a
+    // 33s medidos na prática. Agora: só busca páginas 2+ em paralelo, e só até onde o total
+    // real manda (limitado a maxPaginas) — se o total já cabe em menos páginas, nem tenta
+    // as demais; se precisa de várias, elas saem todas ao mesmo tempo em vez de em fila.
+    const dados1 = await buscarPagina(1);
+    if (!dados1) return { encontrados, falhaConexao: true };
+    processarPagina(dados1);
+    const totalItens = Number(dados1.total) || (dados1.items || []).length;
+    const totalPaginas = Math.max(1, Math.ceil(totalItens / 50));
+    const ultimaPagina = Math.min(totalPaginas, maxPaginas);
+
+    if (ultimaPagina > 1) {
+      const restantes = [];
+      for (let p = 2; p <= ultimaPagina; p++) restantes.push(p);
+      const resultados = await Promise.all(restantes.map(buscarPagina));
+      for (const dados of resultados) {
+        if (!dados) { falhaConexao = true; continue; }
+        processarPagina(dados);
+      }
+    }
+
     return { encontrados, falhaConexao };
   }
 
@@ -3687,12 +3746,35 @@ let resultados = resultadosBrutos.filter((r) => {
   gerarBoletim();
 
   // ---------- Oportunidades ----------
+  // Classifica a esfera (federal/estadual/municipal) de uma oportunidade. Preferência total
+  // pro campo direto que já vem do PNCP (esferaId: F/E/D/M — D de Distrital conta como
+  // estadual aqui, já que não faz sentido um 4º balde só pro DF). Esse campo só existe em
+  // licitações capturadas depois que o UASG foi implementado — pras mais antigas (ainda não
+  // recapturadas pelo robô, ou vindas só da busca ao vivo antiga), cai pro fallback de
+  // padrão no nome do órgão. É uma heurística, não 100% garantida — por isso o filtro
+  // também aceita "Não classificado" implicitamente (esferaFiltro vazio não filtra nada).
+  const PADROES_ESFERA_ORGAO = [
+    { valor: "municipal", regex: /PREFEITURA|MUNIC[IÍ]PIO\s+DE|C[AÂ]MARA\s+MUNICIPAL/i },
+    { valor: "estadual", regex: /GOVERNO\s+DO\s+ESTADO|ESTADO\s+DE\s|SECRETARIA\s+(DE\s+)?ESTADO|SECRETARIA\s+ESTADUAL|ASSEMBLEIA\s+LEGISLATIVA|TRIBUNAL\s+DE\s+JUSTI[ÇC]A|DISTRITO\s+FEDERAL/i },
+    { valor: "federal", regex: /MINIST[EÉ]RIO|UNI[AÃ]O\b|INSTITUTO\s+FEDERAL|UNIVERSIDADE\s+FEDERAL|TRIBUNAL\s+REGIONAL\s+FEDERAL|SUPERIOR\s+TRIBUNAL|POL[IÍ]CIA\s+FEDERAL|COMANDO\s+DA\s+(MARINHA|AERON[AÁ]UTICA)|EX[EÉ]RCITO|RECEITA\s+FEDERAL|\bINSS\b/i },
+  ];
+  function classificarEsfera(r) {
+    if (r.esferaId === "F") return "federal";
+    if (r.esferaId === "E" || r.esferaId === "D") return "estadual";
+    if (r.esferaId === "M") return "municipal";
+    const nome = (r.orgao || "").toUpperCase();
+    for (const padrao of PADROES_ESFERA_ORGAO) {
+      if (padrao.regex.test(nome)) return padrao.valor;
+    }
+    return "";
+  }
+
   // Salva o último filtro usado (e, junto com opJaBuscado, evita que o usuário precise
   // refiltrar tudo de novo toda vez que sai da aba e volta, ou recarrega a página — mesma
   // ideia já usada no filtro salvo do Boletim.
-  function salvarFiltroOportunidades(uf, municipio, dataDe, dataAte, palavrasRaw, uasg) {
+  function salvarFiltroOportunidades(uf, municipio, dataDe, dataAte, palavrasRaw, uasg, avancados) {
     try {
-      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ uf, municipio, dataDe, dataAte, palavrasRaw, uasg }));
+      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ uf, municipio, dataDe, dataAte, palavrasRaw, uasg, ...avancados }));
     } catch (e) { /* localStorage indisponível */ }
   }
   function lerFiltroOportunidades() {
@@ -3715,6 +3797,13 @@ let resultados = resultadosBrutos.filter((r) => {
     const dataAte = document.getElementById("op-data-ate").value;
     const palavrasRaw = document.getElementById("op-palavras").value.trim();
     const uasgFiltro = document.getElementById("op-uasg").value.trim();
+    const esferaFiltro = document.getElementById("op-esfera").value;
+    const valorMinRaw = document.getElementById("op-valor-min").value;
+    const valorMaxRaw = document.getElementById("op-valor-max").value;
+    const valorMinFiltro = valorMinRaw !== "" ? Number(valorMinRaw) : null;
+    const valorMaxFiltro = valorMaxRaw !== "" ? Number(valorMaxRaw) : null;
+    const codigoFiltro = document.getElementById("op-codigo").value.trim().toLowerCase();
+    const orgaoFiltro = document.getElementById("op-orgao").value.trim().toLowerCase();
     const alvo = document.getElementById("op-resultado");
     const btn = document.getElementById("op-buscar");
 
@@ -3723,7 +3812,13 @@ let resultados = resultadosBrutos.filter((r) => {
       return;
     }
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
-    salvarFiltroOportunidades(uf, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro);
+    salvarFiltroOportunidades(uf, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro, {
+      esfera: esferaFiltro,
+      valorMin: valorMinRaw,
+      valorMax: valorMaxRaw,
+      codigo: document.getElementById("op-codigo").value.trim(),
+      orgaoTexto: document.getElementById("op-orgao").value.trim(),
+    });
 
     btn.disabled = true;
     alvo.innerHTML = '<div class="carregando">Buscando licitações no PNCP...</div>';
@@ -3759,6 +3854,29 @@ let resultados = resultadosBrutos.filter((r) => {
         // UASG só existe pra órgãos federais/distritais — registros sem codigoUnidade
         // (estaduais/municipais, ou ainda não enriquecidos) ficam de fora do filtro.
         resultados = resultados.filter((r) => String(r.codigoUnidade || "") === uasgFiltro);
+      }
+      if (esferaFiltro) {
+        resultados = resultados.filter((r) => classificarEsfera(r) === esferaFiltro);
+      }
+      if (valorMinFiltro !== null || valorMaxFiltro !== null) {
+        // Sem valor conhecido (comum em licitação vinda só da busca ao vivo, ainda não
+        // enriquecida pelo robô) não dá pra confirmar se atende a faixa — fica de fora.
+        resultados = resultados.filter((r) => {
+          const v = Number(r.valorTotalEstimado);
+          if (!Number.isFinite(v)) return false;
+          if (valorMinFiltro !== null && v < valorMinFiltro) return false;
+          if (valorMaxFiltro !== null && v > valorMaxFiltro) return false;
+          return true;
+        });
+      }
+      if (codigoFiltro) {
+        resultados = resultados.filter((r) => {
+          const numeroAno = (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : "";
+          return (r.numeroControlePNCP || "").toLowerCase().includes(codigoFiltro) || numeroAno.toLowerCase().includes(codigoFiltro);
+        });
+      }
+      if (orgaoFiltro) {
+        resultados = resultados.filter((r) => (r.orgao || "").toLowerCase().includes(orgaoFiltro));
       }
       if (dataDe || dataAte) {
         // Filtra por período de publicação (não pelo prazo de encerramento da proposta),
@@ -3809,6 +3927,11 @@ let resultados = resultadosBrutos.filter((r) => {
     document.getElementById("op-data-ate").value = filtro.dataAte || "";
     document.getElementById("op-palavras").value = filtro.palavrasRaw || "";
     document.getElementById("op-uasg").value = filtro.uasg || "";
+    document.getElementById("op-esfera").value = filtro.esfera || "";
+    document.getElementById("op-valor-min").value = filtro.valorMin || "";
+    document.getElementById("op-valor-max").value = filtro.valorMax || "";
+    document.getElementById("op-codigo").value = filtro.codigo || "";
+    document.getElementById("op-orgao").value = filtro.orgaoTexto || "";
     if (filtro.municipio) {
       try {
         const municipios = await carregarTodosMunicipios();
