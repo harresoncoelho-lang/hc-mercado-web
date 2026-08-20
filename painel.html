@@ -938,6 +938,7 @@
 
   .boletim-corpo { padding: 16px; }
   .boletim-objeto { font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
+  .tags-objeto { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 14px; }
   .boletim-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 20px; margin-bottom: 12px; }
   .boletim-meta dt { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--texto-fraco); margin-bottom: 2px; }
   .boletim-meta dd { margin: 0; font-size: 13px; }
@@ -2591,6 +2592,42 @@
     return palavras.some((p) => norm.includes(normalizar(p)));
   }
 
+  // Tags automáticas do objeto (inspirado no Effecti — item 4 do diagnóstico comparativo):
+  // classifica o texto do objeto em categorias por palavra-chave, só pra dar um resumo visual
+  // rápido do card sem precisar ler o parágrafo inteiro. 100% client-side, não depende de
+  // nenhuma fonte de dado nova (usa só o campo objeto que já vem em cada resultado).
+  // Usa \b (borda de palavra) em vez de simples "includes" — um "includes" ingênuo faria
+  // palavras curtas como "ti" baterem dentro de qualquer palavra que contenha essas letras em
+  // sequência (ex: "objetivo"), gerando tag errada na maioria dos cards.
+  const CATEGORIAS_TAGS_OBJETO = [
+    ["MATERIAL", ["material", "materiais", "insumo", "insumos", "suprimento", "suprimentos"]],
+    ["LIMPEZA", ["limpeza", "higienizacao", "higiene"]],
+    ["HOSPITALAR", ["hospitalar", "saude", "medico", "medica", "medicamento", "medicamentos", "enfermagem"]],
+    ["ENGENHARIA", ["engenharia", "obra", "obras", "construcao", "reforma", "reformas", "pavimentacao"]],
+    ["INFORMÁTICA", ["informatica", "software", "softwares", "hardware", "ti", "tecnologia"]],
+    ["ALIMENTAÇÃO", ["alimentacao", "alimenticio", "alimenticios", "merenda", "genero alimenticio", "generos alimenticios", "refeicao", "refeicoes"]],
+    ["TRANSPORTE", ["transporte", "veiculo", "veiculos", "combustivel", "combustiveis", "frota"]],
+    ["SERVIÇOS GERAIS", ["mao de obra", "servico terceirizado", "servicos terceirizados", "vigilancia", "portaria"]],
+    ["EDUCAÇÃO", ["educacao", "escolar", "escolares", "didatico", "didaticos", "pedagogico", "pedagogicos"]],
+    ["MOBILIÁRIO", ["mobiliario", "movel", "moveis", "equipamento de escritorio", "equipamentos de escritorio"]],
+  ];
+  function extrairTagsObjeto(objeto) {
+    const norm = normalizar(objeto);
+    if (!norm) return [];
+    const tags = [];
+    for (const [tag, palavras] of CATEGORIAS_TAGS_OBJETO) {
+      const bate = palavras.some((p) => {
+        const escapada = p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`\\b${escapada}\\b`).test(norm);
+      });
+      if (bate) {
+        tags.push(tag);
+        if (tags.length >= 3) break;
+      }
+    }
+    return tags;
+  }
+
   function formatarValor(v) {
     const n = Number(v) || 0;
     return "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -3532,6 +3569,10 @@
       if (isFav) classes.push("favorito");
       const statusAtual = statusMapa[id] || "";
       const anotacaoAtual = anotacoesMapa[id] || "";
+      const tagsObjeto = extrairTagsObjeto(r.objeto);
+      const tagsObjetoHtml = tagsObjeto.length
+        ? `<div class="tags-objeto">${tagsObjeto.map((t) => `<span class="badge-modalidade">${escapeHtml(t)}</span>`).join("")}</div>`
+        : "";
       const opcoesStatusHtml = OPCOES_STATUS_LICITACAO.map(([v, texto]) =>
         `<option value="${v}"${v === statusAtual ? " selected" : ""}>${escapeHtml(texto)}</option>`
       ).join("");
@@ -3545,6 +3586,7 @@
         </div>
         <div class="boletim-corpo">
           <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}${r.fonte ? ` <span class="fonte-badge">${escapeHtml(r.fonte)}</span>` : ""}</p>
+          ${tagsObjetoHtml}
           <dl class="boletim-meta">
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
             <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
