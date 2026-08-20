@@ -899,7 +899,7 @@
   .btn-filtro-rapido:hover { color: var(--texto); border-color: var(--azul); }
   .btn-filtro-rapido.ativo { background: linear-gradient(135deg, var(--azul), var(--azul-escuro)); color: #fff; border-color: transparent; }
 
-  .lista-boletim { display: flex; flex-direction: column; gap: 14px; }
+  .lista-boletim { display: flex; flex-direction: column; gap: 16px; }
   .boletim-card {
     background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
     box-shadow: var(--sombra); overflow: hidden; position: relative;
@@ -1028,6 +1028,10 @@
   .caixa-interna .bol-calendario {
     background: none; border: none; box-shadow: none; padding: 0; margin-bottom: 0;
   }
+  /* A caixa interna que envolve a LISTA de cards (não um bloco de dados pequeno) precisa de
+     mais respiro que os 8px padrão — os cards já têm padding e sombra próprios, o objetivo
+     aqui é só dar espaço suficiente pro fundo cinza aparecer ao redor deles também. */
+  .caixa-interna-lista { padding: 16px; }
 
   /* ---- Boletim: calendário mensal (inspirado no ConLicitação) ---- */
   .bol-calendario {
@@ -3665,7 +3669,11 @@
           <button class="btn-filtro-rapido" data-modo="favoritos">Favoritos</button>
         </div>
       </div>`;
-      html += montarCardsBoletim(resultados);
+      // A lista inteira de cards fica sobre um fundo cinza (.caixa-interna) — os cards
+      // individuais são brancos e a caixa externa que envolve tudo também é branca, então
+      // sem esse fundo cinza por trás o espaço ENTRE os cards mostra branco sobre branco e a
+      // lista inteira vira uma mancha única, mesmo já tendo gap técnico entre eles.
+      html += `<div class="caixa-interna caixa-interna-lista">` + montarCardsBoletim(resultados) + `</div>`;
       alvo.innerHTML = html;
 
       // IMPORTANTE: busca o container DENTRO de `alvo` (com querySelector), não por ID no
