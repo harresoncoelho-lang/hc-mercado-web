@@ -52,8 +52,8 @@
     --sombra-forte: 0 10px 30px rgba(0,0,0,0.45);
     /* Valor de reserva até o JS medir a altura real do header (ver IIFE logo após o
        header no <body>) e sobrescrever com o valor exato — serve só pra evitar um "pulo"
-       visual grande antes do JS rodar; hoje o header fica em torno de 60px (compacto). */
-    --altura-header: 60px;
+       visual grande antes do JS rodar; hoje o header fica em torno de 56px (compacto). */
+    --altura-header: 56px;
   }
   * { box-sizing: border-box; }
   body {
@@ -67,14 +67,13 @@
     margin: 0;
     -webkit-font-smoothing: antialiased;
   }
-  /* Header compacto (~60px de altura total), no estilo faixa fina do ConLicitação, em vez
+  /* Header compacto (~56px de altura total), no estilo faixa fina do ConLicitação, em vez
      do banner grande de antes (~112px no desktop). A altura vem do padding vertical (8px
      em cima + 8px embaixo = 16px) somado à altura do maior filho da linha, que são os
-     botões de ícone (.header-icone-btn) a 44px — 16 + 44 = 60px. Como o alvo já é compacto
+     botões de ícone (.header-icone-btn) a 40px — 16 + 40 = 56px. Como o alvo já é compacto
      em qualquer largura de tela, não precisa mais de breakpoint nenhum reduzindo altura;
      só o padding horizontal aperta um pouco em telas pequenas (só estética, não afeta
-     altura nem corta nada — os 44px de botão já são o mínimo de área de toque recomendado
-     pra mobile, então não encolhem em nenhum tamanho de tela).
+     altura nem corta nada — os 40px de botão não encolhem em nenhum tamanho de tela).
      A altura real (medida via JS logo após o </header>, ver --altura-header) é o que a nav
      lateral, o painel de filtros do Diagnóstico de Mercado e o .shell usam pra saber onde
      começar — funciona automaticamente com qualquer altura de header, sem precisar mexer
@@ -105,9 +104,9 @@
     filter: drop-shadow(0 2px 6px rgba(0,0,0,0.35));
   }
   .header-acoes { display: flex; gap: 8px; position: relative; flex-shrink: 0; align-items: center; }
-  /* 44px = mínimo de área de toque recomendado (mobile e desktop) — não encolhe em
-     nenhuma largura de tela, mesmo com o header compacto. */
-  .header-icone-btn { width: 44px; height: 44px; flex-shrink: 0; }
+  /* 40px de área de toque — não encolhe em nenhuma largura de tela, mesmo com o
+     header compacto. */
+  .header-icone-btn { width: 40px; height: 40px; flex-shrink: 0; }
   @media (max-width: 560px) {
     header { padding: 8px 14px; }
     .header-topo { gap: 10px; }
