@@ -3108,6 +3108,47 @@
     };
   }
 
+  // Funde os resultados da busca ao vivo (rápida, mas sem os campos de detalhe do PNCP:
+  // amparo legal, modo de disputa, registro de preço, valores, processo, nº/ano — esses só
+  // vêm do endpoint completo que o robô consulta) com o cache do robô (data/oportunidades_
+  // abertas.json), que já tem esses campos preenchidos pra qualquer processo que o robô já
+  // tenha coletado (o robô roda várias vezes ao dia, não só uma vez).
+  // Antes, um processo achado pela busca ao vivo NUNCA recebia os campos de detalhe, mesmo
+  // que o robô já os tivesse coletado no mesmo dia — a versão "ao vivo" sempre vencia e o
+  // cache só era usado pra completar processos que a busca ao vivo não achou. Agora, pra
+  // cada processo em comum (mesmo numeroControlePNCP), completa os campos que a busca ao
+  // vivo não tem com o que o robô já coletou, mantendo os campos "frescos" (encerramento,
+  // publicação) da busca ao vivo.
+  const CAMPOS_DETALHE_PNCP = [
+    "amparoLegal", "modoDisputaNome", "srp", "fonteOrcamentaria", "situacaoCompraNome",
+    "valorTotalEstimado", "valorTotalHomologado", "numeroCompra", "anoCompra", "processo",
+    "tipoInstrumentoConvocatorioNome", "codigoUnidade", "esferaId",
+  ];
+  function mesclarComCacheRobo(resultadosAoVivo, registrosCache, uf, palavras) {
+    const doRoboPorChave = new Map();
+    registrosCache
+      .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
+      .forEach((r) => { if (r.numeroControlePNCP) doRoboPorChave.set(r.numeroControlePNCP, r); });
+
+    const completos = resultadosAoVivo.map((r) => {
+      const doRobo = r.numeroControlePNCP ? doRoboPorChave.get(r.numeroControlePNCP) : null;
+      if (!doRobo) return r;
+      doRoboPorChave.delete(r.numeroControlePNCP); // já usado pra completar, não duplica abaixo
+      const completo = { ...r };
+      for (const campo of CAMPOS_DETALHE_PNCP) {
+        if ((completo[campo] === null || completo[campo] === undefined) && doRobo[campo] !== null && doRobo[campo] !== undefined) {
+          completo[campo] = doRobo[campo];
+        }
+      }
+      return completo;
+    });
+
+    // O que sobrou no cache (o robô achou, a busca ao vivo não) entra como itens novos.
+    const doCacheRestante = Array.from(doRoboPorChave.values())
+      .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
+    return completos.concat(doCacheRestante);
+  }
+
   // Tenta carregar um arquivo de dados já coletados pelo nosso robô diário (GitHub Actions).
   // Isso evita depender do PNCP ao vivo na hora da busca do usuário. Retorna null se o
   // arquivo não existir ainda (robô nunca rodou) ou se der qualquer erro — nesse caso quem
@@ -3959,12 +4000,7 @@
       // cobre) o que a busca ao vivo nao trouxe, sem duplicar o que ja veio ao vivo.
       const cacheOportunidades = await carregarCache("data/oportunidades_abertas.json");
       if (cacheOportunidades && Array.isArray(cacheOportunidades.registros) && cacheOportunidades.registros.length > 0) {
-        const jaVistos = new Set(resultadosBrutos.map((r) => r.numeroControlePNCP).filter(Boolean));
-        const doCache = cacheOportunidades.registros
-          .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
-          .filter((r) => !r.numeroControlePNCP || !jaVistos.has(r.numeroControlePNCP))
-          .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
-        resultadosBrutos = resultadosBrutos.concat(doCache);
+        resultadosBrutos = mesclarComCacheRobo(resultadosBrutos, cacheOportunidades.registros, uf, palavras);
       }
 
       const limiteRecencia = new Date(Date.now() - DIAS_BOLETIM * 24 * 60 * 60 * 1000);
@@ -4128,12 +4164,7 @@ let resultados = resultadosBrutos.filter((r) => {
 
       const cache = await carregarCache("data/oportunidades_abertas.json");
       if (cache && Array.isArray(cache.registros) && cache.registros.length > 0) {
-        const jaVistos = new Set(resultados.map((r) => r.numeroControlePNCP).filter(Boolean));
-        const doCache = cache.registros
-          .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
-          .filter((r) => !r.numeroControlePNCP || !jaVistos.has(r.numeroControlePNCP))
-          .map((r) => ({ ...r, link: linkPncp(r.numeroControlePNCP) }));
-        resultados = resultados.concat(doCache);
+        resultados = mesclarComCacheRobo(resultados, cache.registros, uf, palavras);
       }
 
       resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));
