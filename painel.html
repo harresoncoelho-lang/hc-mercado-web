@@ -1086,6 +1086,8 @@
   .dash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
   @media (max-width: 900px) { .dash-cards { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 480px) { .dash-cards { grid-template-columns: 1fr; } }
+  .dash-cards-mercado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .dash-cards-mercado { grid-template-columns: 1fr; } }
   .dash-card { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; box-shadow: var(--sombra); }
   .dash-card-ico { font-size: 20px; margin-bottom: 6px; }
   .dash-card-num { font-size: 26px; font-weight: 700; color: var(--texto); line-height: 1.2; }
@@ -1365,6 +1367,38 @@
         <div class="dash-filtro-campo"><label>Data de inclus&atilde;o</label><input type="text" placeholder="Qualquer per&iacute;odo" readonly></div>
         <div class="dash-filtro-campo"><label>Modalidade</label><input type="text" placeholder="Todas" readonly></div>
         <div class="dash-filtro-campo"><label>Situa&ccedil;&atilde;o</label><input type="text" placeholder="Vigentes" readonly></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div class="dash-painel-titulo" style="margin-bottom:4px;"><svg class='icone-ph'><use href='#ph-chart-line-up'></use></svg> Vis&atilde;o geral do mercado</div>
+      <p style="margin:0 0 14px;font-size:13px;color:var(--texto-fraco);">N&uacute;meros agregados de toda a base de licita&ccedil;&otilde;es monitorada pelo LicitaPlena &mdash; n&atilde;o s&oacute; as oportunidades do seu boletim.</p>
+      <div class="dash-cards-mercado">
+        <div class="dash-card">
+          <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-files'></use></svg></div>
+          <div class="dash-card-num" id="dash-mercado-total">&ndash;</div>
+          <div class="dash-card-label">Licita&ccedil;&otilde;es monitoradas</div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-calendar'></use></svg></div>
+          <div class="dash-card-num" id="dash-mercado-novas-hoje">&ndash;</div>
+          <div class="dash-card-label">Novas licita&ccedil;&otilde;es hoje</div>
+        </div>
+        <div class="dash-card">
+          <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-map-pin'></use></svg></div>
+          <div class="dash-card-num" id="dash-mercado-estados">&ndash;</div>
+          <div class="dash-card-label">Estados cobertos</div>
+        </div>
+      </div>
+      <div class="dash-duas-colunas" style="margin-top:16px;">
+        <div class="dash-painel">
+          <div class="dash-painel-titulo"><svg class='icone-ph'><use href='#ph-map-pin'></use></svg> Principais Estados</div>
+          <div id="dash-ranking-estados"><p style="margin:0;font-size:13px;color:var(--texto-fraco);">Carregando&hellip;</p></div>
+        </div>
+        <div class="dash-painel">
+          <div class="dash-painel-titulo"><svg class='icone-ph'><use href='#ph-package'></use></svg> Principais Segmentos</div>
+          <div id="dash-ranking-segmentos"><p style="margin:0;font-size:13px;color:var(--texto-fraco);">Carregando&hellip;</p></div>
+        </div>
       </div>
     </div>
     </div>
@@ -5760,7 +5794,93 @@ let resultados = resultadosBrutos.filter((r) => {
   document.querySelector('nav button[data-alvo="precos"]').addEventListener("click", () => {
     if (!ppJaBuscado) restaurarPrecos();
   });
+  // Rótulos de exibição pros códigos internos de segmento (ver SEGMENTOS em
+  // scripts/atualizar_dados.js — são os mesmos códigos gravados em contratos.dado.segmentos).
+  // Qualquer código novo que apareça e não esteja aqui cai no fallback (capitaliza o código
+  // cru), pra nunca quebrar se o robô ganhar um segmento novo sem essa tela ser atualizada.
+  const MAPA_LABEL_SEGMENTO = {
+    expediente: "Material de expediente",
+    higiene: "Higiene",
+    limpeza: "Limpeza",
+    aliment: "Alimentação",
+    veiculo: "Veículos",
+    hospitalar: "Hospitalar",
+    engenharia: "Engenharia",
+    fotovoltaic: "Energia fotovoltaica",
+    eletric: "Elétrico",
+    informatica: "Informática",
+    construcao: "Construção",
+  };
+  function rotuloSegmento(codigo) {
+    return MAPA_LABEL_SEGMENTO[codigo] || (codigo.charAt(0).toUpperCase() + codigo.slice(1));
+  }
+
+  function montarRankingBarras(itens, chaveLabel, rotularItem) {
+    if (!itens || itens.length === 0) {
+      return '<p style="margin:0;font-size:13px;color:var(--texto-fraco);">Nenhum dado dispon&iacute;vel.</p>';
+    }
+    const max = itens[0].total || 1;
+    return itens.map((item) => {
+      const largura = Math.max(4, Math.round((item.total / max) * 100));
+      return `<div class="barra-item">
+        <div class="barra-label">${escapeHtml(rotularItem(item[chaveLabel]))}</div>
+        <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${Number(item.total).toLocaleString("pt-BR")}</div></div>
+      </div>`;
+    }).join("");
+  }
+
+  // "Visão geral do mercado" (item 6 do diagnóstico Effecti): números globais da base
+  // inteira monitorada (não só o boletim do cliente). Roda só UMA vez por carregamento de
+  // página (guarda mercadoGeralJaCarregado) porque os rankings usam RPCs que fazem um
+  // scan agregado de 100k+ linhas no Postgres (~300-850ms medido) — não vale a pena
+  // repetir isso toda vez que o boletim recarrega e chama __atualizarDashboard de novo.
+  let mercadoGeralJaCarregado = false;
+  async function carregarVisaoGeralMercado() {
+    if (mercadoGeralJaCarregado) return;
+    mercadoGeralJaCarregado = true;
+    if (!window.__sbClient) return;
+
+    const elTotal = document.getElementById("dash-mercado-total");
+    const elNovasHoje = document.getElementById("dash-mercado-novas-hoje");
+    const elEstados = document.getElementById("dash-mercado-estados");
+    const elRankingEstados = document.getElementById("dash-ranking-estados");
+    const elRankingSegmentos = document.getElementById("dash-ranking-segmentos");
+
+    const totalPromise = window.__sbClient.from("contratos").select("numero_controle_pncp", { count: "exact", head: true });
+    const estadosPromise = window.__sbClient.rpc("dashboard_estados_distintos");
+    const rankingEstadosPromise = window.__sbClient.rpc("dashboard_estados_top", { limite: 10 });
+    const rankingSegmentosPromise = window.__sbClient.rpc("dashboard_segmentos_top", { limite: 10 });
+    // "Novas hoje" vem do cache do robô (oportunidades ABERTAS, publicadas hoje) em vez da
+    // tabela contratos (que só guarda contratos JÁ ASSINADOS/homologados) — é a métrica que
+    // corresponde de verdade a "nova licitação" no sentido do Effecti, e além disso é mais
+    // barata (não precisa de outra query no Supabase, reaproveita o arquivo estático).
+    const novasHojePromise = carregarCache("data/oportunidades_abertas.json").then((cache) => {
+      if (!cache || !Array.isArray(cache.registros)) return null;
+      const hojeStr = new Date().toISOString().slice(0, 10);
+      return cache.registros.filter((r) => r.publicacao && String(r.publicacao).slice(0, 10) === hojeStr).length;
+    });
+
+    const [totalResp, estadosResp, rankingEstadosResp, rankingSegmentosResp, novasHoje] = await Promise.all([
+      totalPromise, estadosPromise, rankingEstadosPromise, rankingSegmentosPromise, novasHojePromise,
+    ]);
+
+    if (elTotal) elTotal.textContent = (!totalResp.error && typeof totalResp.count === "number") ? totalResp.count.toLocaleString("pt-BR") : "–";
+    if (elNovasHoje) elNovasHoje.textContent = typeof novasHoje === "number" ? novasHoje.toLocaleString("pt-BR") : "–";
+    if (elEstados) elEstados.textContent = (!estadosResp.error && estadosResp.data != null) ? String(estadosResp.data) : "–";
+    if (elRankingEstados) {
+      elRankingEstados.innerHTML = rankingEstadosResp.error
+        ? '<p style="margin:0;font-size:13px;color:var(--texto-fraco);">N&atilde;o foi poss&iacute;vel carregar.</p>'
+        : montarRankingBarras(rankingEstadosResp.data, "uf", (v) => v);
+    }
+    if (elRankingSegmentos) {
+      elRankingSegmentos.innerHTML = rankingSegmentosResp.error
+        ? '<p style="margin:0;font-size:13px;color:var(--texto-fraco);">N&atilde;o foi poss&iacute;vel carregar.</p>'
+        : montarRankingBarras(rankingSegmentosResp.data, "segmento", rotuloSegmento);
+    }
+  }
+
 window.__atualizarDashboard = function () {
+  carregarVisaoGeralMercado();
   const elOp = document.getElementById("dash-num-oportunidades");
   try {
     if (typeof bolResultadosCompletos !== "undefined" && elOp) {
