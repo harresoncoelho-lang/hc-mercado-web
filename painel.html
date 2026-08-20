@@ -953,16 +953,17 @@
   .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 
   /* ---- Banner de limite diário / upsell (inspirado no aviso de cota do Effecti) ----
-     Faixa retangular SÓLIDA, não um cartão: zero border-radius, zero margin, largura 100%.
-     É um único elemento global (fora de <main>, irmão do <header>) — não fica dentro da
-     section/dentro do padding do <main>, por isso encosta nas duas bordas da tela de verdade,
-     igual ao próprio header. JS (perto do listener de troca de aba) mostra/esconde ele
-     conforme a aba ativa é Boletim/Encontrar Licitações ou não. Sticky com a mesma
-     --altura-header medida via JS que a nav já usa, direto colado embaixo do header (mesmo
-     top, zero gap) — formando uma faixa dupla contínua no topo. */
+     Faixa retangular SÓLIDA, não um cartão flutuante: zero margin, largura 100%, cantos com
+     arredondamento sutil (mesmo var(--raio-pq) dos cards normais do sistema — não é pílula
+     nem esquadro reto). É um único elemento global (fora de <main>, irmão do <header>) — não
+     fica dentro da section/dentro do padding do <main>, por isso encosta nas duas bordas da
+     tela de verdade, igual ao próprio header. JS (perto do listener de troca de aba)
+     mostra/esconde ele conforme a aba ativa é Boletim/Encontrar Licitações ou não. Sticky com
+     a mesma --altura-header medida via JS que a nav já usa, direto colado embaixo do header
+     (mesmo top, zero gap) — formando uma faixa dupla contínua no topo. */
   .banner-limite-diario {
     display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
-    width: 100%; margin: 0; border-radius: 0;
+    width: 100%; margin: 0; border-radius: var(--raio-pq);
     background: var(--azul);
     padding: 12px 24px;
     position: sticky; top: var(--altura-header); z-index: 40;
