@@ -1010,6 +1010,23 @@
     background: none; border: none; box-shadow: none;
   }
 
+  /* ---- Caixa interna (Effecti: caixa cinza clara dentro da caixa branca, destacando o
+     núcleo de informação — estatísticas em Encontrar Licitações, calendário no Boletim).
+     var(--cartao-claro) já É #f8fafc no tema claro (o valor pedido, batendo igualzinho);
+     no tema escuro vira o mesmo tom "levemente mais claro que o cartão" já usado em
+     .kanban-card e no hover de .painel-filtros — não inventa cor nova. */
+  .caixa-interna {
+    background: var(--cartao-claro);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 16px;
+  }
+  /* .bol-calendario já tem casca própria (fundo, borda, sombra) — dentro da caixa interna
+     isso duplicava o efeito de caixa-dentro-de-caixa-dentro-de-caixa, então some aqui. */
+  .caixa-interna .bol-calendario {
+    background: none; border: none; box-shadow: none; padding: 0; margin-bottom: 0;
+  }
+
   /* ---- Boletim: calendário mensal (inspirado no ConLicitação) ---- */
   .bol-calendario {
     background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
@@ -1304,7 +1321,7 @@
       <button class="btn-buscar" id="bol-salvar">Salvar filtro do boletim</button>
     </div>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela">🖨️ Imprimir / Gerar PDF</button></div>
-    <div id="bol-calendario"></div>
+    <div id="bol-calendario" class="caixa-interna"></div>
     <div id="bol-resultado"></div>
     </div>
   </section>
@@ -3629,9 +3646,11 @@
     const renderizar = (modoFiltro) => {
       const lidos = lerConjunto("lidos");
       const naoLidos = resultados.filter((r) => !lidos.has(idOportunidade(r))).length;
-      let html = avisoHtml + `<div class="cartoes">
-        <div class="cartao"><h3>Oportunidades encontradas</h3><div class="valor">${resultados.length}</div></div>
-        <div class="cartao"><h3>Ainda não lidas</h3><div class="valor">${naoLidos}</div></div>
+      let html = avisoHtml + `<div class="caixa-interna">
+        <div class="cartoes" style="margin-bottom:0;">
+          <div class="cartao"><h3>Oportunidades encontradas</h3><div class="valor">${resultados.length}</div></div>
+          <div class="cartao"><h3>Ainda não lidas</h3><div class="valor">${naoLidos}</div></div>
+        </div>
       </div>`;
       html += `<div class="boletim-resumo">
         <div class="boletim-filtros-rapidos">
@@ -4430,12 +4449,14 @@ let resultados = resultadosBrutos.filter((r) => {
       if (d.uf) totalRegional += c.valor || 0;
     }
 
-    html += `<div class="cartoes">
-      <div class="cartao"><h3>Mercado nacional (amostra, ${escapeHtml(String(d.periodo.dias))} dia(s))</h3><div class="valor">${escapeHtml(formatarValor(totalNacional))}</div></div>
-      ${d.uf ? `<div class="cartao"><h3>Mercado em ${escapeHtml(d.uf)}</h3><div class="valor">${escapeHtml(formatarValor(totalRegional))}</div></div>` : ""}
-      <div class="cartao"><h3>Concorrentes identificados</h3><div class="valor">${d.concorrentes.length}</div></div>
-      <div class="cartao"><h3>Oportunidades abertas agora</h3><div class="valor">${d.oportunidadesAbertas.length}</div></div>
-      ${d.mercado && d.mercado.empresas.length > 0 ? `<div class="cartao"><h3>Empresas com ata vigente no segmento${d.uf ? " (" + escapeHtml(d.uf) + ")" : ""}</h3><div class="valor">${d.mercado.empresas.filter((e) => e.atasVigentes.length > 0).length}</div></div>` : ""}
+    html += `<div class="caixa-interna">
+      <div class="cartoes" style="margin-bottom:0;">
+        <div class="cartao"><h3>Mercado nacional (amostra, ${escapeHtml(String(d.periodo.dias))} dia(s))</h3><div class="valor">${escapeHtml(formatarValor(totalNacional))}</div></div>
+        ${d.uf ? `<div class="cartao"><h3>Mercado em ${escapeHtml(d.uf)}</h3><div class="valor">${escapeHtml(formatarValor(totalRegional))}</div></div>` : ""}
+        <div class="cartao"><h3>Concorrentes identificados</h3><div class="valor">${d.concorrentes.length}</div></div>
+        <div class="cartao"><h3>Oportunidades abertas agora</h3><div class="valor">${d.oportunidadesAbertas.length}</div></div>
+        ${d.mercado && d.mercado.empresas.length > 0 ? `<div class="cartao"><h3>Empresas com ata vigente no segmento${d.uf ? " (" + escapeHtml(d.uf) + ")" : ""}</h3><div class="valor">${d.mercado.empresas.filter((e) => e.atasVigentes.length > 0).length}</div></div>` : ""}
+      </div>
     </div>`;
 
     if (d.mercado) {
