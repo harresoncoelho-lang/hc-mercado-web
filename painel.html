@@ -882,6 +882,8 @@
     .acc-corpo { display: block !important; }
     .acc { border: 1px solid #ccc !important; background: #fff !important; }
     .acc-cab { background: #f5f5f5 !important; }
+    .boletim-corpo-wrap { grid-template-rows: 1fr !important; }
+    .boletim-chevron-btn, .boletim-resumo-rodape { display: none !important; }
     .mini-grafico-barra { background: #f2891a !important; }
     a { color: #0d47a1 !important; text-decoration: underline !important; }
     .dg-print-titulo { display: block !important; }
@@ -911,9 +913,11 @@
   .boletim-card.favorito { border-left-color: var(--laranja); }
   .boletim-card.oculto { display: none; }
 
+  .boletim-cabeca { cursor: pointer; }
+  .boletim-cabeca:focus-visible { outline: 2px solid var(--azul); outline-offset: -2px; }
   .boletim-topo {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 10px 16px; background: var(--fundo-fraco); border-bottom: 1px solid var(--borda);
+    padding: 10px 16px; background: var(--fundo-fraco);
   }
   .boletim-numero {
     display: inline-flex; align-items: center; justify-content: center;
@@ -932,7 +936,36 @@
   .boletim-acao-icone.favorito-ativo { color: var(--laranja-texto); border-color: var(--laranja); }
   .boletim-acao-icone.lido-ativo { color: var(--verde-texto); border-color: var(--verde); }
 
-  .boletim-corpo { padding: 16px; }
+  /* ---- Resumo sempre visível (card recolhido) ---- */
+  .boletim-resumo { padding: 2px 16px 12px; }
+  .boletim-objeto-resumo {
+    margin: 0 0 8px; font-size: 14px; line-height: 1.5; font-weight: 600; color: var(--texto);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .boletim-resumo-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--texto-fraco); }
+  .boletim-resumo-rodape {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    padding: 12px 16px 0;
+  }
+  .boletim-chevron-btn {
+    background: none; border: 1px solid var(--borda); color: var(--texto-fraco);
+    border-radius: 999px; padding: 6px 12px 6px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .boletim-chevron-btn:hover { border-color: var(--azul); color: var(--texto); }
+  .boletim-chevron-seta { display: inline-block; transition: transform 0.2s ease; }
+  .boletim-card.aberto .boletim-chevron-seta { transform: rotate(180deg); }
+
+  /* ---- Detalhes completos (card expandido) — animado com grid-template-rows, que anima
+     suavemente até a altura real do conteúdo sem precisar medir px em JS. ---- */
+  .boletim-corpo-wrap {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s ease;
+  }
+  .boletim-card.aberto .boletim-corpo-wrap { grid-template-rows: 1fr; }
+  .boletim-corpo-inner { overflow: hidden; }
+  .boletim-corpo { padding: 16px; border-top: 1px solid var(--borda); }
   .boletim-objeto { font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
   .boletim-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 20px; margin-bottom: 12px; }
   .boletim-meta dt { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--texto-fraco); margin-bottom: 2px; }
@@ -951,6 +984,25 @@
   }
   .anotacao-licitacao:focus, .select-status-licitacao:focus { outline: none; border-color: var(--azul); }
   .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+
+  /* ---- Banner de limite diário / upsell (inspirado no aviso de cota do Effecti) ---- */
+  .banner-limite-diario {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+    background: linear-gradient(120deg, rgba(46,141,255,0.14), rgba(46,141,255,0.04));
+    border: 1px solid var(--azul); border-radius: var(--raio); padding: 12px 16px; margin-bottom: 16px;
+  }
+  .banner-limite-texto { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--texto); line-height: 1.4; }
+  .banner-limite-icone { font-size: 18px; flex-shrink: 0; }
+  .banner-limite-btn {
+    background: linear-gradient(135deg, var(--azul), var(--azul-escuro)); color: #fff; border: none;
+    border-radius: 999px; padding: 9px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
+    white-space: nowrap; font-family: inherit; transition: filter 0.15s ease;
+  }
+  .banner-limite-btn:hover { filter: brightness(1.08); }
+  @media (max-width: 560px) {
+    .banner-limite-diario { flex-direction: column; align-items: flex-start; }
+    .banner-limite-btn { width: 100%; text-align: center; }
+  }
 
   /* ---- Boletim: calendário mensal (inspirado no ConLicitação) ---- */
   .bol-calendario {
@@ -1218,6 +1270,10 @@
   </section>
 
   <section id="boletim">
+    <div class="banner-limite-diario">
+      <div class="banner-limite-texto"><span class="banner-limite-icone">🔎</span><span>Você ainda tem <strong class="banner-limite-valor">20</strong> visualizações de licitações disponíveis hoje no plano <strong class="banner-limite-plano">Padrão</strong>.</span></div>
+      <button type="button" class="banner-limite-btn" data-abrir-planos>Elevar meu plano</button>
+    </div>
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
@@ -1245,6 +1301,10 @@
   </section>
 
   <section id="oportunidades">
+    <div class="banner-limite-diario">
+      <div class="banner-limite-texto"><span class="banner-limite-icone">🔎</span><span>Você ainda tem <strong class="banner-limite-valor">20</strong> visualizações de licitações disponíveis hoje no plano <strong class="banner-limite-plano">Padrão</strong>.</span></div>
+      <button type="button" class="banner-limite-btn" data-abrir-planos>Elevar meu plano</button>
+    </div>
     <div class="painel-filtros">
       <div class="campo">
         <label>Estado (UF) — opcional</label>
@@ -3277,9 +3337,18 @@
     return `<div><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(String(texto))}</dd></div>`;
   }
 
+  // Estado aberto/fechado dos cards do boletim — só em memória (não precisa persistir entre
+  // sessões, por isso não vai pro localStorage). Fica FORA de montarCardsBoletim de propósito:
+  // favoritar/marcar como lido re-renderiza todos os cards do zero (ver ligarAcoesBoletim),
+  // então sem esse estado sobrevivendo ao rerender, todo card fechava de novo a cada clique
+  // num ícone de favorito/lido em QUALQUER card da lista.
+  const cardsAbertosSessao = new Set();
+
   // Monta a lista de oportunidades no formato "cartão de boletim" (inspirado na página
   // de Boletins de Licitações do ConLicitação: card numerado, ações rápidas de favoritar/
-  // marcar como lido, e todos os campos principais já visíveis sem precisar clicar).
+  // marcar como lido). Cada card começa recolhido (só o essencial: objeto resumido, órgão,
+  // prazo e a ação principal) e expande em acordeão pro restante dos campos — inspirado no
+  // padrão de card fechado do Effecti, pra não "correr" a tela inteira aberta de uma vez.
   function montarCardsBoletim(resultados) {
     const favoritos = lerConjunto("favoritos");
     const lidos = lerConjunto("lidos");
@@ -3291,58 +3360,81 @@
       const idAttr = escapeHtml(id);
       const isFav = favoritos.has(id);
       const isLido = lidos.has(id);
+      const aberto = cardsAbertosSessao.has(id);
       const classes = ["boletim-card"];
       if (isLido) classes.push("lido");
       if (isFav) classes.push("favorito");
+      if (aberto) classes.push("aberto");
       const statusAtual = statusMapa[id] || "";
       const anotacaoAtual = anotacoesMapa[id] || "";
       const opcoesStatusHtml = OPCOES_STATUS_LICITACAO.map(([v, texto]) =>
         `<option value="${v}"${v === statusAtual ? " selected" : ""}>${escapeHtml(texto)}</option>`
       ).join("");
+      const municipioUf = r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-");
+      const prazoResumo = formatarPrazoPropostas(r.encerramento).split(" (")[0];
       html += `<div class="${classes.join(" ")}" data-id="${idAttr}" data-idx="${i}">
-        <div class="boletim-topo">
-          <span class="boletim-numero">${i + 1}</span>
-          <div class="boletim-acoes-rapidas">
-            <button class="boletim-acao-icone btn-favoritar${isFav ? " favorito-ativo" : ""}" title="Marcar como favorito">${isFav ? "★" : "☆"}</button>
-            <button class="boletim-acao-icone btn-marcar-lido${isLido ? " lido-ativo" : ""}" title="Marcar como lido">${isLido ? "✓" : "👁"}</button>
+        <div class="boletim-cabeca" role="button" tabindex="0" aria-expanded="${aberto ? "true" : "false"}">
+          <div class="boletim-topo">
+            <span class="boletim-numero">${i + 1}</span>
+            <div class="boletim-acoes-rapidas">
+              <button class="boletim-acao-icone btn-favoritar${isFav ? " favorito-ativo" : ""}" title="Marcar como favorito">${isFav ? "★" : "☆"}</button>
+              <button class="boletim-acao-icone btn-marcar-lido${isLido ? " lido-ativo" : ""}" title="Marcar como lido">${isLido ? "✓" : "👁"}</button>
+            </div>
+          </div>
+          <div class="boletim-resumo">
+            <p class="boletim-objeto-resumo">${escapeHtml(r.objeto || "-")}${r.fonte ? ` <span class="fonte-badge">${escapeHtml(r.fonte)}</span>` : ""}</p>
+            <div class="boletim-resumo-meta">
+              <span>🏛️ ${escapeHtml(r.orgao || "-")}</span>
+              <span>📍 ${escapeHtml(municipioUf)}</span>
+              <span>⏰ ${escapeHtml(prazoResumo)}</span>
+            </div>
+          </div>
+          <div class="boletim-resumo-rodape">
+            <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
+            <button class="boletim-chevron-btn" type="button">
+              <span class="boletim-chevron-texto">${aberto ? "Ocultar detalhes" : "Ver detalhes"}</span><span class="boletim-chevron-seta">▾</span>
+            </button>
           </div>
         </div>
-        <div class="boletim-corpo">
-          <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}${r.fonte ? ` <span class="fonte-badge">${escapeHtml(r.fonte)}</span>` : ""}</p>
-          <dl class="boletim-meta">
-            <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
-            <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
-            ${(!r.fonte && (r.esferaId === "F" || r.esferaId === "D") && r.codigoUnidade) ? campoBoletimMeta("UASG", r.codigoUnidade) : ""}
-            ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Registro de preço", r.srp === true ? "Sim" : (r.srp === false ? "Não" : null))}
-            ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal)}
-            ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria)}
-            ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : ""}
-            <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
-            ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado))}
-            ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado))}
-            ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null)}
-            ${r.fonte ? "" : campoBoletimMeta("Processo", r.processo)}
-            <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
-          </dl>
-          <div class="boletim-gerenciar">
-            <select class="select-status-licitacao" title="Status de acompanhamento">${opcoesStatusHtml}</select>
-            <textarea class="anotacao-licitacao" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual)}</textarea>
-          </div>
-          <div class="boletim-rodape">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA">🤖 Resumir com IA</button>
-              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação">📋 Ver Itens</button>` : ""}
-              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações">📁 Acompanhamento</button>` : ""}
-              ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
-              ${(r.numeroControlePNCP && r.encerramento) ? `<button class="btn-ia-edital btn-criar-lembrete" type="button" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(r.numeroControlePNCP)}" data-encerramento="${escapeHtml(r.encerramento)}" data-objeto="${escapeHtml((r.objeto || "").slice(0, 200))}">🔔 Lembrete</button>` : ""}
+        <div class="boletim-corpo-wrap">
+          <div class="boletim-corpo-inner">
+            <div class="boletim-corpo">
+              <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}${r.fonte ? ` <span class="fonte-badge">${escapeHtml(r.fonte)}</span>` : ""}</p>
+              <dl class="boletim-meta">
+                <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
+                <div><dt>Município/UF</dt><dd>${escapeHtml(municipioUf)}</dd></div>
+                ${(!r.fonte && (r.esferaId === "F" || r.esferaId === "D") && r.codigoUnidade) ? campoBoletimMeta("UASG", r.codigoUnidade) : ""}
+                ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome)}
+                ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome)}
+                ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome)}
+                ${r.fonte ? "" : campoBoletimMeta("Registro de preço", r.srp === true ? "Sim" : (r.srp === false ? "Não" : null))}
+                ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome)}
+                ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal)}
+                ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria)}
+                ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : ""}
+                <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
+                ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado))}
+                ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado))}
+                ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null)}
+                ${r.fonte ? "" : campoBoletimMeta("Processo", r.processo)}
+                <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
+              </dl>
+              <div class="boletim-gerenciar">
+                <select class="select-status-licitacao" title="Status de acompanhamento">${opcoesStatusHtml}</select>
+                <textarea class="anotacao-licitacao" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual)}</textarea>
+              </div>
+              <div class="boletim-rodape">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação">📋 Ver Itens</button>` : ""}
+                  ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações">📁 Acompanhamento</button>` : ""}
+                  ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button">📥 Baixar Edital</button>` : ""}
+                  ${(r.numeroControlePNCP && r.encerramento) ? `<button class="btn-ia-edital btn-criar-lembrete" type="button" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(r.numeroControlePNCP)}" data-encerramento="${escapeHtml(r.encerramento)}" data-objeto="${escapeHtml((r.objeto || "").slice(0, 200))}">🔔 Lembrete</button>` : ""}
+                </div>
+                ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
+              </div>
+              <div class="boletim-itens" style="display:none;"></div>
             </div>
-            ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) ↗` : "Ver edital completo no PNCP ↗"}</a>` : "<span></span>"}
           </div>
-          <div class="boletim-itens" style="display:none;"></div>
         </div>
       </div>`;
     });
@@ -3430,6 +3522,24 @@
     });
     container.querySelectorAll(".boletim-card").forEach((card) => {
       const id = card.dataset.id;
+      const cabeca = card.querySelector(".boletim-cabeca");
+      if (cabeca) {
+        const alternarAberto = () => {
+          const abrir = !card.classList.contains("aberto");
+          card.classList.toggle("aberto", abrir);
+          cabeca.setAttribute("aria-expanded", abrir ? "true" : "false");
+          if (abrir) cardsAbertosSessao.add(id); else cardsAbertosSessao.delete(id);
+          const chevronTexto = card.querySelector(".boletim-chevron-texto");
+          if (chevronTexto) chevronTexto.textContent = abrir ? "Ocultar detalhes" : "Ver detalhes";
+        };
+        cabeca.addEventListener("click", alternarAberto);
+        cabeca.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            alternarAberto();
+          }
+        });
+      }
       const btnFav = card.querySelector(".btn-favoritar");
       const btnLido = card.querySelector(".btn-marcar-lido");
       if (btnFav) {
@@ -5550,6 +5660,12 @@ window.__atualizarDashboard = function () {
   });
 </script>
 <script>
+// Limite diário de "visualizações de licitações" por plano, usado só pelo banner de aviso/
+// upsell no topo do Boletim e do Encontrar Licitações. Ainda não conta uso real (a régua de
+// planos formal ainda não foi fechada) — quando isso existir, plugar a contagem real aqui
+// em vez de só ler o teto fixo.
+const LIMITE_VISUALIZACOES_POR_PLANO = { "Padrão": 20 };
+
 window.__preencherIdentidadeUsuario = function () {
   try {
     const c = window.__clienteAtual || {};
@@ -5585,6 +5701,14 @@ window.__preencherIdentidadeUsuario = function () {
     if (elBadgePlano) {
       elBadgePlano.textContent = (c.plano && String(c.plano).trim()) || "Padrão";
     }
+
+    // Banner de limite diário de visualizações (Boletim / Encontrar Licitações): ainda
+    // decorativo — a régua de planos não foi fechada, então isso não conta uso de verdade,
+    // só mostra o teto do plano atual pra já preparar o terreno do upsell (ver LIMITE_VISUALIZACOES_POR_PLANO).
+    const planoAtual = (c.plano && String(c.plano).trim()) || "Padrão";
+    const limiteAtual = LIMITE_VISUALIZACOES_POR_PLANO[planoAtual] ?? LIMITE_VISUALIZACOES_POR_PLANO.Padrão;
+    document.querySelectorAll(".banner-limite-plano").forEach((el) => { el.textContent = planoAtual; });
+    document.querySelectorAll(".banner-limite-valor").forEach((el) => { el.textContent = String(limiteAtual); });
 
     if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
   } catch (e) {}
@@ -5724,6 +5848,15 @@ window.__preencherIdentidadeUsuario();
   function formatarSegmento(lista) {
     return Array.isArray(lista) ? lista.join(", ") : (lista || null);
   }
+
+  // Botões "Elevar meu plano" dos banners de limite diário reaproveitam o mesmo item
+  // "Planos e preços" do menu da conta — mesmo modal, sem precisar de tela nova.
+  document.querySelectorAll("[data-abrir-planos]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemPlanos = document.querySelector('.menu-conta-item[data-acao="planos"]');
+      if (itemPlanos) itemPlanos.click();
+    });
+  });
 
   document.querySelectorAll(".menu-conta-item[data-acao]").forEach((item) => {
     item.addEventListener("click", async () => {
