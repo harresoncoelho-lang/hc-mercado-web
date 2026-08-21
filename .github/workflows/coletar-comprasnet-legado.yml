@@ -6,13 +6,20 @@ on:
     - cron: "0 12 * * *"
   workflow_dispatch: {}
 
+# contents: read (não write) porque este workflow não grava nada no
+# repositório hc-mercado-web — só lê o código. A escrita acontece no
+# repositório de dados históricos, separado, via o token DADOS_HISTORICOS_TOKEN
+# usado no clone/push abaixo.
 permissions:
   contents: read
 
 jobs:
   coletar:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 20 min = clone do repositório de dados + orçamento interno do robô
+    # (LIMITE_MINUTOS=12) + commit/push. A folga entre 12 e 20 é o que protege
+    # o cursor de progresso de um SIGKILL por timeout do job.
+    timeout-minutes: 20
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
@@ -22,8 +29,51 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Rodar robô de coleta ComprasNet Legado
+      # Mesmo padrão do passo "Publicar dados privados no painel interno" de
+      # .github/workflows/atualizar-dados.yml: clone raso do repositório de
+      # dados privado, o robô escreve arquivos locais nele, e o passo final
+      # commita e envia tudo de uma vez. Evita o teto de ~1 MB por arquivo e o
+      # rate limit secundário da API de Contents do GitHub.
+      - name: Clonar repositório de dados históricos
         env:
           DADOS_HISTORICOS_TOKEN: ${{ secrets.DADOS_HISTORICOS_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$DADOS_HISTORICOS_TOKEN" ]; then
+            echo "DADOS_HISTORICOS_TOKEN não configurado — impossível coletar."
+            exit 1
+          fi
+          rm -rf /tmp/dados-historicos-comprasnet
+          git clone --depth 1 "https://harresoncoelho-lang:${DADOS_HISTORICOS_TOKEN}@github.com/harresoncoelho-lang/hc-licitacoes-dados-historicos.git" /tmp/dados-historicos-comprasnet
+
+      - name: Rodar robô de coleta ComprasNet Legado
+        env:
+          DADOS_HISTORICOS_DIR: /tmp/dados-historicos-comprasnet
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/coletar_comprasnet_legado.js
+
+      # if: always() de propósito: se o robô morrer no meio (exceção ou
+      # timeout do job), o cursor de progresso já pode ter avançado, então o
+      # que ele alcançou a gravar em disco precisa ser enviado mesmo assim —
+      # senão abre um buraco no histórico. Reenviar registro repetido é
+      # inofensivo (dedup por idCompra na leitura/merge).
+      - name: Commitar e enviar dados históricos
+        if: always()
+        env:
+          DADOS_HISTORICOS_TOKEN: ${{ secrets.DADOS_HISTORICOS_TOKEN }}
+        run: |
+          set -e
+          if [ ! -d /tmp/dados-historicos-comprasnet/.git ]; then
+            echo "Clone do repositório de dados não existe — nada a enviar."
+            exit 0
+          fi
+          cd /tmp/dados-historicos-comprasnet
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudança nos dados históricos hoje."
+          else
+            git commit -m "Atualização automática ComprasNet Legado - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push "https://harresoncoelho-lang:${DADOS_HISTORICOS_TOKEN}@github.com/harresoncoelho-lang/hc-licitacoes-dados-historicos.git" HEAD:main
+          fi

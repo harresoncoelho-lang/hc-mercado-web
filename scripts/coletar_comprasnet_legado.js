@@ -2,19 +2,29 @@
 // Robô de coleta ampla (Fase 1) do módulo Legado do Compras.gov.br —
 // histórico de licitações federais sob a Lei 8.666/93, de 2015 até o ano
 // corrente. Não busca vencedor ainda (isso é a Fase 2, robô separado
-// enriquecer_comprasnet_legado.js). Grava no repositório de dados
-// histórico dedicado (ver scripts/github_dados_historicos.js), não no
-// Supabase — só um cursor de progresso pequeno fica no Supabase.
+// enriquecer_comprasnet_legado.js).
+//
+// Grava em ARQUIVOS LOCAIS dentro de um clone do repositório de dados
+// históricos dedicado (não no Supabase — só um cursor de progresso pequeno
+// fica no Supabase). O clone, o commit e o push são feitos pelo workflow
+// (.github/workflows/coletar-comprasnet-legado.yml), no mesmo padrão do
+// passo "Publicar dados privados no painel interno" de
+// .github/workflows/atualizar-dados.yml. Este script só lê/escreve arquivos
+// em DADOS_HISTORICOS_DIR — nenhuma chamada HTTP ao GitHub. Isso evita de
+// uma vez: o teto de ~1 MB da API de Contents pra leitura, o rate limit
+// secundário de milhares de escritas arquivo a arquivo, e o controle de sha.
 //
 // Uso: node scripts/coletar_comprasnet_legado.js
 // Variáveis de ambiente:
-//   DADOS_HISTORICOS_TOKEN (obrigatória) - token de escrita no repo de dados
+//   DADOS_HISTORICOS_DIR (obrigatória) - caminho do clone local do repositório
+//     de dados históricos (o workflow clona em /tmp/dados-historicos-comprasnet)
 //   SUPABASE_SERVICE_ROLE_KEY (obrigatória) - pro cursor de progresso e cache de UASG
 //   LIMITE_MINUTOS=12 - orçamento de tempo total do robô
 //   ANO_INICIAL=2015 - primeiro ano da janela de coleta
 
+const fs = require("fs");
+const path = require("path");
 const { obterMapaUasg } = require("./comprasnet_uasg_cache");
-const { lerArquivoJson, escreverArquivoJson } = require("./github_dados_historicos");
 const { buscarBlob, salvarBlob } = require("./supabase_dados");
 
 const LIMITE_MINUTOS = parseFloat(process.env.LIMITE_MINUTOS || "12");
@@ -48,25 +58,56 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 25000) {
   return null;
 }
 
-// Timeout local pras chamadas de leitura/escrita no repositório de dados
-// históricos (lerArquivoJson/escreverArquivoJson usam fetch() sem timeout
-// próprio — ver scripts/github_dados_historicos.js, que não é modificado
-// aqui). Sem isso, uma chamada travada podia estourar o orçamento de tempo
-// do robô todo durante a fase de escrita (gravarAno/gravarUasgsAfetadas),
-// que não é coberta pelas checagens de tempoRestanteMs() no laço principal.
-function comTimeout(promessa, ms, rotulo) {
-  return Promise.race([
-    promessa,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`[timeout] ${rotulo} excedeu ${ms}ms`)), ms)),
-  ]);
+// --- I/O no clone local do repositório de dados históricos -----------------
+// Só arquivo local: leitura/escrita são praticamente instantâneas e não
+// precisam de orçamento de tempo próprio (o único orçamento que importa é o
+// das chamadas à API do Compras.gov.br, checado no laço de coleta).
+
+function dirDados() {
+  const dir = process.env.DADOS_HISTORICOS_DIR;
+  if (!dir) {
+    throw new Error(
+      "DADOS_HISTORICOS_DIR não configurada. Ela deve apontar pro clone local do " +
+      "repositório de dados históricos — o workflow " +
+      ".github/workflows/coletar-comprasnet-legado.yml clona o repositório antes " +
+      "de rodar este script e depois commita/envia o que foi escrito aqui."
+    );
+  }
+  return dir;
 }
 
-// Guarda de escopo: o repositório de dados históricos é PÚBLICO. Esta lista é
-// a única fonte da verdade de quais campos podem ir pra lá — qualquer objeto
-// que vá ser escrito no repositório passa por validarCamposPermitidos()
-// antes. Isso é uma garantia estrutural (falha alto e cedo se algum campo
-// fora do escopo da spec aparecer), não só "cuidado" ao escrever o código —
-// pedido explícito do Harreson antes do primeiro push de dados reais.
+// Lê um JSON do clone local. Retorna null se o arquivo ainda não existir —
+// não é erro, é o caso normal na primeira vez que um ano/UASG é gravado
+// (equivalente ao antigo 404 da API de Contents).
+async function lerJsonLocal(caminhoRelativo) {
+  const caminhoAbsoluto = path.join(dirDados(), caminhoRelativo);
+  let texto;
+  try {
+    texto = await fs.promises.readFile(caminhoAbsoluto, "utf8");
+  } catch (e) {
+    if (e && e.code === "ENOENT") return null;
+    throw e;
+  }
+  if (!texto.trim()) return null;
+  return JSON.parse(texto);
+}
+
+async function escreverJsonLocal(caminhoRelativo, objeto) {
+  const caminhoAbsoluto = path.join(dirDados(), caminhoRelativo);
+  await fs.promises.mkdir(path.dirname(caminhoAbsoluto), { recursive: true });
+  await fs.promises.writeFile(caminhoAbsoluto, JSON.stringify(objeto), "utf8");
+}
+
+// Guarda de escopo: o repositório de dados históricos é privado hoje, e
+// potencialmente público no futuro (a decisão depende de uma tensão de
+// licença ainda não resolvida — ver a "Atualização 2026-08-20" em
+// docs/superpowers/specs/2026-08-20-comprasnet-legado-integracao-design.md).
+// A guarda vale nos dois casos: esta lista é a única fonte da verdade de
+// quais campos podem ir pra lá — qualquer objeto que vá ser escrito no
+// repositório passa por validarCamposPermitidos() antes. Isso é uma garantia
+// estrutural (falha alto e cedo se algum campo fora do escopo da spec
+// aparecer), não só "cuidado" ao escrever o código — pedido explícito do
+// Harreson antes do primeiro push de dados reais.
 const CAMPOS_PERMITIDOS_LICITACAO = [
   "idCompra", "numeroProcesso", "uasg", "uf", "municipio", "modalidade",
   "nomeModalidade", "numeroAviso", "situacaoAviso", "objeto",
@@ -79,7 +120,8 @@ function validarCamposPermitidos(objeto, camposPermitidos, rotulo) {
     throw new Error(
       `[guarda-escopo] ${rotulo} contém campo(s) fora do escopo definido na spec ` +
       `(docs/superpowers/specs/2026-08-20-comprasnet-legado-integracao-design.md): ` +
-      `${chavesExtras.join(", ")}. Bloqueado de propósito — este repositório é público.`
+      `${chavesExtras.join(", ")}. Bloqueado de propósito — este repositório é ` +
+      `privado hoje, mas pode virar público, e a lista de campos vale nos dois casos.`
     );
   }
 }
@@ -110,7 +152,12 @@ function normalizarLicitacao(r, mapaUasg) {
 async function coletarAno(ano, paginaInicial, mapaUasg) {
   const novasPorRegistro = [];
   let pagina = paginaInicial;
-  let totalPaginas = 1;
+  // Infinity, não 1: quando o robô retoma de um cursor salvo (paginaInicial > 1,
+  // o caso normal a partir da segunda execução), começar com totalPaginas = 1
+  // fazia a condição do laço ser falsa logo na entrada — nenhuma requisição era
+  // feita, a função devolvia lista vazia e o main() tratava o ano como completo.
+  // A primeira resposta da API corrige o valor real logo abaixo.
+  let totalPaginas = Infinity;
   let interrompidoPorTempo = false;
 
   while (pagina <= totalPaginas) {
@@ -130,20 +177,12 @@ async function coletarAno(ano, paginaInicial, mapaUasg) {
 
 async function gravarAno(ano, novosRegistros) {
   const caminho = `licitacoes/${ano}.json`;
-  const { conteudo: existente } = await comTimeout(lerArquivoJson(caminho), 15000, `lerArquivoJson(${caminho})`);
+  const existente = await lerJsonLocal(caminho);
   const mapa = new Map();
   for (const r of (existente && existente.registros) || []) mapa.set(r.idCompra, r);
   for (const r of novosRegistros) if (r.idCompra) mapa.set(r.idCompra, r);
   const registros = Array.from(mapa.values());
-  await comTimeout(
-    escreverArquivoJson(
-      caminho,
-      { atualizadoEm: new Date().toISOString(), ano, registros },
-      `Atualiza licitações de ${ano} (${registros.length} registro(s))`
-    ),
-    15000,
-    `escreverArquivoJson(${caminho})`
-  );
+  await escreverJsonLocal(caminho, { atualizadoEm: new Date().toISOString(), ano, registros });
   return registros.length;
 }
 
@@ -160,8 +199,15 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
   }
   let arquivosAtualizados = 0;
   for (const [uasg, registrosDaUasg] of porUasg) {
+    // uasg vem de dado externo (String(r.uasg) da API) e é interpolado num
+    // caminho de arquivo — só valor numérico entra, pra um valor inesperado
+    // não conseguir escapar do diretório uasgs/.
+    if (!/^\d+$/.test(uasg)) {
+      console.log(`[comprasnet-legado] UASG ignorada por formato inesperado: ${JSON.stringify(uasg)}`);
+      continue;
+    }
     const caminho = `uasgs/${uasg}.json`;
-    const { conteudo: existente } = await comTimeout(lerArquivoJson(caminho), 15000, `lerArquivoJson(${caminho})`);
+    const existente = await lerJsonLocal(caminho);
     const mapa = new Map();
     for (const l of (existente && existente.licitacoes) || []) mapa.set(l.idCompra, l);
     for (const r of registrosDaUasg) {
@@ -178,22 +224,14 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
       mapa.set(r.idCompra, registroUasg);
     }
     const infoUasg = mapaUasg.get(uasg) || {};
-    await comTimeout(
-      escreverArquivoJson(
-        caminho,
-        {
-          atualizadoEm: new Date().toISOString(),
-          codigoUasg: uasg,
-          uf: infoUasg.uf || "",
-          municipio: infoUasg.municipio || "",
-          nomeUasg: infoUasg.nomeUasg || "",
-          licitacoes: Array.from(mapa.values()),
-        },
-        `Atualiza licitações da UASG ${uasg}`
-      ),
-      15000,
-      `escreverArquivoJson(${caminho})`
-    );
+    await escreverJsonLocal(caminho, {
+      atualizadoEm: new Date().toISOString(),
+      codigoUasg: uasg,
+      uf: infoUasg.uf || "",
+      municipio: infoUasg.municipio || "",
+      nomeUasg: infoUasg.nomeUasg || "",
+      licitacoes: Array.from(mapa.values()),
+    });
     arquivosAtualizados += 1;
   }
   return arquivosAtualizados;
@@ -201,6 +239,14 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
 
 async function main() {
   console.log(`Iniciando coleta ComprasNet Legado (Fase 1). Orçamento: ${LIMITE_MINUTOS} min.`);
+
+  // Falha cedo (antes de gastar o orçamento coletando) se o diretório do
+  // clone não estiver configurado/existente.
+  const dir = dirDados();
+  if (!fs.existsSync(dir)) {
+    throw new Error(`DADOS_HISTORICOS_DIR aponta pra um diretório inexistente: ${dir}`);
+  }
+  console.log(`[comprasnet-legado] Gravando no clone local: ${dir}`);
 
   const mapaUasg = await obterMapaUasg();
 
@@ -218,14 +264,17 @@ async function main() {
   let totalUasgsAtualizadas = 0;
 
   // try/finally: qualquer exceção não tratada na fase de coleta/escrita
-  // (erro de rede, HTTP 401/409/5xx do GitHub, ou o timeout de comTimeout()
-  // acima) precisa deixar o cursor de progresso salvo do jeito que estava —
-  // senão o robô perde o progresso do run inteiro ao ser interrompido no
-  // meio, e recomeça do zero na próxima execução.
+  // (erro de rede na API do Compras.gov.br, erro de escrita em disco) precisa
+  // deixar o cursor de progresso salvo do jeito que estava — senão o robô
+  // perde o progresso do run inteiro ao ser interrompido no meio, e recomeça
+  // do zero na próxima execução. O único jeito de ainda perder progresso é o
+  // SIGKILL do timeout-minutes do workflow (que não roda o finally); contra
+  // isso vale a margem entre o orçamento interno (12 min) e o teto do
+  // workflow (20 min), mesma lógica de atualizar-dados.yml.
   try {
     while (anoAtual <= anoFinal && tempoRestanteMs() > 8000) {
       console.log(`[comprasnet-legado] Varrendo ano ${anoAtual}, a partir da página ${paginaAtual}...`);
-      const { registros, proximaPagina, totalPaginas, interrompidoPorTempo } = await coletarAno(anoAtual, paginaAtual, mapaUasg);
+      const { registros, proximaPagina, interrompidoPorTempo } = await coletarAno(anoAtual, paginaAtual, mapaUasg);
 
       if (registros.length > 0) {
         const totalNoAno = await gravarAno(anoAtual, registros);
