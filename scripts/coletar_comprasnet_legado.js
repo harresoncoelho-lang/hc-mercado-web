@@ -21,6 +21,9 @@
 //   SUPABASE_SERVICE_ROLE_KEY (obrigatória) - pro cursor de progresso e cache de UASG
 //   LIMITE_MINUTOS=12 - orçamento de tempo total do robô
 //   ANO_INICIAL=2015 - primeiro ano da janela de coleta
+//   ATRASO_MS=250 - pausa entre páginas (educado com a API pública; mesmo
+//     valor já usado em scripts/coletar_fornecedores_sicaf.js pra essa mesma
+//     API dadosabertos.compras.gov.br)
 
 const fs = require("fs");
 const path = require("path");
@@ -29,10 +32,14 @@ const { buscarBlob, salvarBlob } = require("./supabase_dados");
 
 const LIMITE_MINUTOS = parseFloat(process.env.LIMITE_MINUTOS || "12");
 const ANO_INICIAL = parseInt(process.env.ANO_INICIAL || "2015", 10);
+const ATRASO_MS = parseInt(process.env.ATRASO_MS || "250", 10);
 const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
 const inicioExecucao = Date.now();
 function tempoRestanteMs() {
   return LIMITE_MS - (Date.now() - inicioExecucao);
+}
+function dormir(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 const BASE_URL = "https://dadosabertos.compras.gov.br/modulo-legado/1_consultarLicitacao";
@@ -188,6 +195,7 @@ async function coletarAno(ano, paginaInicial, mapaUasg) {
       novasPorRegistro.push(normalizarLicitacao(r, mapaUasg));
     }
     pagina += 1;
+    await dormir(ATRASO_MS);
   }
 
   return { registros: novasPorRegistro, proximaPagina: pagina, totalPaginas, interrompidoPorTempo };

@@ -4,11 +4,21 @@
 // UASGs raramente mudam, então o cache só é refeito se tiver mais de 7 dias
 // — evita gastar orçamento de execução do robô com isso todo dia.
 // Ver docs/superpowers/specs/2026-08-20-comprasnet-legado-integracao-design.md.
+//
+// Variável de ambiente:
+//   ATRASO_MS=250 - pausa entre páginas (educado com a API pública; mesmo
+//     valor já usado em scripts/coletar_fornecedores_sicaf.js pra essa mesma
+//     API dadosabertos.compras.gov.br)
 
 const { buscarBlob, salvarBlob } = require("./supabase_dados");
 
 const IDADE_MAXIMA_CACHE_DIAS = 7;
+const ATRASO_MS = parseInt(process.env.ATRASO_MS || "250", 10);
 const BASE_URL = "https://dadosabertos.compras.gov.br/modulo-uasg/1_consultarUasg";
+
+function dormir(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000) {
   for (let i = 0; i < tentativas; i++) {
@@ -45,6 +55,7 @@ async function buscarTodasAsUasgs() {
       break;
     }
     pagina += 1;
+    await dormir(ATRASO_MS);
   }
   return { registros: todas, completo };
 }
