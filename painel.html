@@ -1088,6 +1088,21 @@
   @media (max-width: 480px) { .dash-cards { grid-template-columns: 1fr; } }
   .dash-cards-mercado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   @media (max-width: 900px) { .dash-cards-mercado { grid-template-columns: 1fr; } }
+
+  .mural-novidades { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .mural-novidades { grid-template-columns: 1fr; } }
+  .mural-item { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; box-shadow: var(--sombra); }
+  .mural-item-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .mural-item-data { font-size: 12px; color: var(--texto-fraco); white-space: nowrap; }
+  .mural-item-titulo { font-size: 14px; font-weight: 700; color: var(--texto); margin: 0 0 4px; }
+  .mural-item-desc { font-size: 13px; color: var(--texto-fraco); margin: 0; line-height: 1.5; }
+  .mural-tag {
+    display: inline-block; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px; letter-spacing: 0.3px;
+  }
+  .mural-tag-novo { color: var(--verde-texto); background: rgba(52,193,124,0.12); border: 1px solid rgba(52,193,124,0.35); }
+  .mural-tag-melhoria { color: var(--azul-texto); background: rgba(46,141,255,0.12); border: 1px solid rgba(46,141,255,0.35); }
+  .mural-tag-correcao { color: var(--vermelho-texto); background: rgba(232,97,122,0.12); border: 1px solid rgba(232,97,122,0.35); }
   .dash-card { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; box-shadow: var(--sombra); }
   .dash-card-ico { font-size: 20px; margin-bottom: 6px; }
   .dash-card-num { font-size: 26px; font-weight: 700; color: var(--texto); line-height: 1.2; }
@@ -1400,6 +1415,12 @@
           <div id="dash-ranking-segmentos"><p style="margin:0;font-size:13px;color:var(--texto-fraco);">Carregando&hellip;</p></div>
         </div>
       </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div class="dash-painel-titulo" style="margin-bottom:4px;"><svg class='icone-ph'><use href='#ph-megaphone'></use></svg> Novidades no LicitaPlena</div>
+      <p style="margin:0 0 14px;font-size:13px;color:var(--texto-fraco);">&Uacute;ltimas melhorias e novidades do painel.</p>
+      <div class="mural-novidades" id="mural-novidades"></div>
     </div>
     </div>
   </section>
@@ -5794,6 +5815,38 @@ let resultados = resultadosBrutos.filter((r) => {
   document.querySelector('nav button[data-alvo="precos"]').addEventListener("click", () => {
     if (!ppJaBuscado) restaurarPrecos();
   });
+  // Mural "Novidades no LicitaPlena" (item 7 do diagnóstico Effecti): lista estática,
+  // atualizada manualmente a cada leva de melhorias — de propósito NÃO é gerada a partir do
+  // git log, porque mensagem de commit é jargão técnico interno, não linguagem pro cliente.
+  // Mais novo primeiro; datas conferem com a data real de cada mudança no histórico do repo.
+  const MURAL_NOVIDADES = [
+    { tag: "novo", data: "2026-08-20", titulo: "Dashboard com visão geral do mercado", desc: "Total de licitações monitoradas, novas do dia, estados cobertos e ranking dos principais estados e segmentos, direto na tela inicial." },
+    { tag: "novo", data: "2026-08-20", titulo: "Tags automáticas nos cards", desc: "Cada licitação agora mostra etiquetas automáticas (Material, Limpeza, Hospitalar, Engenharia etc.) pra identificar do que se trata sem precisar ler o texto inteiro." },
+    { tag: "melhoria", data: "2026-08-20", titulo: "Mais campos preenchidos nos cards", desc: "Amparo legal, valor estimado, processo e outros dados do PNCP agora aparecem completos com muito mais frequência." },
+    { tag: "melhoria", data: "2026-08-20", titulo: "Ícones renovados", desc: "Visual mais limpo e profissional em todo o painel." },
+    { tag: "novo", data: "2026-08-20", titulo: "Tema claro e escuro", desc: "Escolha o visual que preferir, com o botão de sol/lua no cabeçalho." },
+    { tag: "novo", data: "2026-08-20", titulo: "Filtros avançados em Encontrar Licitações", desc: "Agora dá pra filtrar por esfera (federal/estadual/municipal), faixa de valor estimado, código da licitação e nome do órgão." },
+    { tag: "novo", data: "2026-08-20", titulo: "Lembrete por licitação", desc: "Marque uma licitação importante e receba um aviso por e-mail antes do prazo." },
+    { tag: "melhoria", data: "2026-08-19", titulo: "Cabeçalho e menu lateral renovados", desc: "Cabeçalho mais compacto, mostrando empresa e plano, e menu lateral que pode ser recolhido pra ganhar espaço de tela." },
+  ];
+  const MURAL_TAG_LABEL = { novo: "Novo", melhoria: "Melhoria", correcao: "Correção" };
+  function renderizarMuralNovidades() {
+    const el = document.getElementById("mural-novidades");
+    if (!el) return;
+    el.innerHTML = MURAL_NOVIDADES.map((item) => {
+      const [ano, mes, dia] = item.data.split("-");
+      return `<div class="mural-item">
+        <div class="mural-item-topo">
+          <span class="mural-tag mural-tag-${item.tag}">${escapeHtml(MURAL_TAG_LABEL[item.tag] || item.tag)}</span>
+          <span class="mural-item-data">${dia}/${mes}/${ano}</span>
+        </div>
+        <p class="mural-item-titulo">${escapeHtml(item.titulo)}</p>
+        <p class="mural-item-desc">${escapeHtml(item.desc)}</p>
+      </div>`;
+    }).join("");
+  }
+  renderizarMuralNovidades();
+
   // Rótulos de exibição pros códigos internos de segmento (ver SEGMENTOS em
   // scripts/atualizar_dados.js — são os mesmos códigos gravados em contratos.dado.segmentos).
   // Qualquer código novo que apareça e não esteja aqui cai no fallback (capitaliza o código
