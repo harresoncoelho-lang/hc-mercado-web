@@ -48,6 +48,19 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 25000) {
   return null;
 }
 
+// Timeout local pras chamadas de leitura/escrita no repositório de dados
+// históricos (lerArquivoJson/escreverArquivoJson usam fetch() sem timeout
+// próprio — ver scripts/github_dados_historicos.js, que não é modificado
+// aqui). Sem isso, uma chamada travada podia estourar o orçamento de tempo
+// do robô todo durante a fase de escrita (gravarAno/gravarUasgsAfetadas),
+// que não é coberta pelas checagens de tempoRestanteMs() no laço principal.
+function comTimeout(promessa, ms, rotulo) {
+  return Promise.race([
+    promessa,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`[timeout] ${rotulo} excedeu ${ms}ms`)), ms)),
+  ]);
+}
+
 // Guarda de escopo: o repositório de dados históricos é PÚBLICO. Esta lista é
 // a única fonte da verdade de quais campos podem ir pra lá — qualquer objeto
 // que vá ser escrito no repositório passa por validarCamposPermitidos()
@@ -116,15 +129,20 @@ async function coletarAno(ano, paginaInicial, mapaUasg) {
 }
 
 async function gravarAno(ano, novosRegistros) {
-  const { conteudo: existente } = await lerArquivoJson(`licitacoes/${ano}.json`);
+  const caminho = `licitacoes/${ano}.json`;
+  const { conteudo: existente } = await comTimeout(lerArquivoJson(caminho), 15000, `lerArquivoJson(${caminho})`);
   const mapa = new Map();
   for (const r of (existente && existente.registros) || []) mapa.set(r.idCompra, r);
   for (const r of novosRegistros) if (r.idCompra) mapa.set(r.idCompra, r);
   const registros = Array.from(mapa.values());
-  await escreverArquivoJson(
-    `licitacoes/${ano}.json`,
-    { atualizadoEm: new Date().toISOString(), ano, registros },
-    `Atualiza licitações de ${ano} (${registros.length} registro(s))`
+  await comTimeout(
+    escreverArquivoJson(
+      caminho,
+      { atualizadoEm: new Date().toISOString(), ano, registros },
+      `Atualiza licitações de ${ano} (${registros.length} registro(s))`
+    ),
+    15000,
+    `escreverArquivoJson(${caminho})`
   );
   return registros.length;
 }
@@ -143,7 +161,7 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
   let arquivosAtualizados = 0;
   for (const [uasg, registrosDaUasg] of porUasg) {
     const caminho = `uasgs/${uasg}.json`;
-    const { conteudo: existente } = await lerArquivoJson(caminho);
+    const { conteudo: existente } = await comTimeout(lerArquivoJson(caminho), 15000, `lerArquivoJson(${caminho})`);
     const mapa = new Map();
     for (const l of (existente && existente.licitacoes) || []) mapa.set(l.idCompra, l);
     for (const r of registrosDaUasg) {
@@ -160,17 +178,21 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
       mapa.set(r.idCompra, registroUasg);
     }
     const infoUasg = mapaUasg.get(uasg) || {};
-    await escreverArquivoJson(
-      caminho,
-      {
-        atualizadoEm: new Date().toISOString(),
-        codigoUasg: uasg,
-        uf: infoUasg.uf || "",
-        municipio: infoUasg.municipio || "",
-        nomeUasg: infoUasg.nomeUasg || "",
-        licitacoes: Array.from(mapa.values()),
-      },
-      `Atualiza licitações da UASG ${uasg}`
+    await comTimeout(
+      escreverArquivoJson(
+        caminho,
+        {
+          atualizadoEm: new Date().toISOString(),
+          codigoUasg: uasg,
+          uf: infoUasg.uf || "",
+          municipio: infoUasg.municipio || "",
+          nomeUasg: infoUasg.nomeUasg || "",
+          licitacoes: Array.from(mapa.values()),
+        },
+        `Atualiza licitações da UASG ${uasg}`
+      ),
+      15000,
+      `escreverArquivoJson(${caminho})`
     );
     arquivosAtualizados += 1;
   }
@@ -195,30 +217,37 @@ async function main() {
   let totalNovosNesteRun = 0;
   let totalUasgsAtualizadas = 0;
 
-  while (anoAtual <= anoFinal && tempoRestanteMs() > 8000) {
-    console.log(`[comprasnet-legado] Varrendo ano ${anoAtual}, a partir da página ${paginaAtual}...`);
-    const { registros, proximaPagina, totalPaginas, interrompidoPorTempo } = await coletarAno(anoAtual, paginaAtual, mapaUasg);
+  // try/finally: qualquer exceção não tratada na fase de coleta/escrita
+  // (erro de rede, HTTP 401/409/5xx do GitHub, ou o timeout de comTimeout()
+  // acima) precisa deixar o cursor de progresso salvo do jeito que estava —
+  // senão o robô perde o progresso do run inteiro ao ser interrompido no
+  // meio, e recomeça do zero na próxima execução.
+  try {
+    while (anoAtual <= anoFinal && tempoRestanteMs() > 8000) {
+      console.log(`[comprasnet-legado] Varrendo ano ${anoAtual}, a partir da página ${paginaAtual}...`);
+      const { registros, proximaPagina, totalPaginas, interrompidoPorTempo } = await coletarAno(anoAtual, paginaAtual, mapaUasg);
 
-    if (registros.length > 0) {
-      const totalNoAno = await gravarAno(anoAtual, registros);
-      const uasgsAtualizadas = await gravarUasgsAfetadas(anoAtual, registros, mapaUasg);
-      totalNovosNesteRun += registros.length;
-      totalUasgsAtualizadas += uasgsAtualizadas;
-      console.log(`[comprasnet-legado] Ano ${anoAtual}: +${registros.length} registro(s) coletado(s) neste run, ${totalNoAno} no total do ano, ${uasgsAtualizadas} arquivo(s) de UASG atualizado(s).`);
+      if (registros.length > 0) {
+        const totalNoAno = await gravarAno(anoAtual, registros);
+        const uasgsAtualizadas = await gravarUasgsAfetadas(anoAtual, registros, mapaUasg);
+        totalNovosNesteRun += registros.length;
+        totalUasgsAtualizadas += uasgsAtualizadas;
+        console.log(`[comprasnet-legado] Ano ${anoAtual}: +${registros.length} registro(s) coletado(s) neste run, ${totalNoAno} no total do ano, ${uasgsAtualizadas} arquivo(s) de UASG atualizado(s).`);
+      }
+
+      if (interrompidoPorTempo) {
+        paginaAtual = proximaPagina;
+        break;
+      }
+
+      // Ano completo: avança pro próximo.
+      anosCompletos.push(anoAtual);
+      anoAtual += 1;
+      paginaAtual = 1;
     }
-
-    if (interrompidoPorTempo) {
-      paginaAtual = proximaPagina;
-      break;
-    }
-
-    // Ano completo: avança pro próximo.
-    anosCompletos.push(anoAtual);
-    anoAtual += 1;
-    paginaAtual = 1;
+  } finally {
+    await salvarBlob("dados_robo", "comprasnet_progresso", { anoAtual, paginaAtual, anosCompletos });
   }
-
-  await salvarBlob("dados_robo", "comprasnet_progresso", { anoAtual, paginaAtual, anosCompletos });
 
   console.log(
     `Coleta finalizada. ${totalNovosNesteRun} registro(s) coletado(s) neste run, ` +
