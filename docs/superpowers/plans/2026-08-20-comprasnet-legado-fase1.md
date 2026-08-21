@@ -56,9 +56,19 @@ task porque bloqueia o Task 2.
 - [ ] **Passo 1: Confirmar nome e criar o repositório**
 
 Perguntar ao usuário se pode criar (ou pedir que ele mesmo crie) um
-repositório público novo, vazio, sob a conta `harresoncoelho-lang`, nome
-sugerido `hc-licitacoes-dados-historicos` (pode ser outro nome, é só uma
-sugestão).
+repositório novo, vazio, sob a conta `harresoncoelho-lang`, nome sugerido
+`hc-licitacoes-dados-historicos` (pode ser outro nome, é só uma sugestão).
+
+**Privado, não público** — decisão do Harreson em 2026-08-20, enquanto uma
+tensão entre o Decreto 8.777/2016 (permite reuso irrestrito, só exige
+crédito de fonte) e a licença Creative Commons Atribuição-SemDerivações
+(CC BY-ND) que aparece no rodapé de gov.br/compras não for esclarecida.
+Isso não trava esta Fase 1 (o robô só escreve no repositório via API,
+funciona igual em repo privado ou público) — mas **significa que o
+jsDelivr não vai conseguir servir esses arquivos** quando chegar a hora de
+consumir os dados no painel (jsDelivr só serve repositório público). Isso é
+um problema pra resolver no plano da Fase 2 (ou reabrir o repositório como
+público depois que a questão de licença for esclarecida), não agora.
 
 O README inicial do repositório deve creditar a fonte dos dados — o
 Decreto 8.777/2016 (Política de Dados Abertos do Poder Executivo Federal)
