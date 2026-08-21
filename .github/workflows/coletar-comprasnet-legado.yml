@@ -1,0 +1,29 @@
+name: Coletar ComprasNet Legado (Fase 1)
+
+on:
+  schedule:
+    # 12:00 UTC = 09:00 no horário de Brasília — depois dos outros robôs
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rodar robô de coleta ComprasNet Legado
+        env:
+          DADOS_HISTORICOS_TOKEN: ${{ secrets.DADOS_HISTORICOS_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/coletar_comprasnet_legado.js
