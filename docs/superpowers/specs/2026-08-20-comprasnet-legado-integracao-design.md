@@ -1,219 +1,310 @@
 # Integração ComprasNet (Módulo Legado) — item 11 do diagnóstico Effecti
 
-Status: aprovado para implementação
-Data: 2026-08-20
+Status: aprovado para implementação (revisão 2 — objetivo e arquitetura mudaram)
+Data original: 2026-08-20 · Revisado: 2026-08-20
+
+## Histórico desta spec
+
+A primeira versão deste documento (commit `979626a`) desenhava isso como
+**mais uma fonte de oportunidades ao vivo pro Boletim** (só pregões com
+proposta ainda aberta, últimos 60 dias, mesmo padrão do Sistema S/AM).
+Depois de aprovada, dois fatos novos invalidaram essa versão:
+
+1. **O objetivo real do Harreson não é Boletim, é análise histórica de
+   mercado** — entender o que uma empresa já ganhou, onde, como, e estudar
+   o histórico de UASGs, desde antes da mudança pra Lei 14.133/2021. Isso é
+   um objetivo completamente diferente de "oportunidade aberta agora".
+2. **Testando a API real**, o endpoint de Pregão (`3_consultarPregoes`)
+   está com **zero registros em todo 2025 e 2026** — a atividade no sistema
+   Legado parou na virada de ano. Não faz sentido construir um robô de
+   "oportunidades abertas" pra uma fonte que não gera nada novo. Em
+   compensação, o endpoint genérico de Licitação (`1_consultarLicitacao`)
+   tem volume histórico real e enorme (dezenas de milhares de registros por
+   ano, desde pelo menos 1999) — é isso que serve pro objetivo real.
+
+Esta revisão substitui a anterior por completo. Não há código implementado
+da primeira versão (só a spec foi commitada).
 
 ## Contexto
 
-O diagnóstico comparativo com o Effecti (`Diagnostico_Effecti_Comparativo.docx`)
-apontou que o Effecti consegue captar oportunidades do ComprasNet, além do PNCP.
-Hoje o LicitaPlena só cobre PNCP (fonte principal) e Sistema S/AM (SENAC/SESC,
-via scraping). Este documento registra o design da terceira fonte: o módulo
-"Legado" da API pública do Compras.gov.br (sucessor do ComprasNet), que cobre
-processos sob a Lei 8.666/93 — não migrados para o PNCP.
+O diagnóstico comparativo com o Effecti apontou o ComprasNet como fonte que
+o LicitaPlena ainda não cobre. Investigando a fundo, o valor real não está
+em "oportunidades novas" (o sistema Legado, Lei 8.666/93, está inativo
+desde 2025/2026 — tudo migrou pro PNCP, que já cobrimos 100%), mas no
+**lastro histórico**: décadas de licitações, UASGs e empresas vencedoras
+que só existem nesse acervo antigo, e que valem pra estudar o histórico de
+mercado de uma empresa ou órgão comprador — exatamente o que já é o
+propósito de Diagnóstico de Mercado e Analisar Empresa hoje.
 
 ### Pesquisa que fundamenta este design
 
-- API pública em `https://dadosabertos.compras.gov.br`, **sem autenticação**
-  (confirmado no manual oficial: exemplos de `curl` não têm header de token).
-  Rate limit não é documentado — mesma cautela adotada hoje com o PNCP (retry
-  com backoff, respeitar erros 429/5xx).
-- O módulo "Contratações PNCP 14133" dessa mesma API é um espelho do que já
-  vem direto do PNCP (filtra por `dataPublicacaoPncpInicial/Final`) —
-  **redundante**, não vamos captar isso.
-- O módulo **"Legado"** (`modulo-legado/*`) cobre processos sob a Lei 8.666/93,
-  com um parâmetro `pertence14133` que permite excluir explicitamente o que já
-  está no regime novo (PNCP). Esse é o dado realmente novo.
-- Dentro do Legado, o endpoint `3_consultarPregoes` é a modalidade dominante,
-  com datas de proposta claras (`dt_inicio_proposta`/`dt_fim_proposta`).
-- UF não vem direto no Pregão — só `co_uasg`/`no_orgao`. Precisa de tradução
-  via `modulo-uasg/1_consultarUasg` (`codigoUasg`, `siglaUf`,
-  `nomeMunicipioIbge`).
-- Manual fonte: `https://www.gov.br/compras/pt-br/acesso-a-informacao/manuais/manual-dados-abertos/manual-api-compras.pdf`
-  (Manual do Usuário – API do Compras.gov.br, v2.0, fev/2026).
+**API**: `https://dadosabertos.compras.gov.br`, sem autenticação, sem
+cadastro. Manual oficial: "Manual do Usuário – API do Compras.gov.br"
+v2.0/fev-2026.
 
-### Decisões já tomadas (aprovadas em conversa)
+**Volume real testado direto na API** (não só documentação — chamadas
+reais feitas durante esta pesquisa):
 
-1. **Onde aparece**: misturado no mesmo Boletim/Encontrar Licitações que já
-   mostra PNCP + Sistema S/AM, com badge de fonte "ComprasNet" — mesmo padrão
-   já usado pro Sistema S/AM (`r.fonte`).
-2. **Escopo desta 1ª versão**: só **Pregão** (`3_consultarPregoes`). Compra sem
-   Licitação (dispensa/inexigibilidade) e RDC ficam para uma leva futura, se
-   esta primeira entrega funcionar bem.
-3. **UASG → UF**: resolvido **dentro do robô**, antes de gravar no Supabase —
-   painel.html recebe `uf`/`municipio` já prontos, sem chamada de rede extra
-   no navegador do cliente. Mesma divisão de responsabilidade já usada hoje
-   (robô traduz, painel só exibe).
+| Endpoint | Achado |
+|---|---|
+| `modulo-legado/3_consultarPregoes` (Pregão) | 0 registros em 2025 e 2026 — **inativo** |
+| `modulo-legado/5_consultarComprasSemLicitacao` (Dispensa/Inexigibilidade) | 24.382 registros em 2025, 0 em 2026 — mesmo padrão de corte |
+| `modulo-legado/1_consultarLicitacao` (genérico, todas modalidades) | 27.558 (2024) até 63.814 (2013), dados confirmados desde **1999** (7.801 registros nesse ano) |
+
+**Decisão de escopo**: usar `1_consultarLicitacao` (o genérico), janela
+**2015-2026** (10 anos) — estimativa de **~380 mil licitações**, baseada na
+média amostrada de anos testados (~37,8 mil/ano × 10). Foi cogitado ir até
+1999 (~984 mil licitações no total), mas o custo de armazenamento/
+enriquecimento não compensa pra esse alcance nesta primeira leva — ver
+"Fora de escopo" no fim.
+
+**Vencedor (CNPJ) não vem junto** — precisa de uma chamada por licitação no
+endpoint irmão `2_consultarItemLicitacao` (campo `cnpj_fornecedor`,
+confirmado no manual, seção 9.2). Pra 380 mil licitações, isso é 380 mil
+chamadas extras — não cabe num robô diário de ~15 min de uma vez. Ver
+"Fase 2" abaixo.
+
+**UF não vem direto** na Licitação — só `uasg`/dados do UASG. Precisa de
+`modulo-uasg/1_consultarUasg` (`codigoUasg`, `siglaUf`, `nomeMunicipioIbge`)
+pra traduzir — mesma necessidade já identificada na primeira versão da
+spec.
+
+### Restrição de armazenamento (achado crítico, mudou a arquitetura)
+
+Testado direto no Supabase do projeto: banco em **254 MB de um limite de
+500 MB** (plano gratuito), sendo **226 MB só a tabela `contratos`** (103.825
+linhas, ~2.282 bytes/linha em média). Guardar ~380 mil licitações no mesmo
+formato estouraria o espaço disponível em mais de 3x. Aumentar o plano
+pago do Supabase foi cogitado e descartado a favor de uma opção sem custo.
+
+**Cloudflare R2** foi avaliado como storage externo (10 GB grátis, sem taxa
+de saída) e **descartado**: confirmado que a Cloudflare exige cartão de
+crédito cadastrado pra sequer *ativar* o R2 na conta, mesmo ficando 100%
+dentro do limite gratuito — o Harreson pediu explicitamente pra não criar
+contas/cadastros que envolvam risco de cobrança sem aprovação prévia.
+
+**Decisão final**: **GitHub (repositório novo, dedicado) + jsDelivr CDN**.
+- Zero cadastro novo — o projeto já vive no GitHub.
+- Zero cartão, zero risco de cobrança.
+- jsDelivr serve qualquer arquivo de um repo público GitHub via
+  `cdn.jsdelivr.net/gh/{usuario}/{repo}@{branch}/{caminho}`, sem login.
+- Limite confirmado: **50 MB por arquivo** servido pelo jsDelivr. Resolve
+  particionando os dados em muitos arquivos pequenos (por CNPJ/UASG), que é
+  exatamente o desenho que já fazia sentido pro "carregar sob demanda".
+- Cache de até 7 dias por branch, mas com purge imediato via API
+  (`POST https://purge.jsdelivr.net/gh/...`) depois de cada push do robô.
+- **Repositório separado do `hc-mercado-web`**, sem Netlify conectado —
+  commits de backfill não disparam rebuild do site (era exatamente o
+  problema que a migração pro Supabase já resolveu pros dados do PNCP; um
+  repo novo evita reintroduzir isso).
+- Fallback documentado se o jsDelivr der problema na prática: Backblaze B2
+  (10 GB grátis, confirmado sem exigência de cartão) — não implementado
+  nesta leva, só registrado como plano B.
+
+## Decisões consolidadas
+
+1. Endpoint fonte: `modulo-legado/1_consultarLicitacao` (não mais Pregão).
+2. Janela: 2015-2026 (~380 mil licitações estimadas).
+3. Vencedor (CNPJ) via `2_consultarItemLicitacao`, em fase separada de
+   enriquecimento incremental (não bloqueia a coleta ampla).
+4. UASG→UF resolvido no robô (mantido da v1), cache de UASGs.
+5. Armazenamento: GitHub (repo novo dedicado) + jsDelivr CDN pros dados
+   volumosos; Supabase `dados_robo` continua guardando só o estado
+   operacional pequeno (progresso do backfill, cache de UASG — esses sim
+   cabem tranquilamente no espaço que sobra).
+6. Consumo no painel: **não é mais o Boletim** — é uma nova seção dentro de
+   **Analisar Empresa** (`#empresa`, ao lado de "Participações"/"Sanções"),
+   buscando sob demanda quando o cliente pesquisa um CNPJ específico. UASGs
+   ficam disponíveis como um dataset consultável (uso exato na UI é uma
+   decisão de uma leva futura — ver "Fora de escopo").
 
 ## Arquitetura
 
-Cópia estrutural do padrão já usado no Sistema S/AM — robô dedicado, workflow
-próprio, blob separado no Supabase, merge no painel — só trocando scraping de
-HTML por chamadas a uma API JSON de verdade (mecânica de paginação/filtro por
-data mais parecida com o robô do PNCP).
-
 ```
-GitHub Actions (cron diário, novo workflow)
-  → scripts/coletar_comprasnet.js
-      1. Atualiza cache de UASGs (só se tiver mais de 7 dias)
-      2. Busca Pregões do módulo Legado, paginado, pertence14133=0 + janela de data
-      3. Filtra só pregões com proposta ainda aberta (dt_fim_proposta >= hoje)
-      4. Resolve UF/município via cache de UASG
-      5. Funde com o blob existente (mantém o que não expirou)
-      6. Grava no Supabase (dados_robo / comprasnet)
-  → painel.html
-      - buscarExtrasComprasnet(uf, palavras): carrega o blob, filtra
-      - normalizarComprasnet(r): traduz pro formato comum
-      - entra no Boletim/Encontrar Licitações do mesmo jeito que
-        buscarExtrasSistemaS já entra hoje
-      - FONTES_STATUS ganha "ComprasNet (Legado)"
-```
+GitHub Actions (cron, novo workflow)
+  → scripts/coletar_comprasnet_legado.js  (Fase 1 — coleta ampla)
+      1. Atualiza cache de UASGs (Supabase dados_robo/comprasnet_uasg,
+         só se tiver mais de 7 dias)
+      2. Varre modulo-legado/1_consultarLicitacao, paginado, por ano
+         (2015→2026), com um cursor de progresso salvo em
+         dados_robo/comprasnet_progresso (pra continuar de onde parou a
+         cada execução, igual ao padrão de fila persistente já usado nas
+         atas de mercado)
+      3. Resolve UF/município via cache de UASG
+      4. Agrupa por ano e escreve/atualiza
+         licitacoes/{ano}.json no repo de dados (git commit + push)
+      5. Atualiza uasgs/{codigoUasg}.json (lista de licitações daquela
+         UASG) — não depende de vencedor, pode ser preenchido já na Fase 1
 
-Nenhum código existente muda de comportamento, exceto a correção pontual
-descrita em "Correção de escopo" abaixo.
+  → scripts/enriquecer_comprasnet_legado.js  (Fase 2 — vencedor, mais lento)
+      1. Lê o cursor de progresso (dados_robo/comprasnet_progresso),
+         pega o próximo lote de licitações ainda sem vencedor
+      2. Busca 2_consultarItemLicitacao pra cada uma (cnpj_fornecedor)
+      3. Agrupa por CNPJ vencedor e atualiza empresas/{cnpj}.json no repo
+         de dados (append/merge, não reescreve o arquivo todo do zero
+         sempre que possível)
+      4. git commit + push + purge jsDelivr dos arquivos alterados
+
+  → painel.html (Analisar Empresa, #empresa)
+      - Nova função assíncrona, disparada junto com "Participações" ao
+        clicar "Analisar empresa": busca
+        https://cdn.jsdelivr.net/gh/{usuario}/{repo-dados}@main/empresas/{cnpj}.json
+      - Novo acordeon "Histórico ComprasNet (pré-2021)" — mesmo padrão
+        visual de montarAcordeon() já usado pra Sanções/Participações
+      - Sem resultado (arquivo 404): trata como "sem histórico legado
+        encontrado", não é erro
+```
 
 ## Componentes
 
-### 1. `scripts/coletar_comprasnet.js` (novo)
+### 1. `scripts/coletar_comprasnet_legado.js` (novo)
 
-Modelo: mistura o "orçamento de tempo + paginação + janela de data" do
-`atualizar_dados.js` (`coletarOportunidadesAbertas`) com o "script dedicado +
-grava blob via `supabase_dados.js`" do `coletar_sistema_s_am.js`.
+Modelo: paginação/janela por ano (como `atualizar_dados.js`), fila
+persistente entre execuções (como `coletarMercadoSegmentos`), grava
+progresso pequeno no Supabase (como os outros robôs), mas grava o **volume
+de dados** como arquivos no repo de dados via `git` (checkout, commit,
+push) em vez de linha em tabela.
 
-**Coleta de Pregões**
-- Endpoint: `GET https://dadosabertos.compras.gov.br/modulo-legado/3_consultarPregoes`
-- Parâmetros: `pagina`, `tamanhoPagina=500` (máximo permitido),
-  `pertence14133=0`, `dt_data_edital_inicial`, `dt_data_edital_final`
-  (ambos obrigatórios pela API — janela móvel dos últimos 60 dias de
-  disponibilização do edital, contados a partir de hoje, configurável via env
-  var `DIAS_JANELA_COMPRASNET`, default 60).
-- Campos de retorno usados: `id_compra`, `co_processo`, `co_uasg`, `no_orgao`,
-  `co_orgao`, `numero`, `ds_situacao_pregao`, `tx_objeto`,
-  `valorEstimadoTotal`, `valorHomologadoTotal`, `dt_data_edital`,
-  `dt_inicio_proposta`, `dt_fim_proposta`.
-- Filtro pós-busca: mantém só registros com `dt_fim_proposta >= hoje`
-  (oportunidade ainda aberta — mesmo espírito do "oportunidades abertas" do
-  PNCP, não lista histórico morto no Boletim).
+**Coleta de Licitações**
+- Endpoint: `GET https://dadosabertos.compras.gov.br/modulo-legado/1_consultarLicitacao`
+- Parâmetros: `pagina`, `tamanhoPagina=500` (confirmado: mínimo 10, máximo
+  500), `data_publicacao_inicial`, `data_publicacao_final` (obrigatórios,
+  formato `YYYY-MM-DD`, confirmado por teste real — **não** o formato do
+  PNCP, que é `YYYYMMDD`), limitado a uma janela de no máximo 365 dias por
+  chamada (documentado) — varre ano a ano, de 2015 até o ano corrente.
+- Campos usados: `id_compra`, `numero_processo`, `uasg`, `modalidade`,
+  `nome_modalidade`, `situacao_aviso`, `objeto`, `valor_estimado_total`,
+  `valor_homologado_total`, `data_publicacao`, `data_abertura_proposta`,
+  `dt_alteracao`.
+- Progresso salvo em `dados_robo/comprasnet_progresso`:
+  `{ anoAtual, paginaAtual, anosCompletos: [...] }` — cada execução
+  continua de onde parou, dentro do orçamento de tempo (`LIMITE_MINUTOS`,
+  default 12 min).
 
-**Cache de UASG → UF/Município**
-- Endpoint: `GET https://dadosabertos.compras.gov.br/modulo-uasg/1_consultarUasg`
-- Parâmetros: `pagina`, `tamanhoPagina=500`, `statusUasg=true` (só UASGs
-  ativas).
-- Campos usados: `codigoUasg`, `nomeUasg`, `siglaUf`, `nomeMunicipioIbge`.
-- Persistido em blob próprio (`dados_robo/comprasnet_uasg`), com
-  `atualizadoEm`. No início de cada execução, o robô verifica a idade desse
-  cache: se tiver **mais de 7 dias** (ou não existir), rebusca a tabela
-  inteira (paginada); senão, reaproveita o que já tem. UASGs raramente mudam,
-  então não vale gastar orçamento de execução com isso todo dia.
-- Se um `co_uasg` de um pregão não for encontrado no cache (UASG nova, ainda
-  não vista), o registro entra mesmo assim, com `uf`/`municipio` vazios — não
-  derruba a execução inteira por isso (mesmo espírito *best-effort* do resto
-  do robô).
+**Cache de UASG → UF/Município**: igual à v1 desta spec — endpoint
+`modulo-uasg/1_consultarUasg`, `statusUasg=true`, cache em
+`dados_robo/comprasnet_uasg`, refeito só se tiver mais de 7 dias. UASG não
+encontrada → registro entra com `uf`/`municipio` vazios, não é erro fatal.
 
-**Merge e gravação**
-- Chave única: `id_compra` (papel equivalente ao `numeroControlePNCP` do
-  PNCP).
-- Funde com o blob existente: mantém registros antigos que ainda não
-  expiraram (mesma lógica de retenção por data já usada em
-  `coletarOportunidadesAbertas`), sobrescreve com o que veio de novo.
-- Grava via `salvarBlob("dados_robo", "comprasnet", resultado)` (helper já
-  existente em `scripts/supabase_dados.js`, usado pelo Sistema S/AM).
+**Escrita no repositório de dados**
+- Repo novo dedicado (nome sugerido: `hc-licitacoes-dados-historicos`, sob
+  a mesma conta `harresoncoelho-lang` — nome final é decisão do Harreson na
+  hora de criar o repo).
+- `licitacoes/{ano}.json`: array de licitações daquele ano (formato acima),
+  reescrito/atualizado conforme o robô avança dentro daquele ano.
+- `uasgs/{codigoUasg}.json`: lista enxuta de licitações daquela UASG
+  (`idCompra`, `objeto`, `situacao`, `valorEstimado`, `valorHomologado`,
+  `dataPublicacao`, `ano`) — atualizado toda vez que uma licitação nova
+  daquela UASG é coletada.
+- Um commit por execução do robô (todos os arquivos alterados juntos),
+  `git push`, depois uma chamada de purge no jsDelivr pra cada arquivo que
+  mudou.
+- Autenticação do robô no GitHub: token (`GITHUB_TOKEN` de Actions com
+  permissão de escrita no repo de dados, ou um PAT dedicado salvo como
+  secret) — a definir na implementação, mesmo mecanismo de secrets já usado
+  pros outros robôs.
 
-**Orçamento de tempo**: `LIMITE_MINUTOS` (env var, default 12 min — cobre
-paginação de Pregões +, quando necessário, o refresh do cache de UASG,
-com folga sob o `timeout-minutes: 15` do workflow).
+### 2. `scripts/enriquecer_comprasnet_legado.js` (novo)
 
-**Sem link direto pro processo**: o manual da API não documenta um padrão de
-URL pública pro processo individual (diferente do PNCP, que tem
-`numeroControlePNCP` mapeável deterministicamente por `linkPncp()`). Por
-segurança, esta versão **não inventa uma URL** — os registros de ComprasNet
-não terão o botão "Ver edital completo" no card (mesmo comportamento que o
-Sistema S/AM já tem quando `r.link` vem vazio). Fica como item para revisitar
-se descobrirmos o padrão de URL correto depois.
+Modelo: mesma divisão "coletar" vs "enriquecer" já usada em
+`coletar_empresas.js`/`enriquecer_empresas.js` neste projeto.
 
-### 2. `.github/workflows/coletar-comprasnet.yml` (novo)
+- Lê `dados_robo/comprasnet_progresso` pra saber quais licitações (de
+  `licitacoes/{ano}.json`, já coletadas na Fase 1) ainda não têm vencedor
+  resolvido.
+- Pra cada uma (dentro do orçamento de tempo da execução):
+  `GET modulo-legado/2_consultarItemLicitacao?uasg={uasg}&numero_aviso={numero_aviso}&modalidade={modalidade}`
+  — vínculo confirmado por teste real (não é por `id_compra`, que dá 404;
+  é pela combinação `uasg`+`numero_aviso`+`modalidade`, os três presentes
+  em cada registro de `licitacoes/{ano}.json`). Extrai `cnpj_fornecedor` e
+  `nome_fornecedor` de cada item retornado.
+- Confirmado com dado real (licitação UASG 250061, aviso 4/2018): o campo
+  `cnpj_fornecedor` vem preenchido pra itens com resultado homologado
+  (ex: `58763350000190 OXY-SYSTEM EQUIPAMENTOS MEDICOS LTDA.`) e `null`
+  pra itens sem vencedor (deserto/fracassado, ou processo ainda em
+  andamento) — confirma que a Fase 2 é viável e que "sem vencedor" é
+  resultado normal, não falha da chamada.
+- Agrupa por CNPJ vencedor, atualiza (append, não reescreve do zero)
+  `empresas/{cnpj}.json`: lista de
+  `{ idCompra, objeto, orgao, uf, municipio, dataResultado, valorHomologado, itens: [...] }`.
+- Prioriza licitações mais recentes primeiro (2026 → 2015) — é o que mais
+  importa pra empresas ainda ativas hoje.
+- Mesmo mecanismo de commit+push+purge da Fase 1.
 
-Mesmo modelo de `coletar-sistema-s-am.yml`: `schedule` diário
-(`cron: "0 11 * * *"` — 11h UTC, depois do Sistema S/AM às 10h UTC) +
-`workflow_dispatch`, `timeout-minutes: 15`, roda
-`node scripts/coletar_comprasnet.js` com `SUPABASE_SERVICE_ROLE_KEY` do
-secrets.
+### 3. Workflows (`.github/workflows/`)
 
-### 3. Supabase
+Dois arquivos novos, mesmo modelo de `coletar-sistema-s-am.yml`:
+- `coletar-comprasnet-legado.yml`: `cron: "0 12 * * *"` (meio-dia UTC,
+  depois dos outros robôs) + `workflow_dispatch`, `timeout-minutes: 15`.
+- `enriquecer-comprasnet-legado.yml`: `cron: "0 13 * * *"` +
+  `workflow_dispatch`, `timeout-minutes: 15`. Roda depois da coleta, pra
+  sempre ter licitação nova disponível pra enriquecer no mesmo dia.
 
-Nenhuma migration de schema — a tabela `dados_robo` (`chave text, dado
-jsonb`) já é genérica o suficiente. Só dois novos valores de `chave`:
-`"comprasnet"` (dados dos pregões) e `"comprasnet_uasg"` (cache de UASGs).
+Ambos precisam de um novo secret de escrita no repo de dados (nome a
+definir, ex: `DADOS_HISTORICOS_TOKEN`), além do `SUPABASE_SERVICE_ROLE_KEY`
+já usado pelos outros robôs.
 
 ### 4. `painel.html`
 
-- `normalizarComprasnet(r)`: traduz pro formato comum usado em todo o
-  Boletim/Encontrar Licitações:
-  ```js
-  {
-    objeto: r.objeto,
-    orgao: r.orgao,
-    municipio: r.municipio || "",
-    uf: r.uf || "",
-    encerramento: r.encerramento,       // dt_fim_proposta
-    publicacao: r.publicacao,           // dt_data_edital
-    numeroControlePNCP: r.idCompra,     // reaproveita o campo, como o Sistema S já faz
-    link: null,                         // sem link direto nesta versão
-    fonte: "ComprasNet",
-  }
-  ```
-- `buscarExtrasComprasnet(uf, palavras)`: mesmo molde de
-  `buscarExtrasSistemaS` — carrega o blob via `carregarBlobSupabase`, filtra
-  por UF e por `bateComSegmento(objeto, palavras)`, mapeia com o
-  normalizador acima.
-- Chamado nos dois mesmos pontos onde `buscarExtrasSistemaS(uf, palavras)` já
-  é chamado hoje (Boletim e Encontrar Licitações).
-- Nova entrada em `FONTES_STATUS`: `{ supabase: "comprasnet", nome:
-  "ComprasNet (Legado)", icone: "<svg class='icone-ph'><use
-  href='#ph-bank'></use></svg>" }` (ou ícone equivalente já disponível no
-  sprite).
-
-### 5. Correção de escopo (pré-existente, afeta diretamente este trabalho)
-
-Em `montarCardsBoletim`, os botões "Ver Itens" e "Acompanhamento" hoje
-checam só `r.numeroControlePNCP`, sem checar `r.fonte` — ou seja, cards de
-fontes externas (Sistema S/AM hoje, ComprasNet a partir desta mudança)
-mostram esses botões e, se clicados, chamam funções Netlify específicas do
-PNCP (`pncp-itens.js`, `pncp-arquivos.js`) com um ID que não é do PNCP,
-falhando silenciosamente. Correção: as duas condições passam a exigir
-`r.numeroControlePNCP && !r.fonte`.
+- `netlify.toml`: adiciona `https://cdn.jsdelivr.net` em `connect-src` da
+  CSP (já está liberado em `script-src`, falta em `connect-src`, que é o
+  que controla `fetch()`).
+- Nova função `carregarHistoricoComprasnet(cnpj)`: `fetch()` direto em
+  `https://cdn.jsdelivr.net/gh/{usuario}/{repo-dados}@main/empresas/{cnpj}.json`,
+  trata 404 como "sem histórico" (não é erro).
+- Disparada junto com o carregamento de "Participações" no handler de
+  `#emp-buscar` (por volta da linha 5066 de `painel.html` na versão atual),
+  populando um novo `montarAcordeon("emp-comprasnet", ..., "Histórico
+  ComprasNet (pré-2021)", ...)`, mesmo padrão assíncrono já usado pra
+  "Sanções" (carrega depois, atualiza o acordeon quando responde).
 
 ## Tratamento de erros
 
-- Página HTTP com erro (não-200) ou timeout: loga e para a paginação
-  daquele endpoint, mantém o que já coletou até ali (mesmo padrão do PNCP).
-- `co_uasg` não encontrado no cache: registro entra com `uf`/`municipio`
-  vazios, não é erro fatal.
-- Zero registros coletados na execução: loga aviso ("verifique se a
-  estrutura da API mudou"), não é erro fatal — mesmo padrão do Sistema S/AM.
-- Falha total (exceção não tratada): `process.exit(1)`, mesmo padrão dos
-  outros scripts — o workflow falha visivelmente no GitHub Actions em vez de
-  silenciosamente não atualizar nada.
+- Página HTTP com erro/timeout na API do Compras.gov.br: loga, para a
+  paginação daquele ano, mantém progresso do que já foi salvo — próxima
+  execução retoma dali.
+- UASG não encontrada: registro entra com uf/município vazios.
+- Item de licitação sem `cnpj_fornecedor` (licitação fracassada/deserta,
+  ou dado ausente): não gera entrada em nenhum `empresas/{cnpj}.json`,
+  não é erro.
+- Falha ao dar push no repo de dados (conflito, token expirado): loga erro
+  claro, `process.exit(1)` — mesmo padrão dos outros robôs, falha visível
+  no GitHub Actions em vez de mascarar.
+- `fetch` do painel pro jsDelivr falhando (rede, 404, arquivo ainda não
+  purgado): acordeon mostra "Sem histórico ComprasNet encontrado para este
+  CNPJ" — nunca trava o resto da tela de Analisar Empresa.
 
 ## Testes
 
-1. `node --check scripts/coletar_comprasnet.js` — sintaxe.
-2. Execução manual local (`node scripts/coletar_comprasnet.js`) contra a API
-   real do Compras.gov.br, antes de plugar no workflow — confirma que os
-   endpoints/campos documentados no manual batem com a resposta real.
-3. Teste visual no painel: cópia de `painel.html` em scratch, com
-   `window.__sbClient` mockado retornando alguns registros de exemplo (mesmo
-   processo usado nas features anteriores desta sessão) — confirma
-   renderização do card, badge de fonte, e que os botões "Ver Itens"/
-   "Acompanhamento" NÃO aparecem nesses cards.
-4. `node --check` no `<script>` inline de `painel.html` (extração +
-   validação, mesmo processo já usado neste projeto).
+1. `node --check` nos dois scripts novos.
+2. Execução manual local de `coletar_comprasnet_legado.js` contra a API
+   real, um ano pequeno primeiro (ex: 2024) — confirma paginação, formato
+   de data, escrita correta em `licitacoes/2024.json` e `uasgs/*.json`.
+3. Execução manual local de `enriquecer_comprasnet_legado.js` sobre o
+   resultado do teste acima — confirma o vínculo licitação→item→vencedor e
+   a escrita em `empresas/{cnpj}.json`.
+4. Teste de leitura: `curl` direto na URL do jsDelivr depois do primeiro
+   push, confirma que o arquivo é servido corretamente.
+5. Teste visual no painel: `#empresa`, buscar um CNPJ que apareça no
+   backfill de teste, confirmar que o acordeon novo aparece com os dados
+   certos — e que um CNPJ sem histórico mostra a mensagem de "sem
+   histórico", não erro.
+6. `node --check` no `<script>` inline de `painel.html` (extração +
+   validação, processo já usado neste projeto).
 
 ## Fora de escopo (explicitamente adiado)
 
-- Compra sem Licitação (dispensa/inexigibilidade) e RDC do módulo Legado —
-  possível leva futura.
-- Link direto pro processo no ComprasNet (padrão de URL não confirmado).
-- Merge/dedupe cruzado contra PNCP por outro critério além de
-  `pertence14133=0` (não deveria ser necessário, já que esse filtro existe
-  exatamente pra isso).
+- Histórico anterior a 2015 (dados existem desde 1999, ~984 mil
+  licitações no total) — avaliar depender do quanto a leva 2015-2026 se
+  mostrar útil na prática.
+- UI dedicada de "consultar UASG" (hoje os dados de `uasgs/{codigo}.json`
+  são coletados e ficam disponíveis, mas não há tela nova pra explorá-los
+  isoladamente — só entram indiretamente via o histórico de empresa).
+  Prováveis usos futuros: uma aba "Histórico de UASG" em Diagnóstico de
+  Mercado, ou cruzamento automático "quais UASGs essa empresa já venceu".
+- Backblaze B2 como storage — só documentado como plano B, não
+  implementado, a menos que o GitHub+jsDelivr apresente problema real de
+  cache/purge/limite em produção.
+- Merge desse histórico com a tabela `contratos` do Supabase — ficam
+  como fontes de dado separadas (uma no Postgres, uma no jsDelivr), sem
+  tentativa de unificação nesta leva.
