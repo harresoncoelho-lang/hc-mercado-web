@@ -88,6 +88,23 @@ contas/cadastros que envolvam risco de cobrança sem aprovação prévia.
 - Zero cartão, zero risco de cobrança.
 - jsDelivr serve qualquer arquivo de um repo público GitHub via
   `cdn.jsdelivr.net/gh/{usuario}/{repo}@{branch}/{caminho}`, sem login.
+
+> **Atualização 2026-08-20 (pós-aprovação da Fase 1)**: antes do primeiro
+> push de dados reais, uma checagem de termos de uso encontrou uma tensão
+> não resolvida entre o Decreto 8.777/2016 (permite reuso irrestrito dos
+> dados abertos, só exige crédito de fonte) e a licença Creative Commons
+> Atribuição-SemDerivações (CC BY-ND) que aparece no rodapé de
+> gov.br/compras (mais restritiva — tecnicamente não permite obra
+> derivada, e este pipeline reformata/reagrupa os dados). Não foi
+> encontrada nenhuma fonte que resolva explicitamente qual prevalece.
+> Decisão do Harreson: manter o repositório de dados **privado** até essa
+> questão ser esclarecida. Isso não afeta a Fase 1 (coleta/escrita
+> funciona igual em repo privado), mas **bloqueia o consumo via jsDelivr**
+> descrito nesta seção — jsDelivr só serve repositório público. A Fase 2
+> (consumo no painel) precisa reavaliar isso quando chegar a hora: ou a
+> questão de licença se resolve e o repo abre pra público, ou o desenho de
+> distribuição muda pra algo que funcione com repo privado (ex: proxy via
+> Netlify Function lendo a API de Contents do GitHub no servidor).
 - Limite confirmado: **50 MB por arquivo** servido pelo jsDelivr. Resolve
   particionando os dados em muitos arquivos pequenos (por CNPJ/UASG), que é
   exatamente o desenho que já fazia sentido pro "carregar sob demanda".
