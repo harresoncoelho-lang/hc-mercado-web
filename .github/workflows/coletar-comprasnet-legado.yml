@@ -106,8 +106,14 @@ jobs:
             echo "git push falhou (tentativa $tentativa/5)."
             if [ "$tentativa" -lt 5 ]; then
               sleep 10
-              git fetch "$REMOTE" main
-              git rebase FETCH_HEAD || git rebase --abort
+              # fetch/rebase são best-effort, nunca podem derrubar o script (set -e
+              # mataria o loop inteiro na primeira falha sem o || true): na primeira
+              # execução de sempre o repositório remoto ainda não tem nenhum commit
+              # (sem ref "main" pra buscar), e numa falha de permissão o fetch falha
+              # pelo mesmo motivo do push — nos dois casos não há nada pra rebasear,
+              # e a tentativa seguinte de "git push" já reporta o erro real de novo.
+              git fetch "$REMOTE" main || true
+              git rebase FETCH_HEAD 2>/dev/null || { git rebase --abort 2>/dev/null || true; }
             fi
           done
           if [ "$sucesso" -ne 1 ]; then
