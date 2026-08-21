@@ -31,6 +31,12 @@ sem dependências novas no `package.json`.
 - Nenhuma dependência nova em `package.json` — só `fetch()` nativo do Node 20.
 - Nenhuma escrita na tabela `contratos` do Supabase — só blobs pequenos em `dados_robo` (chaves `comprasnet_uasg` e `comprasnet_progresso`).
 - Esta Fase 1 **não** inclui: busca de vencedor (Fase 2), nem qualquer mudança em `painel.html`/`netlify.toml` — isso é escopo de um plano futuro.
+- **Guarda de escopo obrigatória** (pedido explícito do Harreson, já que o
+  repositório de dados é público): todo objeto escrito no repositório de
+  dados passa por `validarCamposPermitidos()` contra uma allowlist
+  explícita (`CAMPOS_PERMITIDOS_LICITACAO`/`CAMPOS_PERMITIDOS_LICITACAO_UASG`)
+  antes de qualquer `escreverArquivoJson()` — nunca um spread/cópia crua do
+  objeto de origem. Ver Task 4.
 
 ---
 
@@ -52,7 +58,16 @@ task porque bloqueia o Task 2.
 Perguntar ao usuário se pode criar (ou pedir que ele mesmo crie) um
 repositório público novo, vazio, sob a conta `harresoncoelho-lang`, nome
 sugerido `hc-licitacoes-dados-historicos` (pode ser outro nome, é só uma
-sugestão). Não precisa de README nem licença — só existir.
+sugestão).
+
+O README inicial do repositório deve creditar a fonte dos dados — o
+Decreto 8.777/2016 (Política de Dados Abertos do Poder Executivo Federal)
+exige atribuição como única condição de reuso — algo como:
+
+> Dados coletados a partir da API pública de dados abertos do
+> Compras.gov.br (`dadosabertos.compras.gov.br`), mantida pelo Ministério
+> da Gestão e da Inovação em Serviços Públicos. Uso sob a Política de
+> Dados Abertos do Poder Executivo Federal (Decreto nº 8.777/2016).
 
 - [ ] **Passo 2: Gerar um Personal Access Token com escopo de escrita**
 
@@ -344,7 +359,12 @@ git commit -m "Adiciona cache de UASG->UF/Município pro robô do ComprasNet Leg
   - `obterMapaUasg()` de `scripts/comprasnet_uasg_cache.js` (Task 3)
   - `lerArquivoJson(caminho)`, `escreverArquivoJson(caminho, objeto, mensagem)` de `scripts/github_dados_historicos.js` (Task 2)
   - `buscarBlob(tabela, chave)`, `salvarBlob(tabela, chave, dado)` de `scripts/supabase_dados.js`
-- Produces: nenhuma outra parte do código depende deste script (é o ponto de entrada do workflow) — grava em `licitacoes/{ano}.json` e `uasgs/{codigoUasg}.json` no repositório de dados, formato:
+- Produces: nenhuma outra parte do código depende deste script pra rodar (é
+  o ponto de entrada do workflow) — mas exporta
+  `{ validarCamposPermitidos, CAMPOS_PERMITIDOS_LICITACAO }` especificamente
+  pro teste isolado da guarda de escopo no Step 3 deste task. Grava em
+  `licitacoes/{ano}.json` e `uasgs/{codigoUasg}.json` no repositório de
+  dados, formato:
   ```
   // licitacoes/{ano}.json
   {
@@ -419,10 +439,33 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 25000) {
   return null;
 }
 
+// Guarda de escopo: o repositório de dados históricos é PÚBLICO. Esta lista é
+// a única fonte da verdade de quais campos podem ir pra lá — qualquer objeto
+// que vá ser escrito no repositório passa por validarCamposPermitidos()
+// antes. Isso é uma garantia estrutural (falha alto e cedo se algum campo
+// fora do escopo da spec aparecer), não só "cuidado" ao escrever o código —
+// pedido explícito do Harreson antes do primeiro push de dados reais.
+const CAMPOS_PERMITIDOS_LICITACAO = [
+  "idCompra", "numeroProcesso", "uasg", "uf", "municipio", "modalidade",
+  "nomeModalidade", "numeroAviso", "situacaoAviso", "objeto",
+  "valorEstimado", "valorHomologado", "dataPublicacao", "dataAberturaProposta",
+];
+
+function validarCamposPermitidos(objeto, camposPermitidos, rotulo) {
+  const chavesExtras = Object.keys(objeto).filter((k) => !camposPermitidos.includes(k));
+  if (chavesExtras.length > 0) {
+    throw new Error(
+      `[guarda-escopo] ${rotulo} contém campo(s) fora do escopo definido na spec ` +
+      `(docs/superpowers/specs/2026-08-20-comprasnet-legado-integracao-design.md): ` +
+      `${chavesExtras.join(", ")}. Bloqueado de propósito — este repositório é público.`
+    );
+  }
+}
+
 function normalizarLicitacao(r, mapaUasg) {
   const uasg = r.uasg != null ? String(r.uasg) : "";
   const infoUasg = uasg ? mapaUasg.get(uasg) : null;
-  return {
+  const registro = {
     idCompra: r.id_compra || "",
     numeroProcesso: r.numero_processo || "",
     uasg,
@@ -438,6 +481,8 @@ function normalizarLicitacao(r, mapaUasg) {
     dataPublicacao: r.data_publicacao || null,
     dataAberturaProposta: r.data_abertura_proposta || null,
   };
+  validarCamposPermitidos(registro, CAMPOS_PERMITIDOS_LICITACAO, "Registro de licitação");
+  return registro;
 }
 
 async function coletarAno(ano, paginaInicial, mapaUasg) {
@@ -475,6 +520,10 @@ async function gravarAno(ano, novosRegistros) {
   return registros.length;
 }
 
+const CAMPOS_PERMITIDOS_LICITACAO_UASG = [
+  "idCompra", "ano", "objeto", "situacaoAviso", "valorEstimado", "valorHomologado", "dataPublicacao",
+];
+
 async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
   const porUasg = new Map();
   for (const r of novosRegistros) {
@@ -489,7 +538,7 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
     const mapa = new Map();
     for (const l of (existente && existente.licitacoes) || []) mapa.set(l.idCompra, l);
     for (const r of registrosDaUasg) {
-      mapa.set(r.idCompra, {
+      const registroUasg = {
         idCompra: r.idCompra,
         ano,
         objeto: r.objeto,
@@ -497,7 +546,9 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
         valorEstimado: r.valorEstimado,
         valorHomologado: r.valorHomologado,
         dataPublicacao: r.dataPublicacao,
-      });
+      };
+      validarCamposPermitidos(registroUasg, CAMPOS_PERMITIDOS_LICITACAO_UASG, "Registro de licitação (arquivo de UASG)");
+      mapa.set(r.idCompra, registroUasg);
     }
     const infoUasg = mapaUasg.get(uasg) || {};
     await escreverArquivoJson(
@@ -571,10 +622,18 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error("Erro fatal no robô de coleta do ComprasNet Legado:", e);
-  process.exit(1);
-});
+// require.main === module: só roda main() quando o script é executado
+// diretamente (node scripts/coletar_comprasnet_legado.js ou via workflow) —
+// não quando é importado como módulo (Task 4, Step 3, teste isolado da
+// guarda de escopo), senão o teste dispararia uma coleta real sem querer.
+if (require.main === module) {
+  main().catch((e) => {
+    console.error("Erro fatal no robô de coleta do ComprasNet Legado:", e);
+    process.exit(1);
+  });
+}
+
+module.exports = { validarCamposPermitidos, CAMPOS_PERMITIDOS_LICITACAO };
 ```
 
 - [ ] **Step 2: Validar sintaxe**
@@ -582,7 +641,43 @@ main().catch((e) => {
 Run: `node --check scripts/coletar_comprasnet_legado.js`
 Expected: nenhuma saída.
 
-- [ ] **Step 3: Rodar manualmente contra a API real, escopo pequeno**
+- [ ] **Step 3: Testar a guarda de escopo isoladamente**
+
+Confirma que `validarCamposPermitidos` bloqueia campo fora do escopo, antes
+de rodar contra a API real — pedido explícito do Harreson, já que o
+repositório de dados é público:
+
+```bash
+node -e "
+const m = require('./scripts/coletar_comprasnet_legado.js');
+try {
+  // Este teste só funciona se o script exportar validarCamposPermitidos
+  // e CAMPOS_PERMITIDOS_LICITACAO pra teste (ver nota abaixo).
+  m.validarCamposPermitidos({ idCompra: '1', clienteEmail: 'vazou@teste.com' }, m.CAMPOS_PERMITIDOS_LICITACAO, 'Teste');
+  console.error('FALHOU: deveria ter lançado erro pro campo clienteEmail fora do escopo');
+  process.exit(1);
+} catch (e) {
+  if (String(e.message).includes('clienteEmail')) {
+    console.log('OK: guarda de escopo bloqueou campo fora da lista permitida.');
+  } else {
+    console.error('FALHOU: erro inesperado:', e);
+    process.exit(1);
+  }
+}
+"
+```
+
+Nota de implementação: pra esse teste funcionar, `module.exports` do script
+precisa incluir `{ validarCamposPermitidos, CAMPOS_PERMITIDOS_LICITACAO }`
+além do `main()` já chamado no fim do arquivo (exportar não muda o
+comportamento do script quando rodado diretamente via
+`node scripts/coletar_comprasnet_legado.js`, só expõe essas duas coisas pra
+esse teste manual).
+
+Expected: imprime `OK: guarda de escopo bloqueou campo fora da lista
+permitida.`
+
+- [ ] **Step 4: Rodar manualmente contra a API real, escopo pequeno**
 
 Antes de rodar contra 2015-2026 inteiro (que pode levar várias execuções),
 testar com uma janela pequena primeiro pra validar o fluxo — temporariamente
@@ -606,7 +701,7 @@ verdade: apagar a chave `comprasnet_progresso` do Supabase (ou simplesmente
 rodar sem as variáveis `ANO_INICIAL`/`LIMITE_MINUTOS` sobrescritas — o
 script usa os defaults `2015`/`12` normalmente).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add scripts/coletar_comprasnet_legado.js
