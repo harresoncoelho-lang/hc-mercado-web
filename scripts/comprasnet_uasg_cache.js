@@ -34,15 +34,19 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000) {
 async function buscarTodasAsUasgs() {
   const todas = [];
   let pagina = 1;
+  let completo = false;
   for (;;) {
     const url = `${BASE_URL}?pagina=${pagina}&tamanhoPagina=500&statusUasg=true`;
     const dados = await fetchComRetentativa(url);
     if (!dados || !Array.isArray(dados.resultado)) break;
     todas.push(...dados.resultado);
-    if (pagina >= (dados.totalPaginas || 1)) break;
+    if (pagina >= (dados.totalPaginas || 1)) {
+      completo = true;
+      break;
+    }
     pagina += 1;
   }
-  return todas;
+  return { registros: todas, completo };
 }
 
 // Retorna um Map codigoUasg (string) -> { uf, municipio, nomeUasg }. Rebusca a
@@ -60,15 +64,25 @@ async function obterMapaUasg() {
     console.log(`[uasg-cache] Reaproveitando cache com ${lista.length} UASG(s), ${idadeDias.toFixed(1)} dia(s) de idade.`);
   } else {
     console.log("[uasg-cache] Cache ausente ou velho — rebuscando tabela completa de UASGs...");
-    const brutas = await buscarTodasAsUasgs();
-    lista = brutas.map((u) => ({
-      codigoUasg: String(u.codigoUasg),
-      uf: u.siglaUf || "",
-      municipio: u.nomeMunicipioIbge || "",
-      nomeUasg: u.nomeUasg || "",
-    }));
-    await salvarBlob("dados_robo", "comprasnet_uasg", { atualizadoEm: new Date().toISOString(), uasgs: lista });
-    console.log(`[uasg-cache] Gravado cache novo com ${lista.length} UASG(s).`);
+    const { registros: brutas, completo } = await buscarTodasAsUasgs();
+
+    if (completo) {
+      lista = brutas.map((u) => ({
+        codigoUasg: String(u.codigoUasg),
+        uf: u.siglaUf || "",
+        municipio: u.nomeMunicipioIbge || "",
+        nomeUasg: u.nomeUasg || "",
+      }));
+      await salvarBlob("dados_robo", "comprasnet_uasg", { atualizadoEm: new Date().toISOString(), uasgs: lista });
+      console.log(`[uasg-cache] Gravado cache novo com ${lista.length} UASG(s).`);
+    } else {
+      console.log("[uasg-cache] Coleta incompleta (falha de rede) — mantendo cache anterior, se houver.");
+      if (cache && Array.isArray(cache.uasgs)) {
+        lista = cache.uasgs;
+      } else {
+        lista = [];
+      }
+    }
   }
 
   const mapa = new Map();
