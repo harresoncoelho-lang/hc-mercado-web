@@ -31,8 +31,9 @@ sem dependências novas no `package.json`.
 - Nenhuma dependência nova em `package.json` — só `fetch()` nativo do Node 20.
 - Nenhuma escrita na tabela `contratos` do Supabase — só blobs pequenos em `dados_robo` (chaves `comprasnet_uasg` e `comprasnet_progresso`).
 - Esta Fase 1 **não** inclui: busca de vencedor (Fase 2), nem qualquer mudança em `painel.html`/`netlify.toml` — isso é escopo de um plano futuro.
-- **Guarda de escopo obrigatória** (pedido explícito do Harreson, já que o
-  repositório de dados é público): todo objeto escrito no repositório de
+- **Guarda de escopo obrigatória** (pedido explícito do Harreson — o
+  repositório de dados é privado hoje e potencialmente público no futuro, e
+  a guarda vale nos dois casos): todo objeto escrito no repositório de
   dados passa por `validarCamposPermitidos()` contra uma allowlist
   explícita (`CAMPOS_PERMITIDOS_LICITACAO`/`CAMPOS_PERMITIDOS_LICITACAO_UASG`)
   antes de qualquer `escreverArquivoJson()` — nunca um spread/cópia crua do
@@ -654,8 +655,9 @@ Expected: nenhuma saída.
 - [ ] **Step 3: Testar a guarda de escopo isoladamente**
 
 Confirma que `validarCamposPermitidos` bloqueia campo fora do escopo, antes
-de rodar contra a API real — pedido explícito do Harreson, já que o
-repositório de dados é público:
+de rodar contra a API real — pedido explícito do Harreson (repositório de
+dados privado hoje, potencialmente público no futuro; a guarda vale nos dois
+casos):
 
 ```bash
 node -e "
