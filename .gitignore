@@ -9,3 +9,6 @@ data/mercado_segmentos.json
 
 # Local Netlify folder
 .netlify
+
+# Worktrees isolados de execução de planos (superpowers)
+.worktrees/
