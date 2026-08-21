@@ -78,7 +78,13 @@ function dirDados() {
 
 // Lê um JSON do clone local. Retorna null se o arquivo ainda não existir —
 // não é erro, é o caso normal na primeira vez que um ano/UASG é gravado
-// (equivalente ao antigo 404 da API de Contents).
+// (equivalente ao antigo 404 da API de Contents). Também retorna null se o
+// conteúdo não for JSON válido (arquivo truncado por alguma escrita
+// anterior interrompida) em vez de lançar: um JSON.parse não tratado aqui
+// travaria a leitura E a escrita daquele arquivo pra sempre — exatamente o
+// tipo de corrupção permanente que motivou trocar a API de Contents pelo
+// clone local (ver nota de correção no plano). Tratar como "ausente" deixa
+// a próxima gravação bem-sucedida sobrescrever o arquivo corrompido.
 async function lerJsonLocal(caminhoRelativo) {
   const caminhoAbsoluto = path.join(dirDados(), caminhoRelativo);
   let texto;
@@ -89,13 +95,25 @@ async function lerJsonLocal(caminhoRelativo) {
     throw e;
   }
   if (!texto.trim()) return null;
-  return JSON.parse(texto);
+  try {
+    return JSON.parse(texto);
+  } catch (e) {
+    console.log(`[comprasnet-legado] AVISO: ${caminhoRelativo} está corrompido (JSON inválido) — tratando como ausente. ${String((e && e.message) || e)}`);
+    return null;
+  }
 }
 
+// Escreve em arquivo temporário e faz rename por cima do arquivo final.
+// rename() é atômico no mesmo filesystem (o clone inteiro fica em
+// /tmp/dados-historicos-comprasnet) — se o job for morto no meio (SIGKILL
+// por timeout-minutes), o arquivo final nunca fica truncado: ou continua
+// com o conteúdo antigo inteiro, ou já tem o conteúdo novo inteiro.
 async function escreverJsonLocal(caminhoRelativo, objeto) {
   const caminhoAbsoluto = path.join(dirDados(), caminhoRelativo);
   await fs.promises.mkdir(path.dirname(caminhoAbsoluto), { recursive: true });
-  await fs.promises.writeFile(caminhoAbsoluto, JSON.stringify(objeto), "utf8");
+  const caminhoTemporario = `${caminhoAbsoluto}.tmp-${process.pid}`;
+  await fs.promises.writeFile(caminhoTemporario, JSON.stringify(objeto), "utf8");
+  await fs.promises.rename(caminhoTemporario, caminhoAbsoluto);
 }
 
 // Guarda de escopo: o repositório de dados históricos é privado hoje, e

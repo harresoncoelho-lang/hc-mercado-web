@@ -80,7 +80,19 @@ async function obterMapaUasg() {
       if (cache && Array.isArray(cache.uasgs)) {
         lista = cache.uasgs;
       } else {
-        lista = [];
+        // Sem cache anterior pra cair de volta: um mapa vazio faria toda
+        // licitação coletada nesta execução gravar uf/município em branco
+        // PERMANENTEMENTE (o robô só varre pra frente, nunca revisita ano/
+        // página já processados). Melhor abortar a execução inteira agora —
+        // chamado antes do try/finally de main(), então nada é escrito e o
+        // cursor de progresso não avança; a próxima execução agendada tenta
+        // de novo, sem dado nenhum perdido ou corrompido.
+        throw new Error(
+          "[uasg-cache] Busca inicial da tabela de UASGs falhou (rede) e não há " +
+          "cache anterior no Supabase pra usar como fallback — abortando esta " +
+          "execução pra não gravar licitações com uf/município em branco pra " +
+          "sempre. A próxima execução agendada tenta de novo."
+        );
       }
     }
   }

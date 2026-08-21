@@ -8,13 +8,16 @@ jsDelivr — sem tocar no Supabase (só um cursor de progresso pequeno) e sem
 mexer no painel ainda.
 
 **Architecture:** Robô Node.js standalone (`scripts/coletar_comprasnet_legado.js`),
-rodando via GitHub Actions com cron diário, escreve em dois tipos de arquivo
-(`licitacoes/{ano}.json`, `uasgs/{codigoUasg}.json`) num segundo repositório
-GitHub via chamadas diretas à API REST de Contents do GitHub (sem SDK, sem
-`git clone` — mesmo estilo de `fetch()` cru já usado em `scripts/supabase_dados.js`).
-Progresso entre execuções (qual ano/página já foi varrido) e o cache de
-UASG→UF ficam no Supabase (`dados_robo`), reaproveitando os helpers que já
-existem.
+rodando via GitHub Actions com cron diário. O workflow clona o repositório de
+dados dedicado localmente (`git clone --depth 1`, em `/tmp`) antes do robô
+rodar; o robô só lê/escreve arquivos locais com `fs.promises`
+(`licitacoes/{ano}.json`, `uasgs/{codigoUasg}.json`), nenhuma chamada HTTP ao
+GitHub. Um passo final do workflow faz commit único + push de tudo que mudou
+— mesmo padrão já usado em produção por `atualizar-dados.yml:73-96`. (Não é
+mais a API de Contents do GitHub arquivo por arquivo — essa abordagem foi
+descartada depois de aprovada; ver a nota de correção no Task 2.) Progresso
+entre execuções (qual ano/página já foi varrido) e o cache de UASG→UF ficam
+no Supabase (`dados_robo`), reaproveitando os helpers que já existem.
 
 **Tech Stack:** Node.js 20 (mesmo runtime dos outros robôs), `fetch()` nativo,
 sem dependências novas no `package.json`.
@@ -36,7 +39,7 @@ sem dependências novas no `package.json`.
   a guarda vale nos dois casos): todo objeto escrito no repositório de
   dados passa por `validarCamposPermitidos()` contra uma allowlist
   explícita (`CAMPOS_PERMITIDOS_LICITACAO`/`CAMPOS_PERMITIDOS_LICITACAO_UASG`)
-  antes de qualquer `escreverArquivoJson()` — nunca um spread/cópia crua do
+  antes de qualquer `escreverJsonLocal()` — nunca um spread/cópia crua do
   objeto de origem. Ver Task 4.
 
 ---
@@ -107,131 +110,43 @@ disso.
 
 ---
 
-## Task 2: Helper de leitura/escrita no repositório de dados
+## Task 2: ~~Helper de leitura/escrita no repositório de dados~~ (removido — ver nota de correção)
 
-**Files:**
-- Create: `scripts/github_dados_historicos.js`
-- Test: execução manual (não há framework de testes automatizados neste
-  projeto — todo robô existente é verificado com `node --check` +
-  execução manual real, ver `scripts/coletar_sistema_s_am.js` como
-  precedente)
-
-**Interfaces:**
-- Consumes: `process.env.DADOS_HISTORICOS_TOKEN`, `process.env.REPO_DADOS_HISTORICOS` (formato `"dono/repo"`, default `"harresoncoelho-lang/hc-licitacoes-dados-historicos"`)
-- Produces:
-  - `async function lerArquivoJson(caminho)` → `Promise<{ conteudo: any, sha: string } | { conteudo: null, sha: null }>`
-  - `async function escreverArquivoJson(caminho, objeto, mensagemCommit)` → `Promise<void>`
-
-- [ ] **Step 1: Escrever o módulo**
-
-```js
-// scripts/github_dados_historicos.js
-// Helper pra ler/escrever arquivos JSON no repositório dedicado de dados
-// históricos (ver docs/superpowers/specs/2026-08-20-comprasnet-legado-integracao-design.md).
-// Usa a API REST de Contents do GitHub direto via fetch() — sem SDK, sem
-// git clone, mesmo estilo de scripts/supabase_dados.js. O repositório de
-// dados é público e separado do hc-mercado-web de propósito: commits aqui
-// não disparam rebuild do site no Netlify.
-
-function repoDados() {
-  return process.env.REPO_DADOS_HISTORICOS || "harresoncoelho-lang/hc-licitacoes-dados-historicos";
-}
-
-function token() {
-  const t = process.env.DADOS_HISTORICOS_TOKEN;
-  if (!t) {
-    throw new Error(
-      "DADOS_HISTORICOS_TOKEN não configurada. Defina essa variável de ambiente " +
-      "(no GitHub Actions: Settings > Secrets and variables > Actions) com um " +
-      "Personal Access Token com permissão de escrita no repositório de dados históricos."
-    );
-  }
-  return t;
-}
-
-async function apiFetch(caminho, opcoes = {}) {
-  const resp = await fetch(`https://api.github.com/repos/${repoDados()}/contents/${caminho}`, {
-    ...opcoes,
-    headers: {
-      Authorization: `Bearer ${token()}`,
-      Accept: "application/vnd.github+json",
-      "Content-Type": "application/json",
-      ...(opcoes.headers || {}),
-    },
-  });
-  return resp;
-}
-
-// Lê um arquivo JSON do repositório de dados. Retorna { conteudo: null, sha: null }
-// se o arquivo ainda não existir (404) — não é erro, é o caso normal na primeira
-// vez que um ano/UASG é gravado.
-async function lerArquivoJson(caminho) {
-  const resp = await apiFetch(caminho);
-  if (resp.status === 404) return { conteudo: null, sha: null };
-  if (!resp.ok) {
-    const texto = await resp.text().catch(() => "");
-    throw new Error(`GitHub Contents API GET ${caminho} -> HTTP ${resp.status}: ${texto.slice(0, 300)}`);
-  }
-  const dados = await resp.json();
-  const conteudo = JSON.parse(Buffer.from(dados.content, "base64").toString("utf8"));
-  return { conteudo, sha: dados.sha };
-}
-
-// Escreve (cria ou atualiza) um arquivo JSON no repositório de dados. Busca o sha
-// atual primeiro quando o arquivo já existe — a API do GitHub exige o sha antigo
-// pra confirmar que não estamos sobrescrevendo uma mudança concorrente.
-async function escreverArquivoJson(caminho, objeto, mensagemCommit) {
-  const { sha } = await lerArquivoJson(caminho);
-  const conteudoBase64 = Buffer.from(JSON.stringify(objeto), "utf8").toString("base64");
-  const corpo = { message: mensagemCommit, content: conteudoBase64 };
-  if (sha) corpo.sha = sha;
-  const resp = await apiFetch(caminho, { method: "PUT", body: JSON.stringify(corpo) });
-  if (!resp.ok) {
-    const texto = await resp.text().catch(() => "");
-    throw new Error(`GitHub Contents API PUT ${caminho} -> HTTP ${resp.status}: ${texto.slice(0, 300)}`);
-  }
-}
-
-module.exports = { lerArquivoJson, escreverArquivoJson };
-```
-
-- [ ] **Step 2: Validar sintaxe**
-
-Run: `node --check scripts/github_dados_historicos.js`
-Expected: nenhuma saída (sintaxe ok).
-
-- [ ] **Step 3: Testar manualmente contra o repositório real (round-trip)**
-
-Criar um arquivo temporário de teste (fora do repositório do projeto, ex:
-na pasta scratchpad) e rodar:
-
-```js
-// teste-github-dados.js (arquivo temporário, não commitar)
-process.env.DADOS_HISTORICOS_TOKEN = "SEU_TOKEN_AQUI";
-const { lerArquivoJson, escreverArquivoJson } = require("/caminho/absoluto/para/scripts/github_dados_historicos.js");
-
-(async () => {
-  await escreverArquivoJson("teste/roundtrip.json", { ok: true, quando: new Date().toISOString() }, "Teste de round-trip");
-  const { conteudo } = await lerArquivoJson("teste/roundtrip.json");
-  console.log("Lido de volta:", conteudo);
-  if (!conteudo || conteudo.ok !== true) throw new Error("Round-trip falhou");
-  console.log("OK: round-trip funcionou.");
-})();
-```
-
-Run: `node teste-github-dados.js`
-Expected: imprime `Lido de volta: { ok: true, quando: '...' }` seguido de
-`OK: round-trip funcionou.` — confirma que escrita e leitura funcionam
-contra o repositório real antes de depender disso no robô principal.
-Apagar o arquivo `teste-github-dados.js` e o arquivo `teste/roundtrip.json`
-no repositório de dados depois (não fazem parte do produto final).
-
-- [ ] **Step 4: Commit**
-
-```bash
-git add scripts/github_dados_historicos.js
-git commit -m "Adiciona helper de leitura/escrita no repositório de dados históricos (GitHub Contents API)"
-```
+> **Correção pós-revisão final (2026-08-21):** Este task originalmente
+> criava `scripts/github_dados_historicos.js`, um helper que lia/escrevia no
+> repositório de dados arquivo por arquivo via API REST de Contents do
+> GitHub. A revisão final de branch da Fase 1 encontrou três problemas
+> fatais nesse caminho, todos com a mesma raiz:
+>
+> - `licitacoes/{ano}.json` passa de ~1 MB já no primeiro run, e acima disso
+>   a API devolve `content: ""` — `JSON.parse("")` lança e quebra leitura E
+>   escrita daquele ano pra sempre (a escrita também precisa ler o sha
+>   antes);
+> - milhares de pares leitura-pro-sha + escrita por execução batem no rate
+>   limit secundário do GitHub em minutos, sem nenhum retry/backoff;
+> - a fase de escrita não tinha orçamento de tempo próprio, então o job
+>   podia ser morto pelo `timeout-minutes` do workflow antes de salvar o
+>   cursor de progresso.
+>
+> `scripts/github_dados_historicos.js` foi removido do repositório (nenhum
+> consumidor restante). Em seu lugar, o workflow (Task 5) clona o
+> repositório de dados localmente (`git clone --depth 1`, mesmo padrão já em
+> produção em `atualizar-dados.yml:73-96`) antes do robô rodar; o robô lê e
+> escreve arquivos locais em `DADOS_HISTORICOS_DIR` com `fs.promises` (ver
+> Task 4, funções `lerJsonLocal`/`escreverJsonLocal`), e um passo final do
+> workflow commita e envia tudo de uma vez. Sem teto de ~1 MB por leitura,
+> sem chamada HTTP por arquivo, sem controle de sha — o `git` detecta a
+> mudança sozinho. Arquivo local ausente equivale ao antigo 404 (retorna
+> `null`, não é erro).
+>
+> Esta mudança arquitetural saiu no commit `9763a6f`, junto com dois outros
+> ajustes carregados pro Task 4: `coletarAno` começa `totalPaginas` em
+> `Infinity` (não `1`), porque ao retomar de um cursor com
+> `paginaInicial > 1` — o caso normal a partir da segunda execução — o laço
+> nem entrava, travando cada ano no que a primeira execução tivesse
+> alcançado, pra sempre; e `gravarUasgsAfetadas` ignora UASG não numérica
+> antes de interpolar no caminho do arquivo (o valor vem de dado externo da
+> API, e entra sem validação num path de escrita em disco).
 
 ---
 
@@ -243,6 +158,22 @@ git commit -m "Adiciona helper de leitura/escrita no repositório de dados hist�
 **Interfaces:**
 - Consumes: `buscarBlob(tabela, chave)`, `salvarBlob(tabela, chave, dado)` de `scripts/supabase_dados.js` (já existem, assinatura: `buscarBlob("dados_robo", "comprasnet_uasg")` retorna o `dado` jsonb ou `null`; `salvarBlob("dados_robo", "comprasnet_uasg", objeto)` grava)
 - Produces: `async function obterMapaUasg()` → `Promise<Map<string, { uf: string, municipio: string, nomeUasg: string }>>`
+
+> **Correção pós-revisão final (2026-08-21):** o bloco abaixo já reflete
+> dois ajustes feitos depois da primeira escrita deste task, os dois em
+> `obterMapaUasg()`: (1) `buscarTodasAsUasgs()` agora informa se a
+> paginação terminou completa ou foi interrompida por falha de rede
+> (`{ registros, completo }`) — antes, uma falha no meio da paginação
+> sobrescrevia silenciosamente o cache anterior com uma lista parcial; (2)
+> quando a busca fica incompleta E não há nenhum cache anterior pra usar de
+> fallback (primeira execução, ou primeira depois dos 7 dias de validade),
+> a função agora lança erro em vez de seguir com um mapa vazio — um mapa
+> vazio faria o robô gravar `uf`/`município` em branco pra toda licitação
+> coletada naquela execução, permanentemente (o robô só varre pra frente,
+> nunca revisita ano/página já processados). Essa chamada acontece antes do
+> `try`/`finally` de `main()` em `coletar_comprasnet_legado.js`, então o
+> erro aborta a execução sem gravar nada e sem mexer no cursor de
+> progresso — a próxima execução agendada tenta de novo.
 
 - [ ] **Step 1: Escrever o módulo**
 
@@ -280,18 +211,25 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000) {
   return null;
 }
 
+// Retorna { registros, completo }: completo=false sinaliza que a paginação
+// foi interrompida por falha de rede no meio — o chamador precisa saber
+// disso pra não tratar uma lista parcial como se fosse a tabela inteira.
 async function buscarTodasAsUasgs() {
   const todas = [];
   let pagina = 1;
+  let completo = false;
   for (;;) {
     const url = `${BASE_URL}?pagina=${pagina}&tamanhoPagina=500&statusUasg=true`;
     const dados = await fetchComRetentativa(url);
     if (!dados || !Array.isArray(dados.resultado)) break;
     todas.push(...dados.resultado);
-    if (pagina >= (dados.totalPaginas || 1)) break;
+    if (pagina >= (dados.totalPaginas || 1)) {
+      completo = true;
+      break;
+    }
     pagina += 1;
   }
-  return todas;
+  return { registros: todas, completo };
 }
 
 // Retorna um Map codigoUasg (string) -> { uf, municipio, nomeUasg }. Rebusca a
@@ -309,15 +247,37 @@ async function obterMapaUasg() {
     console.log(`[uasg-cache] Reaproveitando cache com ${lista.length} UASG(s), ${idadeDias.toFixed(1)} dia(s) de idade.`);
   } else {
     console.log("[uasg-cache] Cache ausente ou velho — rebuscando tabela completa de UASGs...");
-    const brutas = await buscarTodasAsUasgs();
-    lista = brutas.map((u) => ({
-      codigoUasg: String(u.codigoUasg),
-      uf: u.siglaUf || "",
-      municipio: u.nomeMunicipioIbge || "",
-      nomeUasg: u.nomeUasg || "",
-    }));
-    await salvarBlob("dados_robo", "comprasnet_uasg", { atualizadoEm: new Date().toISOString(), uasgs: lista });
-    console.log(`[uasg-cache] Gravado cache novo com ${lista.length} UASG(s).`);
+    const { registros: brutas, completo } = await buscarTodasAsUasgs();
+
+    if (completo) {
+      lista = brutas.map((u) => ({
+        codigoUasg: String(u.codigoUasg),
+        uf: u.siglaUf || "",
+        municipio: u.nomeMunicipioIbge || "",
+        nomeUasg: u.nomeUasg || "",
+      }));
+      await salvarBlob("dados_robo", "comprasnet_uasg", { atualizadoEm: new Date().toISOString(), uasgs: lista });
+      console.log(`[uasg-cache] Gravado cache novo com ${lista.length} UASG(s).`);
+    } else {
+      console.log("[uasg-cache] Coleta incompleta (falha de rede) — mantendo cache anterior, se houver.");
+      if (cache && Array.isArray(cache.uasgs)) {
+        lista = cache.uasgs;
+      } else {
+        // Sem cache anterior pra cair de volta: um mapa vazio faria toda
+        // licitação coletada nesta execução gravar uf/município em branco
+        // PERMANENTEMENTE (o robô só varre pra frente, nunca revisita ano/
+        // página já processados). Melhor abortar a execução inteira agora —
+        // chamado antes do try/finally de main(), então nada é escrito e o
+        // cursor de progresso não avança; a próxima execução agendada tenta
+        // de novo, sem dado nenhum perdido ou corrompido.
+        throw new Error(
+          "[uasg-cache] Busca inicial da tabela de UASGs falhou (rede) e não há " +
+          "cache anterior no Supabase pra usar como fallback — abortando esta " +
+          "execução pra não gravar licitações com uf/município em branco pra " +
+          "sempre. A próxima execução agendada tenta de novo."
+        );
+      }
+    }
   }
 
   const mapa = new Map();
@@ -368,7 +328,10 @@ git commit -m "Adiciona cache de UASG->UF/Município pro robô do ComprasNet Leg
 **Interfaces:**
 - Consumes:
   - `obterMapaUasg()` de `scripts/comprasnet_uasg_cache.js` (Task 3)
-  - `lerArquivoJson(caminho)`, `escreverArquivoJson(caminho, objeto, mensagem)` de `scripts/github_dados_historicos.js` (Task 2)
+  - `process.env.DADOS_HISTORICOS_DIR` — caminho do clone local do
+    repositório de dados históricos, preparado pelo workflow (Task 5) antes
+    deste script rodar (ver nota de correção no Task 2 — não é mais o
+    helper `scripts/github_dados_historicos.js`, removido)
   - `buscarBlob(tabela, chave)`, `salvarBlob(tabela, chave, dado)` de `scripts/supabase_dados.js`
 - Produces: nenhuma outra parte do código depende deste script pra rodar (é
   o ponto de entrada do workflow) — mas exporta
@@ -404,19 +367,29 @@ git commit -m "Adiciona cache de UASG->UF/Município pro robô do ComprasNet Leg
 // Robô de coleta ampla (Fase 1) do módulo Legado do Compras.gov.br —
 // histórico de licitações federais sob a Lei 8.666/93, de 2015 até o ano
 // corrente. Não busca vencedor ainda (isso é a Fase 2, robô separado
-// enriquecer_comprasnet_legado.js). Grava no repositório de dados
-// histórico dedicado (ver scripts/github_dados_historicos.js), não no
-// Supabase — só um cursor de progresso pequeno fica no Supabase.
+// enriquecer_comprasnet_legado.js).
+//
+// Grava em ARQUIVOS LOCAIS dentro de um clone do repositório de dados
+// históricos dedicado (não no Supabase — só um cursor de progresso pequeno
+// fica no Supabase). O clone, o commit e o push são feitos pelo workflow
+// (.github/workflows/coletar-comprasnet-legado.yml), no mesmo padrão do
+// passo "Publicar dados privados no painel interno" de
+// .github/workflows/atualizar-dados.yml. Este script só lê/escreve arquivos
+// em DADOS_HISTORICOS_DIR — nenhuma chamada HTTP ao GitHub. Isso evita de
+// uma vez: o teto de ~1 MB da API de Contents pra leitura, o rate limit
+// secundário de milhares de escritas arquivo a arquivo, e o controle de sha.
 //
 // Uso: node scripts/coletar_comprasnet_legado.js
 // Variáveis de ambiente:
-//   DADOS_HISTORICOS_TOKEN (obrigatória) - token de escrita no repo de dados
+//   DADOS_HISTORICOS_DIR (obrigatória) - caminho do clone local do repositório
+//     de dados históricos (o workflow clona em /tmp/dados-historicos-comprasnet)
 //   SUPABASE_SERVICE_ROLE_KEY (obrigatória) - pro cursor de progresso e cache de UASG
 //   LIMITE_MINUTOS=12 - orçamento de tempo total do robô
 //   ANO_INICIAL=2015 - primeiro ano da janela de coleta
 
+const fs = require("fs");
+const path = require("path");
 const { obterMapaUasg } = require("./comprasnet_uasg_cache");
-const { lerArquivoJson, escreverArquivoJson } = require("./github_dados_historicos");
 const { buscarBlob, salvarBlob } = require("./supabase_dados");
 
 const LIMITE_MINUTOS = parseFloat(process.env.LIMITE_MINUTOS || "12");
@@ -450,12 +423,74 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 25000) {
   return null;
 }
 
-// Guarda de escopo: o repositório de dados históricos é PÚBLICO. Esta lista é
-// a única fonte da verdade de quais campos podem ir pra lá — qualquer objeto
-// que vá ser escrito no repositório passa por validarCamposPermitidos()
-// antes. Isso é uma garantia estrutural (falha alto e cedo se algum campo
-// fora do escopo da spec aparecer), não só "cuidado" ao escrever o código —
-// pedido explícito do Harreson antes do primeiro push de dados reais.
+// --- I/O no clone local do repositório de dados históricos -----------------
+// Só arquivo local: leitura/escrita são praticamente instantâneas e não
+// precisam de orçamento de tempo próprio (o único orçamento que importa é o
+// das chamadas à API do Compras.gov.br, checado no laço de coleta).
+
+function dirDados() {
+  const dir = process.env.DADOS_HISTORICOS_DIR;
+  if (!dir) {
+    throw new Error(
+      "DADOS_HISTORICOS_DIR não configurada. Ela deve apontar pro clone local do " +
+      "repositório de dados históricos — o workflow " +
+      ".github/workflows/coletar-comprasnet-legado.yml clona o repositório antes " +
+      "de rodar este script e depois commita/envia o que foi escrito aqui."
+    );
+  }
+  return dir;
+}
+
+// Lê um JSON do clone local. Retorna null se o arquivo ainda não existir —
+// não é erro, é o caso normal na primeira vez que um ano/UASG é gravado
+// (equivalente ao antigo 404 da API de Contents). Também retorna null se o
+// conteúdo não for JSON válido (arquivo truncado por alguma escrita
+// anterior interrompida) em vez de lançar: um JSON.parse não tratado aqui
+// travaria a leitura E a escrita daquele arquivo pra sempre — exatamente o
+// tipo de corrupção permanente que motivou trocar a API de Contents pelo
+// clone local. Tratar como "ausente" deixa a próxima gravação bem-sucedida
+// sobrescrever o arquivo corrompido.
+async function lerJsonLocal(caminhoRelativo) {
+  const caminhoAbsoluto = path.join(dirDados(), caminhoRelativo);
+  let texto;
+  try {
+    texto = await fs.promises.readFile(caminhoAbsoluto, "utf8");
+  } catch (e) {
+    if (e && e.code === "ENOENT") return null;
+    throw e;
+  }
+  if (!texto.trim()) return null;
+  try {
+    return JSON.parse(texto);
+  } catch (e) {
+    console.log(`[comprasnet-legado] AVISO: ${caminhoRelativo} está corrompido (JSON inválido) — tratando como ausente. ${String((e && e.message) || e)}`);
+    return null;
+  }
+}
+
+// Escreve em arquivo temporário e faz rename por cima do arquivo final.
+// rename() é atômico no mesmo filesystem (o clone inteiro fica em
+// /tmp/dados-historicos-comprasnet) — se o job for morto no meio (SIGKILL
+// por timeout-minutes), o arquivo final nunca fica truncado: ou continua
+// com o conteúdo antigo inteiro, ou já tem o conteúdo novo inteiro.
+async function escreverJsonLocal(caminhoRelativo, objeto) {
+  const caminhoAbsoluto = path.join(dirDados(), caminhoRelativo);
+  await fs.promises.mkdir(path.dirname(caminhoAbsoluto), { recursive: true });
+  const caminhoTemporario = `${caminhoAbsoluto}.tmp-${process.pid}`;
+  await fs.promises.writeFile(caminhoTemporario, JSON.stringify(objeto), "utf8");
+  await fs.promises.rename(caminhoTemporario, caminhoAbsoluto);
+}
+
+// Guarda de escopo: o repositório de dados históricos é privado hoje, e
+// potencialmente público no futuro (a decisão depende de uma tensão de
+// licença ainda não resolvida — ver a "Atualização 2026-08-20" em
+// docs/superpowers/specs/2026-08-20-comprasnet-legado-integracao-design.md).
+// A guarda vale nos dois casos: esta lista é a única fonte da verdade de
+// quais campos podem ir pra lá — qualquer objeto que vá ser escrito no
+// repositório passa por validarCamposPermitidos() antes. Isso é uma garantia
+// estrutural (falha alto e cedo se algum campo fora do escopo da spec
+// aparecer), não só "cuidado" ao escrever o código — pedido explícito do
+// Harreson antes do primeiro push de dados reais.
 const CAMPOS_PERMITIDOS_LICITACAO = [
   "idCompra", "numeroProcesso", "uasg", "uf", "municipio", "modalidade",
   "nomeModalidade", "numeroAviso", "situacaoAviso", "objeto",
@@ -468,7 +503,8 @@ function validarCamposPermitidos(objeto, camposPermitidos, rotulo) {
     throw new Error(
       `[guarda-escopo] ${rotulo} contém campo(s) fora do escopo definido na spec ` +
       `(docs/superpowers/specs/2026-08-20-comprasnet-legado-integracao-design.md): ` +
-      `${chavesExtras.join(", ")}. Bloqueado de propósito — este repositório é público.`
+      `${chavesExtras.join(", ")}. Bloqueado de propósito — este repositório é ` +
+      `privado hoje, mas pode virar público, e a lista de campos vale nos dois casos.`
     );
   }
 }
@@ -499,7 +535,12 @@ function normalizarLicitacao(r, mapaUasg) {
 async function coletarAno(ano, paginaInicial, mapaUasg) {
   const novasPorRegistro = [];
   let pagina = paginaInicial;
-  let totalPaginas = 1;
+  // Infinity, não 1: quando o robô retoma de um cursor salvo (paginaInicial > 1,
+  // o caso normal a partir da segunda execução), começar com totalPaginas = 1
+  // fazia a condição do laço ser falsa logo na entrada — nenhuma requisição era
+  // feita, a função devolvia lista vazia e o main() tratava o ano como completo.
+  // A primeira resposta da API corrige o valor real logo abaixo.
+  let totalPaginas = Infinity;
   let interrompidoPorTempo = false;
 
   while (pagina <= totalPaginas) {
@@ -518,16 +559,13 @@ async function coletarAno(ano, paginaInicial, mapaUasg) {
 }
 
 async function gravarAno(ano, novosRegistros) {
-  const { conteudo: existente } = await lerArquivoJson(`licitacoes/${ano}.json`);
+  const caminho = `licitacoes/${ano}.json`;
+  const existente = await lerJsonLocal(caminho);
   const mapa = new Map();
   for (const r of (existente && existente.registros) || []) mapa.set(r.idCompra, r);
   for (const r of novosRegistros) if (r.idCompra) mapa.set(r.idCompra, r);
   const registros = Array.from(mapa.values());
-  await escreverArquivoJson(
-    `licitacoes/${ano}.json`,
-    { atualizadoEm: new Date().toISOString(), ano, registros },
-    `Atualiza licitações de ${ano} (${registros.length} registro(s))`
-  );
+  await escreverJsonLocal(caminho, { atualizadoEm: new Date().toISOString(), ano, registros });
   return registros.length;
 }
 
@@ -544,8 +582,15 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
   }
   let arquivosAtualizados = 0;
   for (const [uasg, registrosDaUasg] of porUasg) {
+    // uasg vem de dado externo (String(r.uasg) da API) e é interpolado num
+    // caminho de arquivo — só valor numérico entra, pra um valor inesperado
+    // não conseguir escapar do diretório uasgs/.
+    if (!/^\d+$/.test(uasg)) {
+      console.log(`[comprasnet-legado] UASG ignorada por formato inesperado: ${JSON.stringify(uasg)}`);
+      continue;
+    }
     const caminho = `uasgs/${uasg}.json`;
-    const { conteudo: existente } = await lerArquivoJson(caminho);
+    const existente = await lerJsonLocal(caminho);
     const mapa = new Map();
     for (const l of (existente && existente.licitacoes) || []) mapa.set(l.idCompra, l);
     for (const r of registrosDaUasg) {
@@ -562,18 +607,14 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
       mapa.set(r.idCompra, registroUasg);
     }
     const infoUasg = mapaUasg.get(uasg) || {};
-    await escreverArquivoJson(
-      caminho,
-      {
-        atualizadoEm: new Date().toISOString(),
-        codigoUasg: uasg,
-        uf: infoUasg.uf || "",
-        municipio: infoUasg.municipio || "",
-        nomeUasg: infoUasg.nomeUasg || "",
-        licitacoes: Array.from(mapa.values()),
-      },
-      `Atualiza licitações da UASG ${uasg}`
-    );
+    await escreverJsonLocal(caminho, {
+      atualizadoEm: new Date().toISOString(),
+      codigoUasg: uasg,
+      uf: infoUasg.uf || "",
+      municipio: infoUasg.municipio || "",
+      nomeUasg: infoUasg.nomeUasg || "",
+      licitacoes: Array.from(mapa.values()),
+    });
     arquivosAtualizados += 1;
   }
   return arquivosAtualizados;
@@ -581,6 +622,14 @@ async function gravarUasgsAfetadas(ano, novosRegistros, mapaUasg) {
 
 async function main() {
   console.log(`Iniciando coleta ComprasNet Legado (Fase 1). Orçamento: ${LIMITE_MINUTOS} min.`);
+
+  // Falha cedo (antes de gastar o orçamento coletando) se o diretório do
+  // clone não estiver configurado/existente.
+  const dir = dirDados();
+  if (!fs.existsSync(dir)) {
+    throw new Error(`DADOS_HISTORICOS_DIR aponta pra um diretório inexistente: ${dir}`);
+  }
+  console.log(`[comprasnet-legado] Gravando no clone local: ${dir}`);
 
   const mapaUasg = await obterMapaUasg();
 
@@ -597,30 +646,40 @@ async function main() {
   let totalNovosNesteRun = 0;
   let totalUasgsAtualizadas = 0;
 
-  while (anoAtual <= anoFinal && tempoRestanteMs() > 8000) {
-    console.log(`[comprasnet-legado] Varrendo ano ${anoAtual}, a partir da página ${paginaAtual}...`);
-    const { registros, proximaPagina, totalPaginas, interrompidoPorTempo } = await coletarAno(anoAtual, paginaAtual, mapaUasg);
+  // try/finally: qualquer exceção não tratada na fase de coleta/escrita
+  // (erro de rede na API do Compras.gov.br, erro de escrita em disco) precisa
+  // deixar o cursor de progresso salvo do jeito que estava — senão o robô
+  // perde o progresso do run inteiro ao ser interrompido no meio, e recomeça
+  // do zero na próxima execução. O único jeito de ainda perder progresso é o
+  // SIGKILL do timeout-minutes do workflow (que não roda o finally); contra
+  // isso vale a margem entre o orçamento interno (12 min) e o teto do
+  // workflow (20 min), mesma lógica de atualizar-dados.yml.
+  try {
+    while (anoAtual <= anoFinal && tempoRestanteMs() > 8000) {
+      console.log(`[comprasnet-legado] Varrendo ano ${anoAtual}, a partir da página ${paginaAtual}...`);
+      const { registros, proximaPagina, interrompidoPorTempo } = await coletarAno(anoAtual, paginaAtual, mapaUasg);
 
-    if (registros.length > 0) {
-      const totalNoAno = await gravarAno(anoAtual, registros);
-      const uasgsAtualizadas = await gravarUasgsAfetadas(anoAtual, registros, mapaUasg);
-      totalNovosNesteRun += registros.length;
-      totalUasgsAtualizadas += uasgsAtualizadas;
-      console.log(`[comprasnet-legado] Ano ${anoAtual}: +${registros.length} registro(s) coletado(s) neste run, ${totalNoAno} no total do ano, ${uasgsAtualizadas} arquivo(s) de UASG atualizado(s).`);
+      if (registros.length > 0) {
+        const totalNoAno = await gravarAno(anoAtual, registros);
+        const uasgsAtualizadas = await gravarUasgsAfetadas(anoAtual, registros, mapaUasg);
+        totalNovosNesteRun += registros.length;
+        totalUasgsAtualizadas += uasgsAtualizadas;
+        console.log(`[comprasnet-legado] Ano ${anoAtual}: +${registros.length} registro(s) coletado(s) neste run, ${totalNoAno} no total do ano, ${uasgsAtualizadas} arquivo(s) de UASG atualizado(s).`);
+      }
+
+      if (interrompidoPorTempo) {
+        paginaAtual = proximaPagina;
+        break;
+      }
+
+      // Ano completo: avança pro próximo.
+      anosCompletos.push(anoAtual);
+      anoAtual += 1;
+      paginaAtual = 1;
     }
-
-    if (interrompidoPorTempo) {
-      paginaAtual = proximaPagina;
-      break;
-    }
-
-    // Ano completo: avança pro próximo.
-    anosCompletos.push(anoAtual);
-    anoAtual += 1;
-    paginaAtual = 1;
+  } finally {
+    await salvarBlob("dados_robo", "comprasnet_progresso", { anoAtual, paginaAtual, anosCompletos });
   }
-
-  await salvarBlob("dados_robo", "comprasnet_progresso", { anoAtual, paginaAtual, anosCompletos });
 
   console.log(
     `Coleta finalizada. ${totalNovosNesteRun} registro(s) coletado(s) neste run, ` +
@@ -691,22 +750,34 @@ permitida.`
 
 - [ ] **Step 4: Rodar manualmente contra a API real, escopo pequeno**
 
+Como o script agora só lê/escreve em `DADOS_HISTORICOS_DIR` (nenhuma
+chamada HTTP ao GitHub — ver nota de correção no Task 2), o teste manual
+precisa de um clone local próprio primeiro:
+
+```bash
+rm -rf /tmp/teste-dados-historicos
+git clone --depth 1 "https://harresoncoelho-lang:SEU_TOKEN_AQUI@github.com/harresoncoelho-lang/hc-licitacoes-dados-historicos.git" /tmp/teste-dados-historicos
+```
+
 Antes de rodar contra 2015-2026 inteiro (que pode levar várias execuções),
 testar com uma janela pequena primeiro pra validar o fluxo — temporariamente
 forçar `ANO_INICIAL` igual ao ano corrente e `LIMITE_MINUTOS` baixo:
 
 ```bash
-DADOS_HISTORICOS_TOKEN=seu_token SUPABASE_SERVICE_ROLE_KEY=sua_chave \
+DADOS_HISTORICOS_DIR=/tmp/teste-dados-historicos SUPABASE_SERVICE_ROLE_KEY=sua_chave \
   ANO_INICIAL=2024 LIMITE_MINUTOS=3 \
   node scripts/coletar_comprasnet_legado.js
 ```
 
-Expected: log mostrando "Varrendo ano 2024, a partir da página 1...",
-seguido de "+N registro(s) coletado(s)..." e "Coleta finalizada." — sem
-erro fatal. Depois, conferir no repositório de dados
-(`https://github.com/harresoncoelho-lang/hc-licitacoes-dados-historicos`)
-que `licitacoes/2024.json` foi criado/atualizado com registros reais, e
-pelo menos um arquivo em `uasgs/` também.
+Expected: log mostrando "Gravando no clone local: /tmp/teste-dados-historicos",
+"Varrendo ano 2024, a partir da página 1...", seguido de "+N registro(s)
+coletado(s)..." e "Coleta finalizada." — sem erro fatal. Depois, conferir
+em `/tmp/teste-dados-historicos` que `licitacoes/2024.json` foi
+criado/atualizado com registros reais, e pelo menos um arquivo em `uasgs/`
+também — e então commitar/enviar esse clone manualmente (`git add . && git
+commit && git push`) pra confirmar que os dados aparecem no repositório
+real, já que este script não faz mais o push sozinho (isso é papel do
+workflow, Task 5).
 
 Depois do teste, resetar o progresso pra rodar a janela completa de
 verdade: apagar a chave `comprasnet_progresso` do Supabase (ou simplesmente
@@ -729,6 +800,28 @@ git commit -m "Adiciona robô de coleta ampla (Fase 1) do ComprasNet Legado"
 
 **Interfaces:**
 - Consumes: `scripts/coletar_comprasnet_legado.js` (Task 4), secrets `DADOS_HISTORICOS_TOKEN` e `SUPABASE_SERVICE_ROLE_KEY` já configurados no repositório (Task 1)
+- Produces: `DADOS_HISTORICOS_DIR` (clone local do repositório de dados,
+  passado pro robô — ver Task 4)
+
+> **Correção pós-revisão final (2026-08-21):** a versão original deste
+> workflow só rodava o robô (que escrevia via API de Contents do GitHub).
+> Com a mudança de arquitetura descrita na nota de correção do Task 2, o
+> workflow ganhou dois passos novos: clonar o repositório de dados antes de
+> rodar o robô, e commitar/enviar o clone depois. `timeout-minutes` subiu de
+> 15 para 20 pra caber os três passos com folga (a folga entre o orçamento
+> interno do robô, `LIMITE_MINUTOS=12`, e o teto do job é o que protege o
+> cursor de progresso de um SIGKILL por timeout).
+>
+> **Segunda correção (mesma data, mesma revisão):** o `git push` final não
+> tinha retry nem guarda contra execução concorrente. Como o robô já salva
+> o cursor de progresso no Supabase antes desse passo rodar (try/finally em
+> `main()`, Task 4), um push que falhasse (rede instável, ou duas execuções
+> escrevendo ao mesmo tempo por falta de guarda de concorrência) deixava a
+> próxima execução partir do cursor avançado sem que os dados coletados
+> nesta rodada jamais chegassem ao repositório — buraco silencioso no
+> histórico. Dois ajustes: `concurrency` no nível do workflow (enfileira em
+> vez de rodar em paralelo) e retry com `fetch`+`rebase` no push, falhando
+> o job só depois de esgotar as tentativas.
 
 - [ ] **Step 1: Escrever o workflow**
 
@@ -741,13 +834,29 @@ on:
     - cron: "0 12 * * *"
   workflow_dispatch: {}
 
+# cancel-in-progress: false (nunca cancelar, só enfileirar): duas execuções
+# escrevendo ao mesmo tempo no mesmo clone/push é a causa mais provável de
+# um push falhar por causa de mudança concorrente no repositório remoto — e
+# cancelar uma execução em andamento no meio de uma coleta descartaria
+# trabalho já feito. Enfileirar é mais seguro que as duas rodarem juntas.
+concurrency:
+  group: coletar-comprasnet-legado
+  cancel-in-progress: false
+
+# contents: read (não write) porque este workflow não grava nada no
+# repositório hc-mercado-web — só lê o código. A escrita acontece no
+# repositório de dados históricos, separado, via o token DADOS_HISTORICOS_TOKEN
+# usado no clone/push abaixo.
 permissions:
   contents: read
 
 jobs:
   coletar:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 20 min = clone do repositório de dados + orçamento interno do robô
+    # (LIMITE_MINUTOS=12) + commit/push. A folga entre 12 e 20 é o que protege
+    # o cursor de progresso de um SIGKILL por timeout do job.
+    timeout-minutes: 20
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
@@ -757,11 +866,82 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Rodar robô de coleta ComprasNet Legado
+      # Mesmo padrão do passo "Publicar dados privados no painel interno" de
+      # .github/workflows/atualizar-dados.yml: clone raso do repositório de
+      # dados privado, o robô escreve arquivos locais nele, e o passo final
+      # commita e envia tudo de uma vez. Evita o teto de ~1 MB por arquivo e o
+      # rate limit secundário da API de Contents do GitHub.
+      - name: Clonar repositório de dados históricos
         env:
           DADOS_HISTORICOS_TOKEN: ${{ secrets.DADOS_HISTORICOS_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$DADOS_HISTORICOS_TOKEN" ]; then
+            echo "DADOS_HISTORICOS_TOKEN não configurado — impossível coletar."
+            exit 1
+          fi
+          rm -rf /tmp/dados-historicos-comprasnet
+          git clone --depth 1 "https://harresoncoelho-lang:${DADOS_HISTORICOS_TOKEN}@github.com/harresoncoelho-lang/hc-licitacoes-dados-historicos.git" /tmp/dados-historicos-comprasnet
+
+      - name: Rodar robô de coleta ComprasNet Legado
+        env:
+          DADOS_HISTORICOS_DIR: /tmp/dados-historicos-comprasnet
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/coletar_comprasnet_legado.js
+
+      # if: always() de propósito: se o robô morrer no meio (exceção ou
+      # timeout do job), o cursor de progresso já pode ter avançado, então o
+      # que ele alcançou a gravar em disco precisa ser enviado mesmo assim —
+      # senão abre um buraco no histórico. Reenviar registro repetido é
+      # inofensivo (dedup por idCompra na leitura/merge).
+      #
+      # O push tem retry com fetch+rebase: o cursor de progresso no Supabase
+      # já foi salvo pelo robô ANTES deste passo rodar (ver
+      # scripts/coletar_comprasnet_legado.js, try/finally em main()) — se o
+      # push falhar de vez (rede instável, conflito) sem nenhuma tentativa
+      # de recuperação, os dados coletados nesta execução nunca chegam ao
+      # repositório, mas a próxima execução já parte do cursor avançado e
+      # nunca revisita essas páginas: buraco silencioso no histórico. Falhar
+      # o job (exit 1) depois de esgotar as tentativas ainda é a saída certa
+      # — só depois de tentar mesmo se recuperar sozinho primeiro.
+      - name: Commitar e enviar dados históricos
+        if: always()
+        env:
+          DADOS_HISTORICOS_TOKEN: ${{ secrets.DADOS_HISTORICOS_TOKEN }}
+        run: |
+          set -e
+          if [ ! -d /tmp/dados-historicos-comprasnet/.git ]; then
+            echo "Clone do repositório de dados não existe — nada a enviar."
+            exit 0
+          fi
+          cd /tmp/dados-historicos-comprasnet
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "Nenhuma mudança nos dados históricos hoje."
+            exit 0
+          fi
+          git commit -m "Atualização automática ComprasNet Legado - $(date -u +'%Y-%m-%d %H:%M UTC')"
+
+          REMOTE="https://harresoncoelho-lang:${DADOS_HISTORICOS_TOKEN}@github.com/harresoncoelho-lang/hc-licitacoes-dados-historicos.git"
+          sucesso=0
+          for tentativa in 1 2 3 4 5; do
+            if git push "$REMOTE" HEAD:main; then
+              sucesso=1
+              break
+            fi
+            echo "git push falhou (tentativa $tentativa/5)."
+            if [ "$tentativa" -lt 5 ]; then
+              sleep 10
+              git fetch "$REMOTE" main
+              git rebase FETCH_HEAD || git rebase --abort
+            fi
+          done
+          if [ "$sucesso" -ne 1 ]; then
+            echo "ERRO: falha ao enviar dados históricos após 5 tentativas. O cursor de progresso no Supabase já avançou — a próxima execução vai pular as páginas coletadas nesta rodada sem re-tentar. Investigar manualmente (o clone falho fica em /tmp, perdido ao fim do job) e considerar resetar dados_robo/comprasnet_progresso se for o caso."
+            exit 1
+          fi
 ```
 
 Nota: `permissions: contents: read` (não `write`) porque este workflow não
@@ -802,7 +982,9 @@ git commit -m "Adiciona workflow de coleta diária do ComprasNet Legado (Fase 1)
   `YYYY-MM-DD`, `tamanhoPagina` 10-500 → Task 4. ✓
 - Progresso persistente entre execuções (fila) → Task 4 (`dados_robo/comprasnet_progresso`). ✓
 - Escrita em `licitacoes/{ano}.json` e `uasgs/{codigoUasg}.json` no
-  repositório de dados dedicado → Task 2 + Task 4. ✓
+  repositório de dados dedicado → Task 4 (I/O local em `DADOS_HISTORICOS_DIR`)
+  + Task 5 (clone/commit/push no workflow). Task 2 original (helper via API
+  de Contents do GitHub) foi removido — ver nota de correção nele. ✓
 - Workflow com cron + `workflow_dispatch`, orçamento de tempo → Task 5. ✓
 - Fase 2 (vencedor) e integração no painel: **fora de escopo deste plano**,
   por decisão explícita do usuário — ficam pro próximo plano.
@@ -812,7 +994,8 @@ Task 1 é deliberadamente manual (não tem código pra "preencher depois").
 
 **Consistência de tipos**: `obterMapaUasg()` retorna `Map<string, {uf, municipio, nomeUasg}>`
 em Task 3, consumido exatamente assim em Task 4 (`mapaUasg.get(uasg)`).
-`lerArquivoJson`/`escreverArquivoJson` de Task 2 usados com a mesma
-assinatura em Task 4. `buscarBlob`/`salvarBlob` usados com a assinatura
-real de `scripts/supabase_dados.js` (confirmada por leitura do código-fonte
-existente, não suposta).
+`lerJsonLocal`/`escreverJsonLocal` (Task 4, locais ao próprio script — não
+mais um helper separado em Task 2) usados de forma consistente em
+`gravarAno`/`gravarUasgsAfetadas`. `buscarBlob`/`salvarBlob` usados com a
+assinatura real de `scripts/supabase_dados.js` (confirmada por leitura do
+código-fonte existente, não suposta).
