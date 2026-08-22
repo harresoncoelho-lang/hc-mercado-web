@@ -22,6 +22,26 @@
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
       }
+    },
+    "obsidian": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--refresh",
+        "--from",
+        "git+https://github.com/Swapo-Finance/obsidian-mcp",
+        "obsidian-mcp"
+      ],
+      "env": {
+        "OBSIDIAN_VAULT_PATH": "./vault-obsidian",
+        "OBSIDIAN_FOLDER_TEMPLATES": "[{\"folder\":\"01-projects\",\"template\":\"templates/project.md\"},{\"folder\":\"02-areas\",\"template\":\"templates/area.md\"},{\"folder\":\"03-knowledge\",\"template\":\"templates/knowledge.md\"},{\"folder\":\"04-resources\",\"template\":\"templates/resource.md\"},{\"folder\":\"daily\",\"template\":\"templates/daily.md\"}]",
+        "OBSIDIAN_SLUG_STYLE": "kebab",
+        "OBSIDIAN_TAG_STYLE": "kebab",
+        "OBSIDIAN_WIKILINK_POLICY": "strict",
+        "OBSIDIAN_DAILY_DIR": "daily",
+        "OBSIDIAN_REQUIRE_FRONTMATTER": "true",
+        "OBSIDIAN_SEARCH_RESULT_MODE": "auto"
+      }
     }
   }
 }

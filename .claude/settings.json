@@ -34,7 +34,8 @@
       "Edit(//tmp/**)",
       "Write(//private/tmp/**)",
       "Write(//tmp/**)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "mcp__obsidian"
     ],
     "deny": [
       "Read(./.env)",
@@ -146,6 +147,19 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Read|Grep|Glob|Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/vault-guard.mjs"
+            ],
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -239,6 +253,14 @@
               "${CLAUDE_PROJECT_DIR}/.claude/hooks/worktree-session-ctx.mjs"
             ],
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/compile.mjs"
+            ],
+            "timeout": 10
           }
         ]
       }
@@ -259,6 +281,14 @@
             "command": "node",
             "args": [
               "${CLAUDE_PROJECT_DIR}/.claude/hooks/orchestration-mode.mjs"
+            ],
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/vault-orient.mjs"
             ],
             "timeout": 10
           }
@@ -333,6 +363,20 @@
               "${CLAUDE_PROJECT_DIR}/.claude/hooks/worktree-remove.mjs"
             ],
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-log.mjs"
+            ],
+            "timeout": 10
           }
         ]
       }

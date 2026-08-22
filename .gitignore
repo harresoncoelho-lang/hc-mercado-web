@@ -21,3 +21,10 @@ data/mercado_segmentos.json
 graphify-out/
 graphify-out/cost.json
 graphify-out/cache/
+
+# aia-harness — obsidian vault: local, not committed
+vault-obsidian/.obsidian/
+.claude/hooks/log/
+.claude/scripts/node_modules/
+.claude/scripts/package.json
+.claude/scripts/package-lock.json
