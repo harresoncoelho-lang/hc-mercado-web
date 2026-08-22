@@ -12,3 +12,10 @@ data/mercado_segmentos.json
 
 # Worktrees isolados de execução de planos (superpowers)
 .worktrees/
+# aia-harness
+.claude/settings.local.json
+.claude/*.local.*
+.claude/.aia-harness-pending/
+graphify-out/
+graphify-out/cost.json
+graphify-out/cache/

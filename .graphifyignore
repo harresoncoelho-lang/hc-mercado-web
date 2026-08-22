@@ -1,0 +1,63 @@
+# .graphifyignore — gitignore syntax; seeded from project .gitignore + graphify extraction filters.
+node_modules/
+
+# Arquivos de dados grandes do robô — agora vivem no Supabase (tabelas contratos e
+# mercado_atas), não mais no git. Ver scripts/atualizar_dados.js e
+# supabase/schema_dados_mercado.sql. Só o metadado pequeno (contratos_meta.json /
+# mercado_meta.json) continua versionado.
+data/contratos_recentes.json
+data/mercado_segmentos.json
+
+# Local Netlify folder
+.netlify
+
+# Worktrees isolados de execução de planos (superpowers)
+.worktrees/
+.claude/settings.local.json
+.claude/*.local.*
+.claude/.aia-harness-pending/
+graphify-out/
+graphify-out/cost.json
+graphify-out/cache/
+
+node_modules/
+dist/
+build/
+out/
+coverage/
+.next/
+.nuxt/
+.turbo/
+*.min.js
+*.generated.*
+
+# graphify extraction filters
+# Skip binary/media files from semantic extraction
+# (AST still processes code files normally)
+
+# Images — rendered separately, not needed for semantic
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp
+*.ico
+
+# PDFs — low signal-to-noise in semantic extraction
+*.pdf
+
+# Videos/audio — transcribed but usually verbose; filter at source if needed
+*.mp4
+*.mov
+*.mp3
+*.wav
+*.flac
+
+.claude/
+docs/
+.agents/
+.code-review-graph/
+.superpowers/
+
+*.md
