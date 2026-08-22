@@ -23,6 +23,7 @@ Always use these exact commands (do not guess):
 - **Install:** `npm install`
 
 > **Tests:** `node:test` — run `npm test`. Test what can break (business rules, branching logic, bug regressions); skip trivial/presentational code. Rubric: `.claude/rules/05-testing.md`.
+> **Python tests** (`scripts/*.py` robots): `pytest` — run `npm run test:python`.
 
 ## What this is
 

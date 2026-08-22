@@ -3,7 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:python": "python -m pytest"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.12",
