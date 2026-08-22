@@ -1,5 +1,7 @@
 # .graphifyignore — gitignore syntax; seeded from project .gitignore + graphify extraction filters.
 node_modules/
+__pycache__/
+*.pyc
 
 # Arquivos de dados grandes do robô — agora vivem no Supabase (tabelas contratos e
 # mercado_atas), não mais no git. Ver scripts/atualizar_dados.js e
