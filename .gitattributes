@@ -1,0 +1,5 @@
+# Normalize line endings to LF regardless of each dev's core.autocrlf —
+# prevents CRLF-vs-LF false "drift" in /aia-harness:doctor (Windows checkout
+# converts LF -> CRLF, which then differs from the harness's LF-generated
+# files even though the content is identical).
+* text=auto eol=lf
