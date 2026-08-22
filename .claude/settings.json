@@ -9,9 +9,9 @@
   },
   "showClearContextOnPlanAccept": true,
   "autoMemoryEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
+  "skipDangerousModePermissionPrompt": false,
   "permissions": {
-    "defaultMode": "bypassPermissions",
+    "defaultMode": "default",
     "allow": [
       "Bash(git add:*)",
       "Bash(git branch:*)",
