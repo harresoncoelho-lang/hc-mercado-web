@@ -824,6 +824,26 @@
     color: var(--texto-fraco); border-bottom: 1px solid var(--borda); padding-bottom: 10px;
   }
   .filtros-lateral .campo { flex: none; min-width: 0; }
+  /* ---- Filtros do Diagnóstico de Mercado: recolhível (evita ocupar a lateral inteira
+     o tempo todo — usuário abre, ajusta os filtros e recolhe pra ganhar espaço de tela,
+     mesma ideia do botão de recolher da sidebar principal, ver #nav-colapsar-btn). ---- */
+  .filtros-lateral-cabecalho {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border-bottom: 1px solid var(--borda); padding-bottom: 10px; margin-bottom: 2px;
+  }
+  .filtros-lateral-cabecalho .filtros-lateral-titulo { border-bottom: none; padding-bottom: 0; margin: 0; }
+  .filtros-lateral-colapsar-btn {
+    background: var(--fundo-fraco); border: 1px solid var(--borda); color: var(--texto-fraco);
+    width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 13px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .filtros-lateral-colapsar-btn:hover { color: var(--texto); border-color: var(--azul); }
+  .filtros-lateral.colapsada { width: 56px; padding: 16px 10px; align-items: center; }
+  .filtros-lateral.colapsada > *:not(.filtros-lateral-cabecalho) { display: none; }
+  .filtros-lateral.colapsada .filtros-lateral-cabecalho { flex-direction: column; gap: 10px; border-bottom: none; padding-bottom: 0; }
+  .filtros-lateral.colapsada .filtros-lateral-titulo { display: none; }
+  .filtros-lateral.colapsada .filtros-lateral-colapsar-btn { transform: scaleX(-1); }
   .conteudo-mercado { min-width: 0; }
   .conteudo-mercado h2:first-of-type { margin-top: 0; }
 
@@ -1525,8 +1545,11 @@
 
   <section id="diagnostico">
     <div class="layout-mercado secao-conteudo-principal">
-      <aside class="filtros-lateral">
-        <h3 class="filtros-lateral-titulo">Filtros</h3>
+      <aside class="filtros-lateral" id="dg-filtros-lateral">
+        <div class="filtros-lateral-cabecalho">
+          <h3 class="filtros-lateral-titulo">Filtros</h3>
+          <button type="button" id="dg-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros">«</button>
+        </div>
         <div class="campo">
           <label>Segmento (palavras-chave)</label>
           <input id="dg-segmento" placeholder="Ex: fotovoltaico, energia solar">
@@ -1573,6 +1596,32 @@
       </div>
     </div>
   </section>
+
+<script>
+  // Recolher/expandir os filtros do Diagnóstico de Mercado — mesma ideia da sidebar
+  // principal (ver hc_sidebar_colapsada acima): lembra a escolha entre sessões.
+  (function () {
+    const aside = document.getElementById("dg-filtros-lateral");
+    const btn = document.getElementById("dg-filtros-colapsar-btn");
+    if (!aside || !btn) return;
+    const CHAVE = "hc_diagnostico_filtros_colapsado";
+
+    function aplicar(colapsada) {
+      aside.classList.toggle("colapsada", colapsada);
+      btn.title = colapsada ? "Expandir filtros" : "Recolher filtros";
+    }
+
+    let colapsada = false;
+    try { colapsada = localStorage.getItem(CHAVE) === "1"; } catch (e) { /* localStorage indisponível */ }
+    aplicar(colapsada);
+
+    btn.addEventListener("click", () => {
+      colapsada = !colapsada;
+      aplicar(colapsada);
+      try { localStorage.setItem(CHAVE, colapsada ? "1" : "0"); } catch (e) { /* segue sem persistir */ }
+    });
+  })();
+</script>
 
   <section id="empresa">
     <div class="secao-conteudo-principal">
@@ -4670,7 +4719,17 @@ let resultados = resultadosBrutos.filter((r) => {
     }
 
     if (d.amostra && d.amostra.falhaConexao) {
-      html += '<div class="aviso"><strong>A API pública do PNCP não respondeu direito nesta consulta</strong> (está lenta ou instável no momento). Os números abaixo podem estar zerados ou incompletos por causa disso — não significa necessariamente que não há mercado. Tente gerar o diagnóstico de novo em alguns instantes.</div>';
+      // Mensagem varia conforme a fonte: quando vem do cache (Supabase), a falha é na
+      // NOSSA consulta ao banco, não no PNCP público — culpar o PNCP aqui era enganoso e
+      // batia de frente com o aviso de "resposta instantânea, sem depender do PNCP ao
+      // vivo" exibido logo acima. Já tentamos de novo automaticamente uma vez antes de
+      // chegar até aqui (ver consultarContratosSupabase); se ainda assim falhou, é
+      // instabilidade pontual da nossa própria consulta.
+      if (d.fonte && d.fonte.tipo === "cache") {
+        html += '<div class="aviso"><strong>Não conseguimos consultar todos os dados agora</strong> (instabilidade pontual na nossa base). Os números abaixo podem estar zerados ou incompletos por causa disso — não significa necessariamente que não há mercado. Tente gerar o diagnóstico de novo em alguns instantes.</div>';
+      } else {
+        html += '<div class="aviso"><strong>A API pública do PNCP não respondeu direito nesta consulta</strong> (está lenta ou instável no momento). Os números abaixo podem estar zerados ou incompletos por causa disso — não significa necessariamente que não há mercado. Tente gerar o diagnóstico de novo em alguns instantes.</div>';
+      }
     } else if (d.amostra && d.amostra.parcial && d.fonte && d.fonte.tipo === "cache") {
       html += `<div class="aviso">Coleta diária incompleta: o robô conseguiu varrer apenas ${d.amostra.paginasVarridas} de ${d.amostra.totalPaginasDisponiveis} página(s) disponíveis nesta última execução (o PNCP ficou instável/fora do ar durante parte da coleta). Isso está sendo repetido automaticamente todo dia — os números abaixo tendem a ficar mais completos nas próximas atualizações.</div>`;
     } else if (d.amostra && d.amostra.parcial) {
@@ -4911,9 +4970,17 @@ let resultados = resultadosBrutos.filter((r) => {
     // enviesava silenciosamente rankings e série mensal pra segmentos amplos, sem o usuário
     // saber que a amostra tinha sido truncada de forma não-determinística.
     query = query.order("data_assinatura", { ascending: false, nullsFirst: false });
-    const { data, error, count } = await query;
+    let { data, error, count } = await query;
     if (error) {
-      console.error("[contratos] erro na consulta:", error);
+      // Uma tentativa de retentativa antes de desistir — falha de rede pontual no Supabase
+      // não deveria zerar um cartão inteiro (isso já aconteceu: "Mercado nacional" mostrava
+      // R$0,00 mesmo com a consulta por UF, feita logo em seguida, retornando dados normalmente).
+      console.warn("[contratos] erro na consulta, tentando de novo uma vez:", error);
+      await new Promise((r) => setTimeout(r, 800));
+      ({ data, error, count } = await query);
+    }
+    if (error) {
+      console.error("[contratos] erro na consulta (após retentativa):", error);
       return { registros: [], erro: true, totalCorrespondente: null, truncado: false };
     }
     const registros = (data || []).map((linha) => linha.dado);
@@ -5214,7 +5281,10 @@ let resultados = resultadosBrutos.filter((r) => {
         html2 += `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Dados atualizados automaticamente em ${escapeHtml(new Date(fonte.atualizadoEm).toLocaleString("pt-BR"))}.</div>`;
       }
       if (falhaConexao) {
-        html2 += '<div class="aviso"><strong>A API pública do PNCP não respondeu direito nesta consulta</strong> (está lenta ou instável no momento). O histórico abaixo pode estar incompleto por causa disso. Tente novamente em alguns instantes.</div>';
+        // Mesma correção de mensagem do Diagnóstico de Mercado: cache=Supabase, não PNCP ao vivo.
+        html2 += fonte.tipo === "cache"
+          ? '<div class="aviso"><strong>Não conseguimos consultar todos os dados agora</strong> (instabilidade pontual na nossa base). O histórico abaixo pode estar incompleto por causa disso. Tente novamente em alguns instantes.</div>'
+          : '<div class="aviso"><strong>A API pública do PNCP não respondeu direito nesta consulta</strong> (está lenta ou instável no momento). O histórico abaixo pode estar incompleto por causa disso. Tente novamente em alguns instantes.</div>';
       } else if (parcial) {
         html2 += `<div class="aviso">Amostra parcial: escaneadas ${paginasVarridas} de ${totalPaginas} páginas do período, dentro do limite de tempo. Aumente o período com cautela (buscas maiores demoram mais).</div>`;
       }

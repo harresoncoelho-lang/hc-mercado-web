@@ -533,6 +533,26 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     console.log(`[oportunidades] Orçamento de tempo esgotado — ${filaUfs.length} UF(s) nem chegaram a ser tentadas: ${filaUfs.join(", ")}.`);
   }
 
+  // Segunda passada só nas UFs que falharam na primeira: falhas de UF individual costumam
+  // ser instabilidade pontual do PNCP (timeout numa página específica), não um problema
+  // sistêmico — tentar de novo, agora sem concorrência de outras 5 UFs disputando a mesma
+  // API, resolve a maioria dos casos (era comum um estado como "AM" falhar sozinho mesmo
+  // com todas as outras 26 UFs tendo sido coletadas com sucesso na mesma execução).
+  if (ufsComFalha.length > 0 && tempoRestanteMs() > 20000) {
+    const paraRetentar = [...ufsComFalha];
+    console.log(`[oportunidades] Segunda passada em ${paraRetentar.length} UF(s) que falharam: ${paraRetentar.join(", ")}.`);
+    ufsComFalha = [];
+    for (const uf of paraRetentar) {
+      if (tempoRestanteMs() < 10000) { ufsComFalha.push(uf); continue; }
+      await processarUf(uf);
+    }
+    if (ufsComFalha.length > 0) {
+      console.log(`[oportunidades] Ainda falharam após a segunda passada: ${ufsComFalha.join(", ")}.`);
+    } else {
+      console.log(`[oportunidades] Segunda passada recuperou todas as UFs pendentes.`);
+    }
+  }
+
   // Funde com o que já existia, mantendo a versão mais nova de cada registro (a que
   // acabou de vir da API, se ele ainda apareceu; senão, a antiga que já tínhamos).
   const chave = (r) => r.numeroControlePNCP || `${r.objeto}|${r.orgao}|${r.uf}`;
