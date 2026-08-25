@@ -1,0 +1,64 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  // Este projeto usa dois linters de propósito, sem sobreposição: o Biome cobre um punhado
+  // de regras curadas (rápidas, sintáticas), o ESLint (eslint.config.js) cobre o resto —
+  // sobretudo regras conscientes de ambiente Node (require/module.exports, process, etc.).
+  // Ver docs internos do vibe-coding-toolkit (06-eslint-biome-quality-gates.md) pro
+  // raciocínio completo por trás dessa divisão.
+  "files": {
+    "ignore": [
+      "node_modules/**",
+      "data/**",
+      "docs/**",
+      "vault-obsidian/**",
+      ".agents/**",
+      ".claude/**",
+      ".github/**",
+      "supabase/**",
+      "*.html"
+    ]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "correctness": {
+        // Introduzido em "warn", não "error": rodei este linter contra o código real do
+        // projeto antes de publicar essa config (netlify/functions + scripts) e o padrão
+        // catch (e) { ... } sem usar "e" — usado de propósito em dezenas de lugares como
+        // fail-open (ver netlify/functions/_auth.js) — já dispara essa regra em todo
+        // arquivo. Travar como "error" no primeiro commit quebraria o lint imediatamente
+        // pra um padrão que é intencional na maior parte dos casos, não um bug. Fica em
+        // warn como ferramenta de migração (ver seção "De aviso a erro" do
+        // vibe-coding-toolkit) — promove pra error quando/se o time decidir prefixar os
+        // catches intencionais com "_e".
+        "noUnusedVariables": "warn",
+        // Parâmetro de função nunca usado (comum em callbacks de fetch/catch) — mais
+        // provável ser esquecimento do que intencional. Fica em warn: às vezes o nome
+        // documenta a forma da assinatura mesmo sem uso.
+        "noUnusedFunctionParameters": "warn"
+      },
+      "suspicious": {
+        // "any" explícito não existe em JS puro, mas noDoubleEquals evita bug clássico
+        // de coerção de tipo (== em vez de ===) que já causou bug real neste projeto
+        // (comparação de CNPJ/UF vindo de fontes de dado heterogêneas). Testado contra
+        // código real do projeto sem disparar — pode ficar em error desde já.
+        "noDoubleEquals": "error"
+      },
+      "style": {
+        // Uso de "var" em vez de "let"/"const" — todo o código do projeto já usa
+        // let/const (confirmado rodando contra os arquivos reais); travar isso evita
+        // regressão silenciosa.
+        "noVar": "error"
+      }
+    }
+  },
+  // Desligado de propósito: o site (netlify/functions + scripts) nunca passou por um
+  // formatter automático. Rodar um agora reescreveria centenas de arquivos numa "parede
+  // de diffs" só de estilo, sem relação com bug nenhum — pior do que deixar desligado e
+  // documentar o motivo aqui. Reavaliar se/quando o projeto crescer o bastante pra
+  // justificar pagar esse custo de uma vez.
+  "formatter": {
+    "enabled": false
+  }
+}

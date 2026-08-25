@@ -4,12 +4,19 @@
   "version": "1.0.0",
   "scripts": {
     "test": "node --test",
-    "test:python": "python -m pytest"
+    "test:python": "python -m pytest",
+    "lint": "eslint . && biome check .",
+    "lint:fix": "eslint . --fix && biome check --write ."
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.12",
     "adm-zip": "^0.5.10",
     "mammoth": "^1.7.0",
     "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0"
   }
 }
