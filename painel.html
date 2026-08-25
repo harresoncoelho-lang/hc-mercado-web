@@ -852,6 +852,23 @@
     .filtros-lateral { position: static; }
   }
 
+  /* ---- Sub-navegação interna da Inteligência de Mercado (Visão Geral / Baixa Concorrência /
+     Histórico de Compras / Prospecção IA) — variante maior do .btn-filtro-rapido, pra parecer
+     aba de verdade em vez de chip de filtro. ---- */
+  .dg-subabas {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--borda); padding-bottom: 16px; margin-bottom: 20px;
+  }
+  .btn-subaba {
+    background: var(--cartao-claro); border: 1px solid var(--borda); color: var(--texto-fraco);
+    padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .btn-subaba:hover { color: var(--texto); border-color: var(--azul); }
+  .btn-subaba.ativo { background: linear-gradient(135deg, var(--azul), var(--azul-escuro)); color: #fff; border-color: transparent; }
+  .dg-subaba-painel { display: none; }
+  .dg-subaba-painel.ativo { display: block; }
+
   /* Mini-gráfico de barras "Licitações por mês" (equivalente simplificado ao gráfico do ConLicitação) */
   .mini-grafico { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 10px 4px 0; }
   .mini-grafico-coluna { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
@@ -1292,7 +1309,7 @@
   <button class="ativo" data-alvo="dashboard" title="Dashboard"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-house'></use></svg></span><span class="nav-label">Dashboard</span></button>
   <button data-alvo="boletim" title="Boletim"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg></span><span class="nav-label">Boletim</span></button>
   <button data-alvo="oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span class="nav-label">Encontrar Licitações</span></button>
-  <button data-alvo="diagnostico" title="Diagnóstico de Mercado"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-chart-bar'></use></svg></span><span class="nav-label">Diagnóstico de Mercado</span></button>
+  <button data-alvo="diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-chart-bar'></use></svg></span><span class="nav-label">Inteligência de Mercado</span></button>
   <button data-alvo="empresa" title="Analisar Empresa"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-buildings'></use></svg></span><span class="nav-label">Analisar Empresa</span></button>
   <button data-alvo="transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-handshake'></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></button>
   <button data-alvo="precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-coins'></use></svg></span><span class="nav-label">Pesquisa de Preços</span></button>
@@ -1544,6 +1561,14 @@
   </section>
 
   <section id="diagnostico">
+    <div class="dg-subabas" id="dg-subabas">
+      <button type="button" class="btn-subaba" data-subaba="visao-geral">Visão Geral</button>
+      <button type="button" class="btn-subaba" data-subaba="baixa-concorrencia">Baixa Concorrência</button>
+      <button type="button" class="btn-subaba" data-subaba="historico-compras">Histórico de Compras</button>
+      <button type="button" class="btn-subaba" data-subaba="prospeccao-ia">Prospecção de Fornecedores (IA)</button>
+    </div>
+
+    <div class="dg-subaba-painel" data-subaba-painel="visao-geral">
     <div class="layout-mercado secao-conteudo-principal">
       <aside class="filtros-lateral" id="dg-filtros-lateral">
         <div class="filtros-lateral-cabecalho">
@@ -1595,7 +1620,54 @@
         <div id="dg-detalhe"></div>
       </div>
     </div>
+    </div>
+
+    <div class="dg-subaba-painel" data-subaba-painel="baixa-concorrencia">
+      <div class="aviso"><strong>Em construção.</strong> Vai listar licitações com poucos concorrentes ou disputas desertas — sinal de mercado com menos competição, mais fácil de vencer.</div>
+    </div>
+
+    <div class="dg-subaba-painel" data-subaba-painel="historico-compras">
+      <div class="aviso"><strong>Em construção.</strong> Consulta por objeto e período, separada da análise ao vivo — pra ver o histórico de compras de um segmento sem depender do diagnóstico atual.</div>
+    </div>
+
+    <div class="dg-subaba-painel" data-subaba-painel="prospeccao-ia">
+      <div class="aviso"><strong>Em construção.</strong> Vai buscar fornecedores por descrição do produto, usando a Base de Empresas já enriquecida com telefone e e-mail.</div>
+    </div>
   </section>
+
+<script>
+  // Sub-navegação interna da Inteligência de Mercado: 4 abas dentro da mesma section,
+  // só uma visível por vez (nada de scroll gigante com tudo junto). Aba ativa persiste
+  // em localStorage e volta a mesma ao reabrir a seção.
+  (function () {
+    const nav = document.getElementById("dg-subabas");
+    if (!nav) return;
+    const CHAVE = "hc_inteligencia_mercado_subaba";
+    const botoes = nav.querySelectorAll(".btn-subaba");
+    const paineis = document.querySelectorAll('#diagnostico .dg-subaba-painel');
+    const validos = new Set(Array.from(botoes).map((b) => b.dataset.subaba));
+
+    function ativar(id) {
+      botoes.forEach((b) => b.classList.toggle("ativo", b.dataset.subaba === id));
+      paineis.forEach((p) => p.classList.toggle("ativo", p.dataset.subabaPainel === id));
+    }
+
+    let atual = "visao-geral";
+    try {
+      const salva = localStorage.getItem(CHAVE);
+      if (salva && validos.has(salva)) atual = salva;
+    } catch (e) { /* localStorage indisponível */ }
+    ativar(atual);
+
+    botoes.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.subaba;
+        ativar(id);
+        try { localStorage.setItem(CHAVE, id); } catch (e) { /* segue sem persistir */ }
+      });
+    });
+  })();
+</script>
 
 <script>
   // Recolher/expandir os filtros do Diagnóstico de Mercado — mesma ideia da sidebar
@@ -1963,7 +2035,7 @@
   const FONTES_STATUS = [
     { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
     { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg>" },
-    { arquivo: "data/mercado_meta.json", nome: "Diagnóstico de Mercado", icone: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>" },
+    { arquivo: "data/mercado_meta.json", nome: "Inteligência de Mercado", icone: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>" },
     // "Licitações federais (Portal da Transparência)" existiu até 05/08/2026, quando o
     // commit f5b6299 ("Redesenha Portal da Transparência...") aposentou de propósito
     // scripts/coletar_transparencia.js (e seu workflow) em favor do radar de convênios/
@@ -6406,7 +6478,7 @@ window.__preencherIdentidadeUsuario();
     if (!cont) return;
     const atalhos = [
       { ico: "<svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg>", label: "Encontrar Licitações", alvo: "oportunidades" },
-      { ico: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>", label: "Diagnóstico de Mercado", alvo: "diagnostico" },
+      { ico: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>", label: "Inteligência de Mercado", alvo: "diagnostico" },
       { ico: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>", label: "Kanban", alvo: "kanban" },
       { ico: "<svg class='icone-ph'><use href='#ph-buildings'></use></svg>", label: "Base de Empresas", alvo: "empresa" },
       { ico: "<svg class='icone-ph'><use href='#ph-scales'></use></svg>", label: "Artigos Jurídicos", alvo: "juridico" },
