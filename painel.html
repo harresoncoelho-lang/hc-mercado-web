@@ -4444,6 +4444,25 @@ let resultados = resultadosBrutos.filter((r) => {
       .map((u) => ({ ...u, valorFormatado: formatarValor(u.valor) }));
   }
 
+  // Breakdown de licitações publicadas por modalidade de contratação (pregão eletrônico,
+  // dispensa, concorrência etc.) — usa data/oportunidades_abertas.json, que já é coletado
+  // nacionalmente (todas as UFs) pelo robô com modalidadeNome por registro. Prioriza o valor
+  // homologado (contratação já decidida) e cai pro valor estimado quando ainda não homologou
+  // (licitação em andamento) — assim toda licitação entra com algum valor de referência.
+  function calcularPorModalidade(registros) {
+    const modalidades = {};
+    for (const r of registros) {
+      const nome = r.modalidadeNome || "Não informado";
+      const valor = Number(r.valorTotalHomologado ?? r.valorTotalEstimado ?? 0) || 0;
+      if (!modalidades[nome]) modalidades[nome] = { modalidade: nome, valor: 0, licitacoes: 0 };
+      modalidades[nome].valor += valor;
+      modalidades[nome].licitacoes += 1;
+    }
+    return Object.values(modalidades)
+      .sort((a, b) => b.licitacoes - a.licitacoes)
+      .map((m) => ({ ...m, valorFormatado: formatarValor(m.valor) }));
+  }
+
   function renderChipsDiagnostico() {
     const chipsEl = document.getElementById("dg-chips");
     const d = estado.diagnostico;
@@ -4757,6 +4776,20 @@ let resultados = resultadosBrutos.filter((r) => {
       }
     }
 
+    if (d.porModalidade && d.porModalidade.length > 0) {
+      html += `<h2>Licitações por modalidade${d.uf ? " — " + escapeHtml(d.uf) : " (nacional)"}</h2>`;
+      const maxModalidade = Math.max(...d.porModalidade.map((m) => m.licitacoes), 1);
+      for (const m of d.porModalidade) {
+        const largura = Math.round((m.licitacoes / maxModalidade) * 100);
+        html += `<div class="barra-item">
+          <div class="barra-label">${escapeHtml(m.modalidade)}</div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${m.licitacoes} licitaç${m.licitacoes === 1 ? "ão" : "ões"}</div></div>
+          <div class="barra-meta">Valor total (homologado/estimado): ${escapeHtml(m.valorFormatado)}</div>
+        </div>`;
+      }
+      html += '<div class="dica-clique">Baseado nas licitações publicadas no PNCP (todas as modalidades, todo o Brasil) que batem com o segmento pesquisado — contagem e valor por modalidade.</div>';
+    }
+
     html += "<h2>Principais concorrentes (por valor contratado na amostra) — clique para ver os contratos</h2>";
     if (d.concorrentes.length === 0) {
       html += "<p>Nenhum contrato do segmento encontrado na amostra do período.</p>";
@@ -4978,8 +5011,13 @@ let resultados = resultadosBrutos.filter((r) => {
       let oportunidadesAbertas = [];
       let falhaConexaoOportunidades = false;
       let ufOportunidadesFalhouHoje = false;
+      // Cache de licitações publicadas (data/oportunidades_abertas.json) é nacional, todas as
+      // UFs, com modalidadeNome/valorTotalEstimado/valorTotalHomologado por registro (ver
+      // coletarOportunidadesAbertas em scripts/atualizar_dados.js) — carrega uma vez só e
+      // reaproveita tanto pra tabela de "abertas agora" (só quando UF selecionada, como
+      // antes) quanto pro breakdown por modalidade (sempre, nacional ou por UF).
+      const cacheOp = await carregarCache("data/oportunidades_abertas.json");
       if (uf) {
-        const cacheOp = await carregarCache("data/oportunidades_abertas.json");
         if (cacheOp) {
           oportunidadesAbertas = cacheOp.registros
             .filter((r) => r.uf === uf && bateComSegmento(r.objeto, palavras))
@@ -4990,6 +5028,13 @@ let resultados = resultadosBrutos.filter((r) => {
           oportunidadesAbertas = resOp.encontrados;
           falhaConexaoOportunidades = resOp.falhaConexao;
         }
+      }
+      let porModalidade = [];
+      if (cacheOp) {
+        const registrosSegmentoModalidade = cacheOp.registros.filter((r) =>
+          (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras)
+        );
+        porModalidade = calcularPorModalidade(registrosSegmentoModalidade);
       }
 
       // Atas de registro de preço + empresas vencedoras — cobre qualquer segmento (sem
@@ -5032,6 +5077,7 @@ let resultados = resultadosBrutos.filter((r) => {
         orgaos,
         porMes,
         porUf,
+        porModalidade,
         oportunidadesAbertas,
         fornecedorSelecionado: null,
         orgaoSelecionado: null,
