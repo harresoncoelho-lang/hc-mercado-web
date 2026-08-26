@@ -601,6 +601,43 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
 // contagem direta de participantes por item, só o desfecho final).
 const SITUACOES_SEM_VENCEDOR = new Set(["Deserto", "Fracassado", "Anulado", "Revogado"]);
 
+// Cache de consultas de marca por (código de catálogo do item + UASG) — o mesmo par se repete
+// bastante quando várias atas do mesmo órgão compram o mesmo material catalogado, então cachear
+// evita bater na API do Compras.gov.br mais de uma vez pro mesmo material+órgão.
+const cacheMarcaProduto = new Map();
+
+// Busca marca do produto na API pública de Pesquisa de Preço do Compras.gov.br
+// (dadosabertos.compras.gov.br/modulo-pesquisapreco/1_consultarMaterial). Essa API é alimentada
+// a partir de compras já homologadas no Comprasnet/SISPP-SISRP — sistema que efetivamente RODA
+// os pregões federais (o PNCP só divulga; não tem campo de marca no seu próprio resultado de
+// item). Cobertura é parcial: só funciona pra itens de órgãos federais/distritais (que têm UASG)
+// cujo material tem código de catálogo (CATMAT/CATSER) e cuja marca foi de fato preenchida pelo
+// fornecedor no Comprasnet ("marca, caso exista" — nem todo item tem).
+async function buscarMarcasProduto(codigoCatalogo, uasg) {
+  if (!codigoCatalogo || !uasg) return new Map();
+  const chave = `${codigoCatalogo}|${uasg}`;
+  if (cacheMarcaProduto.has(chave)) return cacheMarcaProduto.get(chave);
+  const resp = await fetchComRetentativa(
+    `https://dadosabertos.compras.gov.br/modulo-pesquisapreco/1_consultarMaterial?codigoItemCatalogo=${encodeURIComponent(codigoCatalogo)}&codigoUasg=${encodeURIComponent(uasg)}&tamanhoPagina=100&pagina=1`,
+    2, 15000, `marca catalogo ${codigoCatalogo} uasg ${uasg}`
+  );
+  const lista = (resp && Array.isArray(resp.resultado)) ? resp.resultado : [];
+  // Indexa por CNPJ do fornecedor -> marca mais recente (dataResultado), pra casar depois com
+  // cada vencedor de item pelo mesmo CNPJ. Um mesmo fornecedor pode aparecer mais de uma vez
+  // (materiais/datas diferentes dentro do mesmo catálogo+UASG); fica a ocorrência mais recente.
+  const porFornecedor = new Map();
+  for (const r of lista) {
+    if (!r.niFornecedor || !r.marca) continue;
+    const existente = porFornecedor.get(r.niFornecedor);
+    const dataR = r.dataResultado || r.dataCompra || null;
+    if (!existente || (dataR && new Date(dataR) > new Date(existente.data || 0))) {
+      porFornecedor.set(r.niFornecedor, { marca: r.marca, data: dataR });
+    }
+  }
+  cacheMarcaProduto.set(chave, porFornecedor);
+  return porFornecedor;
+}
+
 async function coletarMercadoSegmentos(caminhoArquivo) {
   const existentes = await lerJsonExistente(caminhoArquivo);
   const hoje = new Date();
@@ -642,10 +679,10 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 
   async function buscarUfOrgao(numeroControlePNCPCompra) {
     const partes = partesNumeroControle(numeroControlePNCPCompra);
-    if (!partes) return { ufOrgao: "", municipioOrgao: "" };
+    if (!partes) return { ufOrgao: "", municipioOrgao: "", uasg: "" };
     const chaveCompra = `${partes.cnpj}|${partes.ano}|${partes.sequencial}`;
     if (cacheOrgaoUf.has(chaveCompra)) return cacheOrgaoUf.get(chaveCompra);
-    let ufOrgao = "", municipioOrgao = "";
+    let ufOrgao = "", municipioOrgao = "", uasg = "";
     // Nota: o endpoint antigo /api/pncp/v1/orgaos/.../compras/{ano}/{sequencial} (sem
     // /arquivos ou /itens) foi descontinuado pelo PNCP e agora responde 301 pra
     // /api/consulta/v1/... — usando o antigo, "compra" vinha sempre vazio/sem
@@ -659,8 +696,13 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     if (compra) {
       ufOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.ufSigla) || "";
       municipioOrgao = (compra.unidadeOrgao && compra.unidadeOrgao.municipioNome) || "";
+      // UASG só existe pra órgãos federais/distritais — reaproveita o mesmo campo que a UI já
+      // usa em Encontrar Licitações (unidadeOrgao.codigoUnidade). É a chave que a API pública
+      // de Pesquisa de Preço do Compras.gov.br (dadosabertos.compras.gov.br) exige pra filtrar
+      // resultados por órgão comprador — sem UASG não dá pra consultar marca do produto ali.
+      uasg = (compra.unidadeOrgao && compra.unidadeOrgao.codigoUnidade) || "";
     }
-    const resultado = { ufOrgao, municipioOrgao };
+    const resultado = { ufOrgao, municipioOrgao, uasg };
     cacheOrgaoUf.set(chaveCompra, resultado);
     return resultado;
   }
@@ -671,7 +713,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 
     // UF do órgão e lista de itens são independentes entre si — buscar em paralelo em vez de
     // em sequência economiza uma ida-e-volta inteira por ata.
-    const [{ ufOrgao, municipioOrgao }, itensResp] = await Promise.all([
+    const [{ ufOrgao, municipioOrgao, uasg }, itensResp] = await Promise.all([
       buscarUfOrgao(referenciaAta.numeroControlePNCPCompra),
       fetchComRetentativa(
         `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens?pagina=1&tamanhoPagina=50`,
@@ -706,6 +748,12 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
         );
         const listaResultados = Array.isArray(resultados) ? resultados : (resultados && resultados.data) || [];
         const situacao = item.situacaoCompraItemNome || null;
+        const codigoCatalogo = item.catalogoCodigoItem || null;
+        // Só tenta buscar marca quando há vencedor de fato (sem CNPJ vencedor não tem o que
+        // casar) e o item tem UASG + código de catálogo — cobre só órgãos federais/distritais.
+        const marcasPorFornecedor = (listaResultados.length > 0 && codigoCatalogo && uasg)
+          ? await buscarMarcasProduto(codigoCatalogo, uasg)
+          : new Map();
         // Itens sem vencedor não são mais descartados de cara: quando a situação do item é
         // um estado terminal SEM vencedor (deserto/fracassado/anulado/revogado), guardamos
         // mesmo assim — é exatamente o sinal de "baixa concorrência" (aba Inteligência de
@@ -723,6 +771,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
             valorTotal: Number(r.valorTotalHomologado || 0),
             quantidade: Number(r.quantidadeHomologada || 0),
             data: r.dataResultado || null,
+            marca: (marcasPorFornecedor.get(r.niFornecedor) || {}).marca || null,
           })),
         };
       }
@@ -732,7 +781,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     );
     const itensComVencedor = slots.filter(Boolean);
 
-    return { ufOrgao, municipioOrgao, itens: itensComVencedor, situacaoColetada: true };
+    return { ufOrgao, municipioOrgao, uasg, itens: itensComVencedor, situacaoColetada: true };
   }
 
   // 1) Processa primeiro a fila pendente de execuções anteriores.

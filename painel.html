@@ -4890,10 +4890,16 @@ let resultados = resultadosBrutos.filter((r) => {
   }
 
   function montarTabelaBaixaConcorrencia(linhas) {
-    let html = "<table><tr><th>Objeto do item</th><th>Ata / órgão</th><th>UF/Município</th><th>Situação</th></tr>";
+    // Marca do produto: só existe quando o robô conseguiu casar o item com a API pública de
+    // Pesquisa de Preço do Compras.gov.br (só cobre itens de órgãos federais/distritais com
+    // código de catálogo — cobertura parcial, cresce aos poucos conforme o robô reprocessa).
+    let html = "<table><tr><th>Objeto do item</th><th>Marca</th><th>Ata / órgão</th><th>UF/Município</th><th>Situação</th></tr>";
     for (const l of linhas.slice(0, 200)) {
+      const vencedor = (l.item.vencedores || [])[0];
+      const marca = vencedor && vencedor.marca ? vencedor.marca : "-";
       html += `<tr>
         <td>${escapeHtml(l.item.descricao || "-")}</td>
+        <td>${escapeHtml(marca)}</td>
         <td>${escapeHtml(l.ata.objeto || "-")}<br><small>${escapeHtml(l.ata.orgao || "-")}</small></td>
         <td>${escapeHtml(l.ata.ufOrgao || "-")}${l.ata.municipioOrgao ? " / " + escapeHtml(l.ata.municipioOrgao) : ""}</td>
         <td>${escapeHtml(l.situacao || "-")}</td>
