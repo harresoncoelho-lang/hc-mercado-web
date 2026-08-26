@@ -599,7 +599,15 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
 // Situações terminais do PNCP em que um item de licitação NÃO teve vencedor — usadas pra
 // alimentar a aba "Baixa Concorrência" (proxy de baixa disputa, já que o PNCP não expõe
 // contagem direta de participantes por item, só o desfecho final).
-const SITUACOES_SEM_VENCEDOR = new Set(["Deserto", "Fracassado", "Anulado", "Revogado"]);
+const SITUACOES_SEM_VENCEDOR_TERMOS = ["Deserto", "Fracassado", "Anulado", "Revogado", "Cancelado"];
+// O PNCP às vezes devolve a situação como valor único combinado (ex: "Anulado/Revogado/
+// Cancelado") em vez de um dos termos isolados — comparação exata com Set.has() nunca batia
+// pra esses casos e metade do sinal de "baixa concorrência" nunca era capturado. Corrigido pra
+// checagem por substring: basta a situação CONTER um dos termos-chave.
+function situacaoSemVencedor(situacao) {
+  if (!situacao) return false;
+  return SITUACOES_SEM_VENCEDOR_TERMOS.some((termo) => situacao.includes(termo));
+}
 
 // Cache de consultas de marca por (código de catálogo do item + UASG) — o mesmo par se repete
 // bastante quando várias atas do mesmo órgão compram o mesmo material catalogado, então cachear
@@ -759,7 +767,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
         // mesmo assim — é exatamente o sinal de "baixa concorrência" (aba Inteligência de
         // Mercado > Baixa Concorrência). Itens ainda "Em andamento"/"Divulgada no PNCP" sem
         // resultado continuam sendo pulados (não há nada definitivo pra mostrar ainda).
-        if (listaResultados.length === 0 && !SITUACOES_SEM_VENCEDOR.has(situacao)) continue;
+        if (listaResultados.length === 0 && !situacaoSemVencedor(situacao)) continue;
         slots[indice] = {
           numeroItem,
           descricao: item.descricao || item.descricaoItem || "",

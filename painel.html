@@ -4868,7 +4868,14 @@ let resultados = resultadosBrutos.filter((r) => {
   // cobertura cresce aos poucos); (2) item com só 1 empresa vencedora entre as já
   // coletadas = sinal mais fraco, porque o PNCP não expõe quantas empresas participaram
   // e perderam, só quem venceu.
-  const SITUACOES_SEM_VENCEDOR_CLIENTE = new Set(["Deserto", "Fracassado", "Anulado", "Revogado"]);
+  const SITUACOES_SEM_VENCEDOR_TERMOS_CLIENTE = ["Deserto", "Fracassado", "Anulado", "Revogado", "Cancelado"];
+  // Mesmo bug/correção do robô (scripts/atualizar_dados.js): o PNCP pode devolver a situação
+  // como valor único combinado (ex: "Anulado/Revogado/Cancelado") em vez de um termo isolado —
+  // comparação exata com Set.has() perdia esses casos. Checagem por substring resolve.
+  function situacaoSemVencedorCliente(situacao) {
+    if (!situacao) return false;
+    return SITUACOES_SEM_VENCEDOR_TERMOS_CLIENTE.some((termo) => situacao.includes(termo));
+  }
 
   function calcularBaixaConcorrencia(atasFiltradas) {
     const linhas = [];
@@ -4876,7 +4883,7 @@ let resultados = resultadosBrutos.filter((r) => {
       if (!ata.enriquecida || !Array.isArray(ata.itens)) continue;
       for (const item of ata.itens) {
         const vencedores = item.vencedores || [];
-        const semVencedor = vencedores.length === 0 && item.situacao && SITUACOES_SEM_VENCEDOR_CLIENTE.has(item.situacao);
+        const semVencedor = vencedores.length === 0 && situacaoSemVencedorCliente(item.situacao);
         const vencedorUnico = vencedores.length === 1;
         if (!semVencedor && !vencedorUnico) continue;
         linhas.push({
