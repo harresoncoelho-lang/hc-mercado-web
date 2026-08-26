@@ -1623,7 +1623,10 @@
     </div>
 
     <div class="dg-subaba-painel" data-subaba-painel="baixa-concorrencia">
-      <div class="aviso"><strong>Em construção.</strong> Vai listar licitações com poucos concorrentes ou disputas desertas — sinal de mercado com menos competição, mais fácil de vencer.</div>
+      <div class="conteudo-mercado">
+        <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
+        <div id="dg-baixa-concorrencia-resultado"></div>
+      </div>
     </div>
 
     <div class="dg-subaba-painel" data-subaba-painel="historico-compras">
@@ -4779,6 +4782,78 @@ let resultados = resultadosBrutos.filter((r) => {
     alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // ---------- Baixa Concorrência (sub-aba da Inteligência de Mercado) ----------
+  // Reaproveita exatamente as mesmas atas já carregadas pela Visão Geral (mesmo
+  // segmento/UF/período) — não faz nova consulta ao Supabase nem ao PNCP. Dois sinais,
+  // do mais forte pro mais fraco: (1) item com situação Deserta/Fracassada/Anulada/
+  // Revogada no PNCP = ninguém venceu, sinal direto de baixa disputa (só passa a
+  // aparecer pra atas processadas depois da mudança no robô que passou a guardar isso —
+  // cobertura cresce aos poucos); (2) item com só 1 empresa vencedora entre as já
+  // coletadas = sinal mais fraco, porque o PNCP não expõe quantas empresas participaram
+  // e perderam, só quem venceu.
+  const SITUACOES_SEM_VENCEDOR_CLIENTE = new Set(["Deserto", "Fracassado", "Anulado", "Revogado"]);
+
+  function calcularBaixaConcorrencia(atasFiltradas) {
+    const linhas = [];
+    for (const ata of (atasFiltradas || [])) {
+      if (!ata.enriquecida || !Array.isArray(ata.itens)) continue;
+      for (const item of ata.itens) {
+        const vencedores = item.vencedores || [];
+        const semVencedor = vencedores.length === 0 && item.situacao && SITUACOES_SEM_VENCEDOR_CLIENTE.has(item.situacao);
+        const vencedorUnico = vencedores.length === 1;
+        if (!semVencedor && !vencedorUnico) continue;
+        linhas.push({
+          ata, item,
+          tipo: semVencedor ? "deserto-fracassado" : "vencedor-unico",
+          situacao: item.situacao || (vencedorUnico ? "1 empresa venceu" : "-"),
+        });
+      }
+    }
+    return linhas;
+  }
+
+  function montarTabelaBaixaConcorrencia(linhas) {
+    let html = "<table><tr><th>Objeto do item</th><th>Ata / órgão</th><th>UF/Município</th><th>Situação</th></tr>";
+    for (const l of linhas.slice(0, 200)) {
+      html += `<tr>
+        <td>${escapeHtml(l.item.descricao || "-")}</td>
+        <td>${escapeHtml(l.ata.objeto || "-")}<br><small>${escapeHtml(l.ata.orgao || "-")}</small></td>
+        <td>${escapeHtml(l.ata.ufOrgao || "-")}${l.ata.municipioOrgao ? " / " + escapeHtml(l.ata.municipioOrgao) : ""}</td>
+        <td>${escapeHtml(l.situacao || "-")}</td>
+      </tr>`;
+    }
+    html += "</table>";
+    if (linhas.length > 200) html += `<p class="dica-clique">Mostrando os primeiros 200 de ${linhas.length.toLocaleString("pt-BR")} encontrados.</p>`;
+    return html;
+  }
+
+  function renderBaixaConcorrencia() {
+    const alvo = document.getElementById("dg-baixa-concorrencia-resultado");
+    if (!alvo) return;
+    const d = estado.diagnostico;
+    if (!d || !d.mercado || !Array.isArray(d.mercado.atas)) {
+      alvo.innerHTML = '<div class="aviso">Gere um diagnóstico na aba <strong>Visão Geral</strong> primeiro (mesmo segmento/UF/período) — esta aba reaproveita os mesmos dados, sem nova consulta.</div>';
+      return;
+    }
+    const linhas = calcularBaixaConcorrencia(d.mercado.atas);
+    if (linhas.length === 0) {
+      alvo.innerHTML = '<div class="aviso">Nenhum sinal de baixa concorrência encontrado ainda nesse segmento/UF/período. A cobertura cresce conforme o robô reprocessa mais atas — tente um período maior ou volte em alguns dias.</div>';
+      return;
+    }
+    const desertos = linhas.filter((l) => l.tipo === "deserto-fracassado");
+    const unicos = linhas.filter((l) => l.tipo === "vencedor-unico");
+    let html = '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Baseado nos mesmos filtros da Visão Geral. "Deserto/Fracassado" é o sinal mais forte (ninguém venceu o item); "vencedor único" é mais fraco (só uma empresa venceu — o PNCP não expõe quantas participaram e perderam).</div>';
+    if (desertos.length > 0) {
+      html += `<h2>Itens desertos ou fracassados (${desertos.length}) — ninguém venceu</h2>`;
+      html += montarTabelaBaixaConcorrencia(desertos);
+    }
+    if (unicos.length > 0) {
+      html += `<h2>Itens com vencedor único (${unicos.length}) — só uma empresa venceu</h2>`;
+      html += montarTabelaBaixaConcorrencia(unicos);
+    }
+    alvo.innerHTML = html;
+  }
+
   function renderDiagnostico() {
     const d = estado.diagnostico;
     const alvo = document.getElementById("dg-resultado");
@@ -4966,6 +5041,7 @@ let resultados = resultadosBrutos.filter((r) => {
     }
 
     alvo.innerHTML = html;
+    renderBaixaConcorrencia();
 
     alvo.querySelectorAll(".barra-item[data-cnpj]").forEach((el) => {
       el.addEventListener("click", () => renderDetalheFornecedor(el.dataset.cnpj));

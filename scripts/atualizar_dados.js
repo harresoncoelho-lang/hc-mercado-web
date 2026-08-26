@@ -596,6 +596,11 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
 // qualquer mercado pesquisado no Diagnóstico acaba sendo coberto mais cedo ou mais tarde,
 // sem precisar cadastrar palavra-chave nenhuma de antemão. SEGMENTOS continua existindo só
 // como rótulo informativo (usado também pra marcar os contratos nacionais).
+// Situações terminais do PNCP em que um item de licitação NÃO teve vencedor — usadas pra
+// alimentar a aba "Baixa Concorrência" (proxy de baixa disputa, já que o PNCP não expõe
+// contagem direta de participantes por item, só o desfecho final).
+const SITUACOES_SEM_VENCEDOR = new Set(["Deserto", "Fracassado", "Anulado", "Revogado"]);
+
 async function coletarMercadoSegmentos(caminhoArquivo) {
   const existentes = await lerJsonExistente(caminhoArquivo);
   const hoje = new Date();
@@ -700,10 +705,17 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
           3, 15000, `resultados ata ${referenciaAta.numeroControlePNCPAta} item ${numeroItem}`
         );
         const listaResultados = Array.isArray(resultados) ? resultados : (resultados && resultados.data) || [];
-        if (listaResultados.length === 0) continue;
+        const situacao = item.situacaoCompraItemNome || null;
+        // Itens sem vencedor não são mais descartados de cara: quando a situação do item é
+        // um estado terminal SEM vencedor (deserto/fracassado/anulado/revogado), guardamos
+        // mesmo assim — é exatamente o sinal de "baixa concorrência" (aba Inteligência de
+        // Mercado > Baixa Concorrência). Itens ainda "Em andamento"/"Divulgada no PNCP" sem
+        // resultado continuam sendo pulados (não há nada definitivo pra mostrar ainda).
+        if (listaResultados.length === 0 && !SITUACOES_SEM_VENCEDOR.has(situacao)) continue;
         slots[indice] = {
           numeroItem,
           descricao: item.descricao || item.descricaoItem || "",
+          situacao,
           vencedores: listaResultados.map((r) => ({
             cnpj: r.niFornecedor || "",
             nome: r.nomeRazaoSocialFornecedor || "",
@@ -720,7 +732,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     );
     const itensComVencedor = slots.filter(Boolean);
 
-    return { ufOrgao, municipioOrgao, itens: itensComVencedor };
+    return { ufOrgao, municipioOrgao, itens: itensComVencedor, situacaoColetada: true };
   }
 
   // 1) Processa primeiro a fila pendente de execuções anteriores.
