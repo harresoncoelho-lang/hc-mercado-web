@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { origemPermitida } = require("./_auth");
+const { origemPermitida } = require("../_auth");
 
 test("origemPermitida retorna a própria origem quando está na allowlist", () => {
   const event = { headers: { origin: "https://licitaplena.com.br" } };
