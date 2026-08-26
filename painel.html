@@ -839,6 +839,11 @@
     transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
   .filtros-lateral-colapsar-btn:hover { color: var(--texto); border-color: var(--azul); }
+  /* Quando os filtros são recolhidos, a coluna da grade também encolhe (senão sobra um
+     vão em branco do tamanho da coluna original de 260px, já que grid-template-columns
+     não segue o width do próprio filho automaticamente) — o conteúdo ganha o espaço de
+     volta de verdade, não só o aside fica mais fino. */
+  .layout-mercado.filtros-colapsadas { grid-template-columns: 56px 1fr; }
   .filtros-lateral.colapsada { width: 56px; padding: 16px 10px; align-items: center; }
   .filtros-lateral.colapsada > *:not(.filtros-lateral-cabecalho) { display: none; }
   .filtros-lateral.colapsada .filtros-lateral-cabecalho { flex-direction: column; gap: 10px; border-bottom: none; padding-bottom: 0; }
@@ -1681,8 +1686,11 @@
     if (!aside || !btn) return;
     const CHAVE = "hc_diagnostico_filtros_colapsado";
 
+    const layout = aside.closest(".layout-mercado");
+
     function aplicar(colapsada) {
       aside.classList.toggle("colapsada", colapsada);
+      if (layout) layout.classList.toggle("filtros-colapsadas", colapsada);
       btn.title = colapsada ? "Expandir filtros" : "Recolher filtros";
     }
 
