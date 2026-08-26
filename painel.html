@@ -408,7 +408,7 @@
     padding: 18px;
   }
   .cartao h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; color: var(--texto-fraco); }
-  .cartao .valor { font-size: 20px; font-weight: bold; color: var(--azul-texto); }
+  .cartao .valor { font-size: 20px; font-weight: bold; color: var(--azul-texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   h2 { color: var(--azul-texto); border-bottom: 2px solid var(--laranja); padding-bottom: 6px; margin-top: 34px; }
 
@@ -626,7 +626,7 @@
     border-radius: 0 4px 4px 0;
   }
   .cartao h3 { font-size: 11px; letter-spacing: 0.4px; }
-  .cartao .valor { font-size: 24px; }
+  .cartao .valor { font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cartao:hover { transform: translateY(-3px); box-shadow: var(--sombra-forte); }
 
   table {
@@ -6687,6 +6687,49 @@ window.__preencherIdentidadeUsuario();
     card.addEventListener("click", () => {
       const navBtn = document.querySelector('nav button[data-alvo="oportunidades"]');
       if (navBtn) navBtn.click();
+    });
+  })();
+</script>
+
+<script>
+  // Ajuste automático de tamanho de fonte dos valores em R$ dentro dos cards (".cartao
+  // .valor") em QUALQUER aba do painel — não só na Inteligência de Mercado. Sem isso,
+  // valores grandes (dezenas de milhões, bilhão) estouravam a largura do card e o "R$"
+  // quebrava pra uma linha separada do número, ficando desproporcional/feio. A fonte
+  // encolhe (até um mínimo de 12px) só o suficiente pra caber numa linha só — cards com
+  // valor curto (ex: "7") continuam no tamanho normal, não afeta o layout geral.
+  (function () {
+    function ajustarValor(el) {
+      const tamanhoBase = 24;
+      el.style.fontSize = tamanhoBase + "px";
+      let tamanho = tamanhoBase;
+      let tentativas = 0;
+      while (el.scrollWidth > el.clientWidth + 1 && tamanho > 12 && tentativas < 20) {
+        tamanho -= 1;
+        el.style.fontSize = tamanho + "px";
+        tentativas += 1;
+      }
+    }
+    function varrer() {
+      document.querySelectorAll(".cartao .valor").forEach(ajustarValor);
+    }
+    let pendente = null;
+    const observer = new MutationObserver(() => {
+      clearTimeout(pendente);
+      pendente = setTimeout(varrer, 80);
+    });
+    // attributes+class: as abas do painel (main section) trocam de visível pra
+    // display:none só com classList.toggle("ativa") — troca de classe, não de DOM. Uma
+    // seção ainda escondida mede clientWidth 0 na 1ª renderização (ex: restaurarDiagnostico
+    // rodando com a aba "Dashboard" ativa) e nunca reajustaria sem reagir também a isso.
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
+    varrer();
+    // Fonte web ainda pode trocar (FOUT/FOIT) depois da 1ª medição, alargando o texto sem
+    // nenhuma mutação de DOM/classe pra reacionar o observer — reconfere quando assentar.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(varrer);
+    window.addEventListener("resize", () => {
+      clearTimeout(pendente);
+      pendente = setTimeout(varrer, 120);
     });
   })();
 </script>
