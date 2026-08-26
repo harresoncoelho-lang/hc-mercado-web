@@ -851,6 +851,25 @@
   .filtros-lateral.colapsada .filtros-lateral-colapsar-btn { transform: scaleX(-1); }
   .conteudo-mercado { min-width: 0; }
   .conteudo-mercado h2:first-of-type { margin-top: 0; }
+  .mapa-uf-svg { width: 100%; max-width: 460px; height: auto; display: block; margin: 4px auto 8px; }
+  .mapa-uf-estado { cursor: pointer; transition: opacity 0.15s ease; }
+  .mapa-uf-estado:hover { opacity: 0.7; }
+  .mapa-uf-legenda { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; color: var(--texto-fraco); margin-bottom: 18px; }
+  .mapa-uf-legenda-barra { width: 120px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--fundo-fraco), var(--azul)); }
+  .angulos-analise { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .angulo-card {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
+    padding: 14px 16px; cursor: pointer; text-align: left; font-family: inherit;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .angulo-card:hover { border-color: var(--azul); transform: translateY(-1px); }
+  .angulo-icone { color: var(--azul); font-size: 20px; }
+  .angulo-icone svg { width: 20px; height: 20px; }
+  .angulo-titulo { font-weight: 600; font-size: 13.5px; color: var(--texto); }
+  .angulo-desc { font-size: 12px; color: var(--texto-fraco); }
+  .angulo-desabilitado { cursor: default; opacity: 0.55; }
+  .angulo-desabilitado:hover { border-color: var(--borda); transform: none; }
 
   @media (max-width: 820px) {
     .layout-mercado { grid-template-columns: 1fr; }
@@ -4790,6 +4809,56 @@ let resultados = resultadosBrutos.filter((r) => {
     alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // ---------- Mapa de concentração por UF (Visão Geral) ----------
+  // Carrega o desenho do mapa do Brasil (paths por estado) via CDN só na primeira vez que
+  // precisar — pacote leve e estático (@svg-maps/brazil), sem depender de D3/topojson.
+  // Se o CDN falhar (rede instável), a seção do mapa simplesmente não aparece; o resto do
+  // diagnóstico (tabela por UF etc.) continua funcionando normalmente.
+  let _mapaBrasilCache = null;
+  async function carregarMapaBrasil() {
+    if (_mapaBrasilCache) return _mapaBrasilCache;
+    try {
+      const mod = await import("https://cdn.jsdelivr.net/npm/@svg-maps/brazil@2.0.0/index.js");
+      _mapaBrasilCache = mod.default;
+    } catch (e) {
+      console.error("[mapa-uf] falha ao carregar mapa do Brasil:", e);
+      _mapaBrasilCache = null;
+    }
+    return _mapaBrasilCache;
+  }
+
+  async function renderMapaUf(porUf) {
+    const alvo = document.getElementById("dg-mapa-uf");
+    if (!alvo) return;
+    const mapa = await carregarMapaBrasil();
+    if (!mapa || !Array.isArray(mapa.locations)) { alvo.innerHTML = ""; return; }
+    const valores = {};
+    let max = 1;
+    for (const u of (porUf || [])) {
+      const sigla = (u.uf || "").toLowerCase();
+      valores[sigla] = u.valor || 0;
+      if (u.valor > max) max = u.valor;
+    }
+    const paths = mapa.locations.map((loc) => {
+      const v = valores[loc.id] || 0;
+      const intensidade = v > 0 ? Math.max(0.15, v / max) : 0;
+      const preenchimento = v > 0 ? `rgba(46,141,255,${intensidade.toFixed(2)})` : "var(--fundo-fraco)";
+      const sigla = loc.id.toUpperCase();
+      const rotulo = v > 0 ? `${loc.name} (${sigla}): ${formatarValor(v)}` : `${loc.name} (${sigla}): sem dado nesse filtro`;
+      return `<path d="${loc.path}" data-uf="${escapeHtml(sigla)}" fill="${preenchimento}" stroke="var(--borda)" stroke-width="1" class="mapa-uf-estado"><title>${escapeHtml(rotulo)}</title></path>`;
+    }).join("");
+    alvo.innerHTML = `<svg viewBox="${escapeHtml(mapa.viewBox)}" class="mapa-uf-svg" role="img" aria-label="Mapa do Brasil colorido pela concentração de mercado por estado">${paths}</svg>`;
+    alvo.querySelectorAll(".mapa-uf-estado").forEach((el) => {
+      el.addEventListener("click", () => {
+        const uf = el.dataset.uf;
+        const sel = document.getElementById("dg-uf");
+        if (sel) sel.value = uf;
+        const btn = document.getElementById("dg-buscar");
+        if (btn) btn.click();
+      });
+    });
+  }
+
   // ---------- Baixa Concorrência (sub-aba da Inteligência de Mercado) ----------
   // Reaproveita exatamente as mesmas atas já carregadas pela Visão Geral (mesmo
   // segmento/UF/período) — não faz nova consulta ao Supabase nem ao PNCP. Dois sinais,
@@ -4917,6 +4986,21 @@ let resultados = resultadosBrutos.filter((r) => {
       </div>
     </div>`;
 
+    // Ângulos de análise: cada card é uma pergunta de negócio diferente sobre o mesmo
+    // mercado filtrado, não um resumo genérico — clicar rola até a seção correspondente
+    // (já renderizada mais abaixo nesta mesma tela, sem nova consulta). Marcas e
+    // Contratação Futura ainda não têm dado coletado (ver roadmap no Segundo Cérebro),
+    // aparecem desabilitados em vez de somem, pra deixar claro o que está por vir.
+    html += `<h2>Ângulos de análise</h2>
+    <div class="angulos-analise">
+      <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-estados"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-map-pin'></use></svg></span><span class="angulo-titulo">Estados</span><span class="angulo-desc">Onde o mercado está concentrado</span></button>
+      <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-orgaos"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-bank'></use></svg></span><span class="angulo-titulo">Órgãos</span><span class="angulo-desc">Quem mais compra nesse segmento</span></button>
+      <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-empresas"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-buildings'></use></svg></span><span class="angulo-titulo">Empresas</span><span class="angulo-desc">Quem já vence esse mercado</span></button>
+      <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-correspondencias"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span class="angulo-titulo">Correspondências</span><span class="angulo-desc">Oportunidades abertas agora</span></button>
+      <button type="button" class="angulo-card angulo-desabilitado" disabled title="Ainda não capturamos marca de produto — no roadmap"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-package'></use></svg></span><span class="angulo-titulo">Marcas</span><span class="angulo-desc">Em breve</span></button>
+      <button type="button" class="angulo-card angulo-desabilitado" disabled title="Previsão de contratação futura — no roadmap"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-chart-line-up'></use></svg></span><span class="angulo-titulo">Contratação futura</span><span class="angulo-desc">Em breve</span></button>
+    </div>`;
+
     if (d.mercado) {
       const m = d.mercado;
       if (!m.atualizadoEm) {
@@ -4978,6 +5062,7 @@ let resultados = resultadosBrutos.filter((r) => {
     }
 
     if (d.porUf && d.porUf.length > 0) {
+      html += '<h2 id="dg-secao-estados">Concentração geográfica do mercado</h2><div id="dg-mapa-uf"></div><div class="mapa-uf-legenda"><span>Menos</span><span class="mapa-uf-legenda-barra"></span><span>Mais</span></div>';
       html += "<h2>Licitações por UF (valor contratado na amostra)</h2>";
       const maxUf = d.porUf[0].valor || 1;
       for (const u of d.porUf) {
@@ -5004,7 +5089,7 @@ let resultados = resultadosBrutos.filter((r) => {
       html += '<div class="dica-clique">Baseado nas licitações publicadas no PNCP (todas as modalidades, todo o Brasil) que batem com o segmento pesquisado — contagem e valor por modalidade.</div>';
     }
 
-    html += "<h2>Principais concorrentes (por valor contratado na amostra) — clique para ver os contratos</h2>";
+    html += "<h2 id=\"dg-secao-empresas\">Principais concorrentes (por valor contratado na amostra) — clique para ver os contratos</h2>";
     if (d.concorrentes.length === 0) {
       html += "<p>Nenhum contrato do segmento encontrado na amostra do período.</p>";
     } else {
@@ -5020,7 +5105,7 @@ let resultados = resultadosBrutos.filter((r) => {
       }
     }
 
-    html += "<h2>Principais órgãos compradores (por valor contratado na amostra) — clique para ver os contratos</h2>";
+    html += "<h2 id=\"dg-secao-orgaos\">Principais órgãos compradores (por valor contratado na amostra) — clique para ver os contratos</h2>";
     if (d.orgaos.length === 0) {
       html += "<p>Nenhum contrato do segmento encontrado na amostra do período.</p>";
     } else {
@@ -5036,7 +5121,7 @@ let resultados = resultadosBrutos.filter((r) => {
       }
     }
 
-    html += "<h2>Oportunidades abertas agora " + (d.uf ? "em " + escapeHtml(d.uf) : "") + "</h2>";
+    html += "<h2 id=\"dg-secao-correspondencias\">Oportunidades abertas agora " + (d.uf ? "em " + escapeHtml(d.uf) : "") + "</h2>";
     if (d.oportunidadesAbertas.length === 0) {
       html += "<p>Nenhuma oportunidade aberta encontrada no momento para esse segmento/UF.</p>";
     } else {
@@ -5050,6 +5135,14 @@ let resultados = resultadosBrutos.filter((r) => {
 
     alvo.innerHTML = html;
     renderBaixaConcorrencia();
+    renderMapaUf(d.porUf);
+
+    alvo.querySelectorAll(".angulo-card[data-alvo-angulo]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const destino = document.getElementById(el.dataset.alvoAngulo);
+        if (destino) destino.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
 
     alvo.querySelectorAll(".barra-item[data-cnpj]").forEach((el) => {
       el.addEventListener("click", () => renderDetalheFornecedor(el.dataset.cnpj));
