@@ -630,7 +630,13 @@
     border-radius: 0 4px 4px 0;
   }
   .cartao h3 { font-size: 11px; letter-spacing: 0.4px; }
-  .cartao .valor { font-size: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cartao .valor {
+    font-size: clamp(16px, 1.55vw, 21px);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .cartao:hover { transform: translateY(-3px); box-shadow: var(--sombra-forte); }
 
   table {
@@ -2166,7 +2172,9 @@
   // Imprimir/gerar PDF: usa a impressão nativa do navegador (Ctrl+P → "Salvar como PDF"),
   // igual ao botão "Imprimir" do ConLicitação. O CSS de @media print esconde nav/filtros/
   // botões e força os acordeões a aparecerem abertos, deixando só o conteúdo do painel.
-  document.querySelectorAll(".btn-imprimir:not(.btn-config-boletim)").forEach((btn) => {
+  // Somente botões explicitamente destinados à impressão podem abrir o diálogo nativo.
+  // Outros botões reutilizam o estilo .btn-imprimir apenas pela aparência (ex.: Abrir Boletim).
+  document.querySelectorAll(".btn-imprimir-generico, #dg-imprimir").forEach((btn) => {
     btn.addEventListener("click", () => window.print());
   });
 
@@ -3073,6 +3081,18 @@
   function formatarValor(v) {
     const n = Number(v) || 0;
     return "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Números inteiros continuam disponíveis no tooltip e nos detalhes. Nos cards e barras,
+  // a forma curta evita que valores altos deformem a hierarquia visual do diagnóstico.
+  function formatarValorCompacto(v) {
+    const n = Number(v) || 0;
+    const abs = Math.abs(n);
+    const formato = (valor, sufixo) => `R$ ${valor.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${sufixo}`;
+    if (abs >= 1e9) return formato(n / 1e9, "bi");
+    if (abs >= 1e6) return formato(n / 1e6, "mi");
+    if (abs >= 1e3) return formato(n / 1e3, "mil");
+    return formatarValor(n);
   }
 
   // Formata uma data/hora ISO (ex: "2026-08-05T00:59:00") no mesmo padrão que o PNCP usa
@@ -5273,7 +5293,7 @@ let resultados = resultadosBrutos.filter((r) => {
     let html = "<table><tr><th>Objeto do item</th><th>Marca</th><th>Ata / órgão</th><th>UF/Município</th><th>Situação</th></tr>";
     linhas.slice(0, 200).forEach((l, idx) => {
       const vencedor = (l.item.vencedores || [])[0];
-      const marca = vencedor && vencedor.marca ? vencedor.marca : "-";
+      const marca = vencedor && vencedor.marca ? vencedor.marca : "Não identificada na fonte";
       html += `<tr class="linha-clicavel" data-bc-tipo="${escapeHtml(tipo)}" data-bc-idx="${idx}">
         <td>${escapeHtml(l.item.descricao || "-")}</td>
         <td>${escapeHtml(marca)}</td>
@@ -5366,8 +5386,12 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     const desertos = linhas.filter((l) => l.tipo === "deserto-fracassado");
     const unicos = linhas.filter((l) => l.tipo === "vencedor-unico");
+    const vencedoresUnicosComMarca = unicos.filter((l) => (l.item.vencedores || [])[0]?.marca).length;
     _bcLinhasAtual = { "deserto-fracassado": desertos, "vencedor-unico": unicos };
     let html = '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Baseado nos mesmos filtros da Visão Geral. "Deserto/Fracassado" é o sinal mais forte (ninguém venceu o item); "vencedor único" é mais fraco (só uma empresa venceu — o PNCP não expõe quantas participaram e perderam).</div>';
+    if (unicos.length > 0) {
+      html += `<p class="dica-clique" style="margin:10px 0 16px;">Marcas identificadas: <strong>${vencedoresUnicosComMarca}</strong> de ${unicos.length} itens com vencedor único. A marca vem do Compras.gov.br quando o item possui catálogo, UASG e fornecedor identificáveis; os demais continuam explicitamente marcados como indisponíveis.</p>`;
+    }
     if (desertos.length > 0) {
       html += `<h2>Itens desertos ou fracassados (${desertos.length}) — ninguém venceu</h2>`;
       html += montarTabelaBaixaConcorrencia(desertos, "deserto-fracassado");
@@ -5431,8 +5455,8 @@ let resultados = resultadosBrutos.filter((r) => {
 
     html += `<div class="caixa-interna">
       <div class="cartoes" style="margin-bottom:0;">
-        <div class="cartao"><h3>Mercado nacional (amostra, ${escapeHtml(String(d.periodo.dias))} dia(s))</h3><div class="valor">${escapeHtml(formatarValor(totalNacional))}</div></div>
-        ${d.uf ? `<div class="cartao"><h3>Mercado em ${escapeHtml(d.uf)}</h3><div class="valor">${escapeHtml(formatarValor(totalRegional))}</div></div>` : ""}
+        <div class="cartao"><h3>Mercado nacional (amostra, ${escapeHtml(String(d.periodo.dias))} dia(s))</h3><div class="valor" title="${escapeHtml(formatarValor(totalNacional))}">${escapeHtml(formatarValorCompacto(totalNacional))}</div></div>
+        ${d.uf ? `<div class="cartao"><h3>Mercado em ${escapeHtml(d.uf)}</h3><div class="valor" title="${escapeHtml(formatarValor(totalRegional))}">${escapeHtml(formatarValorCompacto(totalRegional))}</div></div>` : ""}
         <div class="cartao"><h3>Concorrentes identificados</h3><div class="valor">${d.concorrentes.length}</div></div>
         <div class="cartao"><h3>Oportunidades abertas agora</h3><div class="valor">${d.oportunidadesAbertas.length}</div></div>
         ${d.mercado && d.mercado.empresas.length > 0 ? `<div class="cartao"><h3>Empresas com ata vigente no segmento${d.uf ? " (" + escapeHtml(d.uf) + ")" : ""}</h3><div class="valor">${d.mercado.empresas.filter((e) => e.atasVigentes.length > 0).length}</div></div>` : ""}
@@ -5474,7 +5498,7 @@ let resultados = resultadosBrutos.filter((r) => {
             const selecionada = m.empresaSelecionada && m.empresaSelecionada.cnpj === e.cnpj;
             html += `<div class="barra-item${selecionada ? " selecionado" : ""}" data-cnpj-mercado="${escapeHtml(e.cnpj)}">
               <div class="barra-label">${escapeHtml(e.nome)} <span class="cnpj">(${escapeHtml(e.cnpj)})</span></div>
-              <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(formatarValor(e.valorTotalHistorico))}</div></div>
+              <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%" title="${escapeHtml(formatarValor(e.valorTotalHistorico))}">${escapeHtml(formatarValorCompacto(e.valorTotalHistorico))}</div></div>
               <div class="barra-meta">${e.atasVigentes.length} ata(s) vigente(s) · ${e.atasEncerradas.length} encerrada(s) · ${e.itensGanhos} item(ns) ganho(s) · UFs: ${escapeHtml(e.ufs.join(", ") || "-")} · <small>clique para detalhar</small></div>
             </div>`;
           }
@@ -5522,7 +5546,7 @@ let resultados = resultadosBrutos.filter((r) => {
         const largura = Math.round((u.valor / maxUf) * 100);
         html += `<div class="barra-item">
           <div class="barra-label">${escapeHtml(u.uf)}</div>
-          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(u.valorFormatado)}</div></div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%" title="${escapeHtml(u.valorFormatado)}">${escapeHtml(formatarValorCompacto(u.valor))}</div></div>
           <div class="barra-meta">${u.contratos} contrato(s)</div>
         </div>`;
       }
@@ -5552,7 +5576,7 @@ let resultados = resultadosBrutos.filter((r) => {
         const selecionado = d.fornecedorSelecionado && d.fornecedorSelecionado.cnpj === c.cnpj;
         html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-cnpj="${escapeHtml(c.cnpj)}">
           <div class="barra-label">${escapeHtml(c.nome)} <span class="cnpj">(${escapeHtml(c.cnpj)})</span></div>
-          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(c.valorFormatado)}</div></div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%" title="${escapeHtml(c.valorFormatado)}">${escapeHtml(formatarValorCompacto(c.valor))}</div></div>
           <div class="barra-meta">UFs: ${escapeHtml(c.ufs.join(", ") || "-")} · ${c.contratos} contrato(s) · <small>clique para detalhar</small></div>
         </div>`;
       }
@@ -5568,7 +5592,7 @@ let resultados = resultadosBrutos.filter((r) => {
         const selecionado = d.orgaoSelecionado && d.orgaoSelecionado.nome === o.nome;
         html += `<div class="barra-item${selecionado ? " selecionado" : ""}" data-orgao="${escapeHtml(o.nome)}">
           <div class="barra-label">${escapeHtml(o.nome)}</div>
-          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(o.valorFormatado)}</div></div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%" title="${escapeHtml(o.valorFormatado)}">${escapeHtml(formatarValorCompacto(o.valor))}</div></div>
           <div class="barra-meta">UFs: ${escapeHtml(o.ufs.join(", ") || "-")} · ${o.contratos} contrato(s) · <small>clique para detalhar</small></div>
         </div>`;
       }
@@ -5584,7 +5608,7 @@ let resultados = resultadosBrutos.filter((r) => {
         const selecionada = d.mercado.marcaSelecionada && d.mercado.marcaSelecionada.marca === mc.marca;
         html += `<div class="barra-item${selecionada ? " selecionado" : ""}" data-marca="${escapeHtml(mc.marca)}">
           <div class="barra-label">${escapeHtml(mc.marca)}</div>
-          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(formatarValor(mc.valorTotalHistorico))}</div></div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%" title="${escapeHtml(formatarValor(mc.valorTotalHistorico))}">${escapeHtml(formatarValorCompacto(mc.valorTotalHistorico))}</div></div>
           <div class="barra-meta">${escapeHtml(mc.fornecedores.join(", ") || "-")} · ${mc.itensGanhos} item(ns) ganho(s) · <small>clique para detalhar</small></div>
         </div>`;
       }

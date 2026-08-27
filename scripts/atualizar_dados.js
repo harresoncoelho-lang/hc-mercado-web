@@ -623,6 +623,10 @@ function situacaoSemVencedor(situacao) {
 // evita bater na API do Compras.gov.br mais de uma vez pro mesmo material+órgão.
 const cacheMarcaProduto = new Map();
 
+function normalizarDocumentoFornecedor(valor) {
+  return String(valor || "").replace(/\D/g, "");
+}
+
 // Busca marca do produto na API pública de Pesquisa de Preço do Compras.gov.br
 // (dadosabertos.compras.gov.br/modulo-pesquisapreco/1_consultarMaterial). Essa API é alimentada
 // a partir de compras já homologadas no Comprasnet/SISPP-SISRP — sistema que efetivamente RODA
@@ -644,11 +648,16 @@ async function buscarMarcasProduto(codigoCatalogo, uasg) {
   // (materiais/datas diferentes dentro do mesmo catálogo+UASG); fica a ocorrência mais recente.
   const porFornecedor = new Map();
   for (const r of lista) {
-    if (!r.niFornecedor || !r.marca) continue;
-    const existente = porFornecedor.get(r.niFornecedor);
+    // A API de preços pode devolver CNPJ com formatação e variar o nome do campo de marca
+    // entre registros legados. Normalizar aqui garante que o vencedor do PNCP seja casado
+    // mesmo quando a representação do documento não é idêntica.
+    const documento = normalizarDocumentoFornecedor(r.niFornecedor || r.cnpjFornecedor || r.cnpj);
+    const marca = r.marca || r.nomeMarca || r.descricaoMarca;
+    if (!documento || !marca) continue;
+    const existente = porFornecedor.get(documento);
     const dataR = r.dataResultado || r.dataCompra || null;
     if (!existente || (dataR && new Date(dataR) > new Date(existente.data || 0))) {
-      porFornecedor.set(r.niFornecedor, { marca: r.marca, data: dataR });
+      porFornecedor.set(documento, { marca, data: dataR });
     }
   }
   cacheMarcaProduto.set(chave, porFornecedor);
@@ -788,7 +797,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
             valorTotal: Number(r.valorTotalHomologado || 0),
             quantidade: Number(r.quantidadeHomologada || 0),
             data: r.dataResultado || null,
-            marca: (marcasPorFornecedor.get(r.niFornecedor) || {}).marca || null,
+            marca: (marcasPorFornecedor.get(normalizarDocumentoFornecedor(r.niFornecedor || r.cnpjFornecedor || r.cnpj)) || {}).marca || null,
           })),
         };
       }
