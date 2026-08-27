@@ -849,6 +849,20 @@
   .filtros-lateral.colapsada .filtros-lateral-cabecalho { flex-direction: column; gap: 10px; border-bottom: none; padding-bottom: 0; }
   .filtros-lateral.colapsada .filtros-lateral-titulo { display: none; }
   .filtros-lateral.colapsada .filtros-lateral-colapsar-btn { transform: scaleX(-1); }
+  /* Filtros horizontais (como Encontrar Licitações) usam o mesmo princípio: depois de
+     aplicar a busca, o cliente pode recolher o formulário e concentrar a tela no resultado. */
+  .painel-filtros-recolhivel-cabecalho {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    border-bottom: 1px solid var(--borda); padding-bottom: 10px; margin-bottom: 2px;
+  }
+  .painel-filtros-recolhivel-titulo {
+    margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--texto-fraco);
+  }
+  .painel-filtros-recolhivel.painel-filtros-colapsado {
+    padding: 12px 16px; gap: 0;
+  }
+  .painel-filtros-recolhivel.painel-filtros-colapsado > *:not(.painel-filtros-recolhivel-cabecalho) { display: none; }
+  .painel-filtros-recolhivel.painel-filtros-colapsado .painel-filtros-recolhivel-cabecalho { border-bottom: none; padding-bottom: 0; }
   .conteudo-mercado { min-width: 0; }
   .conteudo-mercado h2:first-of-type { margin-top: 0; }
   .mapa-uf-svg { width: 100%; max-width: 460px; height: auto; display: block; margin: 4px auto 8px; }
@@ -1525,7 +1539,11 @@
 
   <section id="oportunidades">
     <div class="secao-conteudo-principal">
-    <div class="painel-filtros">
+    <div class="painel-filtros painel-filtros-recolhivel" id="op-filtros-principais">
+      <div class="painel-filtros-recolhivel-cabecalho">
+        <h3 class="painel-filtros-recolhivel-titulo">Filtros de busca</h3>
+        <button type="button" id="op-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
+      </div>
       <div class="campo">
         <label>Estado (UF) — opcional</label>
         <select id="op-uf" class="select-uf"></select>
@@ -1761,6 +1779,30 @@
       colapsada = !colapsada;
       aplicar(colapsada);
       try { localStorage.setItem(CHAVE, colapsada ? "1" : "0"); } catch (e) { /* segue sem persistir */ }
+    });
+  })();
+
+  // Encontrar Licitações mantém os filtros principais acessíveis sem deixá-los ocupar a
+  // tela inteira depois que a busca foi configurada. A preferência é por navegador, assim
+  // como as demais escolhas de interface do painel.
+  (function () {
+    const painel = document.getElementById("op-filtros-principais");
+    const btn = document.getElementById("op-filtros-colapsar-btn");
+    if (!painel || !btn) return;
+    const CHAVE = "hc_oportunidades_filtros_colapsado";
+    function aplicar(colapsado) {
+      painel.classList.toggle("painel-filtros-colapsado", colapsado);
+      btn.title = colapsado ? "Expandir filtros" : "Recolher filtros";
+      btn.setAttribute("aria-expanded", String(!colapsado));
+      btn.textContent = colapsado ? "»" : "«";
+    }
+    let colapsado = false;
+    try { colapsado = localStorage.getItem(CHAVE) === "1"; } catch (e) { /* segue aberto */ }
+    aplicar(colapsado);
+    btn.addEventListener("click", () => {
+      colapsado = !colapsado;
+      aplicar(colapsado);
+      try { localStorage.setItem(CHAVE, colapsado ? "1" : "0"); } catch (e) { /* persistência opcional */ }
     });
   })();
 
