@@ -27,6 +27,9 @@
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
   (function () {
+    // As ferramentas que aparecem mais abaixo podem esperar o perfil sem depender de uma
+    // corrida entre o carregamento do HTML e a consulta assíncrona ao Supabase.
+    window.__clientePronto = new Promise((resolve) => { window.__resolverClientePronto = resolve; });
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     sb.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
@@ -41,6 +44,7 @@
             }
             window.__clienteAtual = cliente;
             window.__clienteEmailAtual = session.user.email || "";
+            if (typeof window.__resolverClientePronto === "function") window.__resolverClientePronto(cliente);
             if (typeof window.__preencherIdentidadeUsuario === "function") window.__preencherIdentidadeUsuario();
     });
         window.__sbClient = sb;
@@ -6623,6 +6627,30 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     document.getElementById("dg-buscar").click();
   }
+
+  // O estado único escolhido no cadastro é uma preferência forte e pode poupar vários
+  // cliques em cada ferramenta. Só aplica quando não há filtro salvo: uma busca explícita
+  // do usuário sempre prevalece. Perfis multiestado ficam sem escolha automática para não
+  // enviesar a análise para uma UF arbitrária.
+  function aplicarUfPadraoDoPerfil(cliente) {
+    const estados = Array.isArray(cliente && cliente.estados_interesse)
+      ? cliente.estados_interesse.map((uf) => String(uf || "").trim().toUpperCase()).filter((uf) => /^[A-Z]{2}$/.test(uf))
+      : [];
+    const unicos = [...new Set(estados)];
+    if (unicos.length !== 1) return;
+    const uf = unicos[0];
+    const definicoes = [
+      { seletor: "op-uf", temFiltro: () => !!lerFiltroOportunidades() },
+      { seletor: "dg-uf", temFiltro: () => !!lerFiltroDiagnostico() },
+      { seletor: "cv-uf", temFiltro: () => !!lerFiltroConvenios() },
+    ];
+    definicoes.forEach(({ seletor, temFiltro }) => {
+      const campo = document.getElementById(seletor);
+      if (campo && !temFiltro() && !campo.value) campo.value = uf;
+    });
+  }
+  if (window.__clientePronto) window.__clientePronto.then(aplicarUfPadraoDoPerfil);
+
   restaurarDiagnostico();
   document.querySelector('nav button[data-alvo="diagnostico"]').addEventListener("click", () => {
     if (!dgJaBuscado) restaurarDiagnostico();
