@@ -88,6 +88,59 @@ create policy "mercado_atas_select_autenticado"
   on public.mercado_atas for select
   using (auth.role() = 'authenticated');
 
+-- ----------------------------------------------------------------------------
+-- 3) Resumo imediato da Inteligência de Mercado
+--
+-- O painel não precisa transportar até mil contratos completos para exibir os
+-- primeiros indicadores. Esta função devolve somente os agregados do filtro atual;
+-- os contratos detalhados continuam sendo carregados apenas para os aprofundamentos.
+-- SECURITY INVOKER preserva a RLS da tabela: só usuários autenticados podem consultar.
+-- ----------------------------------------------------------------------------
+create or replace function public.resumo_inteligencia_mercado(
+  p_termos text[],
+  p_dias integer,
+  p_uf text default null
+)
+returns table (
+  valor_nacional numeric,
+  valor_recorte numeric,
+  contratos_recorte bigint,
+  concorrentes_recorte bigint,
+  orgaos_recorte bigint
+)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  with base as (
+    select
+      c.uf,
+      c.cnpj_fornecedor,
+      coalesce(c.dado ->> 'orgao', 'Órgão não informado') as orgao,
+      coalesce(nullif(c.dado ->> 'valor', '')::numeric, 0) as valor
+    from public.contratos c
+    where (p_dias is null or p_dias <= 0 or c.data_assinatura >= current_date - p_dias or c.data_assinatura is null)
+      and (
+        coalesce(cardinality(p_termos), 0) = 0
+        or exists (
+          select 1 from unnest(p_termos) as termo
+          where c.objeto ilike '%' || termo || '%'
+        )
+      )
+  ), recorte as (
+    select * from base where p_uf is null or uf = p_uf
+  )
+  select
+    coalesce((select sum(valor) from base), 0),
+    coalesce((select sum(valor) from recorte), 0),
+    (select count(*) from recorte),
+    (select count(distinct nullif(cnpj_fornecedor, '')) from recorte),
+    (select count(distinct orgao) from recorte);
+$$;
+
+grant execute on function public.resumo_inteligencia_mercado(text[], integer, text) to authenticated;
+
 -- ============================================================================
 -- Depois de rodar: Table Editor deve mostrar "contratos" e "mercado_atas" com
 -- RLS "Enabled". O backfill inicial (scripts/migrar_dados_supabase.js) e as

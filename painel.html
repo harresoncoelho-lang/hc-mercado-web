@@ -5717,6 +5717,34 @@ let resultados = resultadosBrutos.filter((r) => {
   // antes: registros sem dataAssinatura sempre entravam, independente do filtro de dias.
   const cacheConsultasContratos = new Map();
   const CACHE_CONTRATOS_TTL_MS = 5 * 60 * 1000;
+  async function carregarResumoInteligenciaMercado(palavras, dias, uf) {
+    try {
+      const { data, error } = await window.__sbClient.rpc("resumo_inteligencia_mercado", {
+        p_termos: palavras,
+        p_dias: dias,
+        p_uf: uf || null,
+      });
+      if (error || !data) return null;
+      return Array.isArray(data) ? data[0] : data;
+    } catch (e) {
+      // A função é opcional durante a implantação inicial; a tela preserva o fluxo atual
+      // até a migração ser executada no banco.
+      return null;
+    }
+  }
+  function mostrarResumoInicialDiagnostico(alvo, resumo, dias, uf, token) {
+    if (!resumo || alvo.dataset.dgCarga !== token) return;
+    const nacional = Number(resumo.valor_nacional || 0);
+    const recorte = Number(resumo.valor_recorte || 0);
+    alvo.innerHTML = `<div class="caixa-interna">
+      <div class="cartoes" style="margin-bottom:0;">
+        <div class="cartao"><h3>Mercado nacional (${escapeHtml(String(dias))} dia(s))</h3><div class="valor" title="${escapeHtml(formatarValor(nacional))}">${escapeHtml(formatarValorCompacto(nacional))}</div></div>
+        ${uf ? `<div class="cartao"><h3>Mercado em ${escapeHtml(uf)}</h3><div class="valor" title="${escapeHtml(formatarValor(recorte))}">${escapeHtml(formatarValorCompacto(recorte))}</div></div>` : ""}
+        <div class="cartao"><h3>Contratos no recorte</h3><div class="valor">${Number(resumo.contratos_recorte || 0).toLocaleString("pt-BR")}</div></div>
+        <div class="cartao"><h3>Concorrentes identificados</h3><div class="valor">${Number(resumo.concorrentes_recorte || 0).toLocaleString("pt-BR")}</div></div>
+      </div>
+    </div><div class="carregando">Resumo pronto. Carregando os detalhes para aprofundar a análise...</div>`;
+  }
   async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, uf, limite = 5000 }) {
     const chaveCache = JSON.stringify({ palavras: palavras || [], dias: dias || null, cnpjFornecedor: cnpjFornecedor || null, uf: uf || null, limite });
     const entradaCache = cacheConsultasContratos.get(chaveCache);
@@ -5788,6 +5816,8 @@ let resultados = resultadosBrutos.filter((r) => {
     const palavras = segmentoRaw.split(",").map((p) => p.trim()).filter(Boolean);
 
     btn.disabled = true;
+    const tokenCarga = `${Date.now()}-${Math.random()}`;
+    alvo.dataset.dgCarga = tokenCarga;
     document.getElementById("dg-chips").innerHTML = "";
     document.getElementById("dg-detalhe").innerHTML = "";
     alvo.innerHTML = '<div class="carregando">Carregando diagnóstico...</div>';
@@ -5801,6 +5831,10 @@ let resultados = resultadosBrutos.filter((r) => {
       const metaContratosPromise = carregarMeta("data/contratos_meta.json");
       const cacheOpPromise = carregarCache("data/oportunidades_abertas.json");
       const cacheMercadoPromise = carregarMercadoSegmentos(palavras, uf || null);
+      const resumoPromise = carregarResumoInteligenciaMercado(palavras, dias, uf);
+      resumoPromise.then((resumo) => {
+        if (btn.disabled) mostrarResumoInicialDiagnostico(alvo, resumo, dias, uf, tokenCarga);
+      });
       const metaContratos = await metaContratosPromise;
       if (metaContratos) {
         const res = await consultarContratosSupabase({ palavras, dias });
@@ -5949,9 +5983,12 @@ let resultados = resultadosBrutos.filter((r) => {
         },
       };
 
+      // Impede que uma resposta tardia do resumo substitua o relatório completo já pronto.
+      alvo.dataset.dgCarga = "";
       renderChipsDiagnostico();
       renderDiagnostico();
     } catch (e) {
+      alvo.dataset.dgCarga = "";
       alvo.innerHTML = `<div class="aviso">Erro ao gerar diagnóstico: ${escapeHtml(String(e))}</div>`;
     } finally {
       btn.disabled = false;
