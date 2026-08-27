@@ -893,10 +893,12 @@
   .dg-subaba-painel { display: none; }
   .dg-subaba-painel.ativo { display: block; }
   .historico-compras-layout { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .historico-compras-layout.filtros-colapsadas { grid-template-columns: 56px minmax(0, 1fr); }
   .historico-compras-resumo { margin-bottom: 20px; }
   .historico-compras-tabela td:first-child { white-space: nowrap; }
   @media (max-width: 820px) {
     .historico-compras-layout { grid-template-columns: 1fr; }
+    .historico-compras-layout.filtros-colapsadas { grid-template-columns: 1fr; }
   }
 
   /* Mini-gráfico de barras "Licitações por mês" (equivalente simplificado ao gráfico do ConLicitação) */
@@ -1662,8 +1664,11 @@
 
     <div class="dg-subaba-painel" data-subaba-painel="historico-compras">
       <div class="historico-compras-layout">
-        <aside class="filtros-lateral">
-          <h3 class="filtros-lateral-titulo">Consultar histórico</h3>
+        <aside class="filtros-lateral" id="hc-filtros-lateral">
+          <div class="filtros-lateral-cabecalho">
+            <h3 class="filtros-lateral-titulo">Consultar histórico</h3>
+            <button type="button" id="hc-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros">«</button>
+          </div>
           <div class="campo">
             <label>Objeto ou produto</label>
             <input id="hc-objeto" placeholder="Ex: equipamento hospitalar">
@@ -1741,6 +1746,32 @@
     const CHAVE = "hc_diagnostico_filtros_colapsado";
 
     const layout = aside.closest(".layout-mercado");
+
+    function aplicar(colapsada) {
+      aside.classList.toggle("colapsada", colapsada);
+      if (layout) layout.classList.toggle("filtros-colapsadas", colapsada);
+      btn.title = colapsada ? "Expandir filtros" : "Recolher filtros";
+    }
+
+    let colapsada = false;
+    try { colapsada = localStorage.getItem(CHAVE) === "1"; } catch (e) { /* localStorage indisponível */ }
+    aplicar(colapsada);
+
+    btn.addEventListener("click", () => {
+      colapsada = !colapsada;
+      aplicar(colapsada);
+      try { localStorage.setItem(CHAVE, colapsada ? "1" : "0"); } catch (e) { /* segue sem persistir */ }
+    });
+  })();
+
+  // Histórico de Compras segue o mesmo padrão de filtros recolhíveis da Visão Geral.
+  // O estado é independente para o usuário poder deixar uma ferramenta aberta e outra fechada.
+  (function () {
+    const aside = document.getElementById("hc-filtros-lateral");
+    const btn = document.getElementById("hc-filtros-colapsar-btn");
+    if (!aside || !btn) return;
+    const CHAVE = "hc_historico_filtros_colapsado";
+    const layout = aside.closest(".historico-compras-layout");
 
     function aplicar(colapsada) {
       aside.classList.toggle("colapsada", colapsada);
