@@ -1,5 +1,6 @@
 node_modules/
 __pycache__/
+.pytest_cache/
 *.pyc
 
 # Arquivos de dados grandes do robô — agora vivem no Supabase (tabelas contratos e

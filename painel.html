@@ -892,6 +892,12 @@
   .btn-subaba.ativo { background: linear-gradient(135deg, var(--azul), var(--azul-escuro)); color: #fff; border-color: transparent; }
   .dg-subaba-painel { display: none; }
   .dg-subaba-painel.ativo { display: block; }
+  .historico-compras-layout { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .historico-compras-resumo { margin-bottom: 20px; }
+  .historico-compras-tabela td:first-child { white-space: nowrap; }
+  @media (max-width: 820px) {
+    .historico-compras-layout { grid-template-columns: 1fr; }
+  }
 
   /* Mini-gráfico de barras "Licitações por mês" (equivalente simplificado ao gráfico do ConLicitação) */
   .mini-grafico { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 10px 4px 0; }
@@ -1655,7 +1661,35 @@
     </div>
 
     <div class="dg-subaba-painel" data-subaba-painel="historico-compras">
-      <div class="aviso"><strong>Em construção.</strong> Consulta por objeto e período, separada da análise ao vivo — pra ver o histórico de compras de um segmento sem depender do diagnóstico atual.</div>
+      <div class="historico-compras-layout">
+        <aside class="filtros-lateral">
+          <h3 class="filtros-lateral-titulo">Consultar histórico</h3>
+          <div class="campo">
+            <label>Objeto ou produto</label>
+            <input id="hc-objeto" placeholder="Ex: equipamento hospitalar">
+          </div>
+          <div class="campo">
+            <label>UF de referência</label>
+            <select id="hc-uf" class="select-uf"></select>
+          </div>
+          <div class="campo">
+            <label>Período</label>
+            <select id="hc-dias">
+              <option value="30">Últimos 30 dias</option>
+              <option value="90">Últimos 3 meses</option>
+              <option value="180">Últimos 6 meses</option>
+              <option value="365" selected>Últimos 12 meses</option>
+              <option value="730">Últimos 24 meses</option>
+            </select>
+          </div>
+          <button class="btn-buscar" id="hc-buscar" style="width:100%;">Consultar histórico</button>
+          <p class="dica-clique" style="margin-top:14px;">A consulta usa a base histórica já coletada. Resultados sem data de assinatura também podem aparecer, porque algumas fontes não informam esse campo.</p>
+        </aside>
+        <div class="conteudo-mercado">
+          <div class="dg-topo-acoes"><div id="hc-chips" class="chips"></div><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
+          <div id="hc-resultado" class="historico-compras-resumo"></div>
+        </div>
+      </div>
     </div>
 
     <div class="dg-subaba-painel" data-subaba-painel="prospeccao-ia">
@@ -5619,6 +5653,124 @@ let resultados = resultadosBrutos.filter((r) => {
       renderDiagnostico();
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao gerar diagnóstico: ${escapeHtml(String(e))}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---------- Histórico de Compras ----------
+  // Consulta a mesma base de contratos da Visão Geral, mas tem filtros e resultados próprios:
+  // não exige que o cliente gere antes um diagnóstico e não dispara busca ao PNCP no navegador.
+  function renderHistoricoCompras(registros, { palavras, uf, dias, totalCorrespondente, truncado }) {
+    const alvo = document.getElementById("hc-resultado");
+    if (!alvo) return;
+
+    const valorTotal = registros.reduce((soma, contrato) => soma + (contrato.valor || 0), 0);
+    const ticketMedio = registros.length > 0 ? valorTotal / registros.length : 0;
+    const orgaos = calcularOrgaos(registros);
+    const fornecedores = calcularConcorrentes(registros);
+    const totalOrgaos = new Set(registros.map((contrato) => contrato.orgao || "Órgão não informado")).size;
+    const porMes = calcularPorMes(registros);
+    const filtroTexto = palavras.join(", ");
+    const filtroLocal = uf ? ` em ${uf}` : " no Brasil";
+
+    let html = `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Histórico de compras para <strong>${escapeHtml(filtroTexto)}</strong>${escapeHtml(filtroLocal)} nos últimos ${dias} dia(s), usando contratos já coletados.</div>`;
+    if (truncado) {
+      html += `<div class="aviso">A busca encontrou ${Number(totalCorrespondente).toLocaleString("pt-BR")} contratos. Para manter a consulta rápida, os indicadores mostram os ${registros.length.toLocaleString("pt-BR")} mais recentes; refine o objeto, a UF ou o período para analisar uma amostra menor.</div>`;
+    }
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Compras encontradas</h3><div class="valor">${registros.length.toLocaleString("pt-BR")}</div></div>
+      <div class="cartao"><h3>Valor contratado</h3><div class="valor">${escapeHtml(formatarValor(valorTotal))}</div></div>
+      <div class="cartao"><h3>Ticket médio</h3><div class="valor">${escapeHtml(formatarValor(ticketMedio))}</div></div>
+      <div class="cartao"><h3>Órgãos compradores</h3><div class="valor">${totalOrgaos}</div></div>
+    </div>`;
+
+    if (registros.length === 0) {
+      html += '<div class="aviso">Nenhuma compra encontrada nesse recorte. Tente um termo mais amplo, outra UF ou um período maior.</div>';
+      alvo.innerHTML = html;
+      return;
+    }
+
+    if (porMes.length > 0) {
+      const maxMes = Math.max(...porMes.map((mes) => mes.valor), 1);
+      html += '<h2>Evolução mensal</h2><div class="mini-grafico">';
+      for (const mes of porMes) {
+        const alturaPct = Math.max(4, Math.round((mes.valor / maxMes) * 100));
+        html += `<div class="mini-grafico-coluna" title="${escapeHtml(mes.rotulo)}: ${escapeHtml(mes.valorFormatado)} · ${mes.contratos} contrato(s)">
+          <div class="mini-grafico-valor">${mes.contratos}</div>
+          <div class="mini-grafico-barra" style="height:${alturaPct}%"></div>
+          <div class="mini-grafico-rotulo">${escapeHtml(mes.rotulo)}</div>
+        </div>`;
+      }
+      html += '</div>';
+    }
+
+    if (orgaos.length > 0) {
+      html += '<h2>Principais órgãos compradores</h2><table><tr><th>Órgão</th><th>Contratos</th><th>Valor contratado</th><th>UFs</th></tr>';
+      for (const orgao of orgaos) {
+        html += `<tr><td>${escapeHtml(orgao.nome)}</td><td>${orgao.contratos}</td><td>${escapeHtml(orgao.valorFormatado)}</td><td>${escapeHtml(orgao.ufs.join(", ") || "-")}</td></tr>`;
+      }
+      html += '</table>';
+    }
+
+    if (fornecedores.length > 0) {
+      html += '<h2>Fornecedores com mais contratos</h2><table><tr><th>Fornecedor</th><th>Contratos</th><th>Valor contratado</th><th>UFs</th></tr>';
+      for (const fornecedor of fornecedores) {
+        html += `<tr><td>${escapeHtml(fornecedor.nome)}<br><small>${escapeHtml(fornecedor.cnpj)}</small></td><td>${fornecedor.contratos}</td><td>${escapeHtml(fornecedor.valorFormatado)}</td><td>${escapeHtml(fornecedor.ufs.join(", ") || "-")}</td></tr>`;
+      }
+      html += '</table>';
+    }
+
+    html += '<h2>Compras mais recentes</h2><table class="historico-compras-tabela"><tr><th>Assinatura</th><th>Objeto</th><th>Órgão</th><th>Fornecedor</th><th>UF</th><th>Valor</th></tr>';
+    for (const contrato of registros.slice(0, 100)) {
+      html += `<tr>
+        <td>${formatarDataIso(contrato.dataAssinatura)}</td>
+        <td>${escapeHtml((contrato.objeto || "-").slice(0, 150))}</td>
+        <td>${escapeHtml(contrato.orgao || "-")}</td>
+        <td>${escapeHtml(contrato.nomeFornecedor || "-")}</td>
+        <td>${escapeHtml(contrato.uf || "-")}</td>
+        <td>${escapeHtml(formatarValor(contrato.valor || 0))}</td>
+      </tr>`;
+    }
+    html += '</table>';
+    if (registros.length > 100) html += `<p class="dica-clique">Mostrando as 100 compras mais recentes de ${registros.length.toLocaleString("pt-BR")} encontradas.</p>`;
+    alvo.innerHTML = html;
+  }
+
+  document.getElementById("hc-buscar").addEventListener("click", async () => {
+    const objetoRaw = document.getElementById("hc-objeto").value.trim();
+    const uf = document.getElementById("hc-uf").value.trim().toUpperCase();
+    const dias = parseInt(document.getElementById("hc-dias").value, 10);
+    const alvo = document.getElementById("hc-resultado");
+    const chips = document.getElementById("hc-chips");
+    const btn = document.getElementById("hc-buscar");
+
+    if (!objetoRaw) {
+      alvo.innerHTML = '<div class="aviso">Informe ao menos uma palavra-chave de objeto ou produto.</div>';
+      return;
+    }
+
+    const palavras = objetoRaw.split(",").map((palavra) => palavra.trim()).filter(Boolean);
+    btn.disabled = true;
+    chips.innerHTML = "";
+    alvo.innerHTML = '<div class="carregando">Consultando histórico de compras...</div>';
+
+    try {
+      const resultado = await consultarContratosSupabase({ palavras, dias, uf: uf || null });
+      if (resultado.erro) {
+        alvo.innerHTML = '<div class="aviso">Não foi possível consultar o histórico agora. Tente novamente em alguns instantes.</div>';
+        return;
+      }
+      chips.innerHTML = `<span class="chip">${escapeHtml(palavras.join(", "))}</span><span class="chip">${uf ? escapeHtml(uf) : "Brasil"}</span><span class="chip">${dias} dias</span>`;
+      renderHistoricoCompras(resultado.registros, {
+        palavras,
+        uf,
+        dias,
+        totalCorrespondente: resultado.totalCorrespondente,
+        truncado: resultado.truncado,
+      });
+    } catch (e) {
+      alvo.innerHTML = `<div class="aviso">Erro ao consultar histórico: ${escapeHtml(String(e))}</div>`;
     } finally {
       btn.disabled = false;
     }

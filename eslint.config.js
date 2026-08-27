@@ -15,12 +15,16 @@ module.exports = [
   {
     ignores: [
       "node_modules/**",
+      ".pytest_cache/**",
+      ".worktrees/**",
       "data/**",
       "docs/**",
       "vault-obsidian/**",
       ".agents/**",
       ".claude/**",
       "supabase/**",
+      "supabase-config.js",
+      "scripts/install-plugins.mjs",
       "*.html",
     ],
   },

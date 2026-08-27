@@ -8,6 +8,8 @@
   "files": {
     "ignore": [
       "node_modules/**",
+      ".pytest_cache/**",
+      ".worktrees/**",
       "data/**",
       "docs/**",
       "vault-obsidian/**",
@@ -15,6 +17,8 @@
       ".claude/**",
       ".github/**",
       "supabase/**",
+      "supabase-config.js",
+      "scripts/install-plugins.mjs",
       "*.html"
     ]
   },
