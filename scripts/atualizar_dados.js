@@ -465,7 +465,11 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   // consegue cobrir muito mais UFs no mesmo tempo, do mesmo jeito que coletarContratos já
   // faz pras páginas de contratos.
   const ORCAMENTO_MINUTOS_OPORTUNIDADES = parseFloat(process.env.LIMITE_MINUTOS_OPORTUNIDADES || "18");
-  const CONCORRENCIA_UF = parseInt(process.env.CONCORRENCIA_UF_OPORTUNIDADES || "6", 10);
+  // O endpoint de propostas do PNCP é especialmente sensível a rajadas paralelas. Quando
+  // seis UFs eram consultadas ao mesmo tempo, uma indisponibilidade momentânea podia fazer
+  // as 27 falharem e o job ainda terminar "verde" usando apenas o cache antigo. Mantemos
+  // uma concorrência moderada por padrão e deixamos o valor configurável no workflow.
+  const CONCORRENCIA_UF = parseInt(process.env.CONCORRENCIA_UF_OPORTUNIDADES || "3", 10);
   iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
   const hoje = new Date();
@@ -484,7 +488,9 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     while (pagina <= totalPaginas && pagina <= 20) {
       if (tempoRestanteMs() < 8000) { falhouUf = true; break; }
       const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=50`;
-      const dados = await fetchComRetentativa(url, 2, 25000, `oportunidades ${uf}`);
+      // Para oportunidades, uma resposta perdida significa um boletim incompleto. Usa mais
+      // tentativas que as coletas de enriquecimento, com o backoff já centralizado acima.
+      const dados = await fetchComRetentativa(url, 4, 25000, `oportunidades ${uf}`);
       if (!dados) { falhouUf = true; break; }
       const itens = dados.data || [];
       totalPaginas = dados.totalPaginas || 1;
@@ -531,6 +537,9 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   await Promise.all(Array.from({ length: CONCORRENCIA_UF }, () => trabalhador()));
   if (filaUfs.length > 0) {
     console.log(`[oportunidades] Orçamento de tempo esgotado — ${filaUfs.length} UF(s) nem chegaram a ser tentadas: ${filaUfs.join(", ")}.`);
+    // UF não tentada também é falha de cobertura; sem isso uma execução que esgotasse o
+    // tempo antes de concluir a fila poderia parecer parcialmente saudável.
+    ufsComFalha.push(...filaUfs);
   }
 
   // Segunda passada só nas UFs que falharam na primeira: falhas de UF individual costumam
@@ -1073,6 +1082,14 @@ async function main() {
   const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   console.log("Gravado data/oportunidades_abertas.json");
+
+  // Não publique uma execução que não conseguiu consultar nenhuma UF: preservar o último
+  // arquivo bom é preferível a registrar uma coleta "atualizada" que, na prática, só
+  // carrega cache antigo. O GitHub Actions ficará vermelho e permitirá intervenção antes
+  // de a base incompleta chegar ao painel.
+  if (oportunidades.ufsComFalha.length === UFS.length) {
+    throw new Error("Coleta de oportunidades sem sucesso: as 27 UFs falharam. Nenhum dado novo será publicado.");
+  }
 
   const caminhoMercado = path.join(dirDados, "mercado_segmentos.json");
   const caminhoMercadoMeta = path.join(dirDados, "mercado_meta.json");

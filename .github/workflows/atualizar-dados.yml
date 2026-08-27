@@ -1,5 +1,11 @@
 name: Atualizar dados do PNCP
 
+# Nunca deixe duas coletas escreverem os mesmos JSONs ao mesmo tempo. Uma execução manual
+# ou agendada aguarda a anterior, preservando a coleta completa em vez de mesclar versões.
+concurrency:
+  group: atualizar-dados-pncp
+  cancel-in-progress: false
+
 on:
   schedule:
     # 09:00 UTC = 06:00 no horário de Brasília (sem horário de verão)
@@ -30,6 +36,8 @@ jobs:
           LIMITE_MINUTOS_MERCADO: "13"
           CONCORRENCIA_PAGINAS: "5"
           CONCORRENCIA_ATAS: "6"
+          LIMITE_MINUTOS_OPORTUNIDADES: "30"
+          CONCORRENCIA_UF_OPORTUNIDADES: "3"
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/atualizar_dados.js
 
