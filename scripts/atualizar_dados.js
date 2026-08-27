@@ -115,9 +115,14 @@ function esperarComBackoff(tentativaZeroIndexed) {
   return new Promise((r) => setTimeout(r, base + Math.random() * 300));
 }
 
-async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "") {
+async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "", antesDaTentativa = null) {
   for (let i = 0; i < tentativas; i++) {
     try {
+      // Algumas fontes (em especial o endpoint de propostas do PNCP) aplicam o
+      // limite por IP, não por requisição individual. O chamador pode fornecer
+      // um limitador compartilhado para que até as retentativas respeitem a
+      // cadência da fonte, sem tornar os demais coletores mais lentos.
+      if (antesDaTentativa) await antesDaTentativa();
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), timeoutMs);
       const resp = await fetch(url, {
@@ -470,6 +475,19 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   // as 27 falharem e o job ainda terminar "verde" usando apenas o cache antigo. Mantemos
   // uma concorrência moderada por padrão e deixamos o valor configurável no workflow.
   const CONCORRENCIA_UF = parseInt(process.env.CONCORRENCIA_UF_OPORTUNIDADES || "3", 10);
+  // O PNCP começa a recusar a origem quando várias páginas são pedidas em
+  // sequência. Este limitador é GLOBAL à fase (não um atraso por worker): três
+  // workers ainda preparam e consolidam resultados em paralelo, mas somente uma
+  // chamada ao endpoint sai a cada intervalo. Assim 27 UFs cabem no orçamento
+  // sem transformar uma rajada em 26 falhas de cobertura.
+  const INTERVALO_MS = parseInt(process.env.INTERVALO_MS_OPORTUNIDADES || "700", 10);
+  let proximaChamadaEm = 0;
+  async function respeitarCadenciaPncp() {
+    const agora = Date.now();
+    const espera = Math.max(0, proximaChamadaEm - agora);
+    proximaChamadaEm = Math.max(agora, proximaChamadaEm) + INTERVALO_MS;
+    if (espera > 0) await new Promise((r) => setTimeout(r, espera));
+  }
   iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
   const hoje = new Date();
@@ -490,7 +508,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=50`;
       // Para oportunidades, uma resposta perdida significa um boletim incompleto. Usa mais
       // tentativas que as coletas de enriquecimento, com o backoff já centralizado acima.
-      const dados = await fetchComRetentativa(url, 4, 25000, `oportunidades ${uf}`);
+      const dados = await fetchComRetentativa(url, 4, 25000, `oportunidades ${uf}`, respeitarCadenciaPncp);
       if (!dados) { falhouUf = true; break; }
       const itens = dados.data || [];
       totalPaginas = dados.totalPaginas || 1;
@@ -1096,8 +1114,13 @@ async function main() {
   // arquivo bom é preferível a registrar uma coleta "atualizada" que, na prática, só
   // carrega cache antigo. O GitHub Actions ficará vermelho e permitirá intervenção antes
   // de a base incompleta chegar ao painel.
-  if (oportunidades.ufsComFalha.length === UFS.length) {
-    throw new Error("Coleta de oportunidades sem sucesso: as 27 UFs falharam. Nenhum dado novo será publicado.");
+  const MIN_UFS_OK_OPORTUNIDADES = parseInt(process.env.MIN_UFS_OK_OPORTUNIDADES || "24", 10);
+  const ufsOkOportunidades = UFS.length - oportunidades.ufsComFalha.length;
+  if (ufsOkOportunidades < MIN_UFS_OK_OPORTUNIDADES) {
+    throw new Error(
+      `Coleta de oportunidades com cobertura insuficiente: ${ufsOkOportunidades}/${UFS.length} UFs concluídas ` +
+      `(mínimo para publicar: ${MIN_UFS_OK_OPORTUNIDADES}). O último boletim íntegro será preservado.`
+    );
   }
 
   const caminhoMercado = path.join(dirDados, "mercado_segmentos.json");
