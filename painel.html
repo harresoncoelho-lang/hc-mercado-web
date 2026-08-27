@@ -1548,6 +1548,12 @@
 
   <section id="oportunidades">
     <div class="secao-conteudo-principal">
+    <div class="boletim-cabecalho">
+      <div>
+        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Encontrar Licitações</h2>
+        <p class="dica-clique" style="margin:4px 0 0;">Pesquise oportunidades publicadas e aplique apenas os filtros que importam. Depois, abra o processo para ver os detalhes e a fonte oficial.</p>
+      </div>
+    </div>
     <div class="painel-filtros painel-filtros-recolhivel" id="op-filtros-principais">
       <div class="painel-filtros-recolhivel-cabecalho">
         <h3 class="painel-filtros-recolhivel-titulo">Filtros de busca</h3>
@@ -1864,6 +1870,12 @@
 
   <section id="empresa">
     <div class="secao-conteudo-principal">
+    <div class="boletim-cabecalho">
+      <div>
+        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-buildings'></use></svg> Analisar Empresa</h2>
+        <p class="dica-clique" style="margin:4px 0 0;">Consulte o CNPJ e aprofunde o dossiê da empresa, com participação, histórico e cruzamentos do segmento selecionado.</p>
+      </div>
+    </div>
     <div class="painel-filtros">
       <div class="campo">
         <label>CNPJ da empresa</label>
@@ -1966,6 +1978,7 @@
         <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-folders'></use></svg> Quadro Kanban</h2>
         <p class="dica-clique" style="margin:4px 0 0;">Arraste os cartões entre as colunas pra acompanhar o andamento de cada licitação. Pra uma licitação aparecer aqui, marque um status nela no Boletim ou em Encontrar Licitações.</p>
       </div>
+      <button type="button" class="btn-imprimir" id="kanban-ir-boletim"><svg class='icone-ph'><use href='#ph-newspaper'></use></svg> Abrir Boletim</button>
     </div>
     <div class="secao-conteudo-principal">
     <div id="kanban-quadro" class="kanban-quadro"></div>
@@ -2004,8 +2017,13 @@
   </section>
 
   <section id="status">
-    <h2 style="margin-top:0;">Status das Ferramentas</h2>
-    <p class="dica-clique" style="margin:0 0 14px;">Última vez que cada fonte de dados foi atualizada com sucesso pelo robô. O robô roda automaticamente todo dia — se algo aparecer "há mais de 2 dias", pode avisar o suporte.</p>
+    <div class="boletim-cabecalho">
+      <div>
+        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-heartbeat'></use></svg> Status das Ferramentas</h2>
+        <p class="dica-clique" style="margin:4px 0 0;">Acompanhe a atualização das fontes. Se algo aparecer há mais de dois dias, avise o suporte.</p>
+      </div>
+      <button type="button" class="btn-imprimir" id="status-atualizar"><svg class='icone-ph'><use href='#ph-arrows-clockwise'></use></svg> Atualizar status</button>
+    </div>
     <div class="secao-conteudo-principal">
     <div id="status-cartoes" class="cartoes"></div>
     </div>
@@ -2227,8 +2245,8 @@
   }
 
   let statusJaCarregado = false;
-  async function carregarStatusFerramentas() {
-    if (statusJaCarregado) return;
+  async function carregarStatusFerramentas(forcar = false) {
+    if (statusJaCarregado && !forcar) return;
     statusJaCarregado = true;
     const alvo = document.getElementById("status-cartoes");
     alvo.innerHTML = '<p class="dica-clique">Carregando...</p>';
@@ -2286,6 +2304,10 @@
 
   document.querySelector('nav button[data-alvo="status"]').addEventListener("click", carregarStatusFerramentas);
   document.querySelector('nav button[data-alvo="kanban"]').addEventListener("click", renderizarKanban);
+  document.getElementById("status-atualizar").addEventListener("click", () => carregarStatusFerramentas(true));
+  document.getElementById("kanban-ir-boletim").addEventListener("click", () => {
+    document.querySelector('nav button[data-alvo="boletim"]').click();
+  });
 
   // ---- Modal "Resumir com IA" (Resumo do Edital + Pergunte ao Edital) ----
   let iaEditalAtual = null;
