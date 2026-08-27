@@ -5215,7 +5215,8 @@ let resultados = resultadosBrutos.filter((r) => {
     if (!l) return;
     const vencedor = (l.item.vencedores || [])[0];
     const link = linkPncp(l.ata.numeroControlePNCPCompra);
-    let html = `<h3>Detalhe do item</h3><dl>
+    let html = `<div class="dg-topo-acoes"><button type="button" class="btn-imprimir" id="bc-voltar-resultados">← Voltar aos sinais encontrados</button><span></span></div>
+      <h2>Detalhe do item</h2><dl>
       <div><dt>Item</dt><dd>${escapeHtml(l.item.descricao || "-")}</dd></div>
       <div><dt>Situação</dt><dd>${escapeHtml(l.situacao || "-")}</dd></div>
       <div><dt>Objeto da licitação/ata</dt><dd>${escapeHtml(l.ata.objeto || "-")}</dd></div>
@@ -5248,9 +5249,12 @@ let resultados = resultadosBrutos.filter((r) => {
     if (vencedor && vencedor.cnpj) {
       html += `<p style="margin:16px 0 0;"><button type="button" class="btn-buscar" id="bc-analisar-fornecedor">Analisar fornecedor e histórico <svg class='icone-ph'><use href='#ph-arrow-right'></use></svg></button></p>`;
     }
-    const alvo = document.getElementById("dg-baixa-concorrencia-detalhe");
+    // Troca a lista pelo detalhe focado. O padrão evita a tela longa e confusa que
+    // ocorria ao anexar a ficha inteira abaixo de duas tabelas extensas.
+    const alvo = document.getElementById("dg-baixa-concorrencia-resultado");
     if (!alvo) return;
     alvo.innerHTML = html;
+    alvo.querySelector("#bc-voltar-resultados").addEventListener("click", renderBaixaConcorrencia);
     const btnFornecedor = alvo.querySelector("#bc-analisar-fornecedor");
     if (btnFornecedor) {
       btnFornecedor.addEventListener("click", () => {
