@@ -1650,6 +1650,7 @@
       <div class="conteudo-mercado">
         <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
         <div id="dg-baixa-concorrencia-resultado"></div>
+        <div id="dg-baixa-concorrencia-detalhe"></div>
       </div>
     </div>
 
@@ -3540,6 +3541,64 @@
       .sort((a, b) => b.valorTotalHistorico - a.valorTotalHistorico);
   }
 
+  // Mesma lógica de calcularEmpresasMercado, mas agrupando por marca do produto em vez de
+  // por fornecedor — só existe marca quando o robô conseguiu casar o item com a API pública
+  // de Pesquisa de Preço do Compras.gov.br (cobertura parcial: só órgãos federais/distritais
+  // com item catalogado cujo fornecedor informou marca).
+  function calcularMarcasMercado(atasFiltradas) {
+    const agora = Date.now();
+    const marcas = new Map();
+    for (const ata of atasFiltradas) {
+      if (!ata.enriquecida || !Array.isArray(ata.itens)) continue;
+      const vigente = !ata.cancelado && ata.vigenciaFim && new Date(ata.vigenciaFim).getTime() >= agora;
+      for (const item of ata.itens) {
+        for (const v of item.vencedores || []) {
+          if (!v.marca) continue;
+          if (!marcas.has(v.marca)) {
+            marcas.set(v.marca, {
+              marca: v.marca,
+              fornecedores: new Map(),
+              ufs: new Set(),
+              atasVigentes: [],
+              atasEncerradas: [],
+              valorTotalVigente: 0,
+              valorTotalHistorico: 0,
+              itensGanhos: 0,
+            });
+          }
+          const mar = marcas.get(v.marca);
+          if (v.cnpj) mar.fornecedores.set(v.cnpj, v.nome || v.cnpj);
+          if (ata.ufOrgao) mar.ufs.add(ata.ufOrgao);
+          mar.itensGanhos += 1;
+          mar.valorTotalHistorico += v.valorTotal || 0;
+          const refEntry = {
+            numeroControlePNCPAta: ata.numeroControlePNCPAta,
+            orgao: ata.orgao,
+            uf: ata.ufOrgao,
+            municipio: ata.municipioOrgao,
+            objeto: ata.objeto,
+            item: item.descricao,
+            fornecedor: v.nome || v.cnpj,
+            valorTotal: v.valorTotal,
+            quantidade: v.quantidade,
+            vigenciaInicio: ata.vigenciaInicio,
+            vigenciaFim: ata.vigenciaFim,
+            cancelado: ata.cancelado,
+          };
+          if (vigente) {
+            mar.valorTotalVigente += v.valorTotal || 0;
+            mar.atasVigentes.push(refEntry);
+          } else {
+            mar.atasEncerradas.push(refEntry);
+          }
+        }
+      }
+    }
+    return Array.from(marcas.values())
+      .map((m) => ({ ...m, ufs: Array.from(m.ufs), fornecedores: Array.from(m.fornecedores.values()) }))
+      .sort((a, b) => b.valorTotalHistorico - a.valorTotalHistorico);
+  }
+
   // Faz fetch com timeout próprio: a API do PNCP às vezes fica lenta e trava
   // uma requisição por 60-70s+, o que sozinho já estoura o orçamento de tempo
   // do escaneamento. Com isso, cada página desiste em no máx. `timeoutMs` e
@@ -4631,6 +4690,9 @@ let resultados = resultadosBrutos.filter((r) => {
       const emp = d.mercado.empresas.find((e) => e.cnpj === d.mercado.empresaSelecionada.cnpj);
       html += `<div class="chip">Empresa (mercado): ${escapeHtml(emp ? emp.nome : d.mercado.empresaSelecionada.cnpj)} <button id="dg-chip-limpar-empresa-mercado" title="Remover filtro">✕</button></div>`;
     }
+    if (d.mercado && d.mercado.marcaSelecionada) {
+      html += `<div class="chip">Marca: ${escapeHtml(d.mercado.marcaSelecionada.marca)} <button id="dg-chip-limpar-marca" title="Remover filtro">✕</button></div>`;
+    }
     chipsEl.innerHTML = html;
     const btnLimpar = document.getElementById("dg-chip-limpar");
     if (btnLimpar) {
@@ -4654,6 +4716,15 @@ let resultados = resultadosBrutos.filter((r) => {
     if (btnLimparEmpresaMercado) {
       btnLimparEmpresaMercado.addEventListener("click", () => {
         estado.diagnostico.mercado.empresaSelecionada = null;
+        document.getElementById("dg-detalhe").innerHTML = "";
+        renderChipsDiagnostico();
+        renderDiagnostico();
+      });
+    }
+    const btnLimparMarca = document.getElementById("dg-chip-limpar-marca");
+    if (btnLimparMarca) {
+      btnLimparMarca.addEventListener("click", () => {
+        estado.diagnostico.mercado.marcaSelecionada = null;
         document.getElementById("dg-detalhe").innerHTML = "";
         renderChipsDiagnostico();
         renderDiagnostico();
@@ -4809,6 +4880,58 @@ let resultados = resultadosBrutos.filter((r) => {
     alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // Detalha uma marca de produto (mesmo padrão de renderDetalheEmpresaMercado, agrupado
+  // por marca em vez de por CNPJ) — mostra quem fabrica/vende essa marca e em quais atas.
+  function renderDetalheMarca(marca) {
+    const d = estado.diagnostico;
+    const m = d.mercado;
+    const marcaObj = m.marcas.find((x) => x.marca === marca);
+    if (!marcaObj) return;
+    m.marcaSelecionada = { marca };
+    renderChipsDiagnostico();
+
+    const linhaAta = (a) => `<tr>
+      <td>${escapeHtml(a.objeto || "-")}</td>
+      <td>${escapeHtml(a.item || "-")}</td>
+      <td>${escapeHtml(a.fornecedor || "-")}</td>
+      <td>${escapeHtml(a.orgao || "-")}</td>
+      <td>${escapeHtml(a.uf || "-")}${a.municipio ? " / " + escapeHtml(a.municipio) : ""}</td>
+      <td>${escapeHtml(formatarValor(a.valorTotal))}</td>
+    </tr>`;
+
+    let html = `<h2>Marca: ${escapeHtml(marcaObj.marca)}</h2>`;
+    html += `<div class="cartoes">
+      <div class="cartao"><h3>Valor total histórico (segmento)</h3><div class="valor">${escapeHtml(formatarValor(marcaObj.valorTotalHistorico))}</div></div>
+      <div class="cartao"><h3>Valor em atas vigentes hoje</h3><div class="valor">${escapeHtml(formatarValor(marcaObj.valorTotalVigente))}</div></div>
+      <div class="cartao"><h3>Itens ganhos</h3><div class="valor">${marcaObj.itensGanhos}</div></div>
+      <div class="cartao"><h3>Fornecedores que vendem essa marca</h3><div class="valor" style="font-size:16px;">${escapeHtml(marcaObj.fornecedores.join(", ") || "-")}</div></div>
+    </div>`;
+
+    html += `<h3>Contratos/atas vigentes hoje (${marcaObj.atasVigentes.length})</h3>`;
+    if (marcaObj.atasVigentes.length === 0) {
+      html += "<p>Nenhuma ata vigente encontrada pra essa marca nesse segmento na amostra coletada.</p>";
+    } else {
+      html += "<table><tr><th>Objeto</th><th>Item</th><th>Fornecedor</th><th>Órgão</th><th>UF/Município</th><th>Valor</th></tr>";
+      for (const a of marcaObj.atasVigentes) html += linhaAta(a);
+      html += "</table>";
+    }
+
+    html += `<h3>Contratos/atas encerrados ou cancelados (${marcaObj.atasEncerradas.length})</h3>`;
+    if (marcaObj.atasEncerradas.length === 0) {
+      html += "<p>Nenhum histórico encerrado encontrado pra essa marca nesse segmento na amostra coletada.</p>";
+    } else {
+      html += "<table><tr><th>Objeto</th><th>Item</th><th>Fornecedor</th><th>Órgão</th><th>UF/Município</th><th>Valor</th></tr>";
+      for (const a of marcaObj.atasEncerradas) html += linhaAta(a);
+      html += "</table>";
+    }
+
+    html += '<div class="dica-clique">Marca só aparece quando o robô consegue casar o item com a API pública de Pesquisa de Preço do Compras.gov.br — cobertura parcial (só órgãos federais/distritais com item catalogado cujo fornecedor informou marca).</div>';
+
+    const alvoDetalhe = document.getElementById("dg-detalhe");
+    alvoDetalhe.innerHTML = html;
+    alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   // ---------- Mapa de concentração por UF (Visão Geral) ----------
   // Carrega o desenho do mapa do Brasil (paths por estado) via CDN só na primeira vez que
   // precisar — pacote leve e estático (@svg-maps/brazil), sem depender de D3/topojson.
@@ -4896,30 +5019,72 @@ let resultados = resultadosBrutos.filter((r) => {
     return linhas;
   }
 
-  function montarTabelaBaixaConcorrencia(linhas) {
+  // Guarda a lista completa (não só os 200 primeiros renderizados) por tipo, pra
+  // renderDetalheBaixaConcorrencia conseguir achar a linha clicada pelo índice.
+  let _bcLinhasAtual = {};
+
+  function montarTabelaBaixaConcorrencia(linhas, tipo) {
     // Marca do produto: só existe quando o robô conseguiu casar o item com a API pública de
     // Pesquisa de Preço do Compras.gov.br (só cobre itens de órgãos federais/distritais com
     // código de catálogo — cobertura parcial, cresce aos poucos conforme o robô reprocessa).
     let html = "<table><tr><th>Objeto do item</th><th>Marca</th><th>Ata / órgão</th><th>UF/Município</th><th>Situação</th></tr>";
-    for (const l of linhas.slice(0, 200)) {
+    linhas.slice(0, 200).forEach((l, idx) => {
       const vencedor = (l.item.vencedores || [])[0];
       const marca = vencedor && vencedor.marca ? vencedor.marca : "-";
-      html += `<tr>
+      html += `<tr class="linha-clicavel" data-bc-tipo="${escapeHtml(tipo)}" data-bc-idx="${idx}">
         <td>${escapeHtml(l.item.descricao || "-")}</td>
         <td>${escapeHtml(marca)}</td>
         <td>${escapeHtml(l.ata.objeto || "-")}<br><small>${escapeHtml(l.ata.orgao || "-")}</small></td>
         <td>${escapeHtml(l.ata.ufOrgao || "-")}${l.ata.municipioOrgao ? " / " + escapeHtml(l.ata.municipioOrgao) : ""}</td>
         <td>${escapeHtml(l.situacao || "-")}</td>
       </tr>`;
-    }
+    });
     html += "</table>";
     if (linhas.length > 200) html += `<p class="dica-clique">Mostrando os primeiros 200 de ${linhas.length.toLocaleString("pt-BR")} encontrados.</p>`;
     return html;
   }
 
+  // Detalha uma linha de baixa concorrência: descrição completa do item, situação, dados
+  // da ata/órgão, link pro edital no PNCP e, quando houver, o vencedor único (nome, CNPJ,
+  // marca, valores). Sem vencedor, explica que a ausência já É o próprio sinal.
+  function renderDetalheBaixaConcorrencia(tipo, idx) {
+    const l = (_bcLinhasAtual[tipo] || [])[idx];
+    if (!l) return;
+    const vencedor = (l.item.vencedores || [])[0];
+    const link = linkPncp(l.ata.numeroControlePNCPCompra);
+    let html = `<h3>Detalhe do item</h3><dl>
+      <div><dt>Item</dt><dd>${escapeHtml(l.item.descricao || "-")}</dd></div>
+      <div><dt>Situação</dt><dd>${escapeHtml(l.situacao || "-")}</dd></div>
+      <div><dt>Objeto da licitação/ata</dt><dd>${escapeHtml(l.ata.objeto || "-")}</dd></div>
+      <div><dt>Órgão</dt><dd>${escapeHtml(l.ata.orgao || "-")}</dd></div>
+      <div><dt>UF/Município</dt><dd>${escapeHtml(l.ata.ufOrgao || "-")}${l.ata.municipioOrgao ? " / " + escapeHtml(l.ata.municipioOrgao) : ""}</dd></div>
+      <div><dt>Vigência da ata</dt><dd>${escapeHtml(String(l.ata.vigenciaInicio || "-"))} a ${escapeHtml(String(l.ata.vigenciaFim || "-"))}${l.ata.cancelado ? " (cancelada)" : ""}</dd></div>
+      <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(l.ata.numeroControlePNCPCompra || l.ata.numeroControlePNCPAta || "-")}</dd></div>
+      <div><dt>Link</dt><dd>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">Abrir edital no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</dd></div>
+    </dl>`;
+    if (vencedor) {
+      html += `<h3>Vencedor único</h3><dl>
+        <div><dt>Fornecedor</dt><dd>${escapeHtml(vencedor.nome || "-")}</dd></div>
+        <div><dt>CNPJ</dt><dd>${escapeHtml(vencedor.cnpj || "-")}</dd></div>
+        <div><dt>Marca</dt><dd>${escapeHtml(vencedor.marca || "-")}</dd></div>
+        <div><dt>Valor unitário</dt><dd>${escapeHtml(formatarValor(vencedor.valorUnitario))}</dd></div>
+        <div><dt>Valor total</dt><dd>${escapeHtml(formatarValor(vencedor.valorTotal))}</dd></div>
+        <div><dt>Quantidade</dt><dd>${escapeHtml(String(vencedor.quantidade || "-"))}</dd></div>
+      </dl>`;
+    } else {
+      html += '<div class="aviso">Nenhuma empresa venceu esse item (deserto/fracassado/anulado/revogado/cancelado) — a própria ausência de vencedor já é o sinal de baixa concorrência.</div>';
+    }
+    const alvo = document.getElementById("dg-baixa-concorrencia-detalhe");
+    if (!alvo) return;
+    alvo.innerHTML = html;
+    alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderBaixaConcorrencia() {
     const alvo = document.getElementById("dg-baixa-concorrencia-resultado");
     if (!alvo) return;
+    const alvoDetalhe = document.getElementById("dg-baixa-concorrencia-detalhe");
+    if (alvoDetalhe) alvoDetalhe.innerHTML = "";
     const d = estado.diagnostico;
     if (!d || !d.mercado || !Array.isArray(d.mercado.atas)) {
       alvo.innerHTML = '<div class="aviso">Gere um diagnóstico na aba <strong>Visão Geral</strong> primeiro (mesmo segmento/UF/período) — esta aba reaproveita os mesmos dados, sem nova consulta.</div>';
@@ -4932,16 +5097,22 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     const desertos = linhas.filter((l) => l.tipo === "deserto-fracassado");
     const unicos = linhas.filter((l) => l.tipo === "vencedor-unico");
+    _bcLinhasAtual = { "deserto-fracassado": desertos, "vencedor-unico": unicos };
     let html = '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Baseado nos mesmos filtros da Visão Geral. "Deserto/Fracassado" é o sinal mais forte (ninguém venceu o item); "vencedor único" é mais fraco (só uma empresa venceu — o PNCP não expõe quantas participaram e perderam).</div>';
     if (desertos.length > 0) {
       html += `<h2>Itens desertos ou fracassados (${desertos.length}) — ninguém venceu</h2>`;
-      html += montarTabelaBaixaConcorrencia(desertos);
+      html += montarTabelaBaixaConcorrencia(desertos, "deserto-fracassado");
     }
     if (unicos.length > 0) {
       html += `<h2>Itens com vencedor único (${unicos.length}) — só uma empresa venceu</h2>`;
-      html += montarTabelaBaixaConcorrencia(unicos);
+      html += montarTabelaBaixaConcorrencia(unicos, "vencedor-unico");
     }
     alvo.innerHTML = html;
+    alvo.querySelectorAll("tr.linha-clicavel[data-bc-tipo]").forEach((tr) => {
+      tr.addEventListener("click", () => {
+        renderDetalheBaixaConcorrencia(tr.dataset.bcTipo, Number(tr.dataset.bcIdx));
+      });
+    });
   }
 
   function renderDiagnostico() {
@@ -5010,7 +5181,7 @@ let resultados = resultadosBrutos.filter((r) => {
       <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-orgaos"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-bank'></use></svg></span><span class="angulo-titulo">Órgãos</span><span class="angulo-desc">Quem mais compra nesse segmento</span></button>
       <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-empresas"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-buildings'></use></svg></span><span class="angulo-titulo">Empresas</span><span class="angulo-desc">Quem já vence esse mercado</span></button>
       <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-correspondencias"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span class="angulo-titulo">Correspondências</span><span class="angulo-desc">Oportunidades abertas agora</span></button>
-      <button type="button" class="angulo-card angulo-desabilitado" disabled title="Ainda não capturamos marca de produto — no roadmap"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-package'></use></svg></span><span class="angulo-titulo">Marcas</span><span class="angulo-desc">Em breve</span></button>
+      <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-marcas"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-package'></use></svg></span><span class="angulo-titulo">Marcas</span><span class="angulo-desc">Quem fabrica o que se vende</span></button>
       <button type="button" class="angulo-card angulo-desabilitado" disabled title="Previsão de contratação futura — no roadmap"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-chart-line-up'></use></svg></span><span class="angulo-titulo">Contratação futura</span><span class="angulo-desc">Em breve</span></button>
     </div>`;
 
@@ -5134,6 +5305,22 @@ let resultados = resultadosBrutos.filter((r) => {
       }
     }
 
+    html += `<h2 id="dg-secao-marcas">Marcas mais vencedoras (por valor) — clique para ver os itens</h2>`;
+    if (!d.mercado || !d.mercado.marcas || d.mercado.marcas.length === 0) {
+      html += '<div class="aviso">Nenhuma marca de produto identificada ainda nesse segmento/UF. Marca só aparece quando o robô consegue casar o item com a API pública de Pesquisa de Preço do Compras.gov.br — cobertura parcial (só órgãos federais/distritais com item catalogado cujo fornecedor informou marca no Comprasnet).</div>';
+    } else {
+      const maxMarca = d.mercado.marcas[0].valorTotalHistorico || 1;
+      for (const mc of d.mercado.marcas) {
+        const largura = Math.round((mc.valorTotalHistorico / maxMarca) * 100);
+        const selecionada = d.mercado.marcaSelecionada && d.mercado.marcaSelecionada.marca === mc.marca;
+        html += `<div class="barra-item${selecionada ? " selecionado" : ""}" data-marca="${escapeHtml(mc.marca)}">
+          <div class="barra-label">${escapeHtml(mc.marca)}</div>
+          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%">${escapeHtml(formatarValor(mc.valorTotalHistorico))}</div></div>
+          <div class="barra-meta">${escapeHtml(mc.fornecedores.join(", ") || "-")} · ${mc.itensGanhos} item(ns) ganho(s) · <small>clique para detalhar</small></div>
+        </div>`;
+      }
+    }
+
     html += "<h2 id=\"dg-secao-correspondencias\">Oportunidades abertas agora " + (d.uf ? "em " + escapeHtml(d.uf) : "") + "</h2>";
     if (d.oportunidadesAbertas.length === 0) {
       html += "<p>Nenhuma oportunidade aberta encontrada no momento para esse segmento/UF.</p>";
@@ -5167,6 +5354,10 @@ let resultados = resultadosBrutos.filter((r) => {
 
     alvo.querySelectorAll(".barra-item[data-cnpj-mercado]").forEach((el) => {
       el.addEventListener("click", () => renderDetalheEmpresaMercado(el.dataset.cnpjMercado));
+    });
+
+    alvo.querySelectorAll(".barra-item[data-marca]").forEach((el) => {
+      el.addEventListener("click", () => renderDetalheMarca(el.dataset.marca));
     });
 
     alvo.querySelectorAll("tr.linha-clicavel[data-idx-op]").forEach((tr) => {
@@ -5373,6 +5564,7 @@ let resultados = resultadosBrutos.filter((r) => {
       // aviso explicando que a coleta está em andamento (não que o segmento é ignorado).
       let atasFiltradas = [];
       let empresasMercado = [];
+      let marcasMercado = [];
       let mercadoSegmentosMonitorados = [];
       let mercadoAtualizadoEm = null;
       let mercadoParcial = false;
@@ -5383,6 +5575,7 @@ let resultados = resultadosBrutos.filter((r) => {
         mercadoParcial = !!cacheMercado.parcial;
         atasFiltradas = cacheMercado.atas;
         empresasMercado = calcularEmpresasMercado(atasFiltradas);
+        marcasMercado = calcularMarcasMercado(atasFiltradas);
       }
 
       estado.diagnostico = {
@@ -5413,10 +5606,12 @@ let resultados = resultadosBrutos.filter((r) => {
         mercado: {
           atas: atasFiltradas,
           empresas: empresasMercado,
+          marcas: marcasMercado,
           segmentosMonitorados: mercadoSegmentosMonitorados,
           atualizadoEm: mercadoAtualizadoEm,
           parcial: mercadoParcial,
           empresaSelecionada: null,
+          marcaSelecionada: null,
         },
       };
 
