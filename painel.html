@@ -5804,6 +5804,41 @@ let resultados = resultadosBrutos.filter((r) => {
   // ---------- Histórico de Compras ----------
   // Consulta a mesma base de contratos da Visão Geral, mas tem filtros e resultados próprios:
   // não exige que o cliente gere antes um diagnóstico e não dispara busca ao PNCP no navegador.
+  let _hcContextoAtual = null;
+
+  function renderDetalheHistoricoOrgao(indice) {
+    const contexto = _hcContextoAtual;
+    const alvo = document.getElementById("hc-detalhe");
+    if (!contexto || !alvo || !contexto.orgaos[indice]) return;
+    const orgao = contexto.orgaos[indice];
+    const compras = contexto.registros
+      .filter((contrato) => (contrato.orgao || "Órgão não informado") === orgao.nome)
+      .sort((a, b) => String(b.dataAssinatura || "").localeCompare(String(a.dataAssinatura || "")));
+    const valor = compras.reduce((soma, contrato) => soma + (contrato.valor || 0), 0);
+    let html = `<h2>Compras de ${escapeHtml(orgao.nome)}</h2>
+      <div class="cartoes">
+        <div class="cartao"><h3>Contratos no recorte</h3><div class="valor">${compras.length}</div></div>
+        <div class="cartao"><h3>Valor contratado</h3><div class="valor">${escapeHtml(formatarValor(valor))}</div></div>
+        <div class="cartao"><h3>UFs</h3><div class="valor" style="font-size:16px;">${escapeHtml(orgao.ufs.join(", ") || "-")}</div></div>
+      </div>
+      <p class="dica-clique">Recorte da consulta atual. Cada linha aponta para o registro oficial quando o número PNCP está disponível.</p>
+      <table><tr><th>Assinatura</th><th>Objeto</th><th>Fornecedor</th><th>Valor</th><th>Fonte</th></tr>`;
+    for (const contrato of compras.slice(0, 100)) {
+      const link = linkPncp(contrato.numeroControlePNCP);
+      html += `<tr>
+        <td>${formatarDataIso(contrato.dataAssinatura)}</td>
+        <td>${escapeHtml((contrato.objeto || "-").slice(0, 180))}</td>
+        <td>${escapeHtml(contrato.nomeFornecedor || "-")}</td>
+        <td>${escapeHtml(formatarValor(contrato.valor || 0))}</td>
+        <td>${link ? `<a class="link-pncp" href="${escapeHtml(link)}" target="_blank" rel="noopener">PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td>
+      </tr>`;
+    }
+    html += "</table>";
+    if (compras.length > 100) html += `<p class="dica-clique">Mostrando os 100 registros mais recentes de ${compras.length}.</p>`;
+    alvo.innerHTML = html;
+    alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderHistoricoCompras(registros, { palavras, uf, dias, totalCorrespondente, truncado }) {
     const alvo = document.getElementById("hc-resultado");
     if (!alvo) return;
@@ -5816,6 +5851,7 @@ let resultados = resultadosBrutos.filter((r) => {
     const porMes = calcularPorMes(registros);
     const filtroTexto = palavras.join(", ");
     const filtroLocal = uf ? ` em ${uf}` : " no Brasil";
+    _hcContextoAtual = { registros, orgaos, fornecedores };
 
     let html = `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Histórico de compras para <strong>${escapeHtml(filtroTexto)}</strong>${escapeHtml(filtroLocal)} nos últimos ${dias} dia(s), usando contratos já coletados.</div>`;
     if (truncado) {
@@ -5850,17 +5886,17 @@ let resultados = resultadosBrutos.filter((r) => {
 
     if (orgaos.length > 0) {
       html += '<h2>Principais órgãos compradores</h2><table><tr><th>Órgão</th><th>Contratos</th><th>Valor contratado</th><th>UFs</th></tr>';
-      for (const orgao of orgaos) {
-        html += `<tr><td>${escapeHtml(orgao.nome)}</td><td>${orgao.contratos}</td><td>${escapeHtml(orgao.valorFormatado)}</td><td>${escapeHtml(orgao.ufs.join(", ") || "-")}</td></tr>`;
-      }
+      orgaos.forEach((orgao, indice) => {
+        html += `<tr class="linha-clicavel" data-hc-orgao="${indice}" title="Ver compras deste órgão"><td>${escapeHtml(orgao.nome)}</td><td>${orgao.contratos}</td><td>${escapeHtml(orgao.valorFormatado)}</td><td>${escapeHtml(orgao.ufs.join(", ") || "-")}</td></tr>`;
+      });
       html += '</table>';
     }
 
     if (fornecedores.length > 0) {
       html += '<h2>Fornecedores com mais contratos</h2><table><tr><th>Fornecedor</th><th>Contratos</th><th>Valor contratado</th><th>UFs</th></tr>';
-      for (const fornecedor of fornecedores) {
-        html += `<tr><td>${escapeHtml(fornecedor.nome)}<br><small>${escapeHtml(fornecedor.cnpj)}</small></td><td>${fornecedor.contratos}</td><td>${escapeHtml(fornecedor.valorFormatado)}</td><td>${escapeHtml(fornecedor.ufs.join(", ") || "-")}</td></tr>`;
-      }
+      fornecedores.forEach((fornecedor, indice) => {
+        html += `<tr class="linha-clicavel" data-hc-fornecedor="${indice}" title="Abrir dossiê desta empresa"><td>${escapeHtml(fornecedor.nome)}<br><small>${escapeHtml(fornecedor.cnpj)}</small></td><td>${fornecedor.contratos}</td><td>${escapeHtml(fornecedor.valorFormatado)}</td><td>${escapeHtml(fornecedor.ufs.join(", ") || "-")}</td></tr>`;
+      });
       html += '</table>';
     }
 
@@ -5877,7 +5913,21 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     html += '</table>';
     if (registros.length > 100) html += `<p class="dica-clique">Mostrando as 100 compras mais recentes de ${registros.length.toLocaleString("pt-BR")} encontradas.</p>`;
+    html += '<div id="hc-detalhe" class="detalhe-drilldown" style="margin-top:20px;"></div>';
     alvo.innerHTML = html;
+    alvo.querySelectorAll("tr[data-hc-orgao]").forEach((linha) => {
+      linha.addEventListener("click", () => renderDetalheHistoricoOrgao(Number(linha.dataset.hcOrgao)));
+    });
+    alvo.querySelectorAll("tr[data-hc-fornecedor]").forEach((linha) => {
+      linha.addEventListener("click", () => {
+        const fornecedor = fornecedores[Number(linha.dataset.hcFornecedor)];
+        if (!fornecedor || !fornecedor.cnpj) return;
+        document.querySelector('nav button[data-alvo="empresa"]').click();
+        document.getElementById("emp-cnpj").value = fornecedor.cnpj;
+        document.getElementById("emp-segmento").value = palavras.join(", ");
+        document.getElementById("emp-buscar").click();
+      });
+    });
   }
 
   document.getElementById("hc-buscar").addEventListener("click", async () => {
