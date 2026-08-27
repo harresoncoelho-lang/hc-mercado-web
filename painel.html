@@ -5716,7 +5716,10 @@ let resultados = resultadosBrutos.filter((r) => {
   // chegava a ~22 MB) e filtrar em JS. "incluirSemData" mantém o mesmo comportamento de
   // antes: registros sem dataAssinatura sempre entravam, independente do filtro de dias.
   async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, uf, limite = 5000 }) {
-    let query = window.__sbClient.from("contratos").select("dado", { count: "exact" }).limit(limite);
+    // A contagem exata obriga o Postgres a percorrer toda a base antes de devolver os
+    // registros. Para o diagnóstico ela só serve como indicador de recorte, portanto a
+    // estimativa do planejador elimina essa espera sem afetar os contratos exibidos.
+    let query = window.__sbClient.from("contratos").select("dado", { count: "planned" }).limit(limite);
     if (typeof dias === "number" && dias > 0) {
       const limiteDataIso = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       query = query.or(`data_assinatura.gte.${limiteDataIso},data_assinatura.is.null`);
@@ -5784,7 +5787,12 @@ let resultados = resultadosBrutos.filter((r) => {
       let encontrados, paginasVarridas, totalPaginas, parcial, falhaConexao, fonte;
       let consultaTruncada = false, totalCorrespondente = null, totalRetornado = null;
 
-      const metaContratos = await carregarMeta("data/contratos_meta.json");
+      // Metadados e fontes auxiliares são independentes da consulta de contratos. Iniciar
+      // tudo junto reduz o tempo percebido até o relatório sem aumentar chamadas à API.
+      const metaContratosPromise = carregarMeta("data/contratos_meta.json");
+      const cacheOpPromise = carregarCache("data/oportunidades_abertas.json");
+      const cacheMercadoPromise = carregarMercadoSegmentos(palavras, uf || null);
+      const metaContratos = await metaContratosPromise;
       if (metaContratos) {
         const res = await consultarContratosSupabase({ palavras, dias });
         encontrados = res.registros;
@@ -5853,7 +5861,7 @@ let resultados = resultadosBrutos.filter((r) => {
       // coletarOportunidadesAbertas em scripts/atualizar_dados.js) — carrega uma vez só e
       // reaproveita tanto pra tabela de "abertas agora" (só quando UF selecionada, como
       // antes) quanto pro breakdown por modalidade (sempre, nacional ou por UF).
-      const cacheOp = await carregarCache("data/oportunidades_abertas.json");
+      const cacheOp = await cacheOpPromise;
       if (uf) {
         if (cacheOp) {
           oportunidadesAbertas = cacheOp.registros
@@ -5885,7 +5893,7 @@ let resultados = resultadosBrutos.filter((r) => {
       let mercadoSegmentosMonitorados = [];
       let mercadoAtualizadoEm = null;
       let mercadoParcial = false;
-      const cacheMercado = await carregarMercadoSegmentos(palavras, uf || null);
+      const cacheMercado = await cacheMercadoPromise;
       if (cacheMercado) {
         mercadoSegmentosMonitorados = cacheMercado.segmentosMonitorados || [];
         mercadoAtualizadoEm = cacheMercado.atualizadoEm;
