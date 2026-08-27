@@ -5715,7 +5715,14 @@ let resultados = resultadosBrutos.filter((r) => {
   // (data mínima + palavras-chave), no lugar de baixar o arquivo estático inteiro (que
   // chegava a ~22 MB) e filtrar em JS. "incluirSemData" mantém o mesmo comportamento de
   // antes: registros sem dataAssinatura sempre entravam, independente do filtro de dias.
+  const cacheConsultasContratos = new Map();
+  const CACHE_CONTRATOS_TTL_MS = 5 * 60 * 1000;
   async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, uf, limite = 5000 }) {
+    const chaveCache = JSON.stringify({ palavras: palavras || [], dias: dias || null, cnpjFornecedor: cnpjFornecedor || null, uf: uf || null, limite });
+    const entradaCache = cacheConsultasContratos.get(chaveCache);
+    if (entradaCache && (Date.now() - entradaCache.em) < CACHE_CONTRATOS_TTL_MS) {
+      return entradaCache.resultado;
+    }
     // A contagem exata obriga o Postgres a percorrer toda a base antes de devolver os
     // registros. Para o diagnóstico ela só serve como indicador de recorte, portanto a
     // estimativa do planejador elimina essa espera sem afetar os contratos exibidos.
@@ -5758,7 +5765,9 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     const registros = (data || []).map((linha) => linha.dado);
     const totalCorrespondente = typeof count === "number" ? count : registros.length;
-    return { registros, erro: false, totalCorrespondente, truncado: totalCorrespondente > registros.length };
+    const resultado = { registros, erro: false, totalCorrespondente, truncado: totalCorrespondente > registros.length };
+    cacheConsultasContratos.set(chaveCache, { em: Date.now(), resultado });
+    return resultado;
   }
 
   document.getElementById("dg-buscar").addEventListener("click", async () => {
