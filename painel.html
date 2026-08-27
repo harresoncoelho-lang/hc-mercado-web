@@ -5816,14 +5816,15 @@ let resultados = resultadosBrutos.filter((r) => {
 
   function renderDetalheHistoricoOrgao(indice) {
     const contexto = _hcContextoAtual;
-    const alvo = document.getElementById("hc-detalhe");
+    const alvo = document.getElementById("hc-resultado");
     if (!contexto || !alvo || !contexto.orgaos[indice]) return;
     const orgao = contexto.orgaos[indice];
     const compras = contexto.registros
       .filter((contrato) => (contrato.orgao || "Órgão não informado") === orgao.nome)
       .sort((a, b) => String(b.dataAssinatura || "").localeCompare(String(a.dataAssinatura || "")));
     const valor = compras.reduce((soma, contrato) => soma + (contrato.valor || 0), 0);
-    let html = `<h2>Compras de ${escapeHtml(orgao.nome)}</h2>
+    let html = `<div class="dg-topo-acoes"><button type="button" class="btn-imprimir" id="hc-voltar-resultados">← Voltar aos resultados</button><span></span></div>
+      <h2>Compras de ${escapeHtml(orgao.nome)}</h2>
       <div class="cartoes">
         <div class="cartao"><h3>Contratos no recorte</h3><div class="valor">${compras.length}</div></div>
         <div class="cartao"><h3>Valor contratado</h3><div class="valor">${escapeHtml(formatarValor(valor))}</div></div>
@@ -5844,6 +5845,11 @@ let resultados = resultadosBrutos.filter((r) => {
     html += "</table>";
     if (compras.length > 100) html += `<p class="dica-clique">Mostrando os 100 registros mais recentes de ${compras.length}.</p>`;
     alvo.innerHTML = html;
+    alvo.querySelector("#hc-voltar-resultados").addEventListener("click", () => {
+      // Volta ao mesmo resultado já carregado: não faz nova consulta, não perde filtro e
+      // evita transformar o histórico numa página infinita de tabelas empilhadas.
+      renderHistoricoCompras(contexto.registros, contexto.opcoes);
+    });
     alvo.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -5859,7 +5865,12 @@ let resultados = resultadosBrutos.filter((r) => {
     const porMes = calcularPorMes(registros);
     const filtroTexto = palavras.join(", ");
     const filtroLocal = uf ? ` em ${uf}` : " no Brasil";
-    _hcContextoAtual = { registros, orgaos, fornecedores };
+    _hcContextoAtual = {
+      registros,
+      orgaos,
+      fornecedores,
+      opcoes: { palavras, uf, dias, totalCorrespondente, truncado },
+    };
 
     let html = `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Histórico de compras para <strong>${escapeHtml(filtroTexto)}</strong>${escapeHtml(filtroLocal)} nos últimos ${dias} dia(s), usando contratos já coletados.</div>`;
     if (truncado) {
@@ -5921,7 +5932,6 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     html += '</table>';
     if (registros.length > 100) html += `<p class="dica-clique">Mostrando as 100 compras mais recentes de ${registros.length.toLocaleString("pt-BR")} encontradas.</p>`;
-    html += '<div id="hc-detalhe" class="detalhe-drilldown" style="margin-top:20px;"></div>';
     alvo.innerHTML = html;
     alvo.querySelectorAll("tr[data-hc-orgao]").forEach((linha) => {
       linha.addEventListener("click", () => renderDetalheHistoricoOrgao(Number(linha.dataset.hcOrgao)));
