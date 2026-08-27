@@ -2127,7 +2127,7 @@
     });
   }
 
-  // ---- Status das Ferramentas: mostra a última atualização bem-sucedida de cada fonte ----
+  // ---- Status das Ferramentas: mostra atualização E cobertura de cada fonte ----
   const FONTES_STATUS = [
     { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
     { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg>" },
@@ -2172,7 +2172,15 @@
         const resp = await fetch(fonte.arquivo);
         if (!resp.ok) return { ...fonte, ok: false };
         const dados = await resp.json();
-        return { ...fonte, ok: true, atualizadoEm: dados.atualizadoEm || null };
+        return {
+          ...fonte,
+          ok: true,
+          atualizadoEm: dados.atualizadoEm || null,
+          // O arquivo de oportunidades registra UFs com falha. Sem esta leitura, uma
+          // coleta que só preservou cache antigo parecia saudável apenas por ter um horário
+          // recente — exatamente o comportamento que não pode chegar ao cliente.
+          ufsComFalha: Array.isArray(dados.ufsComFalha) ? dados.ufsComFalha : [],
+        };
       } catch (e) {
         return { ...fonte, ok: false };
       }
@@ -2181,15 +2189,26 @@
     alvo.innerHTML = resultados.map((r) => {
       const haQuanto = r.ok ? formatarHaQuanto(r.atualizadoEm) : null;
       const horas = r.atualizadoEm ? (Date.now() - new Date(r.atualizadoEm).getTime()) / (1000 * 60 * 60) : Infinity;
-      let cor = "var(--vermelho)", texto = "Sem dados ainda";
+      let cor = "var(--vermelho)", texto = "Sem dados ainda", detalhe = "";
       if (r.ok && haQuanto) {
         if (horas <= 30) { cor = "var(--verde)"; texto = `Atualizado ${haQuanto}`; }
         else if (horas <= 72) { cor = "var(--laranja)"; texto = `Atualizado ${haQuanto} — verificar`; }
         else { cor = "var(--vermelho)"; texto = `Atualizado ${haQuanto} — pode estar parado`; }
       }
+      if (r.ufsComFalha && r.ufsComFalha.length > 0) {
+        const totalUfs = 27;
+        cor = r.ufsComFalha.length >= totalUfs ? "var(--vermelho)" : "var(--laranja)";
+        texto = r.ufsComFalha.length >= totalUfs
+          ? "Coleta sem cobertura nas UFs"
+          : `Cobertura parcial — ${r.ufsComFalha.length} UF(s) pendente(s)`;
+        detalhe = r.ufsComFalha.length >= totalUfs
+          ? "A última execução não trouxe oportunidades novas; mostramos a última base válida."
+          : `UFs pendentes: ${r.ufsComFalha.join(", ")}.`;
+      }
       return `<div class="cartao" style="border-top-color:${cor};">
         <h3>${r.icone} ${escapeHtml(r.nome)}</h3>
         <div class="valor" style="font-size:14px;color:${cor};">● ${escapeHtml(texto)}</div>
+        ${detalhe ? `<p class="dica-clique" style="margin:8px 0 0;font-size:12px;">${escapeHtml(detalhe)}</p>` : ""}
       </div>`;
     }).join("");
   }
