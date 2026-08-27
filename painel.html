@@ -3184,6 +3184,14 @@
     }
   }
 
+  // Contratos têm uma área própria no PNCP (diferente de editais). O identificador de
+  // contrato pode ser pesquisado diretamente nela; usar a rota de edital aqui levava o
+  // licitante a uma categoria incorreta, mesmo com o número de controle válido.
+  function linkPncpContrato(numeroControlePNCP) {
+    if (!numeroControlePNCP) return null;
+    return `https://pncp.gov.br/app/contratos?q=${encodeURIComponent(numeroControlePNCP)}`;
+  }
+
   function soDigitos(s) {
     return (s || "").replace(/\D/g, "");
   }
@@ -4900,7 +4908,7 @@ let resultados = resultadosBrutos.filter((r) => {
     html += "<table><tr><th>Objeto</th><th>Órgão</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
     for (const r of registros) {
       const valor = formatarValor(r.valor);
-      const link = linkPncp(r.numeroControlePNCP);
+      const link = linkPncpContrato(r.numeroControlePNCP);
       html += `<tr>
         <td>${escapeHtml(r.objeto || "-")}</td>
         <td>${escapeHtml(r.orgao || "-")}</td>
@@ -4956,7 +4964,7 @@ let resultados = resultadosBrutos.filter((r) => {
     html += "<table><tr><th>Objeto</th><th>Fornecedor</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
     for (const r of registros) {
       const valor = formatarValor(r.valor);
-      const link = linkPncp(r.numeroControlePNCP);
+      const link = linkPncpContrato(r.numeroControlePNCP);
       const cnpjForn = r.cnpjFornecedor || "sem-cnpj";
       html += `<tr>
         <td>${escapeHtml(r.objeto || "-")}</td>
@@ -5824,7 +5832,7 @@ let resultados = resultadosBrutos.filter((r) => {
       <p class="dica-clique">Recorte da consulta atual. Cada linha aponta para o registro oficial quando o número PNCP está disponível.</p>
       <table><tr><th>Assinatura</th><th>Objeto</th><th>Fornecedor</th><th>Valor</th><th>Fonte</th></tr>`;
     for (const contrato of compras.slice(0, 100)) {
-      const link = linkPncp(contrato.numeroControlePNCP);
+      const link = linkPncpContrato(contrato.numeroControlePNCP);
       html += `<tr>
         <td>${formatarDataIso(contrato.dataAssinatura)}</td>
         <td>${escapeHtml((contrato.objeto || "-").slice(0, 180))}</td>
@@ -6116,7 +6124,7 @@ let resultados = resultadosBrutos.filter((r) => {
       } else {
         html2 += "<table><tr><th>Objeto</th><th>Órgão</th><th>UF</th><th>Valor</th><th>Data</th><th>PNCP</th></tr>";
         registrosFiltrados.forEach((r, i) => {
-          const link = linkPncp(r.numeroControlePNCP);
+          const link = linkPncpContrato(r.numeroControlePNCP);
           html2 += `<tr class="linha-clicavel" data-idx="${i}">
             <td>${escapeHtml(r.objeto || "-")}</td>
             <td>${escapeHtml(r.orgao || "-")}</td>
@@ -6152,7 +6160,7 @@ let resultados = resultadosBrutos.filter((r) => {
             if (jaSelecionada) return;
             tr.classList.add("linha-selecionada");
             const r = registrosFiltrados[Number(tr.dataset.idx)];
-            const link = linkPncp(r.numeroControlePNCP);
+            const link = linkPncpContrato(r.numeroControlePNCP);
             const detalhe = document.createElement("div");
             detalhe.className = "detalhe-drilldown";
             detalhe.innerHTML = `<dl>
