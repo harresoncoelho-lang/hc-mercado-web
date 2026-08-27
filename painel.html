@@ -899,6 +899,9 @@
   .angulo-desc { font-size: 12px; color: var(--texto-fraco); }
   .angulo-desabilitado { cursor: default; opacity: 0.55; }
   .angulo-desabilitado:hover { border-color: var(--borda); transform: none; }
+  .dg-exploracao-acao { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:16px 0 6px; }
+  .dg-exploracao-acao .dica-clique { margin:0; }
+  .dg-exploracao-detalhada { margin-top:24px; }
 
   @media (max-width: 820px) {
     .layout-mercado { grid-template-columns: 1fr; }
@@ -5476,7 +5479,12 @@ let resultados = resultadosBrutos.filter((r) => {
       <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-correspondencias"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span class="angulo-titulo">Correspondências</span><span class="angulo-desc">Oportunidades abertas agora</span></button>
       <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-marcas"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-package'></use></svg></span><span class="angulo-titulo">Marcas</span><span class="angulo-desc">Quem fabrica o que se vende</span></button>
       <button type="button" class="angulo-card angulo-desabilitado" disabled title="Previsão de contratação futura — no roadmap"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-chart-line-up'></use></svg></span><span class="angulo-titulo">Contratação futura</span><span class="angulo-desc">Em breve</span></button>
-    </div>`;
+    </div>
+    <div class="dg-exploracao-acao">
+      <button type="button" class="btn-buscar" id="dg-explorar-detalhes">Explorar análises detalhadas <svg class='icone-ph'><use href='#ph-arrow-right'></use></svg></button>
+      <p class="dica-clique">Abra apenas o recorte que precisa investigar, sem transformar a visão geral em uma página longa.</p>
+    </div>
+    <div class="dg-exploracao-detalhada" id="dg-exploracao-detalhada" hidden>`;
 
     if (d.mercado) {
       const m = d.mercado;
@@ -5626,14 +5634,30 @@ let resultados = resultadosBrutos.filter((r) => {
       html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
     }
 
+    html += "</div>";
     alvo.innerHTML = html;
     renderBaixaConcorrencia();
-    renderMapaUf(d.porUf);
+
+    const exploracao = alvo.querySelector("#dg-exploracao-detalhada");
+    const btnExplorar = alvo.querySelector("#dg-explorar-detalhes");
+    function revelarExploracao(destinoId = null) {
+      if (exploracao && exploracao.hidden) {
+        exploracao.hidden = false;
+        if (btnExplorar) btnExplorar.style.display = "none";
+        // O mapa calcula a área disponível; renderizar só após revelar evita medir a largura
+        // de um painel oculto e mantém a visualização estável.
+        renderMapaUf(d.porUf);
+      }
+      if (destinoId) {
+        const destino = document.getElementById(destinoId);
+        if (destino) destino.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    if (btnExplorar) btnExplorar.addEventListener("click", () => revelarExploracao());
 
     alvo.querySelectorAll(".angulo-card[data-alvo-angulo]").forEach((el) => {
       el.addEventListener("click", () => {
-        const destino = document.getElementById(el.dataset.alvoAngulo);
-        if (destino) destino.scrollIntoView({ behavior: "smooth", block: "start" });
+        revelarExploracao(el.dataset.alvoAngulo);
       });
     });
 
