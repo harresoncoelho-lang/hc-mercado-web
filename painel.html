@@ -5158,9 +5158,31 @@ let resultados = resultadosBrutos.filter((r) => {
     } else {
       html += '<div class="aviso">Nenhuma empresa venceu esse item (deserto/fracassado/anulado/revogado/cancelado) — a própria ausência de vencedor já é o sinal de baixa concorrência.</div>';
     }
+    // Todo sinal precisa ser auditável. Explicita de onde cada campo veio para que o
+    // licitante consiga decidir, conferir no portal oficial e não trate inferência como fato.
+    html += `<h3>Origem e rastreabilidade</h3><dl>
+      <div><dt>Fonte do processo</dt><dd>PNCP — Portal Nacional de Contratações Públicas</dd></div>
+      <div><dt>Registro analisado</dt><dd>Ata de registro de preços vinculada à compra acima</dd></div>
+      <div><dt>Sinal de concorrência</dt><dd>${escapeHtml(l.tipo === "deserto-fracassado" ? "Situação sem vencedor registrada no PNCP" : "Um único vencedor identificado na ata coletada")}</dd></div>
+      <div><dt>Procedência da marca</dt><dd>${escapeHtml(vencedor && vencedor.marca ? "Resultado do item; cobertura depende de enriquecimento com Compras.gov.br quando disponível" : "Marca não identificada na fonte para este item")}</dd></div>
+    </dl>`;
+    if (vencedor && vencedor.cnpj) {
+      html += `<p style="margin:16px 0 0;"><button type="button" class="btn-buscar" id="bc-analisar-fornecedor">Analisar fornecedor e histórico <svg class='icone-ph'><use href='#ph-arrow-right'></use></svg></button></p>`;
+    }
     const alvo = document.getElementById("dg-baixa-concorrencia-detalhe");
     if (!alvo) return;
     alvo.innerHTML = html;
+    const btnFornecedor = alvo.querySelector("#bc-analisar-fornecedor");
+    if (btnFornecedor) {
+      btnFornecedor.addEventListener("click", () => {
+        // Leva o usuário com o CNPJ já preenchido ao dossiê completo, evitando uma nova
+        // busca manual e mantendo o encadeamento item → fornecedor → contratos.
+        document.querySelector('nav button[data-alvo="empresa"]').click();
+        document.getElementById("emp-cnpj").value = vencedor.cnpj;
+        document.getElementById("emp-segmento").value = l.item.descricao || "";
+        document.getElementById("emp-buscar").click();
+      });
+    }
     alvo.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
