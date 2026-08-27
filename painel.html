@@ -1876,7 +1876,12 @@
         <p class="dica-clique" style="margin:4px 0 0;">Consulte o CNPJ e aprofunde o dossiê da empresa, com participação, histórico e cruzamentos do segmento selecionado.</p>
       </div>
     </div>
-    <div class="painel-filtros">
+    <div class="painel-filtros painel-filtros-recolhivel" id="emp-filtros-principais">
+      <div class="painel-filtros-recolhivel-cabecalho">
+        <h3 class="painel-filtros-recolhivel-titulo">Dados da empresa</h3>
+        <span id="emp-filtros-resumo" class="painel-filtros-recolhivel-resumo"></span>
+        <button type="button" id="emp-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
+      </div>
       <div class="campo">
         <label>CNPJ da empresa</label>
         <input id="emp-cnpj" placeholder="Ex: 12345678000199">
@@ -1913,7 +1918,12 @@
     <h2 style="margin-top:0;">Radar de Convênios e Repasses</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Convênios e repasses federais recebidos por municípios/órgãos — dinheiro chegando costuma anteceder licitação (a obra/serviço financiado tende a virar edital dali a semanas ou meses). Isso é diferente de "Encontrar Licitações": aqui você vê o repasse que ainda vai gerar a licitação, não a licitação já publicada.</p>
     <div class="secao-conteudo-principal">
-    <div class="painel-filtros">
+    <div class="painel-filtros painel-filtros-recolhivel" id="cv-filtros-principais">
+      <div class="painel-filtros-recolhivel-cabecalho">
+        <h3 class="painel-filtros-recolhivel-titulo">Filtros do radar</h3>
+        <span id="cv-filtros-resumo" class="painel-filtros-recolhivel-resumo"></span>
+        <button type="button" id="cv-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
+      </div>
       <div class="campo">
         <label>Estado (UF) — opcional</label>
         <select id="cv-uf" class="select-uf"></select>
@@ -1937,7 +1947,12 @@
     <h2 style="margin-top:0;">Raio-X Financeiro de Fornecedor</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Quanto uma empresa já recebeu de fato em pagamentos do governo federal — execução financeira real, não só o valor do contrato assinado. Complementa a aba "Analisar Empresa".</p>
     <div class="secao-conteudo-principal">
-    <div class="painel-filtros">
+    <div class="painel-filtros painel-filtros-recolhivel" id="fn-filtros-principais">
+      <div class="painel-filtros-recolhivel-cabecalho">
+        <h3 class="painel-filtros-recolhivel-titulo">Fornecedor</h3>
+        <span id="fn-filtros-resumo" class="painel-filtros-recolhivel-resumo"></span>
+        <button type="button" id="fn-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
+      </div>
       <div class="campo" style="flex:2">
         <label>CNPJ da empresa</label>
         <input id="fn-cnpj" placeholder="Ex: 12345678000199">
@@ -2308,6 +2323,43 @@
   document.getElementById("kanban-ir-boletim").addEventListener("click", () => {
     document.querySelector('nav button[data-alvo="boletim"]').click();
   });
+
+  // Filtros recolhíveis nas telas de análise: o resultado continua sendo o foco depois
+  // que a consulta foi configurada, sem perder a referência dos critérios aplicados.
+  (function () {
+    const configuracoes = [
+      { painel: "emp-filtros-principais", botao: "emp-filtros-colapsar-btn", resumo: "emp-filtros-resumo", campos: ["emp-cnpj", "emp-segmento"], chave: "hc_empresa_filtros_colapsado" },
+      { painel: "cv-filtros-principais", botao: "cv-filtros-colapsar-btn", resumo: "cv-filtros-resumo", campos: ["cv-uf", "cv-municipio", "cv-palavras"], chave: "hc_convenios_filtros_colapsado" },
+      { painel: "fn-filtros-principais", botao: "fn-filtros-colapsar-btn", resumo: "fn-filtros-resumo", campos: ["fn-cnpj"], chave: "hc_fornecedor_filtros_colapsado" },
+    ];
+    configuracoes.forEach((config) => {
+      const painel = document.getElementById(config.painel);
+      const botao = document.getElementById(config.botao);
+      const resumo = document.getElementById(config.resumo);
+      if (!painel || !botao) return;
+      const atualizarResumo = () => {
+        const valores = config.campos.map((id) => document.getElementById(id)?.value?.trim()).filter(Boolean);
+        const texto = valores.length ? valores.join(" · ") : "Nenhum filtro preenchido";
+        if (resumo) { resumo.textContent = texto; resumo.title = texto; }
+      };
+      const aplicar = (colapsado) => {
+        painel.classList.toggle("painel-filtros-colapsado", colapsado);
+        botao.textContent = colapsado ? "»" : "«";
+        botao.title = colapsado ? "Expandir filtros" : "Recolher filtros";
+        botao.setAttribute("aria-expanded", String(!colapsado));
+      };
+      let colapsado = false;
+      try { colapsado = localStorage.getItem(config.chave) === "1"; } catch (e) { /* persistência opcional */ }
+      aplicar(colapsado);
+      atualizarResumo();
+      painel.querySelectorAll("input, select").forEach((campo) => campo.addEventListener("change", atualizarResumo));
+      botao.addEventListener("click", () => {
+        colapsado = !colapsado;
+        aplicar(colapsado);
+        try { localStorage.setItem(config.chave, colapsado ? "1" : "0"); } catch (e) { /* persistência opcional */ }
+      });
+    });
+  })();
 
   // ---- Modal "Resumir com IA" (Resumo do Edital + Pergunte ao Edital) ----
   let iaEditalAtual = null;
