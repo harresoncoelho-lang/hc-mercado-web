@@ -15,7 +15,10 @@ function textoSeguro(valor, limite = 100) {
 
 function marcaUtil(valor) {
   const marca = textoSeguro(valor, 120);
-  return marca && !/^[.-]+$/.test(marca) ? marca : null;
+  const normalizada = marca.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  if (!marca || /^[.-]+$/.test(marca) || /^\d{4}$/.test(marca)) return null;
+  if (["nao se aplica", "na", "nao informado", "conforme edital", "diversas", "propria"].includes(normalizada)) return null;
+  return marca;
 }
 
 function selecionarPdms(registros, termo, limite = MAX_PDMS) {
@@ -49,6 +52,8 @@ function selecionarPdms(registros, termo, limite = MAX_PDMS) {
 function normalizarResultado(linha, pdm) {
   const marca = marcaUtil(linha.marca);
   if (!marca) return null;
+  const semAcento = (valor) => textoSeguro(valor, 120).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+  if (semAcento(marca) === semAcento(pdm.descricao)) return null;
   return {
     marca,
     produtoCatalogo: pdm.descricao,

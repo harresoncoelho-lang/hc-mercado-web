@@ -14,6 +14,8 @@ test("selecionarPdms remove duplicados e prioriza descrições que começam pelo
 
 test("normalizarResultado expõe somente marca declarada pela fonte", () => {
   assert.equal(marcaUtil("."), null);
+  assert.equal(marcaUtil("NÃO SE APLICA"), null);
+  assert.equal(marcaUtil("2025"), null);
   const item = normalizarResultado({ marca: "BIC", nomeFornecedor: "Fornecedor", estado: "SE", precoUnitario: "0.54" }, { codigo: 99, descricao: "Caneta esferográfica" });
   assert.equal(item.marca, "BIC");
   assert.equal(item.uf, "SE");
