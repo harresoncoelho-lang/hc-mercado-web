@@ -1,0 +1,35 @@
+name: Coletar resultados públicos do Compras.gov
+
+on:
+  schedule:
+    # 10:30 UTC, fora do pico da coleta PNCP; o cursor retoma automaticamente.
+    - cron: "30 10 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: coletar-resultados-comprasgov
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    # O limite interno de 18 min preserva margem para encerrar e salvar o cursor.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Coletar e normalizar resultados homologados
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LIMITE_MINUTOS: "18"
+          DIAS_INICIAIS: "30"
+          FOLGA_DIAS: "2"
+          TAMANHO_PAGINA: "100"
+          ATRASO_MS: "350"
+          CONCORRENCIA_ITENS: "3"
+        run: node scripts/coletar_comprasgov_resultados.js
