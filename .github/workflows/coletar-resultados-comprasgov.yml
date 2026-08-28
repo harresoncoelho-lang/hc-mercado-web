@@ -27,7 +27,7 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LIMITE_MINUTOS: "18"
-          DIAS_INICIAIS: "30"
+          DIAS_INICIAIS: "365"
           FOLGA_DIAS: "2"
           TAMANHO_PAGINA: "100"
           ATRASO_MS: "350"

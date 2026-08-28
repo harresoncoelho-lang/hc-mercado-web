@@ -5,7 +5,7 @@
 // Uso: node scripts/coletar_comprasgov_resultados.js
 // Variáveis de ambiente opcionais:
 //   LIMITE_MINUTOS=12          -> orçamento total da execução
-//   DIAS_INICIAIS=30           -> janela inicial quando ainda não há cursor
+//   DIAS_INICIAIS=365          -> janela inicial quando ainda não há cursor
 //   DATA_INICIAL=YYYY-MM-DD    -> início explícito (útil para backfill)
 //   DATA_FINAL=YYYY-MM-DD      -> fim explícito (útil para backfill)
 //   FOLGA_DIAS=2               -> dias recentes revisitados após alcançar hoje
@@ -22,7 +22,7 @@ const { buscarBlob, salvarBlob, upsertEmLotes } = require("./supabase_dados");
 
 const BASE_URL = "https://dadosabertos.compras.gov.br/modulo-contratacoes";
 const LIMITE_MINUTOS = parseFloat(process.env.LIMITE_MINUTOS || "12");
-const DIAS_INICIAIS = parseInt(process.env.DIAS_INICIAIS || "30", 10);
+const DIAS_INICIAIS = parseInt(process.env.DIAS_INICIAIS || "365", 10);
 const FOLGA_DIAS = parseInt(process.env.FOLGA_DIAS || "2", 10);
 const TAMANHO_PAGINA = Math.min(500, Math.max(10, parseInt(process.env.TAMANHO_PAGINA || "100", 10)));
 const ATRASO_MS = parseInt(process.env.ATRASO_MS || "350", 10);
