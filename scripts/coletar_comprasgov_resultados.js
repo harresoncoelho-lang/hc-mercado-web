@@ -178,6 +178,7 @@ function normalizarResultado(resultado, item, coletadoEm) {
     id_compra_item: String(resultado.idCompraItem),
     id_compra: resultado.idCompra || null,
     numero_controle_pncp: resultado.numeroControlePNCPCompra || null,
+    descricao_item: descricaoItem,
     uf: resultado.unidadeOrgaoUfSigla || null,
     cnpj_fornecedor: resultado.niFornecedor || null,
     data_resultado: resultado.dataResultadoPncp ? String(resultado.dataResultadoPncp).slice(0, 10) : null,

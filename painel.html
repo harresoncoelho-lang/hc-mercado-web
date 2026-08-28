@@ -5829,6 +5829,33 @@ let resultados = resultadosBrutos.filter((r) => {
     return resultado;
   }
 
+  // Resultados homologados do Compras.gov são deliberadamente uma fonte separada dos
+  // contratos PNCP: o mesmo processo pode aparecer nas duas bases em momentos distintos.
+  // Mantê-los separados evita somar duas vezes o mercado e deixa explícita a procedência.
+  async function consultarResultadosHomologadosComprasGov({ palavras, dias, uf, limite = 500 }) {
+    try {
+      let query = window.__sbClient.from("comprasgov_resultados").select("dado", { count: "planned" }).limit(limite);
+      if (typeof dias === "number" && dias > 0) {
+        const limiteDataIso = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        query = query.gte("data_resultado", limiteDataIso);
+      }
+      if (uf) query = query.eq("uf", uf);
+      const termos = (palavras || []).map(sanitizarParaIlike).filter(Boolean);
+      if (termos.length > 0) query = query.or(termos.map((t) => `descricao_item.ilike.%${t}%`).join(","));
+      const { data, error, count } = await query.order("data_resultado", { ascending: false, nullsFirst: false });
+      if (error) {
+        console.warn("[comprasgov-resultados] erro na consulta:", error);
+        return { registros: [], erro: true, totalCorrespondente: null, truncado: false };
+      }
+      const registros = (data || []).map((linha) => linha.dado).filter(Boolean);
+      const totalCorrespondente = typeof count === "number" ? count : registros.length;
+      return { registros, erro: false, totalCorrespondente, truncado: totalCorrespondente > registros.length };
+    } catch (e) {
+      console.warn("[comprasgov-resultados] falha na consulta:", e);
+      return { registros: [], erro: true, totalCorrespondente: null, truncado: false };
+    }
+  }
+
   document.getElementById("dg-buscar").addEventListener("click", async () => {
     dgJaBuscado = true;
     const segmentoRaw = document.getElementById("dg-segmento").value.trim();
@@ -6071,7 +6098,7 @@ let resultados = resultadosBrutos.filter((r) => {
     alvo.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function renderHistoricoCompras(registros, { palavras, uf, dias, totalCorrespondente, truncado }) {
+  function renderHistoricoCompras(registros, { palavras, uf, dias, totalCorrespondente, truncado, resultadosHomologados = [], resultadosHomologadosTruncados = false }) {
     const alvo = document.getElementById("hc-resultado");
     if (!alvo) return;
 
@@ -6087,12 +6114,28 @@ let resultados = resultadosBrutos.filter((r) => {
       registros,
       orgaos,
       fornecedores,
+      resultadosHomologados,
       opcoes: { palavras, uf, dias, totalCorrespondente, truncado },
     };
 
     let html = `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Histórico de compras para <strong>${escapeHtml(filtroTexto)}</strong>${escapeHtml(filtroLocal)} nos últimos ${dias} dia(s), usando contratos já coletados.</div>`;
     if (truncado) {
       html += `<div class="aviso">A busca encontrou ${Number(totalCorrespondente).toLocaleString("pt-BR")} contratos. Para manter a consulta rápida, os indicadores mostram os ${registros.length.toLocaleString("pt-BR")} mais recentes; refine o objeto, a UF ou o período para analisar uma amostra menor.</div>`;
+    }
+    html += '<h2>Resultados homologados do Compras.gov</h2>';
+    if (resultadosHomologados.length === 0) {
+      html += '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Nenhum resultado homologado público encontrado ainda neste recorte. Esta base é coletada separadamente e aparecerá aqui conforme o backfill avançar.</div>';
+    } else {
+      if (resultadosHomologadosTruncados) html += `<p class="dica-clique">Mostrando os ${resultadosHomologados.length} resultados mais recentes; refine o filtro para ver uma fatia menor.</p>`;
+      html += '<p class="dica-clique">Fonte complementar, mantida separada dos contratos para evitar dupla contagem. Clique em uma linha para ver a rastreabilidade do item.</p>';
+      html += '<table class="historico-compras-tabela"><tr><th>Resultado</th><th>Item</th><th>Fornecedor</th><th>UF</th><th>Valor homologado</th><th>Fonte</th></tr>';
+      resultadosHomologados.slice(0, 100).forEach((registro, indice) => {
+        const item = registro.item || {};
+        const fornecedor = registro.fornecedor || {};
+        const resultado = registro.resultado || {};
+        html += `<tr class="linha-clicavel" data-hc-resultado-homologado="${indice}" title="Ver rastreabilidade do resultado"><td>${escapeHtml(formatarDataIso(resultado.data))}</td><td>${escapeHtml((item.descricao || item.descricaoResumida || "-").slice(0, 150))}</td><td>${escapeHtml(fornecedor.nome || fornecedor.documento || "-")}</td><td>${escapeHtml(registro.compra?.uf || "-")}</td><td>${escapeHtml(formatarValor(resultado.valorTotalHomologado || 0))}</td><td>Compras.gov</td></tr>`;
+      });
+      html += '</table>';
     }
     html += `<div class="cartoes">
       <div class="cartao"><h3>Compras encontradas</h3><div class="valor">${registros.length.toLocaleString("pt-BR")}</div></div>
@@ -6164,6 +6207,22 @@ let resultados = resultadosBrutos.filter((r) => {
         document.getElementById("emp-buscar").click();
       });
     });
+    alvo.querySelectorAll("tr[data-hc-resultado-homologado]").forEach((linha) => {
+      linha.addEventListener("click", () => {
+        const registro = resultadosHomologados[Number(linha.dataset.hcResultadoHomologado)];
+        if (!registro) return;
+        const item = registro.item || {};
+        const fornecedor = registro.fornecedor || {};
+        const resultado = registro.resultado || {};
+        const compra = registro.compra || {};
+        const existente = alvo.querySelector(".detalhe-drilldown");
+        if (existente) existente.remove();
+        const detalhe = document.createElement("div");
+        detalhe.className = "detalhe-drilldown";
+        detalhe.innerHTML = `<dl><div><dt>Descrição oficial do item</dt><dd>${escapeHtml(item.descricao || item.descricaoResumida || "-")}</dd></div><div><dt>Fornecedor</dt><dd>${escapeHtml(fornecedor.nome || "-")} · ${escapeHtml(fornecedor.documento || "-")}</dd></div><div><dt>Processo / PNCP</dt><dd>${escapeHtml(compra.numeroControlePncp || compra.id || "-")}</dd></div><div><dt>Resultado</dt><dd>${escapeHtml(resultado.situacao || "-")} · classificação ${escapeHtml(String(resultado.classificacao ?? "-"))}</dd></div><div><dt>Quantidade e valor</dt><dd>${escapeHtml(String(resultado.quantidadeHomologada ?? "-"))} ${escapeHtml(item.unidadeMedida || "")} · ${escapeHtml(formatarValor(resultado.valorUnitarioHomologado || 0))} unitário · ${escapeHtml(formatarValor(resultado.valorTotalHomologado || 0))} total</dd></div><div><dt>Marca / modelo</dt><dd>${escapeHtml(item.marca || item.modelo ? `${item.marca || "-"} / ${item.modelo || "-"}` : item.marcaModeloStatus || "Não informado")}</dd></div><div><dt>Proveniência</dt><dd>API pública do Compras.gov · coletado em ${escapeHtml(formatarDataIso(registro.coletadoEm))} · <a class="link-pncp" href="https://dadosabertos.compras.gov.br/swagger-ui/index.html" target="_blank" rel="noopener">Documentação da fonte <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a></dd></div></dl>`;
+        linha.after(detalhe);
+      });
+    });
   }
 
   document.getElementById("hc-buscar").addEventListener("click", async () => {
@@ -6185,7 +6244,10 @@ let resultados = resultadosBrutos.filter((r) => {
     alvo.innerHTML = '<div class="carregando">Consultando histórico de compras...</div>';
 
     try {
-      const resultado = await consultarContratosSupabase({ palavras, dias, uf: uf || null });
+      const [resultado, homologados] = await Promise.all([
+        consultarContratosSupabase({ palavras, dias, uf: uf || null }),
+        consultarResultadosHomologadosComprasGov({ palavras, dias, uf: uf || null }),
+      ]);
       if (resultado.erro) {
         alvo.innerHTML = '<div class="aviso">Não foi possível consultar o histórico agora. Tente novamente em alguns instantes.</div>';
         return;
@@ -6197,6 +6259,8 @@ let resultados = resultadosBrutos.filter((r) => {
         dias,
         totalCorrespondente: resultado.totalCorrespondente,
         truncado: resultado.truncado,
+        resultadosHomologados: homologados.registros,
+        resultadosHomologadosTruncados: homologados.truncado,
       });
     } catch (e) {
       alvo.innerHTML = `<div class="aviso">Erro ao consultar histórico: ${escapeHtml(String(e))}</div>`;

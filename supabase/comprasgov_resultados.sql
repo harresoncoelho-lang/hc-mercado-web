@@ -12,12 +12,18 @@ create table if not exists public.comprasgov_resultados (
   id_compra_item text not null,
   id_compra text,
   numero_controle_pncp text,
+  descricao_item text not null default '',
   uf text,
   cnpj_fornecedor text,
   data_resultado date,
   dado jsonb not null,
   atualizado_em timestamptz not null default now()
 );
+
+-- Compatibilidade com a primeira execução desta migração, que criou a tabela
+-- antes de a coluna pesquisável da interface ser adicionada.
+alter table public.comprasgov_resultados
+  add column if not exists descricao_item text not null default '';
 
 create index if not exists comprasgov_resultados_data_idx
   on public.comprasgov_resultados (data_resultado desc);
@@ -27,6 +33,9 @@ create index if not exists comprasgov_resultados_uf_idx
   on public.comprasgov_resultados (uf);
 create index if not exists comprasgov_resultados_compra_idx
   on public.comprasgov_resultados (id_compra);
+create extension if not exists pg_trgm;
+create index if not exists comprasgov_resultados_descricao_item_trgm_idx
+  on public.comprasgov_resultados using gin (descricao_item gin_trgm_ops);
 
 alter table public.comprasgov_resultados enable row level security;
 
