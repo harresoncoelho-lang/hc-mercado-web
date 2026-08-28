@@ -1068,6 +1068,45 @@
   .anotacao-licitacao:focus, .select-status-licitacao:focus { outline: none; border-color: var(--azul); }
   .boletim-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 
+  /* ---- Pesquisa de marcas: consulta compacta, ranking e dossiê sob demanda ---- */
+  .marcas-pesquisa { max-width: 1240px; }
+  .marcas-pesquisa-topo { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; padding:2px 0 20px; border-bottom:1px solid var(--borda); }
+  .marcas-pesquisa-topo h2 { margin:0 0 6px; }
+  .marcas-pesquisa-topo p { margin:0; max-width:690px; color:var(--texto-fraco); line-height:1.5; font-size:13px; }
+  .marcas-fonte { display:flex; align-items:center; gap:7px; color:var(--texto-fraco); white-space:nowrap; font-size:12px; padding-top:7px; }
+  .marcas-fonte::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--verde); box-shadow:0 0 0 4px color-mix(in srgb, var(--verde) 14%, transparent); }
+  .marcas-consulta { display:grid; grid-template-columns:minmax(260px, 1fr) auto; gap:12px; align-items:end; padding:20px 0; }
+  .marcas-consulta .campo { margin:0; }
+  .marcas-consulta .btn-buscar { min-width:180px; height:44px; }
+  .marcas-vazio { border:1px dashed var(--borda); border-radius:var(--raio); padding:24px; background:var(--fundo-fraco); color:var(--texto-fraco); font-size:13px; line-height:1.55; }
+  .marcas-resumo { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 16px; border:1px solid var(--borda); border-radius:var(--raio); background:var(--fundo-fraco); margin-bottom:14px; }
+  .marcas-resumo strong { color:var(--texto); }
+  .marca-kpis { display:flex; gap:8px; flex-wrap:wrap; margin-left:auto; }
+  .marca-kpi { padding:5px 10px; border-radius:999px; background:var(--cartao); border:1px solid var(--borda); color:var(--texto-fraco); font-size:12px; }
+  .marca-kpi strong { color:var(--azul); }
+  .marcas-ranking { border:1px solid var(--borda); border-radius:var(--raio); overflow:hidden; background:var(--cartao); }
+  .marcas-ranking-cab, .marca-ranking-linha { display:grid; grid-template-columns:52px minmax(180px,1.4fr) 100px minmax(170px,1fr) 150px 44px; gap:14px; align-items:center; }
+  .marcas-ranking-cab { padding:10px 16px; background:var(--fundo-fraco); color:var(--texto-fraco); font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
+  .marca-ranking-linha { width:100%; text-align:left; padding:13px 16px; border:0; border-top:1px solid var(--borda); background:var(--cartao); color:var(--texto); font:inherit; cursor:pointer; }
+  .marca-ranking-linha:hover, .marca-ranking-linha.ativa { background:var(--fundo-elevado-hover); }
+  .marca-ranking-linha.ativa { box-shadow:inset 3px 0 0 var(--azul); }
+  .marca-rank { width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:color-mix(in srgb, var(--azul) 11%, var(--cartao)); color:var(--azul); font-size:12px; font-weight:800; }
+  .marca-nome { font-weight:750; font-size:14px; display:block; }
+  .marca-produto { color:var(--texto-fraco); font-size:12px; display:block; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .marca-numero { color:var(--azul); font-weight:750; }
+  .marca-fornecedor, .marca-local { color:var(--texto-fraco); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .marca-abrir { color:var(--azul); font-size:20px; text-align:right; }
+  .marca-dossie { margin-top:14px; padding:20px; border:1px solid color-mix(in srgb, var(--azul) 30%, var(--borda)); border-radius:var(--raio); background:linear-gradient(135deg, color-mix(in srgb, var(--azul) 5%, var(--cartao)), var(--cartao) 48%); }
+  .marca-dossie-topo { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+  .marca-dossie-topo h3 { margin:0 0 4px; font-size:18px; }
+  .marca-dossie-topo p { margin:0; color:var(--texto-fraco); font-size:12px; }
+  .marca-dossie-grid { display:grid; grid-template-columns:repeat(4, minmax(130px, 1fr)); gap:12px; }
+  .marca-dossie-grid div { padding:12px; border-radius:8px; background:var(--cartao); border:1px solid var(--borda); }
+  .marca-dossie-grid dt { color:var(--texto-fraco); font-size:10px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; margin:0 0 5px; }
+  .marca-dossie-grid dd { margin:0; font-size:13px; line-height:1.4; }
+  @media (max-width: 920px) { .marcas-ranking-cab { display:none; } .marca-ranking-linha { grid-template-columns:38px 1fr auto; } .marca-ranking-linha > :nth-child(3), .marca-ranking-linha > :nth-child(4), .marca-ranking-linha > :nth-child(5) { display:none; } .marca-dossie-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width: 620px) { .marcas-pesquisa-topo, .marcas-consulta { display:flex; flex-direction:column; } .marcas-consulta, .marcas-consulta .campo, .marcas-consulta .btn-buscar { width:100%; } .marcas-resumo { align-items:flex-start; } .marca-kpis { margin-left:0; } .marca-dossie-grid { grid-template-columns:1fr; } }
+
   /* ---- Banner de limite diário / upsell (inspirado no aviso de cota do Effecti) ----
      Faixa retangular SÓLIDA, não um cartão flutuante: zero margin, largura 100%, cantos com
      arredondamento sutil (mesmo var(--raio-pq) dos cards normais do sistema — não é pílula
@@ -5629,10 +5668,10 @@ let resultados = resultadosBrutos.filter((r) => {
 
     if (anguloAtivo === "marcas") {
       const consultaMarca = d.marcasPesquisa || {};
-      html += `<h2 id="dg-secao-marcas">Pesquisa de marcas por produto</h2>
-        <p class="dica-clique">Informe o produto que quer investigar — por exemplo, “ar-condicionado” ou “lixeira”. A consulta mostra resultados homologados, fornecedores e somente marcas declaradas na fonte oficial.</p>
-        <div class="boletim-cabecalho"><div class="campo" style="min-width:min(100%,420px);margin:0;"><label for="dg-marcas-termo">Produto ou descrição do item</label><input id="dg-marcas-termo" value="${escapeHtml(consultaMarca.termo || d.palavras.join(", "))}" placeholder="Ex: ar-condicionado, lixeira"></div><button type="button" class="btn-buscar" id="dg-marcas-buscar">Pesquisar marcas</button></div>
-        <div id="dg-marcas-resultados">${consultaMarca.aviso ? `<div class="aviso">${escapeHtml(consultaMarca.aviso)}</div>` : '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">A pesquisa ainda não foi executada. Ela não infere marca: cada resultado aponta fornecedor, item e a consulta oficial quando disponível.</div>'}</div>`;
+      html += `<div class="marcas-pesquisa" id="dg-secao-marcas">
+        <div class="marcas-pesquisa-topo"><div><h2>Marcas por produto</h2><p>Descubra as marcas declaradas, os fornecedores que as venderam e onde apareceram. Escolha uma marca para abrir apenas o dossiê que interessa.</p></div><div class="marcas-fonte">Dados oficiais do Compras.gov</div></div>
+        <div class="marcas-consulta"><div class="campo"><label for="dg-marcas-termo">Produto ou descrição do item</label><input id="dg-marcas-termo" value="${escapeHtml(consultaMarca.termo || d.palavras.join(", "))}" placeholder="Ex.: caneta, ar-condicionado, lixeira"></div><button type="button" class="btn-buscar" id="dg-marcas-buscar">Pesquisar marcas</button></div>
+        <div id="dg-marcas-resultados">${consultaMarca.aviso ? `<div class="aviso">${escapeHtml(consultaMarca.aviso)}</div>` : '<div class="marcas-vazio">Pesquise um produto para gerar um ranking de marcas. A plataforma usa somente marcas declaradas na fonte oficial e mostra fornecedor, local e recorrência ao abrir o dossiê.</div>'}</div></div>`;
     }
 
     if (anguloAtivo === "correspondencias") html += "<h2 id=\"dg-secao-correspondencias\">Oportunidades abertas agora " + (d.uf ? "em " + escapeHtml(d.uf) : "") + "</h2>";
@@ -5704,7 +5743,17 @@ let resultados = resultadosBrutos.filter((r) => {
       }, {})).sort((a, b) => a.ordemCatalogo - b.ordemCatalogo || b.ocorrencias - a.ocorrencias || a.marca.localeCompare(b.marca, "pt-BR"));
       d.marcasPesquisa = { termo, aviso: marcasAgrupadas.length ? "" : "Nenhuma marca declarada foi encontrada na fonte oficial para esse produto" + (d.uf ? ` em ${d.uf}` : "") + ". Tente outra descrição ou remova a UF." };
       if (!marcasAgrupadas.length) { renderDiagnostico(); return; }
-      painelMarcas.innerHTML = `<p class="dica-clique">${resposta.itens.length} resultado(s) com marca declarada, consolidados em ${marcasAgrupadas.length} marca(s). Fonte: ${escapeHtml(resposta.fonte)}${resposta.consultasComFalha ? ` · ${resposta.consultasComFalha} catálogo(s) não respondeu(ram) agora.` : ""}</p><div class="lista-boletim">${marcasAgrupadas.slice(0, 40).map((item, indice) => `<article class="boletim-card"><div class="boletim-topo"><span class="boletim-numero">${indice + 1}</span><strong>Marca declarada: ${escapeHtml(item.marca)}</strong></div><div class="boletim-corpo"><p class="boletim-objeto">${escapeHtml(item.produtoCatalogo || item.descricaoItem || "Produto catalogado")}</p><dl class="boletim-meta"><div><dt>Fornecedores identificados</dt><dd>${escapeHtml([...item.fornecedores].slice(0, 3).join(" · ") || item.documentoFornecedor || "Não informado")}</dd></div><div><dt>Ocorrências com marca</dt><dd>${escapeHtml(String(item.ocorrencias))}</dd></div><div><dt>Último órgão / local</dt><dd>${escapeHtml([item.orgao, item.municipio, item.uf].filter(Boolean).join(" · ") || "Não informado")}</dd></div><div><dt>Último resultado</dt><dd>${escapeHtml(formatarDataIso(item.dataResultado))}</dd></div></dl><div class="boletim-rodape"><span class="marca-pesquisa-resultado">PDM ${escapeHtml(String(item.codigoPdm || "-"))} · ${escapeHtml(item.produtoCatalogo || "Catálogo Compras.gov")}</span></div></div></article>`).join("")}</div>${marcasAgrupadas.length > 40 ? `<p class="dica-clique">Mostrando as 40 marcas com maior recorrência nesta consulta.</p>` : ""}`;
+      const marcasVisiveis = marcasAgrupadas.slice(0, 30);
+      const fornecedoresUnicos = new Set(resposta.itens.map((item) => item.fornecedor).filter(Boolean)).size;
+      painelMarcas.innerHTML = `<div class="marcas-resumo"><div><strong>${escapeHtml(termo)}</strong> · ranking de marcas declaradas</div><div class="marca-kpis"><span class="marca-kpi"><strong>${marcasAgrupadas.length}</strong> marcas</span><span class="marca-kpi"><strong>${fornecedoresUnicos}</strong> fornecedores</span><span class="marca-kpi"><strong>${resposta.itens.length}</strong> registros</span>${d.uf ? `<span class="marca-kpi">UF <strong>${escapeHtml(d.uf)}</strong></span>` : ""}</div></div><div class="marcas-ranking"><div class="marcas-ranking-cab"><span>#</span><span>Marca / produto</span><span>Ocorrências</span><span>Fornecedores</span><span>Último local</span><span></span></div>${marcasVisiveis.map((item, indice) => `<button type="button" class="marca-ranking-linha" data-marca-ranking="${indice}"><span class="marca-rank">${indice + 1}</span><span><strong class="marca-nome">${escapeHtml(item.marca)}</strong><small class="marca-produto">${escapeHtml(item.produtoCatalogo || "Produto catalogado")}</small></span><span class="marca-numero">${escapeHtml(String(item.ocorrencias))}</span><span class="marca-fornecedor">${escapeHtml([...item.fornecedores].slice(0, 2).join(" · ") || "Não informado")}</span><span class="marca-local">${escapeHtml([item.municipio, item.uf].filter(Boolean).join(" · ") || "Não informado")}</span><span class="marca-abrir">›</span></button>`).join("")}</div><div id="dg-marca-dossie"></div>${marcasAgrupadas.length > marcasVisiveis.length ? `<p class="dica-clique">Mostrando as ${marcasVisiveis.length} marcas mais recorrentes. Refine o produto para uma leitura ainda mais precisa.</p>` : ""}`;
+      painelMarcas.querySelectorAll(".marca-ranking-linha").forEach((linha) => linha.addEventListener("click", () => {
+        const indice = Number(linha.dataset.marcaRanking); const item = marcasVisiveis[indice]; const dossie = painelMarcas.querySelector("#dg-marca-dossie");
+        if (!item || !dossie) return;
+        painelMarcas.querySelectorAll(".marca-ranking-linha").forEach((el) => el.classList.toggle("ativa", el === linha));
+        dossie.innerHTML = `<section class="marca-dossie"><div class="marca-dossie-topo"><div><h3>${escapeHtml(item.marca)}</h3><p>Marca declarada na fonte oficial · ${escapeHtml(item.produtoCatalogo || "Produto catalogado")}</p></div><button type="button" class="btn-imprimir" id="dg-marca-fechar">Fechar dossiê</button></div><dl class="marca-dossie-grid"><div><dt>Fornecedores identificados</dt><dd>${escapeHtml([...item.fornecedores].join(" · ") || item.documentoFornecedor || "Não informado")}</dd></div><div><dt>Ocorrências</dt><dd>${escapeHtml(String(item.ocorrencias))} resultado(s) declarados</dd></div><div><dt>Último órgão / local</dt><dd>${escapeHtml([item.orgao, item.municipio, item.uf].filter(Boolean).join(" · ") || "Não informado")}</dd></div><div><dt>Último resultado</dt><dd>${escapeHtml(formatarDataIso(item.dataResultado))} · ${escapeHtml(item.valorUnitario ? formatarValor(item.valorUnitario) : "Preço não informado")}</dd></div></dl><p class="dica-clique" style="margin:14px 0 0;">PDM ${escapeHtml(String(item.codigoPdm || "-"))} · Fonte: ${escapeHtml(resposta.fonte)}.</p></section>`;
+        dossie.querySelector("#dg-marca-fechar")?.addEventListener("click", () => { dossie.innerHTML = ""; linha.classList.remove("ativa"); });
+        dossie.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }));
       botao.disabled = false;
     });
 
