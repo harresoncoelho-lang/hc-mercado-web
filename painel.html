@@ -5687,23 +5687,16 @@ let resultados = resultadosBrutos.filter((r) => {
       const botao = alvo.querySelector("#dg-marcas-buscar");
       if (!termo || !painelMarcas || !botao) return;
       botao.disabled = true;
-      painelMarcas.innerHTML = '<div class="carregando">Buscando resultados homologados para esse produto...</div>';
-      const resposta = await consultarResultadosHomologadosComprasGov({ palavras: termo.split(",").map((p) => p.trim()).filter(Boolean), dias: d.periodo.dias, uf: d.uf, limite: 30 });
+      painelMarcas.innerHTML = '<div class="carregando">Consultando catálogo e resultados homologados oficiais para esse produto...</div>';
+      const resposta = await consultarMarcasPorProdutoOficial(termo, d.uf);
       if (resposta.erro) {
-        d.marcasPesquisa = { termo, aviso: "Não foi possível consultar os resultados homologados agora. Tente novamente em alguns instantes." };
+        d.marcasPesquisa = { termo, aviso: "Não foi possível consultar catálogo e resultados homologados agora. Tente novamente em alguns instantes." };
         renderDiagnostico();
         return;
       }
-      d.marcasPesquisa = { termo, aviso: resposta.registros.length ? "" : "Nenhum resultado homologado encontrado para esse produto no recorte atual. Tente ampliar o período ou remover a UF." };
-      if (!resposta.registros.length) { renderDiagnostico(); return; }
-      painelMarcas.innerHTML = `<p class="dica-clique">${resposta.totalCorrespondente || resposta.registros.length} resultado(s) encontrado(s). A marca fica como “não consultada” até você pedir a verificação oficial do item.</p><div class="lista-boletim">${resposta.registros.map((registro, indice) => { const item = registro.item || {}; const fornecedor = registro.fornecedor || {}; const resultado = registro.resultado || {}; const marca = item.marca || null; const podeConsultar = !marca && item.catalogoCodigo && registro.compra?.id && item.id; return `<article class="boletim-card"><div class="boletim-topo"><span class="boletim-numero">${indice + 1}</span><strong class="dg-marca-status" data-marca-status="${indice}">${marca ? `Marca declarada: ${escapeHtml(marca)}` : "Marca ainda não consultada"}</strong></div><div class="boletim-corpo"><p class="boletim-objeto">${escapeHtml(item.descricao || item.descricaoResumida || "Item sem descrição")}</p><dl class="boletim-meta"><div><dt>Fornecedor vencedor</dt><dd>${escapeHtml(fornecedor.nome || fornecedor.documento || "Não informado")}</dd></div><div><dt>Resultado</dt><dd>${escapeHtml(formatarDataIso(resultado.data))} · ${escapeHtml(formatarValor(resultado.valorTotalHomologado || 0))}</dd></div></dl><div class="boletim-rodape"><span class="marca-pesquisa-resultado" data-marca-destino="${indice}">${marca ? escapeHtml(marca) : "Marca não informada no registro local"}</span>${podeConsultar ? `<button type="button" class="btn-filtro-rapido dg-consultar-marca-pesquisa" data-marca-idx="${indice}">Consultar marca oficial</button>` : ""}</div></div></article>`; }).join("")}</div>`;
-      painelMarcas.querySelectorAll(".dg-consultar-marca-pesquisa").forEach((btn) => btn.addEventListener("click", async () => {
-        const registro = resposta.registros[Number(btn.dataset.marcaIdx)]; const item = registro?.item || {}; const destino = painelMarcas.querySelector(`[data-marca-destino="${btn.dataset.marcaIdx}"]`);
-        if (!registro || !destino) return;
-        btn.disabled = true; btn.textContent = "Consultando...";
-        try { const params = new URLSearchParams({ catalogo: item.catalogoCodigo, compra: registro.compra.id, item: item.id }); const resp = await fetch(`/.netlify/functions/comprasgov-marca?${params}`); const dados = await resp.json(); destino.textContent = dados.encontrada ? `${dados.marca} — marca declarada no Compras.gov.` : "A fonte oficial não informou marca utilizável para este item."; const status = painelMarcas.querySelector(`[data-marca-status="${btn.dataset.marcaIdx}"]`); if (status) status.textContent = dados.encontrada ? `Marca declarada: ${dados.marca}` : "Marca não declarada na fonte"; } catch (erro) { destino.textContent = "Não foi possível consultar a marca agora."; }
-        btn.remove();
-      }));
+      d.marcasPesquisa = { termo, aviso: resposta.itens.length ? "" : "Nenhuma marca declarada foi encontrada na fonte oficial para esse produto" + (d.uf ? ` em ${d.uf}` : "") + ". Tente outra descrição ou remova a UF." };
+      if (!resposta.itens.length) { renderDiagnostico(); return; }
+      painelMarcas.innerHTML = `<p class="dica-clique">${resposta.itens.length} resultado(s) com marca declarada. Fonte: ${escapeHtml(resposta.fonte)}${resposta.consultasComFalha ? ` · ${resposta.consultasComFalha} catálogo(s) não respondeu(ram) agora.` : ""}</p><div class="lista-boletim">${resposta.itens.map((item, indice) => `<article class="boletim-card"><div class="boletim-topo"><span class="boletim-numero">${indice + 1}</span><strong>Marca declarada: ${escapeHtml(item.marca)}</strong></div><div class="boletim-corpo"><p class="boletim-objeto">${escapeHtml(item.descricaoItem || item.produtoCatalogo || "Item catalogado")}</p><dl class="boletim-meta"><div><dt>Fornecedor vencedor</dt><dd>${escapeHtml(item.fornecedor || item.documentoFornecedor || "Não informado")}</dd></div><div><dt>Preço unitário</dt><dd>${escapeHtml(item.valorUnitario ? formatarValor(item.valorUnitario) : "Não informado")}</dd></div><div><dt>Órgão / local</dt><dd>${escapeHtml([item.orgao, item.municipio, item.uf].filter(Boolean).join(" · ") || "Não informado")}</dd></div><div><dt>Resultado</dt><dd>${escapeHtml(formatarDataIso(item.dataResultado))}</dd></div></dl><div class="boletim-rodape"><span class="marca-pesquisa-resultado">PDM ${escapeHtml(String(item.codigoPdm || "-"))} · ${escapeHtml(item.produtoCatalogo || "Catálogo Compras.gov")}</span></div></div></article>`).join("")}</div>`;
       botao.disabled = false;
     });
 
@@ -5855,6 +5848,20 @@ let resultados = resultadosBrutos.filter((r) => {
     } catch (e) {
       console.warn("[comprasgov-resultados] falha na consulta:", e);
       return { registros: [], erro: true, totalCorrespondente: null, truncado: false, estado: null };
+    }
+  }
+
+  async function consultarMarcasPorProdutoOficial(termo, uf) {
+    try {
+      const parametros = new URLSearchParams({ termo });
+      if (uf) parametros.set("uf", uf);
+      const resposta = await fetch(`/.netlify/functions/comprasgov-marcas-produto?${parametros}`);
+      const dados = await resposta.json();
+      if (!resposta.ok || !dados.ok) return { erro: true, itens: [] };
+      return { erro: false, itens: Array.isArray(dados.itens) ? dados.itens : [], fonte: dados.fonte || "Compras.gov", consultasComFalha: dados.consultasComFalha || 0 };
+    } catch (erro) {
+      console.warn("[comprasgov-marcas-produto] falha na consulta:", erro);
+      return { erro: true, itens: [] };
     }
   }
 
