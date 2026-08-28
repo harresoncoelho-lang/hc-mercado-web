@@ -17,7 +17,7 @@ function marcaUtil(valor) {
   const marca = textoSeguro(valor, 120);
   const normalizada = marca.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
   if (!marca || /^[.-]+$/.test(marca) || /^\d{4}$/.test(marca)) return null;
-  if (["nao se aplica", "na", "nao informado", "conforme edital", "diversas", "propria"].includes(normalizada)) return null;
+  if (["nao se aplica", "na", "nao informado", "conforme edital", "diversas", "propria", "caneta", "produto", "material"].includes(normalizada)) return null;
   return marca;
 }
 
@@ -58,6 +58,7 @@ function normalizarResultado(linha, pdm) {
     marca,
     produtoCatalogo: pdm.descricao,
     codigoPdm: pdm.codigo,
+    ordemCatalogo: pdm.ordem,
     descricaoItem: textoSeguro(linha.descricaoItem || linha.descricaoDetalhadaItem, 500),
     fornecedor: textoSeguro(linha.nomeFornecedor || linha.niFornecedor, 240),
     documentoFornecedor: textoSeguro(linha.niFornecedor, 30),
