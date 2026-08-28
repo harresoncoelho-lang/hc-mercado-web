@@ -481,7 +481,14 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   // chamada ao endpoint sai a cada intervalo. Assim 27 UFs cabem no orçamento
   // sem transformar uma rajada em 26 falhas de cobertura.
   const INTERVALO_MS = parseInt(process.env.INTERVALO_MS_OPORTUNIDADES || "700", 10);
+  // Quando a própria fonte fica indisponível, insistir nas 27 UFs multiplica
+  // timeouts sem recuperar dado algum. Três sondas independentes falhando antes
+  // do primeiro sucesso caracterizam indisponibilidade da fonte, não falta de
+  // cobertura de um estado específico.
+  const LIMIAR_FALHAS_FONTE = parseInt(process.env.LIMIAR_FALHAS_FONTE_OPORTUNIDADES || "3", 10);
   let proximaChamadaEm = 0;
+  let falhasAntesDoPrimeiroSucesso = 0;
+  let fonteIndisponivel = false;
   async function respeitarCadenciaPncp() {
     const agora = Date.now();
     const espera = Math.max(0, proximaChamadaEm - agora);
@@ -495,13 +502,19 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   const todas = [];
   let ufsComFalha = [];
   let ufsOk = [];
+  const coberturaPorUf = { ...((existentes && existentes.coberturaPorUf) || {}) };
 
   const filaUfs = [...UFS];
 
   async function processarUf(uf) {
+    if (fonteIndisponivel) {
+      ufsComFalha.push(uf);
+      return;
+    }
     let pagina = 1;
     let totalPaginas = 1;
     let falhouUf = false;
+    let registrosDaUf = 0;
 
     while (pagina <= totalPaginas && pagina <= 20) {
       if (tempoRestanteMs() < 8000) { falhouUf = true; break; }
@@ -514,6 +527,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       totalPaginas = dados.totalPaginas || 1;
 
       for (const item of itens) {
+        registrosDaUf += 1;
         todas.push({
           objeto: item.objetoCompra || item.objetoContrato || "",
           orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Órgão não informado",
@@ -540,7 +554,22 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       }
       pagina += 1;
     }
-    if (falhouUf) ufsComFalha.push(uf); else ufsOk.push(uf);
+    if (falhouUf) {
+      ufsComFalha.push(uf);
+      if (ufsOk.length === 0) {
+        falhasAntesDoPrimeiroSucesso += 1;
+        if (falhasAntesDoPrimeiroSucesso >= LIMIAR_FALHAS_FONTE) {
+          fonteIndisponivel = true;
+          console.log(`[oportunidades] Circuit breaker ativado: ${falhasAntesDoPrimeiroSucesso} UFs falharam antes do primeiro sucesso. Interrompendo tentativas que só repetiriam a indisponibilidade da fonte.`);
+        }
+      }
+    } else {
+      ufsOk.push(uf);
+      coberturaPorUf[uf] = {
+        atualizadoEm: new Date().toISOString(),
+        registrosColetados: registrosDaUf,
+      };
+    }
   }
 
   async function trabalhador() {
@@ -565,7 +594,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   // sistêmico — tentar de novo, agora sem concorrência de outras 5 UFs disputando a mesma
   // API, resolve a maioria dos casos (era comum um estado como "AM" falhar sozinho mesmo
   // com todas as outras 26 UFs tendo sido coletadas com sucesso na mesma execução).
-  if (ufsComFalha.length > 0 && tempoRestanteMs() > 20000) {
+  if (ufsComFalha.length > 0 && !fonteIndisponivel && tempoRestanteMs() > 20000) {
     const paraRetentar = [...ufsComFalha];
     console.log(`[oportunidades] Segunda passada em ${paraRetentar.length} UF(s) que falharam: ${paraRetentar.join(", ")}.`);
     ufsComFalha = [];
@@ -607,6 +636,9 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     retencaoDias: RETENCAO_DIAS_OPORTUNIDADES,
     totalRegistros: registros.length,
     ufsComFalha,
+    ufsOk,
+    coberturaPorUf,
+    saudeFonte: fonteIndisponivel ? "indisponivel" : (ufsComFalha.length ? "parcial" : "ok"),
     registros,
   };
 }
