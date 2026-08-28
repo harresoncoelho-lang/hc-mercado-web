@@ -12,6 +12,8 @@
 //   TAMANHO_PAGINA=100         -> 10 a 500, conforme limite da API
 //   ATRASO_MS=350              -> pausa educada entre páginas
 //   CONCORRENCIA_ITENS=3       -> compras enriquecidas em paralelo por página
+//   INTERVALO_MS=900            -> espaçamento global entre chamadas à fonte
+//   PAUSA_429_MS=15000          -> espera mínima após rate limit (HTTP 429)
 //   SUPABASE_SERVICE_ROLE_KEY  -> obrigatória para gravar dados e cursor
 //
 // O robô só usa APIs públicas e só normaliza campos explicitamente fornecidos.
@@ -27,9 +29,12 @@ const FOLGA_DIAS = parseInt(process.env.FOLGA_DIAS || "2", 10);
 const TAMANHO_PAGINA = Math.min(500, Math.max(10, parseInt(process.env.TAMANHO_PAGINA || "100", 10)));
 const ATRASO_MS = parseInt(process.env.ATRASO_MS || "350", 10);
 const CONCORRENCIA_ITENS = Math.max(1, parseInt(process.env.CONCORRENCIA_ITENS || "3", 10));
+const INTERVALO_MS = parseInt(process.env.INTERVALO_MS || "900", 10);
+const PAUSA_429_MS = parseInt(process.env.PAUSA_429_MS || "15000", 10);
 const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
 const CHAVE_ESTADO = "comprasgov_resultados_estado";
 const inicioExecucao = Date.now();
+let proximaChamadaFonteEm = 0;
 
 function tempoRestanteMs() {
   return LIMITE_MS - (Date.now() - inicioExecucao);
@@ -53,9 +58,27 @@ function chaveResultado(resultado) {
   return `${resultado.idCompraItem || ""}:${resultado.sequencialResultado || ""}`;
 }
 
+// Todas as rotas da API compartilham o mesmo limite. Mesmo quando os itens
+// são enriquecidos em paralelo, o início de cada chamada é serializado aqui;
+// isso preserva a vantagem de preparar os dados em paralelo sem martelar a
+// fonte pública e derrubar a execução inteira com HTTP 429.
+async function aguardarVezDaFonte() {
+  const agora = Date.now();
+  const espera = Math.max(0, proximaChamadaFonteEm - agora);
+  proximaChamadaFonteEm = Math.max(proximaChamadaFonteEm, agora) + INTERVALO_MS;
+  if (espera > 0) await dormir(espera);
+}
+
+function registrarRateLimit(retryAfter) {
+  const segundos = Number(retryAfter);
+  const pausa = Number.isFinite(segundos) && segundos > 0 ? segundos * 1000 : PAUSA_429_MS;
+  proximaChamadaFonteEm = Math.max(proximaChamadaFonteEm, Date.now() + pausa);
+}
+
 async function buscarJson(url, rotulo, tentativas = 3) {
   let ultimoErro = null;
   for (let tentativa = 1; tentativa <= tentativas; tentativa += 1) {
+    await aguardarVezDaFonte();
     const controlador = new AbortController();
     const timeout = setTimeout(() => controlador.abort(), 30000);
     try {
@@ -65,6 +88,13 @@ async function buscarJson(url, rotulo, tentativas = 3) {
       });
       if (!resposta.ok) {
         ultimoErro = new Error(`${rotulo}: HTTP ${resposta.status}`);
+        ultimoErro.status = resposta.status;
+        if (resposta.status === 429) {
+          registrarRateLimit(resposta.headers.get("retry-after"));
+          // Não tente em sequência contra uma fonte que acabou de pedir pausa.
+          // O cursor será salvo pelo chamador e a próxima execução retoma daqui.
+          break;
+        }
       } else {
         const dados = await resposta.json();
         if (!Array.isArray(dados.resultado)) {
@@ -208,6 +238,10 @@ async function main() {
       resposta = await buscarResultados(data, pagina);
     } catch (erro) {
       await salvarEstado({ proximaData: data, proximaPagina: pagina, saudeFonte: "indisponivel", ultimoErro: erro.message });
+      if (erro.status === 429) {
+        console.log(`[comprasgov-resultados] Fonte limitou a taxa na página ${pagina}; cursor preservado para retomar depois.`);
+        break;
+      }
       throw erro;
     }
 

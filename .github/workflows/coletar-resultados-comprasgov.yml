@@ -31,5 +31,7 @@ jobs:
           FOLGA_DIAS: "2"
           TAMANHO_PAGINA: "100"
           ATRASO_MS: "350"
-          CONCORRENCIA_ITENS: "3"
+          INTERVALO_MS: "900"
+          PAUSA_429_MS: "15000"
+          CONCORRENCIA_ITENS: "1"
         run: node scripts/coletar_comprasgov_resultados.js
