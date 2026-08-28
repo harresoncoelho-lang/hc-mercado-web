@@ -5569,7 +5569,7 @@ let resultados = resultadosBrutos.filter((r) => {
       <button type="button" class="angulo-card" data-alvo-angulo="dg-secao-marcas"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-package'></use></svg></span><span class="angulo-titulo">Marcas</span><span class="angulo-desc">Quem fabrica o que se vende</span></button>
       <button type="button" class="angulo-card angulo-desabilitado" disabled title="Previsão de contratação futura — no roadmap"><span class="angulo-icone"><svg class='icone-ph'><use href='#ph-chart-line-up'></use></svg></span><span class="angulo-titulo">Contratação futura</span><span class="angulo-desc">Em breve</span></button>
     </div>
-    ${anguloAtivo ? `<div class="hc-trilha"><button type="button" class="hc-voltar" id="dg-voltar-visao">‹ Visão geral</button><span>Inteligência de mercado › ${escapeHtml({ estados: "Estados", orgaos: "Órgãos", empresas: "Empresas", correspondencias: "Oportunidades", marcas: "Marcas" }[anguloAtivo] || "Análise")}</span></div><section class="dg-exploracao-detalhada" id="dg-exploracao-detalhada">` : '<p class="dica-clique" style="margin:14px 0 0;">Escolha um ângulo para aprofundar apenas aquela pergunta, sem transformar a visão geral em uma página longa.</p>'}`;
+    ${anguloAtivo ? `<div class="hc-trilha"><button type="button" class="hc-voltar" id="dg-voltar-visao">‹ Visão geral</button><span>Inteligência de mercado › ${escapeHtml({ estados: "Estados", orgaos: "Órgãos", empresas: "Empresas", correspondencias: "Oportunidades", marcas: "Marcas" }[anguloAtivo] || "Análise")}</span></div><div class="dg-exploracao-detalhada" id="dg-exploracao-detalhada">` : '<p class="dica-clique" style="margin:14px 0 0;">Escolha um ângulo para aprofundar apenas aquela pergunta, sem transformar a visão geral em uma página longa.</p>'}`;
 
     if (anguloAtivo === "empresas" && d.mercado) {
       const m = d.mercado;
@@ -5701,7 +5701,7 @@ let resultados = resultadosBrutos.filter((r) => {
     }
 
     }
-    if (anguloAtivo) html += "</section>";
+    if (anguloAtivo) html += "</div>";
     alvo.innerHTML = html;
     renderBaixaConcorrencia();
 
