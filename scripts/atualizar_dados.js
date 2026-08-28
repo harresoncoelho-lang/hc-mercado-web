@@ -497,6 +497,18 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   }
   iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
+  const recuperarPendentes = process.env.RECUPERAR_UFS_PENDENTES === "1";
+  const pendentesAnteriores = new Set(Array.isArray(existentes && existentes.ufsComFalha) ? existentes.ufsComFalha : []);
+  // No modo de recuperação, uma execução curta toca somente as UFs pendentes
+  // do último boletim. O restante da cobertura continua válido e não precisa
+  // ser consultado de novo para corrigir um único estado instável.
+  const ufsAlvo = recuperarPendentes && pendentesAnteriores.size > 0
+    ? UFS.filter((uf) => pendentesAnteriores.has(uf))
+    : UFS;
+  if (recuperarPendentes && pendentesAnteriores.size === 0) {
+    console.log("[oportunidades] Recuperação dispensada: não há UFs pendentes no último boletim.");
+    return { ...existentes, semPendencias: true, ufsOkNaExecucao: [] };
+  }
   const hoje = new Date();
   const dataFinal = fmtData(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
   const todas = [];
@@ -504,7 +516,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   let ufsOk = [];
   const coberturaPorUf = { ...((existentes && existentes.coberturaPorUf) || {}) };
 
-  const filaUfs = [...UFS];
+  const filaUfs = [...ufsAlvo];
 
   async function processarUf(uf) {
     if (fonteIndisponivel) {
@@ -631,12 +643,17 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     `Total acumulado após fundir/podar (retenção ${RETENCAO_DIAS_OPORTUNIDADES}d): ${registros.length} registros.`
   );
 
+  const falhasDestaExecucao = [...new Set(ufsComFalha)];
+  const ufsComFalhaFinais = recuperarPendentes
+    ? UFS.filter((uf) => ufsAlvo.includes(uf) ? falhasDestaExecucao.includes(uf) : pendentesAnteriores.has(uf))
+    : falhasDestaExecucao;
   return {
     atualizadoEm: new Date().toISOString(),
     retencaoDias: RETENCAO_DIAS_OPORTUNIDADES,
     totalRegistros: registros.length,
-    ufsComFalha,
-    ufsOk,
+    ufsComFalha: ufsComFalhaFinais,
+    ufsOk: UFS.filter((uf) => !ufsComFalhaFinais.includes(uf)),
+    ufsOkNaExecucao: [...new Set(ufsOk)],
     coberturaPorUf,
     saudeFonte: fonteIndisponivel ? "indisponivel" : (ufsComFalha.length ? "parcial" : "ok"),
     registros,
@@ -1123,19 +1140,22 @@ async function main() {
   const dirDados = path.join(process.cwd(), "data");
   await fs.mkdir(dirDados, { recursive: true });
 
-  console.log(`Iniciando coleta incremental. Retenção: ${RETENCAO_DIAS} dias.`);
+  const somenteOportunidades = process.env.SOMENTE_OPORTUNIDADES === "1";
+  const recuperarPendentes = process.env.RECUPERAR_UFS_PENDENTES === "1";
+  console.log(`Iniciando coleta incremental${somenteOportunidades ? " (somente oportunidades)" : ""}. Retenção: ${RETENCAO_DIAS} dias.`);
 
-  const caminhoContratos = path.join(dirDados, "contratos_recentes.json");
-  const caminhoContratosMeta = path.join(dirDados, "contratos_meta.json");
-  await hidratarContratosDoSupabase(caminhoContratos, caminhoContratosMeta);
-
-  iniciarFase(LIMITE_MINUTOS_CONTRATOS);
-  const contratos = await coletarContratos(caminhoContratos);
-  await fs.writeFile(caminhoContratos, JSON.stringify(contratos), "utf8");
-  const { registros: _registrosContratos, ...contratosMeta } = contratos;
-  await fs.writeFile(caminhoContratosMeta, JSON.stringify(contratosMeta), "utf8");
-  console.log("Gravado data/contratos_meta.json (metadado leve, vai pro git)");
-  await sincronizarContratosNoSupabase(contratos);
+  if (!somenteOportunidades) {
+    const caminhoContratos = path.join(dirDados, "contratos_recentes.json");
+    const caminhoContratosMeta = path.join(dirDados, "contratos_meta.json");
+    await hidratarContratosDoSupabase(caminhoContratos, caminhoContratosMeta);
+    iniciarFase(LIMITE_MINUTOS_CONTRATOS);
+    const contratos = await coletarContratos(caminhoContratos);
+    await fs.writeFile(caminhoContratos, JSON.stringify(contratos), "utf8");
+    const { registros: _registrosContratos, ...contratosMeta } = contratos;
+    await fs.writeFile(caminhoContratosMeta, JSON.stringify(contratosMeta), "utf8");
+    console.log("Gravado data/contratos_meta.json (metadado leve, vai pro git)");
+    await sincronizarContratosNoSupabase(contratos);
+  }
 
   const caminhoOportunidades = path.join(dirDados, "oportunidades_abertas.json");
   const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
@@ -1148,11 +1168,19 @@ async function main() {
   // de a base incompleta chegar ao painel.
   const MIN_UFS_OK_OPORTUNIDADES = parseInt(process.env.MIN_UFS_OK_OPORTUNIDADES || "24", 10);
   const ufsOkOportunidades = UFS.length - oportunidades.ufsComFalha.length;
-  if (ufsOkOportunidades < MIN_UFS_OK_OPORTUNIDADES) {
+  if (recuperarPendentes && !oportunidades.semPendencias && oportunidades.ufsOkNaExecucao.length === 0) {
+    throw new Error("Recuperação de oportunidades não conseguiu atualizar nenhuma UF pendente; o último boletim íntegro será preservado.");
+  }
+  if (!recuperarPendentes && ufsOkOportunidades < MIN_UFS_OK_OPORTUNIDADES) {
     throw new Error(
       `Coleta de oportunidades com cobertura insuficiente: ${ufsOkOportunidades}/${UFS.length} UFs concluídas ` +
       `(mínimo para publicar: ${MIN_UFS_OK_OPORTUNIDADES}). O último boletim íntegro será preservado.`
     );
+  }
+
+  if (somenteOportunidades) {
+    console.log("Recuperação de oportunidades finalizada com sucesso.");
+    return;
   }
 
   const caminhoMercado = path.join(dirDados, "mercado_segmentos.json");

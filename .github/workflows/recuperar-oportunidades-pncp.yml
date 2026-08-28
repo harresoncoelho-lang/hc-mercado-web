@@ -1,0 +1,45 @@
+name: Recuperar UFs pendentes do PNCP
+
+# Executa uma recuperação leve entre as coletas completas. Nunca disputa escrita
+# com o robô principal: se ele estiver ativo, esta execução aguarda a vez.
+concurrency:
+  group: atualizar-dados-pncp
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  recuperar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Recuperar somente UFs pendentes
+        env:
+          SOMENTE_OPORTUNIDADES: "1"
+          RECUPERAR_UFS_PENDENTES: "1"
+          LIMITE_MINUTOS_OPORTUNIDADES: "28"
+          CONCORRENCIA_UF_OPORTUNIDADES: "2"
+          INTERVALO_MS_OPORTUNIDADES: "900"
+          MIN_UFS_OK_OPORTUNIDADES: "1"
+        run: node scripts/atualizar_dados.js
+      - name: Publicar recuperação válida
+        run: |
+          git config user.name "hc-licitacoes-bot"
+          git config user.email "actions@github.com"
+          git add data/oportunidades_abertas.json
+          if git diff --cached --quiet; then
+            echo "Nenhuma UF recuperada nesta tentativa."
+            exit 0
+          fi
+          git commit -m "Recuperação automática de UFs pendentes do PNCP - $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
