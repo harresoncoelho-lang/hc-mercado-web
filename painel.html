@@ -5627,22 +5627,12 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     }
 
-    if (anguloAtivo === "marcas") html += `<h2 id="dg-secao-marcas">Marcas mais vencedoras (por valor) — clique para ver os itens</h2>`;
     if (anguloAtivo === "marcas") {
-    if (!d.mercado || !d.mercado.marcas || d.mercado.marcas.length === 0) {
-      html += '<div class="aviso">Nenhuma marca de produto identificada ainda nesse segmento/UF. Marca só aparece quando o robô consegue casar o item com a API pública de Pesquisa de Preço do Compras.gov.br — cobertura parcial (só órgãos federais/distritais com item catalogado cujo fornecedor informou marca no Comprasnet).</div>';
-    } else {
-      const maxMarca = d.mercado.marcas[0].valorTotalHistorico || 1;
-      for (const mc of d.mercado.marcas) {
-        const largura = Math.round((mc.valorTotalHistorico / maxMarca) * 100);
-        const selecionada = d.mercado.marcaSelecionada && d.mercado.marcaSelecionada.marca === mc.marca;
-        html += `<div class="barra-item${selecionada ? " selecionado" : ""}" data-marca="${escapeHtml(mc.marca)}">
-          <div class="barra-label">${escapeHtml(mc.marca)}</div>
-          <div class="barra-fundo"><div class="barra-preenchida" style="width:${largura}%" title="${escapeHtml(formatarValor(mc.valorTotalHistorico))}">${escapeHtml(formatarValorCompacto(mc.valorTotalHistorico))}</div></div>
-          <div class="barra-meta">${escapeHtml(mc.fornecedores.join(", ") || "-")} · ${mc.itensGanhos} item(ns) ganho(s) · <small>clique para detalhar</small></div>
-        </div>`;
-      }
-    }
+      const consultaMarca = d.marcasPesquisa || {};
+      html += `<h2 id="dg-secao-marcas">Pesquisa de marcas por produto</h2>
+        <p class="dica-clique">Informe o produto que quer investigar — por exemplo, “ar-condicionado” ou “lixeira”. A consulta mostra resultados homologados, fornecedores e somente marcas declaradas na fonte oficial.</p>
+        <div class="boletim-cabecalho"><div class="campo" style="min-width:min(100%,420px);margin:0;"><label for="dg-marcas-termo">Produto ou descrição do item</label><input id="dg-marcas-termo" value="${escapeHtml(consultaMarca.termo || d.palavras.join(", "))}" placeholder="Ex: ar-condicionado, lixeira"></div><button type="button" class="btn-buscar" id="dg-marcas-buscar">Pesquisar marcas</button></div>
+        <div id="dg-marcas-resultados">${consultaMarca.aviso ? `<div class="aviso">${escapeHtml(consultaMarca.aviso)}</div>` : '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">A pesquisa ainda não foi executada. Ela não infere marca: cada resultado aponta fornecedor, item e a consulta oficial quando disponível.</div>'}</div>`;
     }
 
     if (anguloAtivo === "correspondencias") html += "<h2 id=\"dg-secao-correspondencias\">Oportunidades abertas agora " + (d.uf ? "em " + escapeHtml(d.uf) : "") + "</h2>";
@@ -5690,6 +5680,32 @@ let resultados = resultadosBrutos.filter((r) => {
       alvo.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     if (anguloAtivo === "estados") renderMapaUf(d.porUf);
+
+    alvo.querySelector("#dg-marcas-buscar")?.addEventListener("click", async () => {
+      const termo = alvo.querySelector("#dg-marcas-termo")?.value.trim();
+      const painelMarcas = alvo.querySelector("#dg-marcas-resultados");
+      const botao = alvo.querySelector("#dg-marcas-buscar");
+      if (!termo || !painelMarcas || !botao) return;
+      botao.disabled = true;
+      painelMarcas.innerHTML = '<div class="carregando">Buscando resultados homologados para esse produto...</div>';
+      const resposta = await consultarResultadosHomologadosComprasGov({ palavras: termo.split(",").map((p) => p.trim()).filter(Boolean), dias: d.periodo.dias, uf: d.uf, limite: 30 });
+      if (resposta.erro) {
+        d.marcasPesquisa = { termo, aviso: "Não foi possível consultar os resultados homologados agora. Tente novamente em alguns instantes." };
+        renderDiagnostico();
+        return;
+      }
+      d.marcasPesquisa = { termo, aviso: resposta.registros.length ? "" : "Nenhum resultado homologado encontrado para esse produto no recorte atual. Tente ampliar o período ou remover a UF." };
+      if (!resposta.registros.length) { renderDiagnostico(); return; }
+      painelMarcas.innerHTML = `<p class="dica-clique">${resposta.totalCorrespondente || resposta.registros.length} resultado(s) encontrado(s). A marca fica como “não consultada” até você pedir a verificação oficial do item.</p><div class="lista-boletim">${resposta.registros.map((registro, indice) => { const item = registro.item || {}; const fornecedor = registro.fornecedor || {}; const resultado = registro.resultado || {}; const marca = item.marca || null; const podeConsultar = !marca && item.catalogoCodigo && registro.compra?.id && item.id; return `<article class="boletim-card"><div class="boletim-topo"><span class="boletim-numero">${indice + 1}</span><strong>${marca ? `Marca declarada: ${escapeHtml(marca)}` : "Marca ainda não consultada"}</strong></div><div class="boletim-corpo"><p class="boletim-objeto">${escapeHtml(item.descricao || item.descricaoResumida || "Item sem descrição")}</p><dl class="boletim-meta"><div><dt>Fornecedor vencedor</dt><dd>${escapeHtml(fornecedor.nome || fornecedor.documento || "Não informado")}</dd></div><div><dt>Resultado</dt><dd>${escapeHtml(formatarDataIso(resultado.data))} · ${escapeHtml(formatarValor(resultado.valorTotalHomologado || 0))}</dd></div></dl><div class="boletim-rodape"><span class="marca-pesquisa-resultado" data-marca-destino="${indice}">${marca ? escapeHtml(marca) : "Marca não informada no registro local"}</span>${podeConsultar ? `<button type="button" class="btn-filtro-rapido dg-consultar-marca-pesquisa" data-marca-idx="${indice}">Consultar marca oficial</button>` : ""}</div></div></article>`; }).join("")}</div>`;
+      painelMarcas.querySelectorAll(".dg-consultar-marca-pesquisa").forEach((btn) => btn.addEventListener("click", async () => {
+        const registro = resposta.registros[Number(btn.dataset.marcaIdx)]; const item = registro?.item || {}; const destino = painelMarcas.querySelector(`[data-marca-destino="${btn.dataset.marcaIdx}"]`);
+        if (!registro || !destino) return;
+        btn.disabled = true; btn.textContent = "Consultando...";
+        try { const params = new URLSearchParams({ catalogo: item.catalogoCodigo, compra: registro.compra.id, item: item.id }); const resp = await fetch(`/.netlify/functions/comprasgov-marca?${params}`); const dados = await resp.json(); destino.textContent = dados.encontrada ? `${dados.marca} — marca declarada no Compras.gov.` : "A fonte oficial não informou marca utilizável para este item."; } catch (erro) { destino.textContent = "Não foi possível consultar a marca agora."; }
+        btn.remove();
+      }));
+      botao.disabled = false;
+    });
 
     alvo.querySelectorAll(".barra-item[data-cnpj]").forEach((el) => {
       el.addEventListener("click", () => renderDetalheFornecedor(el.dataset.cnpj));
