@@ -5,8 +5,9 @@
   "scripts": {
     "test": "node --test",
     "test:python": "python -m pytest",
-    "lint": "eslint . && biome check .",
-    "lint:fix": "eslint . --fix && biome check --write ."
+    "lint": "eslint . && biome check netlify/functions scripts eslint.config.js --diagnostic-level=error",
+    "lint:fix": "eslint . --fix && biome check netlify/functions scripts eslint.config.js --write",
+    "verify": "npm test && npm run lint"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.12",

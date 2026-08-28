@@ -22,7 +22,7 @@ Always use these exact commands (do not guess):
 
 - **Install:** `npm install`
 
-> **Tests:** `node:test` — run `npm test`. Test what can break (business rules, branching logic, bug regressions); skip trivial/presentational code. Rubric: `.claude/rules/05-testing.md`.
+> **Verification:** run `npm run verify` before a commit. It executes `npm test` (including the syntax check for every inline script in `painel.html`) and the focused lint gate for functions and robots. Test what can break (business rules, branching logic, bug regressions); skip trivial/presentational code. Rubric: `.claude/rules/05-testing.md`.
 > **Python tests** (`scripts/*.py` robots): `pytest` — run `npm run test:python`.
 
 ## What this is
@@ -48,7 +48,8 @@ There is no build step or bundler. This is deployed as-is by Netlify (`netlify.t
 - Run the email digest script (Python, standalone stdlib + `requests`-style calls):
   `python scripts/boletim_editais.py`
 - Local Netlify dev (functions + static files together): `netlify dev` (requires Netlify CLI)
-- No lint/format commands are configured; tests run via `npm test` (`node --test`, see Canonical commands above).
+- `npm run lint` checks Netlify Functions and robot scripts. Existing complexity findings remain warnings during the tracked migration; errors block the command.
+- `npm run verify` is the canonical pre-commit gate: unit tests, syntax of all inline scripts in `painel.html`, and focused lint. The formatter remains disabled deliberately to avoid unrelated mass diffs.
 
 Robot scripts read secrets from environment variables (`SUPABASE_SERVICE_ROLE_KEY`,
 `TRANSPARENCIA_TOKEN`, `EMAIL_REMETENTE`, `EMAIL_SENHA_APP`, etc.) — see the relevant `.github/workflows/*.yml`
