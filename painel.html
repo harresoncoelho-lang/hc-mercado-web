@@ -1747,7 +1747,7 @@
     </div>
 
     <div class="dg-subaba-painel" data-subaba-painel="prospeccao-ia">
-      <div class="aviso"><strong>Em construção.</strong> Vai buscar fornecedores por descrição do produto, usando a Base de Empresas já enriquecida com telefone e e-mail.</div>
+      <div id="dg-prospeccao-resultado" class="conteudo-mercado"><div class="aviso">Gere um diagnóstico de mercado para encontrar fornecedores que já venceram contratos no seu segmento.</div></div>
     </div>
   </section>
 
@@ -1779,6 +1779,7 @@
       btn.addEventListener("click", () => {
         const id = btn.dataset.subaba;
         ativar(id);
+        if (id === "prospeccao-ia" && typeof renderProspeccaoFornecedores === "function") renderProspeccaoFornecedores();
         try { localStorage.setItem(CHAVE, id); } catch (e) { /* segue sem persistir */ }
       });
     });
@@ -5411,6 +5412,36 @@ let resultados = resultadosBrutos.filter((r) => {
     });
   }
 
+  // Prospecção reaproveita a mesma evidência do diagnóstico, sem alegar contato
+  // ou capacidade comercial que a fonte não comprovou: são fornecedores que já
+  // venceram contratos no segmento/recorte escolhido. O próximo clique sempre
+  // leva ao dossiê completo do CNPJ, em vez de abrir mais dados na mesma tela.
+  function renderProspeccaoFornecedores() {
+    const alvo = document.getElementById("dg-prospeccao-resultado");
+    if (!alvo) return;
+    const d = estado.diagnostico;
+    if (!d || !Array.isArray(d.concorrentes)) {
+      alvo.innerHTML = '<div class="aviso">Gere um diagnóstico de mercado primeiro. A prospecção usará o mesmo segmento, período e UF para não misturar mercados diferentes.</div>';
+      return;
+    }
+    const fornecedores = d.concorrentes.filter((f) => f.cnpj && f.cnpj !== "sem-cnpj");
+    if (fornecedores.length === 0) {
+      alvo.innerHTML = `<div class="aviso">Ainda não há fornecedores identificados para "${escapeHtml(d.palavras.join(", "))}"${d.uf ? " em " + escapeHtml(d.uf) : ""} no período selecionado. Refine o termo ou amplie o período para buscar mais evidências.</div>`;
+      return;
+    }
+    alvo.innerHTML = `<div class="boletim-cabecalho"><div><h2 style="margin:0;">Fornecedores já vencedores</h2><p class="dica-clique" style="margin:4px 0 0;">${fornecedores.length} empresa(s) encontrada(s) em contratos de "${escapeHtml(d.palavras.join(", "))}"${d.uf ? " no recorte " + escapeHtml(d.uf) : ""}. Abra o dossiê antes de qualquer abordagem.</p></div></div>
+      <div class="caixa-interna"><table><thead><tr><th>Fornecedor</th><th>Contratos</th><th>Valor contratado</th><th>Atuação</th><th></th></tr></thead><tbody>${fornecedores.map((f, i) => `<tr><td><strong>${escapeHtml(f.nome)}</strong><br><small>${escapeHtml(f.cnpj)}</small></td><td>${Number(f.contratos || 0).toLocaleString("pt-BR")}</td><td>${escapeHtml(f.valorFormatado || formatarValor(f.valor || 0))}</td><td>${escapeHtml((f.ufs || []).join(", ") || "Não informada")}</td><td><button type="button" class="btn-filtro-rapido dg-prospeccao-dossie" data-fornecedor="${i}">Abrir dossiê</button></td></tr>`).join("")}</tbody></table></div>
+      <p class="dica-clique">Fonte: contratos assinados coletados do PNCP. O dossiê mostra histórico e cruzamentos antes de qualquer decisão comercial.</p>`;
+    alvo.querySelectorAll(".dg-prospeccao-dossie").forEach((btn) => btn.addEventListener("click", () => {
+      const fornecedor = fornecedores[Number(btn.dataset.fornecedor)];
+      if (!fornecedor) return;
+      document.querySelector('nav button[data-alvo="empresa"]').click();
+      document.getElementById("emp-cnpj").value = fornecedor.cnpj;
+      document.getElementById("emp-segmento").value = d.palavras.join(", ");
+      document.getElementById("emp-buscar").click();
+    }));
+  }
+
   function renderDiagnostico() {
     const d = estado.diagnostico;
     const alvo = document.getElementById("dg-resultado");
@@ -5987,6 +6018,7 @@ let resultados = resultadosBrutos.filter((r) => {
       alvo.dataset.dgCarga = "";
       renderChipsDiagnostico();
       renderDiagnostico();
+      renderProspeccaoFornecedores();
     } catch (e) {
       alvo.dataset.dgCarga = "";
       alvo.innerHTML = `<div class="aviso">Erro ao gerar diagnóstico: ${escapeHtml(String(e))}</div>`;
