@@ -5009,6 +5009,22 @@ let resultados = resultadosBrutos.filter((r) => {
     }
   }
 
+  // Um dossiê é uma nova camada de navegação, não conteúdo anexado no fim do ranking.
+  // Assim o usuário investiga órgão, fornecedor, empresa ou marca sem perder o contexto
+  // nem transformar a página do diagnóstico numa esteira de tabelas.
+  function abrirDossieDiagnostico(rotulo, conteudo) {
+    const d = estado.diagnostico;
+    const alvo = document.getElementById("dg-resultado");
+    if (!d || !alvo) return null;
+    alvo.innerHTML = `<div class="hc-trilha"><button type="button" class="hc-voltar" id="dg-voltar-angulo">‹ Voltar para ${escapeHtml({ estados: "Estados", orgaos: "Órgãos", empresas: "Empresas", correspondencias: "Oportunidades", marcas: "Marcas" }[d.anguloAtivo] || "Visão geral")}</button><span>Inteligência de mercado › ${escapeHtml(rotulo)}</span></div><section class="hc-painel-exploracao"><div id="dg-detalhe">${conteudo}</div></section>`;
+    alvo.querySelector("#dg-voltar-angulo")?.addEventListener("click", () => {
+      renderDiagnostico();
+      alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+    return alvo.querySelector("#dg-detalhe");
+  }
+
   async function renderDetalheFornecedor(cnpj) {
     const d = estado.diagnostico;
     const registros = d.encontrados.filter((c) => (c.cnpjFornecedor || "sem-cnpj") === cnpj);
@@ -5033,8 +5049,7 @@ let resultados = resultadosBrutos.filter((r) => {
       </tr>`;
     }
     html += "</table>";
-    document.getElementById("dg-detalhe").innerHTML = html;
-    document.getElementById("dg-detalhe").scrollIntoView({ behavior: "smooth", block: "start" });
+    abrirDossieDiagnostico(`Fornecedor: ${d.fornecedorSelecionado.nome}`, html);
 
     const irEmpresa = document.getElementById("dg-ir-empresa");
     if (irEmpresa) {
@@ -5091,9 +5106,8 @@ let resultados = resultadosBrutos.filter((r) => {
     }
     html += "</table>";
     html += '<div class="dica-clique">Clique no nome do fornecedor para ver todos os contratos e a ficha cadastral dele.</div>';
-    const alvoDetalhe = document.getElementById("dg-detalhe");
-    alvoDetalhe.innerHTML = html;
-    alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+    const alvoDetalhe = abrirDossieDiagnostico(`Órgão: ${nomeOrgao}`, html);
+    if (!alvoDetalhe) return;
 
     alvoDetalhe.querySelectorAll(".fornecedor-clicavel").forEach((a) => {
       a.addEventListener("click", (ev) => {
@@ -5152,9 +5166,7 @@ let resultados = resultadosBrutos.filter((r) => {
 
     html += '<div class="dica-clique">Esses dados vêm das atas de registro de preço vinculadas a esse CNPJ nos segmentos monitorados. Use a aba "Analisar Empresa" pra ver também os contratos assinados diretamente (fora de ata) desse CNPJ.</div>';
 
-    const alvoDetalhe = document.getElementById("dg-detalhe");
-    alvoDetalhe.innerHTML = html;
-    alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+    abrirDossieDiagnostico(`Empresa: ${empresa.nome}`, html);
   }
 
   // Detalha uma marca de produto (mesmo padrão de renderDetalheEmpresaMercado, agrupado
@@ -5204,9 +5216,7 @@ let resultados = resultadosBrutos.filter((r) => {
 
     html += '<div class="dica-clique">Marca só aparece quando o robô consegue casar o item com a API pública de Pesquisa de Preço do Compras.gov.br — cobertura parcial (só órgãos federais/distritais com item catalogado cujo fornecedor informou marca).</div>';
 
-    const alvoDetalhe = document.getElementById("dg-detalhe");
-    alvoDetalhe.innerHTML = html;
-    alvoDetalhe.scrollIntoView({ behavior: "smooth", block: "start" });
+    abrirDossieDiagnostico(`Marca: ${marcaObj.marca}`, html);
   }
 
   // ---------- Mapa de concentração por UF (Visão Geral) ----------
@@ -5640,12 +5650,25 @@ let resultados = resultadosBrutos.filter((r) => {
     if (d.oportunidadesAbertas.length === 0) {
       html += "<p>Nenhuma oportunidade aberta encontrada no momento para esse segmento/UF.</p>";
     } else {
-      html += "<table><tr><th>Objeto</th><th>Órgão</th><th>Encerramento</th><th>PNCP</th></tr>";
+      // Um objeto de licitação pode ter centenas de caracteres. Em tabela ele vira uma
+      // coluna estreita e deixa grandes vazios; em cards, a leitura segue a ordem real
+      // de decisão: objeto, órgão, prazo e próxima ação.
+      html += '<div class="lista-boletim">';
       d.oportunidadesAbertas.forEach((o, i) => {
-        html += `<tr class="linha-clicavel" data-idx-op="${i}"><td>${escapeHtml(o.objeto)}</td><td>${escapeHtml(o.orgao)}</td><td>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</td><td>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</td></tr>`;
+        html += `<article class="boletim-card">
+          <div class="boletim-topo"><span class="boletim-numero">${i + 1}</span><strong>Oportunidade aberta</strong></div>
+          <div class="boletim-corpo">
+            <p class="boletim-objeto">${escapeHtml(o.objeto || "Objeto não informado")}</p>
+            <dl class="boletim-meta">
+              <div><dt>Órgão comprador</dt><dd>${escapeHtml(o.orgao || "Não informado")}</dd></div>
+              <div><dt>Encerramento</dt><dd>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</dd></div>
+            </dl>
+            <div class="boletim-rodape"><button type="button" class="btn-filtro-rapido dg-op-detalhe" data-idx-op="${i}">Abrir dossiê</button>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener">Ver no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : ""}</div>
+          </div>
+        </article>`;
       });
-      html += "</table>";
-      html += '<div class="dica-clique">Clique numa linha para ver todos os detalhes dessa oportunidade.</div>';
+      html += "</div>";
+      html += '<div class="dica-clique">Abra somente a oportunidade que quiser investigar; o dossiê mantém o caminho de volta a esta lista.</div>';
     }
 
     }
@@ -5684,25 +5707,11 @@ let resultados = resultadosBrutos.filter((r) => {
       el.addEventListener("click", () => renderDetalheMarca(el.dataset.marca));
     });
 
-    alvo.querySelectorAll("tr.linha-clicavel[data-idx-op]").forEach((tr) => {
-      tr.addEventListener("click", () => {
-        const jaSelecionada = tr.classList.contains("linha-selecionada");
-        alvo.querySelectorAll("tr.linha-selecionada").forEach((x) => x.classList.remove("linha-selecionada"));
-        const detalheExistente = alvo.querySelector(".detalhe-drilldown");
-        if (detalheExistente) detalheExistente.remove();
-        if (jaSelecionada) return;
-        tr.classList.add("linha-selecionada");
-        const o = d.oportunidadesAbertas[Number(tr.dataset.idxOp)];
-        const detalhe = document.createElement("div");
-        detalhe.className = "detalhe-drilldown";
-        detalhe.innerHTML = `<dl>
-          <div><dt>Objeto completo</dt><dd>${escapeHtml(o.objeto || "-")}</dd></div>
-          <div><dt>Órgão</dt><dd>${escapeHtml(o.orgao || "-")}</dd></div>
-          <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</dd></div>
-          <div><dt>Nº controle PNCP</dt><dd>${escapeHtml(o.numeroControlePNCP || "-")}</dd></div>
-          <div><dt>Link</dt><dd>${o.link ? `<a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener">Abrir edital no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a>` : "-"}</dd></div>
-        </dl>`;
-        tr.after(detalhe);
+    alvo.querySelectorAll(".dg-op-detalhe[data-idx-op]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const o = d.oportunidadesAbertas[Number(btn.dataset.idxOp)];
+        if (!o) return;
+        abrirDossieDiagnostico("Oportunidade aberta", `<h2>Oportunidade aberta</h2><dl class="boletim-meta"><div><dt>Objeto completo</dt><dd>${escapeHtml(o.objeto || "-")}</dd></div><div><dt>Órgão</dt><dd>${escapeHtml(o.orgao || "-")}</dd></div><div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(o.encerramento))}</dd></div><div><dt>Nº controle PNCP</dt><dd>${escapeHtml(o.numeroControlePNCP || "-")}</dd></div></dl>${o.link ? `<p><a class="link-pncp" href="${escapeHtml(o.link)}" target="_blank" rel="noopener">Abrir edital no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg></a></p>` : ""}`);
       });
     });
   }
