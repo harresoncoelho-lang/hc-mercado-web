@@ -2351,6 +2351,7 @@
           // coleta que só preservou cache antigo parecia saudável apenas por ter um horário
           // recente — exatamente o comportamento que não pode chegar ao cliente.
           ufsComFalha: Array.isArray(dados.ufsComFalha) ? dados.ufsComFalha : [],
+          saudeFonte: dados.saudeFonte || null,
         };
       } catch (e) {
         return { ...fonte, ok: false };
@@ -2368,13 +2369,19 @@
       }
       if (r.ufsComFalha && r.ufsComFalha.length > 0) {
         const totalUfs = 27;
-        cor = r.ufsComFalha.length >= totalUfs ? "var(--vermelho)" : "var(--laranja)";
-        texto = r.ufsComFalha.length >= totalUfs
-          ? "Coleta sem cobertura nas UFs"
-          : `Cobertura parcial — ${r.ufsComFalha.length} UF(s) pendente(s)`;
-        detalhe = r.ufsComFalha.length >= totalUfs
-          ? "A última execução não trouxe oportunidades novas; mostramos a última base válida."
-          : `UFs pendentes: ${r.ufsComFalha.join(", ")}.`;
+        if (r.saudeFonte === "indisponivel") {
+          cor = "var(--laranja)";
+          texto = "PNCP instável — última base válida preservada";
+          detalhe = "A fonte não respondeu na coleta recente. O robô vai retentar automaticamente sem apagar os editais já disponíveis.";
+        } else {
+          cor = r.ufsComFalha.length >= totalUfs ? "var(--vermelho)" : "var(--laranja)";
+          texto = r.ufsComFalha.length >= totalUfs
+            ? "Coleta sem cobertura nas UFs"
+            : `Cobertura parcial — ${r.ufsComFalha.length} UF(s) pendente(s)`;
+          detalhe = r.ufsComFalha.length >= totalUfs
+            ? "A última execução não trouxe oportunidades novas; mostramos a última base válida."
+            : `UFs pendentes: ${r.ufsComFalha.join(", ")}.`;
+        }
       }
       return `<div class="cartao" style="border-top-color:${cor};">
         <h3>${r.icone} ${escapeHtml(r.nome)}</h3>
@@ -6948,8 +6955,10 @@ let resultados = resultadosBrutos.filter((r) => {
   // acessado 100% no navegador do usuário (API pública, sem login, CORS liberado), sem
   // depender de robô. Fluxo: palavra-chave -> PDM (categoria) -> item específico (com
   // características técnicas) -> unidade de fornecimento -> preços reais pagos.
-  const PP_CNBS_URL = "https://cnbs.estaleiro.serpro.gov.br/cnbs-api";
-  const PP_PESQPRECO_URL = "https://pesqpreco.estaleiro.serpro.gov.br/pesquisa-precos-backend-semlogin";
+  // As fontes do Compras.gov são públicas, porém a chamada direta pelo navegador
+  // oscila por CORS. O proxy próprio mantém categorias, especificações e preços
+  // no mesmo fluxo confiável já aplicado à pesquisa de marcas.
+  const PP_API_URL = "/.netlify/functions/comprasgov-precos";
 
   let ppItens = [];
   let ppUnidades = [];
@@ -6989,9 +6998,11 @@ let resultados = resultadosBrutos.filter((r) => {
     salvarFiltroPrecos(termo);
     alvoCat.innerHTML = '<div class="carregando">Buscando categorias no Catálogo do Compras.gov.br...</div>';
     try {
-      const resp = await fetch(`${PP_CNBS_URL}/material/v1/palavra?palavra=${encodeURIComponent(termo)}`);
+      const resp = await fetch(`${PP_API_URL}?${new URLSearchParams({ acao: "categorias", termo })}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const pdms = await resp.json();
+      const corpo = await resp.json();
+      if (!corpo.ok) throw new Error(corpo.erro || "fonte indisponível");
+      const pdms = corpo.itens;
       if (!Array.isArray(pdms) || pdms.length === 0) {
         alvoCat.innerHTML = '<div class="aviso">Nenhuma categoria de material encontrada com esse termo. Tente outra palavra (ex: mais genérica).</div>';
         return;
@@ -7026,13 +7037,12 @@ let resultados = resultadosBrutos.filter((r) => {
     document.getElementById("pp-resultado").innerHTML = "";
     alvoItens.innerHTML = '<div class="carregando">Carregando itens específicos dessa categoria...</div>';
     try {
-      const [respItens, respUnidades] = await Promise.all([
-        fetch(`${PP_CNBS_URL}/material/v1/materialCaracteristcaValorporPDM?codigo_pdm=${codigoPdm}`),
-        fetch(`${PP_CNBS_URL}/material/v1/unidadeFornecimentoPorCodigoPdm?codigo_pdm=${codigoPdm}`),
-      ]);
-      if (!respItens.ok) throw new Error(`HTTP ${respItens.status}`);
-      ppItens = await respItens.json();
-      ppUnidades = respUnidades.ok ? await respUnidades.json() : [];
+      const resp = await fetch(`${PP_API_URL}?${new URLSearchParams({ acao: "itens", codigoPdm: String(codigoPdm) })}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const corpo = await resp.json();
+      if (!corpo.ok) throw new Error(corpo.erro || "fonte indisponível");
+      ppItens = corpo.itens || [];
+      ppUnidades = corpo.unidades || [];
 
       if (!Array.isArray(ppItens) || ppItens.length === 0) {
         alvoItens.innerHTML = '<div class="aviso">Nenhum item específico cadastrado nessa categoria.</div>';
@@ -7132,10 +7142,12 @@ let resultados = resultadosBrutos.filter((r) => {
     if (unidade.siglaUnidadeMedida) params.set("siglaUnidadeMedida", unidade.siglaUnidadeMedida);
 
     try {
-      const resp = await fetch(`${PP_PESQPRECO_URL}/api/itens-compra/buscar?${params.toString()}`);
+      params.set("acao", "precos");
+      const resp = await fetch(`${PP_API_URL}?${params.toString()}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const dados = await resp.json();
-      ppRenderizarResultado(dados, item, unidade);
+      const corpo = await resp.json();
+      if (!corpo.ok) throw new Error(corpo.erro || "fonte indisponível");
+      ppRenderizarResultado(corpo.dados, item, unidade);
     } catch (e) {
       alvoRes.innerHTML = `<div class="aviso">Erro ao consultar preços: ${escapeHtml(String(e))}</div>`;
     }
