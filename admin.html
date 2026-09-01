@@ -246,6 +246,7 @@
       <button data-status="aprovado">Aprovados</button>
       <button data-status="rejeitado">Rejeitados</button>
       <button data-status="todos">Todos</button>
+      <button data-status="boletim">Boletim</button>
       <button data-status="equipe" id="tab-equipe" style="display:none;">Equipe</button>
     </div>
     <div class="cartao-lista faixa-auto-aprovacao">
@@ -258,6 +259,11 @@
     <div class="erro" id="erro-auto-aprovacao" style="margin-bottom:14px;"></div>
     <div class="cartao-lista" id="secao-clientes">
       <div id="conteudo-lista" class="carregando">Carregando clientes...</div>
+    </div>
+    <div id="secao-boletim" style="display:none;">
+      <div class="cartao-lista">
+        <div id="conteudo-boletim" class="carregando">Carregando envios...</div>
+      </div>
     </div>
     <div id="secao-equipe" style="display:none;">
       <div class="cartao-lista" style="margin-bottom:20px;">
@@ -767,6 +773,43 @@
     });
   }
 
+  function badgeStatusBoletim(status) {
+    const nomes = { enviado: "Enviado", sem_novidades: "Sem novidades", erro: "Erro" };
+    const classe = { enviado: "aprovado", sem_novidades: "pendente", erro: "rejeitado" }[status] || "membro";
+    return `<span class="badge ${classe}">${nomes[status] || status}</span>`;
+  }
+
+  async function carregarLogsBoletim() {
+    document.getElementById("conteudo-boletim").innerHTML = '<div class="carregando">Carregando envios...</div>';
+    const { data, error } = await sb.from("logs_boletim").select("*").order("executado_em", { ascending: false }).limit(200);
+    if (error) {
+      document.getElementById("conteudo-boletim").innerHTML = '<div class="vazio">Erro ao carregar: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+    renderizarLogsBoletim(data || []);
+  }
+
+  function renderizarLogsBoletim(logs) {
+    const alvo = document.getElementById("conteudo-boletim");
+    if (logs.length === 0) {
+      alvo.innerHTML = '<div class="vazio">Nenhum envio registrado ainda.</div>';
+      return;
+    }
+    let html = '<table><thead><tr><th>Cliente</th><th>Status</th><th>Editais</th><th>Canal</th><th>Quando</th></tr></thead><tbody>';
+    for (const l of logs) {
+      const quando = l.executado_em ? new Date(l.executado_em).toLocaleString("pt-BR") : "-";
+      html += `<tr>
+        <td><strong>${escapeHtml(l.cliente_nome || "-")}</strong><br><span style="color:var(--texto-fraco);font-size:13px;">${escapeHtml(l.cliente_email)}</span></td>
+        <td>${badgeStatusBoletim(l.status)}${l.mensagem_erro ? `<br><span style="color:var(--texto-fraco);font-size:12px;">${escapeHtml(l.mensagem_erro)}</span>` : ""}</td>
+        <td>${l.quantidade_editais}</td>
+        <td>${escapeHtml(l.canal || "email")}</td>
+        <td>${quando}</td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    alvo.innerHTML = html;
+  }
+
   function nomePermissao(p) {
     const nomes = { aprovar_cadastros: "Aprovar cadastros" };
     return nomes[p] || p;
@@ -854,12 +897,16 @@
       document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("ativo"));
       btn.classList.add("ativo");
       const status = btn.dataset.status;
+      document.getElementById("secao-clientes").style.display = "none";
+      document.getElementById("secao-equipe").style.display = "none";
+      document.getElementById("secao-boletim").style.display = "none";
       if (status === "equipe") {
-        document.getElementById("secao-clientes").style.display = "none";
         document.getElementById("secao-equipe").style.display = "block";
         carregarEquipe();
+      } else if (status === "boletim") {
+        document.getElementById("secao-boletim").style.display = "block";
+        carregarLogsBoletim();
       } else {
-        document.getElementById("secao-equipe").style.display = "none";
         document.getElementById("secao-clientes").style.display = "block";
         filtroAtual = status;
         renderizarLista();

@@ -204,7 +204,7 @@ def carregar_clientes_aprovados():
     # qualquer UF/assunto pra ele.
     chave = _chave_servico()
     url = (SUPABASE_URL + "/rest/v1/clientes?status=eq.aprovado"
-           "&select=nome,empresa,email,segmento,estados_interesse")
+           "&select=id,nome,empresa,email,segmento,estados_interesse")
     req = urllib.request.Request(url, headers={
         "apikey": chave,
         "Authorization": "Bearer " + chave,
@@ -240,6 +240,7 @@ def carregar_clientes_aprovados():
         ufs = None if len(estados) >= len(TODAS_UFS) else estados
 
         destinatarios.append({
+            "id": c.get("id"),
             "nome": nome,
             "email": email,
             "ufs": ufs,
@@ -507,6 +508,33 @@ def montar_email_texto(nome_destinatario, editais_novos):
     return "\n".join(linhas)
 
 
+def registrar_log_boletim(destinatario, status, quantidade, mensagem_erro=None):
+    # Cada tentativa de envio (sucesso, sem novidades ou erro) vira uma linha em
+    # public.logs_boletim - e o que a secao "Envios do Boletim" do admin.html le.
+    # Falha ao registrar o log nao pode derrubar o boletim, que ja foi enviado/tentado.
+    try:
+        chave = _chave_servico()
+        url = SUPABASE_URL + "/rest/v1/logs_boletim"
+        corpo = json.dumps([{
+            "cliente_id": destinatario.get("id"),
+            "cliente_email": destinatario["email"],
+            "cliente_nome": destinatario["nome"],
+            "status": status,
+            "quantidade_editais": quantidade,
+            "mensagem_erro": mensagem_erro,
+        }]).encode("utf-8")
+        req = urllib.request.Request(url, data=corpo, method="POST", headers={
+            "apikey": chave,
+            "Authorization": "Bearer " + chave,
+            "Content-Type": "application/json",
+            "Prefer": "return=minimal",
+        })
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            resp.read()
+    except Exception as e:
+        log("AVISO: falha ao registrar log do boletim para " + destinatario["email"] + " (" + str(e) + ").")
+
+
 def enviar_email(destino_email, nome_destinatario, editais_novos):
     remetente = os.environ["EMAIL_REMETENTE"]
     senha_app = os.environ["EMAIL_SENHA_APP"]
@@ -606,6 +634,7 @@ def main():
             enviar_email(d["email"], d["nome"], filtrados)
             if filtrados:
                 log("E-mail enviado para " + d["email"] + " com " + str(len(filtrados)) + " edital(is).")
+                registrar_log_boletim(d, "enviado", len(filtrados))
 
                 whatsapp_cfg = d.get("whatsapp")
                 if whatsapp_cfg and whatsapp_cfg.get("telefone") and whatsapp_cfg.get("apikey"):
@@ -618,6 +647,7 @@ def main():
                         log("ERRO ao enviar WhatsApp para " + d["nome"] + ": " + str(e))
             else:
                 log("E-mail enviado para " + d["email"] + " avisando que nao ha oportunidades novas.")
+                registrar_log_boletim(d, "sem_novidades", 0)
 
             vistos_deste = set(historico.get(d["email"], []))
             for e in filtrados:
@@ -625,6 +655,7 @@ def main():
             historico[d["email"]] = list(vistos_deste)
         except Exception as e:
             log("ERRO ao processar destinatario " + d["nome"] + ": " + str(e))
+            registrar_log_boletim(d, "erro", 0, mensagem_erro=str(e))
 
     salvar_historico(historico)
     log("=== Fim da execucao ===")
