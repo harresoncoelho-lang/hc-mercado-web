@@ -397,7 +397,13 @@
       const elLista = document.getElementById("cv-preview-lista");
       if (!elTotal || !elLista) return;
       try {
-        const resp = await fetch("/.netlify/functions/convenios-publico");
+        // A função também possui timeout no servidor, mas este limite no navegador
+        // evita a mensagem "Carregando dados..." ficar presa caso a conexão com o
+        // CDN seja interrompida antes de a função responder.
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        const resp = await fetch("/.netlify/functions/convenios-publico", { signal: controller.signal });
+        clearTimeout(timeout);
         if (!resp.ok) throw new Error("resposta não-ok");
         const dados = await resp.json();
         elTotal.textContent = (dados.total || 0).toLocaleString("pt-BR");
