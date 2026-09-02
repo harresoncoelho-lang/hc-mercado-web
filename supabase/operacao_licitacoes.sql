@@ -123,6 +123,13 @@ create table if not exists public.operacao_processos (
 create index if not exists operacao_processos_empresa_status_idx on public.operacao_processos (empresa_id, status);
 create index if not exists operacao_processos_organizacao_sessao_idx on public.operacao_processos (organizacao_id, data_sessao);
 
+-- Uma oportunidade marcada no boletim/Kanban deve apontar sempre para o mesmo
+-- dossiê. A coluna é opcional para preservar os processos incluídos manualmente.
+alter table public.operacao_processos add column if not exists origem_externa_id text;
+create unique index if not exists operacao_processos_origem_externa_unica_idx
+  on public.operacao_processos (organizacao_id, empresa_id, origem_externa_id)
+  where origem_externa_id is not null;
+
 create table if not exists public.operacao_prazos_processo (
   id uuid primary key default gen_random_uuid(),
   organizacao_id uuid not null references public.operacao_organizacoes(id) on delete cascade,

@@ -3446,12 +3446,93 @@
       municipio: edital.municipio || "",
       uf: edital.uf || "",
       encerramento: edital.encerramento || null,
+      publicacao: edital.publicacao || null,
+      modalidade: edital.modalidade || null,
       numeroControlePNCP: edital.numeroControlePNCP || null,
       link: edital.link || null,
       valor: edital.valor || null,
       fonte: edital.fonte || null,
     };
     salvarMapa("kanban-editais", mapa);
+  }
+
+  // Um status no Boletim não deve obrigar o usuário a redigitar o que já veio do
+  // edital. A sincronização cria apenas um dossiê por oportunidade e empresa; depois
+  // disso ela só atualiza o estágio, preservando os campos manuais (custos, proposta,
+  // documentos e empenhos). Processos perdidos continuam no histórico, mas deixam de
+  // contar como trabalho ativo.
+  function numeroOperacional(valor) {
+    if (typeof valor === "number") return Number.isFinite(valor) ? valor : null;
+    const texto = String(valor || "").trim();
+    if (!texto) return null;
+    const normalizado = texto.includes(",")
+      ? texto.replace(/\./g, "").replace(",", ".")
+      : texto.replace(/[^0-9.-]/g, "");
+    const numero = Number(normalizado.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(numero) ? numero : null;
+  }
+  function dataOperacional(valor, comHora) {
+    if (!valor) return null;
+    const data = new Date(valor);
+    if (Number.isNaN(data.getTime())) return null;
+    return comHora ? data.toISOString() : data.toISOString().slice(0, 10);
+  }
+  function proximoEstagioDoKanban(status) {
+    return ({ interesse: "triagem", participando: "preparacao", ganhei: "homologado", perdi: "perdido" })[status] || null;
+  }
+  async function empresaOperacionalParaDossie() {
+    const { data: organizacaoId, error: erroOrg } = await sb.rpc("bootstrap_operacao");
+    if (erroOrg || !organizacaoId) throw erroOrg || new Error("Organização operacional indisponível.");
+    const { data: empresas, error } = await sb.from("operacao_empresas")
+      .select("id,razao_social").eq("organizacao_id", organizacaoId).eq("ativo", true).order("razao_social");
+    if (error) throw error;
+    const preferida = localStorage.getItem("licitaplena_empresa_operacional_id");
+    const empresa = (empresas || []).find(e => e.id === preferida) || (empresas || [])[0];
+    if (!empresa) throw new Error("Cadastre uma empresa na Central Operacional antes de criar o dossiê.");
+    return { organizacaoId, empresa };
+  }
+  async function sincronizarDossieOperacional(id, edital, status) {
+    const estagio = proximoEstagioDoKanban(status);
+    if (!estagio || !edital) return;
+    try {
+      const { organizacaoId, empresa } = await empresaOperacionalParaDossie();
+      const { data: existente, error: erroBusca } = await sb.from("operacao_processos")
+        .select("id,status,decisao").eq("organizacao_id", organizacaoId).eq("empresa_id", empresa.id)
+        .eq("origem_externa_id", id).maybeSingle();
+      if (erroBusca) throw erroBusca;
+      const decisao = status === "perdi" ? "nao_participar" : "participar";
+      if (existente) {
+        const { error } = await sb.from("operacao_processos").update({
+          status: estagio, decisao, atualizado_em: new Date().toISOString(),
+          resultado: status === "ganhei" ? "Resultado marcado como ganho no Kanban" : (status === "perdi" ? "Resultado marcado como perdido no Kanban" : null)
+        }).eq("id", existente.id);
+        if (error) throw error;
+        return;
+      }
+      const sessao = dataOperacional(edital.encerramento, true);
+      const url = linkPncp(edital.numeroControlePNCP) || edital.link || null;
+      const { data: processo, error } = await sb.from("operacao_processos").insert({
+        organizacao_id: organizacaoId, empresa_id: empresa.id, origem_externa_id: id,
+        objeto: edital.objeto || "Oportunidade do Boletim", orgao: edital.orgao || null,
+        numero: edital.numeroControlePNCP || null, modalidade: edital.modalidade || null,
+        url_origem: url, status: estagio, decisao,
+        valor_estimado: numeroOperacional(edital.valor), data_publicacao: dataOperacional(edital.publicacao, false),
+        data_sessao: sessao, observacoes: "Pré-preenchido automaticamente a partir do Boletim / Kanban. Confira o edital antes de enviar a proposta."
+      }).select("id,objeto").single();
+      if (error) throw error;
+      if (sessao) {
+        const { error: erroPrazo } = await sb.from("operacao_prazos_processo").insert({
+          organizacao_id: organizacaoId, processo_id: processo.id, categoria: "proposta",
+          titulo: "Prazo do Boletim: " + processo.objeto, vencimento: sessao
+        });
+        if (erroPrazo) console.warn("Dossiê criado sem prazo automático:", erroPrazo.message);
+      }
+    } catch (erro) {
+      // O acompanhamento local continua funcionando. O aviso no console evita expor
+      // detalhes internos ao usuário e permite que ele tente a sincronização novamente
+      // ao alterar o cartão ou recarregar o Boletim.
+      console.warn("Não foi possível sincronizar o dossiê automaticamente:", erro.message || erro);
+    }
   }
 
   function classePrazoKanban(iso) {
@@ -3548,6 +3629,7 @@
         const novoStatus = coluna.dataset.status;
         if (!id || !novoStatus) return;
         definirNoMapa("status-licitacao", id, novoStatus);
+        void sincronizarDossieOperacional(id, lerMapa("kanban-editais")[id], novoStatus);
         renderizarKanban();
       });
     });
@@ -3557,6 +3639,7 @@
       sel.addEventListener("click", (ev) => ev.stopPropagation());
       sel.addEventListener("change", () => {
         definirNoMapa("status-licitacao", sel.dataset.id, sel.value);
+        void sincronizarDossieOperacional(sel.dataset.id, lerMapa("kanban-editais")[sel.dataset.id], sel.value);
         renderizarKanban();
       });
     });
@@ -4369,7 +4452,10 @@
           // Salva (ou remove) o snapshot usado pelo quadro Kanban — assim a licitação
           // continua aparecendo lá mesmo depois de sair do boletim do dia.
           const idx = Number(card.dataset.idx);
-          if (selectStatus.value) salvarSnapshotKanban(id, resultados[idx]);
+          if (selectStatus.value) {
+            salvarSnapshotKanban(id, resultados[idx]);
+            void sincronizarDossieOperacional(id, resultados[idx], selectStatus.value);
+          }
           else definirNoMapa("kanban-editais", id, null);
         });
       }
