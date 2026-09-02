@@ -36,9 +36,12 @@ ficam em bucket privado segregado pelo UUID da organização.
 1. **Entregue localmente:** Central Operacional autenticada; empresa inicial criada a
    partir do cadastro, múltiplas empresas, cadastro de documentos, anexos privados,
    status de validade, prontidão, agenda e exportação CSV.
-2. **Gestão da disputa:** substituir/estender o Kanban local por licitações persistentes,
-   com o funil completo, itens, proposta, concorrentes, lances, resultado, responsáveis,
-   anexos e atividade auditável.
+2. **Gestão da disputa — entregue localmente, requer migração/publicação:**
+   `processos.html` cria um dossiê privado por oportunidade, com funil persistente,
+   decisão de participação, checklist de habilitação por edital, memória de custos e
+   preço mínimo, prazo de sessão criado automaticamente, marcos adicionais, empenhos,
+   status de execução e relatório final imprimível. Não automatiza lances, envio de
+   proposta ou decisões jurídicas: toda confirmação continua humana.
 3. **Agenda e notificações:** gerar eventos a partir de documentos e disputas; configurar
    alertas em 30/15/7/3/1 dias; e-mail e painel de pendências por responsável.
 4. **Relatórios e assessorias:** relatórios de resultado, motivo de perda e volume; painel
