@@ -8,7 +8,8 @@ const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
 const NOME_REMETENTE = "LicitaPlena";
 // Logo azul em fundo neutro: preserva contraste mesmo quando o cliente de e-mail
 // adapta cores para modo escuro, especialmente em telas móveis.
-const URL_LOGO = "https://licitaplena.com.br/logo-assinatura-azul.png";
+// A versão evita que clientes de e-mail reutilizem um 404 antigo em cache.
+const URL_LOGO = "https://licitaplena.com.br/logo-assinatura-azul.png?v=20260902";
 
 function normalizarTokenZepto(token) {
   // Aceita tanto a chave pura quanto o valor copiado do exemplo de cabeçalho da
