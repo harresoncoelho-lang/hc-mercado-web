@@ -6,7 +6,9 @@ const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require
 const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
 const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
 const NOME_REMETENTE = "LicitaPlena";
-const URL_LOGO = "https://licitaplena.com.br/logo.png";
+// Logo azul em fundo neutro: preserva contraste mesmo quando o cliente de e-mail
+// adapta cores para modo escuro, especialmente em telas móveis.
+const URL_LOGO = "https://licitaplena.com.br/logo-assinatura-azul.png";
 
 function normalizarTokenZepto(token) {
   // Aceita tanto a chave pura quanto o valor copiado do exemplo de cabeçalho da
@@ -80,7 +82,7 @@ function montarHtml(texto, linkEdital) {
     : "";
   return `<!doctype html><html><body style="margin:0;background:#f4f7fb;font-family:Arial,sans-serif;color:#162d4c;">
     <main style="max-width:680px;margin:24px auto;background:#fff;border:1px solid #dce5f0;border-radius:12px;overflow:hidden;">
-      <header style="padding:18px 28px;background:#082243;color:#fff;font-size:21px;font-weight:700;"><img src="${URL_LOGO}" alt="LicitaPlena" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;"> <span style="vertical-align:middle;">LicitaPlena</span></header>
+      <header style="padding:18px 28px;background:#fff;color:#071b70;border-bottom:1px solid #dce5f0;font-size:21px;font-weight:700;"><img src="${URL_LOGO}" alt="LicitaPlena" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;"> <span style="vertical-align:middle;">LicitaPlena</span></header>
       <section style="padding:28px;font-size:15px;line-height:1.6;">${conteudo}${chamadaEdital}</section>
       <footer style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</footer>
     </main></body></html>`;
