@@ -29,7 +29,7 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // Um edital raramente cabe nos primeiros 8 mil caracteres: habilitação, multas,
 // pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
-const MAX_CARACTERES_TEXTO = 24000;
+const MAX_CARACTERES_TEXTO = 12000;
 const VERSAO_RESUMO = 2;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
@@ -276,6 +276,7 @@ async function chamarGroq(apiKey, mensagens, opts) {
     try {
       const body = { model: modelos[indice], max_tokens: (opts && opts.maxTokens) || 500, messages: mensagens };
       if (opts && opts.json) body.response_format = { type: "json_object" };
+      if (opts && opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort;
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         signal: ctrl.signal,
@@ -341,6 +342,48 @@ function formatarEstruturaComoTexto(est) {
     txt += linha("Garantia exigida", est.detalhes.garantia);
   }
   return txt.trim();
+}
+
+// O resumo não pode desaparecer quando o provedor de IA estiver temporariamente limitado.
+// Esta ficha vem somente de dados já recebidos do PNCP, sem inferir cláusulas do edital.
+function montarEstruturaBasica(edital, motivoFonteNaoLida) {
+  const naoInformado = "Não informado";
+  const local = [edital.municipio, edital.uf].filter(Boolean).join(" / ") || naoInformado;
+  const prazo = edital.encerramento || naoInformado;
+  return {
+    identificacao: {
+      objeto: edital.objeto || naoInformado,
+      numero: edital.numeroControlePNCP || edital.numero || naoInformado,
+      uasg: edital.uasg || naoInformado,
+      contratacao: edital.tipo || naoInformado,
+      modalidade: edital.modalidade || naoInformado,
+      portalRealizacao: edital.link || naoInformado,
+      regulamentacao: edital.amparoLegal || naoInformado,
+    },
+    sessaoPublica: { data: prazo, horario: naoInformado, modoDisputa: edital.modoDisputa || naoInformado, intervaloMinimo: naoInformado },
+    orgao: { nome: edital.orgao || naoInformado, email: naoInformado, endereco: local, telefone: naoInformado },
+    detalhes: { valorEstimado: edital.valor || naoInformado, prazoEntrega: naoInformado, margemPreferencia: naoInformado, exigeVisitaTecnica: naoInformado, exigeAmostra: naoInformado, garantia: naoInformado, criterioJulgamento: naoInformado, preferenciaMeEpp: naoInformado, restricoesRegionalidade: naoInformado, provaConceito: naoInformado },
+    garantias: { proposta: naoInformado, contrato: naoInformado, adicional: naoInformado, retomada: naoInformado },
+    entregaExecucao: { prazo: naoInformado, local: naoInformado, condicoes: naoInformado },
+    prazos: { limiteEnvioPropostas: prazo, prazoDocumentoComplementar: naoInformado, prazoDocumentoOriginal: naoInformado, prazoRecurso: naoInformado, prazoContrarrazoes: naoInformado, limiteEsclarecimentos: naoInformado, limiteImpugnacao: naoInformado, vigenciaContrato: naoInformado },
+    criteriosProposta: { validadeProposta: naoInformado, criteriosDesempate: naoInformado, exigenciasPropostaComercial: naoInformado, programaIntegridade: naoInformado },
+    itens: { totalItens: naoInformado, descricaoGeral: edital.objeto || naoInformado, categoriasPrincipais: naoInformado, observacoes: naoInformado },
+    documentosHabilitacao: [],
+    atestadoCapacidadeTecnica: naoInformado,
+    legislacao: edital.amparoLegal || naoInformado,
+    anexosDeclaracoes: naoInformado,
+    declaracoesExigidas: [],
+    condicoesPagamento: naoInformado,
+    penalidades: naoInformado,
+    multas: naoInformado,
+    documentosConsultados: [],
+    pendenciasParaConferencia: [motivoFonteNaoLida === "escaneado" ? "O documento publicado é escaneado e não pôde ser lido automaticamente. Abra o edital oficial para conferir habilitação, pagamentos, penalidades e anexos." : "A análise completa do documento oficial está temporariamente indisponível. Os campos abaixo mostram apenas dados públicos já recebidos do PNCP."],
+    questionamentosSugeridos: [],
+    possiveisQuestionamentos: [],
+    outrasInformacoesRelevantes: [],
+    analiseCritica: { conflitoObjetoMinuta: naoInformado, conflitoPrazoVigenciaArp: naoInformado, conflitoPrazosEntrega: naoInformado, permiteSubcontratacao: naoInformado, previsaoReajuste: naoInformado, permiteRenovacao: naoInformado, estabeleceCondicoesPagamento: naoInformado },
+    resumoGeral: `Ficha inicial da oportunidade: ${edital.objeto || "objeto não informado"}. Órgão: ${edital.orgao || naoInformado}. Prazo divulgado: ${prazo}. Para requisitos de participação, consulte o edital oficial.`,
+  };
 }
 
 exports.handler = async (event) => {
@@ -462,7 +505,7 @@ exports.handler = async (event) => {
     // O modelo gratuito (8b) é mais fraco pra devolver JSON grande e válido de primeira —
     // tenta duas vezes antes de desistir e cair pro resumo em texto corrido.
     for (let tentativa = 0; tentativa < 2; tentativa++) {
-      const r = await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 6500, timeoutMs: 28000, json: true });
+      const r = await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 3200, timeoutMs: 28000, json: true, reasoningEffort: "low" });
       if (!r.ok) break; // erro de API (ex.: limite atingido) — não adianta tentar de novo
       const estrutura = extrairJson(r.texto);
       if (estrutura) {
@@ -520,7 +563,22 @@ exports.handler = async (event) => {
         { role: "user", content: `Dados da oportunidade:\n${ficha}\n\nFaça um resumo curto (4 a 6 frases) explicando do que se trata essa licitação: o que está sendo comprado, quem compra, o prazo, e o porte aproximado pelo valor estimado (se houver).` },
       ];
   const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: fonteLida ? 900 : 500, timeoutMs: 20000 });
-  if (!r2.ok) return { statusCode: 502, headers, body: JSON.stringify({ erro: r2.erro }) };
+  if (!r2.ok) {
+    const estrutura = montarEstruturaBasica(edital, motivoFonteNaoLida);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        resposta: formatarEstruturaComoTexto(estrutura),
+        estrutura,
+        textoEdital: textoEdital || null,
+        fonteLida,
+        motivoFonteNaoLida,
+        modoDegradado: true,
+        erro: null,
+      }),
+    };
+  }
   // Cacheia também o resumo em texto corrido (fallback) — sem isso, um edital que sempre
   // cai no fallback (ex.: modelo gratuito não consegue estruturar aquele texto em JSON)
   // reprocessava do zero toda vez que alguém abria o resumo de novo, gastando cota da IA

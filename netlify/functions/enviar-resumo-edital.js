@@ -7,6 +7,21 @@ const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
 const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
 const NOME_REMETENTE = "LicitaPlena";
 
+function mensagemErroZepto(status, corpo) {
+  let erro = null;
+  try { erro = JSON.parse(corpo || "{}").error || null; } catch (e) { erro = null; }
+  const codigo = String((erro && erro.code) || "");
+  const detalhes = Array.isArray(erro && erro.details) ? erro.details : [];
+  const codigosDetalhe = detalhes.map((d) => String(d && d.code || ""));
+  if (codigo === "LE_101") return "Os créditos do serviço de e-mail foram encerrados. Verifique a assinatura do ZeptoMail.";
+  if (codigo === "AE_101") return "A conta do serviço de e-mail está bloqueada e precisa ser liberada no ZeptoMail.";
+  if (codigosDetalhe.includes("SM_111")) return "O domínio remetente ainda não está verificado no agente do ZeptoMail. Verifique o domínio licitaplena.com.br no agente de envio.";
+  if (codigosDetalhe.includes("SM_128")) return "A conta do ZeptoMail ainda aguarda aprovação para enviar e-mails pela API.";
+  if (codigosDetalhe.includes("SERR_157")) return "A chave de envio do ZeptoMail não é válida ou foi revogada. Atualize a variável secreta ZEPTOMAIL_TOKEN.";
+  if (status === 401 || status === 403) return "A chave do serviço de e-mail não foi aceita. Verifique a chave de envio do agente no ZeptoMail.";
+  return "O serviço de e-mail recusou o envio. Tente novamente ou verifique a configuração do ZeptoMail.";
+}
+
 function escapeHtml(valor) {
   return String(valor || "")
     .replace(/&/g, "&amp;")
@@ -64,6 +79,10 @@ exports.handler = async (event) => {
   }
 
   try {
+    // O e-mail exibido para o usuário e o e-mail transmitido precisam ser o mesmo.
+    // Não usamos variáveis antigas de remetente/resposta, pois uma delas pode apontar para
+    // domínio não verificado e fazer o ZeptoMail rejeitar toda a mensagem.
+    const remetente = REMETENTE_PADRAO;
     const api = await fetch(ZEPTOMAIL_URL, {
       method: "POST",
       headers: {
@@ -72,17 +91,19 @@ exports.handler = async (event) => {
         Authorization: `Zoho-enczapikey ${token}`,
       },
       body: JSON.stringify({
-        from: { address: process.env.EMAIL_REMETENTE || REMETENTE_PADRAO, name: NOME_REMETENTE },
+        from: { address: remetente, name: NOME_REMETENTE },
         to: [{ email_address: { address: destino, ...(nomeDestino ? { name: nomeDestino } : {}) } }],
-        reply_to: [{ address: process.env.EMAIL_RESPOSTA || process.env.EMAIL_REMETENTE || REMETENTE_PADRAO, name: NOME_REMETENTE }],
+        reply_to: [{ address: remetente, name: NOME_REMETENTE }],
         subject: assunto,
         htmlbody: montarHtml(texto),
         textbody: texto,
       }),
     });
     if (!api.ok) {
-      console.error("ZeptoMail recusou o envio:", api.status);
-      return resposta(event, 502, { erro: "O serviço de e-mail recusou o envio. Confira o endereço e tente novamente." });
+      const corpo = await api.text();
+      const erro = mensagemErroZepto(api.status, corpo);
+      console.error("ZeptoMail recusou o envio:", api.status, erro);
+      return resposta(event, 502, { erro });
     }
     return resposta(event, 200, { ok: true, mensagem: "E-mail enviado com sucesso." });
   } catch (e) {
@@ -91,4 +112,4 @@ exports.handler = async (event) => {
   }
 };
 
-exports.__test = { emailValido, montarHtml };
+exports.__test = { emailValido, montarHtml, mensagemErroZepto };
