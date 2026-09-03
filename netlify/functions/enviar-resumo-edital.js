@@ -6,6 +6,7 @@ const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require
 const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
 const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
 const NOME_REMETENTE = "LicitaPlena";
+const URL_LOGO = "https://licitaplena.com.br/logo.png";
 
 function normalizarTokenZepto(token) {
   // Aceita tanto a chave pura quanto o valor copiado do exemplo de cabeçalho da
@@ -59,16 +60,28 @@ function emailValido(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
 }
 
+function linkPncpValido(link) {
+  try {
+    const url = new URL(String(link || "").trim());
+    return url.protocol === "https:" && (url.hostname === "pncp.gov.br" || url.hostname.endsWith(".pncp.gov.br"));
+  } catch (e) {
+    return false;
+  }
+}
+
 function resposta(event, statusCode, body) {
   return { statusCode, headers: cabecalhosPadrao(event), body: JSON.stringify(body) };
 }
 
-function montarHtml(texto) {
+function montarHtml(texto, linkEdital) {
   const conteudo = escapeHtml(texto).replace(/\r?\n/g, "<br>");
+  const chamadaEdital = linkPncpValido(linkEdital)
+    ? `<div style="margin-top:24px;"><a href="${escapeHtml(linkEdital)}" style="display:inline-block;background:#1f75df;border-radius:7px;padding:12px 18px;color:#fff;text-decoration:none;font-weight:700;">Abrir licitação no PNCP</a><p style="margin:10px 0 0;color:#66778e;font-size:12px;">Use o portal oficial para consultar o edital, anexos e documentos do processo.</p></div>`
+    : "";
   return `<!doctype html><html><body style="margin:0;background:#f4f7fb;font-family:Arial,sans-serif;color:#162d4c;">
     <main style="max-width:680px;margin:24px auto;background:#fff;border:1px solid #dce5f0;border-radius:12px;overflow:hidden;">
-      <header style="padding:22px 28px;background:#082243;color:#fff;font-size:21px;font-weight:700;">LicitaPlena</header>
-      <section style="padding:28px;font-size:15px;line-height:1.6;">${conteudo}</section>
+      <header style="padding:18px 28px;background:#082243;color:#fff;font-size:21px;font-weight:700;"><img src="${URL_LOGO}" alt="LicitaPlena" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;"> <span style="vertical-align:middle;">LicitaPlena</span></header>
+      <section style="padding:28px;font-size:15px;line-height:1.6;">${conteudo}${chamadaEdital}</section>
       <footer style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</footer>
     </main></body></html>`;
 }
@@ -94,6 +107,7 @@ exports.handler = async (event) => {
   const nomeDestino = String(dados.nomeDestino || "").trim().slice(0, 100);
   const assunto = String(dados.assunto || "Oportunidade para análise").trim().slice(0, 180);
   const texto = String(dados.texto || "").trim().slice(0, 25000);
+  const linkEdital = String(dados.linkEdital || "").trim().slice(0, 500);
   if (!emailValido(destino)) return resposta(event, 400, { erro: "Informe um e-mail de destino válido." });
   if (!texto) return resposta(event, 400, { erro: "Não há conteúdo para enviar." });
 
@@ -119,7 +133,7 @@ exports.handler = async (event) => {
         to: [{ email_address: { address: destino, ...(nomeDestino ? { name: nomeDestino } : {}) } }],
         reply_to: [{ address: remetente, name: NOME_REMETENTE }],
         subject: assunto,
-        htmlbody: montarHtml(texto),
+        htmlbody: montarHtml(texto, linkEdital),
         textbody: texto,
       }),
     });
@@ -136,4 +150,4 @@ exports.handler = async (event) => {
   }
 };
 
-exports.__test = { emailValido, montarHtml, mensagemErroZepto, normalizarTokenZepto };
+exports.__test = { emailValido, linkPncpValido, montarHtml, mensagemErroZepto, normalizarTokenZepto };

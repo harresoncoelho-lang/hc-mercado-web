@@ -36,3 +36,11 @@ test("identifica mensagem textual de credencial recusada", () => {
   assert.match(erro, /Send API key/i);
   assert.doesNotMatch(erro, /Invalid API key/i);
 });
+
+test("inclui o atalho no e-mail somente para link oficial do PNCP", () => {
+  const oficial = "https://pncp.gov.br/app/editais/04191078000191/2026/110";
+  assert.equal(__test.linkPncpValido(oficial), true);
+  assert.equal(__test.linkPncpValido("https://exemplo.com/edital"), false);
+  assert.match(__test.montarHtml("Resumo", oficial), /Abrir licitação no PNCP/);
+  assert.doesNotMatch(__test.montarHtml("Resumo", "https://exemplo.com"), /Abrir licitação no PNCP/);
+});

@@ -3079,35 +3079,52 @@
       `Nº controle PNCP: ${edital.numeroControlePNCP || "Não informado"}`,
       `Prazo de propostas: ${formatarPrazoPropostas(edital.encerramento) || "Não informado"}`,
     ];
+    const valorUtil = (valor) => {
+      const texto = textoIA(valor);
+      return texto && !/^n[ãa]o informado$/i.test(texto) ? texto : "";
+    };
     const adicionar = (rotulo, valor) => {
-      if (valor && !/^n[ãa]o informado$/i.test(String(valor).trim())) linhas.push(`${rotulo}: ${valor}`);
+      const texto = valorUtil(valor);
+      if (texto) linhas.push(`${rotulo}: ${texto}`);
+    };
+    const adicionarLista = (titulo, itens) => {
+      const visiveis = Array.isArray(itens) ? itens.map(valorUtil).filter(Boolean) : [];
+      if (!visiveis.length) return;
+      linhas.push("", `${titulo}:`);
+      visiveis.forEach((item) => linhas.push(`• ${item}`));
     };
     if (est) {
       adicionar("Modalidade", est.identificacao && est.identificacao.modalidade);
-      adicionar("Data e horário da sessão", [est.sessaoPublica && est.sessaoPublica.data, est.sessaoPublica && est.sessaoPublica.horario].filter(Boolean).join(" às "));
+      const dataSessao = valorUtil(est.sessaoPublica && est.sessaoPublica.data);
+      const horarioSessao = valorUtil(est.sessaoPublica && est.sessaoPublica.horario);
+      if (dataSessao || horarioSessao) adicionar("Data e horário da sessão", [dataSessao, horarioSessao].filter(Boolean).join(" às "));
       adicionar("Valor estimado", est.detalhes && est.detalhes.valorEstimado);
       adicionar("Critério de julgamento", est.detalhes && est.detalhes.criterioJulgamento);
       adicionar("Modo de disputa", est.sessaoPublica && est.sessaoPublica.modoDisputa);
       adicionar("Prazo de entrega", est.detalhes && est.detalhes.prazoEntrega);
+      adicionar("Condições de execução", est.entregaExecucao && est.entregaExecucao.condicoes);
+      adicionar("Local de execução", est.entregaExecucao && est.entregaExecucao.local);
+      adicionar("Garantia de proposta", est.garantias && est.garantias.proposta);
+      adicionar("Garantia contratual", est.garantias && est.garantias.contrato);
+      adicionar("Validade da proposta", est.criteriosProposta && est.criteriosProposta.validadeProposta);
+      adicionar("Exigências da proposta comercial", est.criteriosProposta && est.criteriosProposta.exigenciasPropostaComercial);
       if (est.resumoGeral) linhas.push("", "Visão geral:", est.resumoGeral);
-      if (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
-        linhas.push("", "Documentos de habilitação identificados:");
-        est.documentosHabilitacao.forEach((documento) => linhas.push(`• ${documento}`));
-      }
-      if (Array.isArray(est.declaracoesExigidas) && est.declaracoesExigidas.length) {
-        linhas.push("", "Declarações e formulários identificados:");
-        est.declaracoesExigidas.forEach((declaracao) => linhas.push(`• ${declaracao}`));
-      }
+      adicionarLista("Documentos de habilitação identificados", est.documentosHabilitacao);
+      adicionar("Atestado de capacidade técnica", est.atestadoCapacidadeTecnica);
+      adicionarLista("Declarações e formulários identificados", est.declaracoesExigidas);
+      adicionar("Legislação e base legal", est.legislacao);
+      adicionar("Anexos e documentos complementares", est.anexosDeclaracoes);
       adicionar("Condições de pagamento", est.condicoesPagamento);
       adicionar("Penalidades", est.penalidades);
       adicionar("Multas", est.multas);
-      if (Array.isArray(est.outrasInformacoesRelevantes) && est.outrasInformacoesRelevantes.length) {
-        linhas.push("", "Pontos de atenção:");
-        est.outrasInformacoesRelevantes.forEach((ponto) => linhas.push(`• ${ponto}`));
-      }
+      adicionarLista("Pontos de atenção", est.outrasInformacoesRelevantes);
+      adicionarLista("Pendências para conferência", est.pendenciasParaConferencia);
+      adicionarLista("Perguntas sugeridas ao órgão", est.questionamentosSugeridos);
     } else {
       linhas.push("", "O resumo completo ainda está sendo gerado. Consulte o edital oficial no PNCP antes de tomar uma decisão.");
     }
+    const linkEdital = linkPncp(edital.numeroControlePNCP) || edital.link;
+    if (linkEdital) linhas.push("", `Link oficial do edital: ${linkEdital}`);
     linhas.push("", "Fonte: dados públicos do edital. Esta mensagem é um apoio à análise e deve ser conferida no documento oficial.");
     return linhas.join("\n");
   }
@@ -3180,7 +3197,7 @@
   document.getElementById("modal-enviar-resumo-fundo").addEventListener("click", (ev) => {
     if (ev.target.id === "modal-enviar-resumo-fundo") document.getElementById("modal-enviar-resumo-fundo").classList.remove("aberto");
   });
-  document.getElementById("modal-enviar-resumo-form").addEventListener("submit", async (ev) => {
+    document.getElementById("modal-enviar-resumo-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     const botao = document.getElementById("modal-enviar-resumo-confirmar");
     const aviso = document.getElementById("modal-enviar-resumo-aviso");
@@ -3188,6 +3205,7 @@
     const nomeDestino = document.getElementById("modal-enviar-resumo-nome").value.trim();
     const assunto = document.getElementById("modal-enviar-resumo-assunto").value.trim();
     const texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
+    const linkEdital = linkPncp(iaEditalAtual && iaEditalAtual.numeroControlePNCP) || iaEditalAtual && iaEditalAtual.link || "";
     aviso.style.display = "none";
     botao.disabled = true;
     botao.textContent = "Enviando...";
@@ -3196,7 +3214,7 @@
       const resp = await fetch("/.netlify/functions/enviar-resumo-edital", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ destino, nomeDestino, assunto, texto }),
+        body: JSON.stringify({ destino, nomeDestino, assunto, texto, linkEdital }),
       });
       const dados = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(dados.erro || "Não foi possível enviar o e-mail.");
