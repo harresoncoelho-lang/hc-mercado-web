@@ -10,14 +10,20 @@ const NOME_REMETENTE = "LicitaPlena";
 function mensagemErroZepto(status, corpo) {
   let erro = null;
   try { erro = JSON.parse(corpo || "{}").error || null; } catch (e) { erro = null; }
+  // Dependendo do tipo de recusa, o ZeptoMail pode devolver o código no erro
+  // principal ou dentro de `details`. Tratamos ambos sem retornar a resposta do
+  // provedor ao navegador (ela pode conter informações operacionais internas).
   const codigo = String((erro && erro.code) || "");
   const detalhes = Array.isArray(erro && erro.details) ? erro.details : [];
-  const codigosDetalhe = detalhes.map((d) => String(d && d.code || ""));
-  if (codigo === "LE_101") return "Os créditos do serviço de e-mail foram encerrados. Verifique a assinatura do ZeptoMail.";
-  if (codigo === "AE_101") return "A conta do serviço de e-mail está bloqueada e precisa ser liberada no ZeptoMail.";
-  if (codigosDetalhe.includes("SM_111")) return "O domínio remetente ainda não está verificado no agente do ZeptoMail. Verifique o domínio licitaplena.com.br no agente de envio.";
-  if (codigosDetalhe.includes("SM_128")) return "A conta do ZeptoMail ainda aguarda aprovação para enviar e-mails pela API.";
-  if (codigosDetalhe.includes("SERR_157")) return "A chave de envio do ZeptoMail não é válida ou foi revogada. Atualize a variável secreta ZEPTOMAIL_TOKEN.";
+  const codigos = new Set([codigo, ...detalhes.map((d) => String(d && d.code || ""))]);
+  if (codigos.has("LE_101") || codigos.has("LE_102")) return "Os créditos do serviço de e-mail se esgotaram. Verifique a assinatura do ZeptoMail.";
+  if (codigos.has("AE_101")) return "A conta do serviço de e-mail está bloqueada e precisa ser liberada no ZeptoMail.";
+  if (codigos.has("SM_111")) return "O domínio remetente ainda não está verificado no agente do ZeptoMail. Verifique o domínio licitaplena.com.br no agente de envio.";
+  if (codigos.has("SM_128") || codigos.has("SM_133")) return "A conta do ZeptoMail ainda aguarda aprovação para enviar e-mails pela API.";
+  if (codigos.has("SERR_157")) return "A chave de envio do ZeptoMail não é válida ou foi revogada. Atualize a variável secreta ZEPTOMAIL_TOKEN.";
+  if (codigos.has("SMI_115")) return "O limite diário do agente de e-mail foi atingido. Tente novamente no próximo período.";
+  if (codigos.has("SERR_156")) return "O agente do ZeptoMail restringe os IPs de envio. É preciso liberar o ambiente de produção na lista de IPs autorizados.";
+  if (codigos.has("SM_113")) return "O endereço de remetente configurado não é aceito pelo ZeptoMail. Verifique o agente e o domínio licitaplena.com.br.";
   if (status === 401 || status === 403) return "A chave do serviço de e-mail não foi aceita. Verifique a chave de envio do agente no ZeptoMail.";
   return "O serviço de e-mail recusou o envio. Tente novamente ou verifique a configuração do ZeptoMail.";
 }

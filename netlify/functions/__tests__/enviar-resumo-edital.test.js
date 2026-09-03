@@ -16,3 +16,11 @@ test("identifica token inválido do ZeptoMail", () => {
   }));
   assert.match(erro, /chave de envio/i);
 });
+
+test("identifica domínio não verificado quando o código vem no erro principal", () => {
+  const erro = __test.mensagemErroZepto(400, JSON.stringify({
+    error: { code: "SM_111", message: "Sender domain is not verified" },
+  }));
+  assert.match(erro, /domínio remetente/i);
+  assert.doesNotMatch(erro, /Sender domain/i);
+});
