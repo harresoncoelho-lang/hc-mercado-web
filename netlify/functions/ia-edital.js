@@ -15,11 +15,14 @@
 // Body: { modo: "resumo"|"pergunta", edital: {...}, pergunta?, historico?, textoEdital? }
 // Resposta: { resposta, estrutura: {...}|null, textoEdital: string|null, fonteLida: bool, erro }
 
-// Trocado de llama-3.3-70b-versatile pro 8b-instant: o modelo 70b tem cota gratuita de só
-// 100 mil tokens/dia no total do site (esgota rápido com uso real), enquanto o 8b-instant
-// tem 500 mil tokens/dia — 5x mais capacidade gratuita, ao custo de um pouco menos de
-// "inteligência" na extração (compensado com prompts mais diretos).
-const MODELO = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+// O Llama 3.1 8B foi aposentado para contas free/developer do Groq em 16/08/2026. O
+// substituto oficial recomendado é o GPT-OSS 20B, que é mais capaz para extração de
+// edital e continua compatível com o endpoint OpenAI e JSON Object Mode usados aqui.
+// Mantemos GROQ_MODEL como override, mas nunca deixamos um valor antigo derrubar o robô:
+// chamarGroq tenta automaticamente o modelo suportado se o override retornar "model not
+// found". Isso evita uma nova indisponibilidade silenciosa numa próxima migração do provedor.
+const MODELO_PADRAO = "openai/gpt-oss-20b";
+const MODELO = process.env.GROQ_MODEL || MODELO_PADRAO;
 const CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const PNCP_ARQUIVOS_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
@@ -254,33 +257,42 @@ const SCHEMA_ESTRUTURA = `{
 }`;
 
 async function chamarGroq(apiKey, mensagens, opts) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), (opts && opts.timeoutMs) || 20000);
-  try {
-    const body = { model: MODELO, max_tokens: (opts && opts.maxTokens) || 500, messages: mensagens };
-    if (opts && opts.json) body.response_format = { type: "json_object" };
-    const resp = await fetch(CHAT_URL, {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-    });
-    clearTimeout(t);
-    if (!resp.ok) {
+  const modelos = [...new Set([MODELO, MODELO_PADRAO])];
+  for (let indice = 0; indice < modelos.length; indice += 1) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), (opts && opts.timeoutMs) || 20000);
+    try {
+      const body = { model: modelos[indice], max_tokens: (opts && opts.maxTokens) || 500, messages: mensagens };
+      if (opts && opts.json) body.response_format = { type: "json_object" };
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(body),
+      });
+      if (resp.ok) {
+        const dados = await resp.json();
+        const texto = ((dados.choices || [])[0] && dados.choices[0].message && dados.choices[0].message.content || "").trim();
+        return { ok: true, texto, modelo: modelos[indice] };
+      }
       const corpoErro = await resp.text();
       if (resp.status === 429) {
-        return { ok: false, erro: "O robô de IA atingiu o limite de uso gratuito por hoje — tenta de novo mais tarde ou amanhã. (Os dados básicos da licitação continuam disponíveis normalmente.)" };
+        return { ok: false, erro: "O robô de IA atingiu o limite de uso disponível agora. Tente novamente mais tarde; os dados básicos da licitação continuam acessíveis." };
       }
+      const modeloIndisponivel = resp.status === 404 && /model_not_found|does not exist|not available/i.test(corpoErro);
+      if (modeloIndisponivel && indice < modelos.length - 1) continue;
       return { ok: false, erro: `Falha ao consultar a IA (${resp.status}): ${corpoErro.slice(0, 200)}` };
+    } catch (e) {
+      return { ok: false, erro: `Erro ao consultar a IA: ${String((e && e.message) || e)}` };
+    } finally {
+      clearTimeout(t);
     }
-    const dados = await resp.json();
-    const texto = ((dados.choices || [])[0] && dados.choices[0].message && dados.choices[0].message.content || "").trim();
-    return { ok: true, texto };
-  } catch (e) {
-    clearTimeout(t);
-    return { ok: false, erro: `Erro ao consultar a IA: ${String((e && e.message) || e)}` };
   }
+  return { ok: false, erro: "Não há um modelo de IA disponível para gerar o resumo agora." };
 }
+
+// Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
+exports.__test = { chamarGroq };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez

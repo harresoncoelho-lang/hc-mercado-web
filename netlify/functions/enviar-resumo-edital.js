@@ -1,0 +1,94 @@
+// Envio individual do resumo de edital pelo e-mail transacional do LicitaPlena.
+// O token do ZeptoMail fica exclusivamente nas variáveis de ambiente da Netlify;
+// nunca é entregue ao navegador.
+const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
+
+const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
+const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
+const NOME_REMETENTE = "LicitaPlena";
+
+function escapeHtml(valor) {
+  return String(valor || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function emailValido(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function resposta(event, statusCode, body) {
+  return { statusCode, headers: cabecalhosPadrao(event), body: JSON.stringify(body) };
+}
+
+function montarHtml(texto) {
+  const conteudo = escapeHtml(texto).replace(/\r?\n/g, "<br>");
+  return `<!doctype html><html><body style="margin:0;background:#f4f7fb;font-family:Arial,sans-serif;color:#162d4c;">
+    <main style="max-width:680px;margin:24px auto;background:#fff;border:1px solid #dce5f0;border-radius:12px;overflow:hidden;">
+      <header style="padding:22px 28px;background:#082243;color:#fff;font-size:21px;font-weight:700;">LicitaPlena</header>
+      <section style="padding:28px;font-size:15px;line-height:1.6;">${conteudo}</section>
+      <footer style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</footer>
+    </main></body></html>`;
+}
+
+exports.handler = async (event) => {
+  if (event.httpMethod === "OPTIONS") return resposta(event, 204, {});
+  if (event.httpMethod !== "POST") return resposta(event, 405, { erro: "Método não permitido." });
+
+  const usuario = await exigirUsuarioLogado(event);
+  if (!usuario.ok) return resposta(event, usuario.status, { erro: usuario.erro });
+
+  const limite = await verificarLimiteDiario(usuario.userId, "enviar_resumo_edital", 20);
+  if (!limite.ok) return resposta(event, limite.status, { erro: limite.erro });
+
+  let dados;
+  try {
+    dados = JSON.parse(event.body || "{}");
+  } catch (e) {
+    return resposta(event, 400, { erro: "Dados do envio inválidos." });
+  }
+
+  const destino = String(dados.destino || "").trim().toLowerCase();
+  const nomeDestino = String(dados.nomeDestino || "").trim().slice(0, 100);
+  const assunto = String(dados.assunto || "Oportunidade para análise").trim().slice(0, 180);
+  const texto = String(dados.texto || "").trim().slice(0, 25000);
+  if (!emailValido(destino)) return resposta(event, 400, { erro: "Informe um e-mail de destino válido." });
+  if (!texto) return resposta(event, 400, { erro: "Não há conteúdo para enviar." });
+
+  const token = process.env.ZEPTOMAIL_TOKEN;
+  if (!token) {
+    return resposta(event, 503, { erro: "O serviço de e-mail ainda não foi configurado. Tente novamente após a conclusão da configuração." });
+  }
+
+  try {
+    const api = await fetch(ZEPTOMAIL_URL, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Zoho-enczapikey ${token}`,
+      },
+      body: JSON.stringify({
+        from: { address: process.env.EMAIL_REMETENTE || REMETENTE_PADRAO, name: NOME_REMETENTE },
+        to: [{ email_address: { address: destino, ...(nomeDestino ? { name: nomeDestino } : {}) } }],
+        reply_to: [{ address: process.env.EMAIL_RESPOSTA || process.env.EMAIL_REMETENTE || REMETENTE_PADRAO, name: NOME_REMETENTE }],
+        subject: assunto,
+        htmlbody: montarHtml(texto),
+        textbody: texto,
+      }),
+    });
+    if (!api.ok) {
+      console.error("ZeptoMail recusou o envio:", api.status);
+      return resposta(event, 502, { erro: "O serviço de e-mail recusou o envio. Confira o endereço e tente novamente." });
+    }
+    return resposta(event, 200, { ok: true, mensagem: "E-mail enviado com sucesso." });
+  } catch (e) {
+    console.error("Falha ao enviar resumo por e-mail:", e.message);
+    return resposta(event, 502, { erro: "Não foi possível enviar o e-mail agora. Tente novamente em instantes." });
+  }
+};
+
+exports.__test = { emailValido, montarHtml };

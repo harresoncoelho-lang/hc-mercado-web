@@ -2136,10 +2136,38 @@
 
     <div class="modal-ia-acoes-rodape">
       <button type="button" id="modal-ia-baixar"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital Completo</button>
-      <button type="button" id="modal-ia-checklist-email"><svg class='icone-ph'><use href='#ph-envelope-simple'></use></svg> Enviar Checklist por E-mail</button>
+      <button type="button" id="modal-ia-checklist-email"><svg class='icone-ph'><use href='#ph-envelope-simple'></use></svg> Preparar e-mail ao cliente</button>
       <button type="button" id="modal-ia-checklist-doc"><svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist (.doc)</button>
       <button type="button" id="modal-ia-imprimir"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir Checklist</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-ia-fundo" id="modal-enviar-resumo-fundo">
+  <div class="modal-ia" style="max-width:620px;height:auto;max-height:88vh;padding:24px;">
+    <div class="modal-ia-topo">
+      <h3 style="margin:0;"><svg class='icone-ph'><use href='#ph-paper-plane-tilt'></use></svg> Enviar resumo ao cliente</h3>
+      <button type="button" id="modal-enviar-resumo-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <p style="margin:6px 0 16px;color:var(--texto-fraco);font-size:13px;line-height:1.45;">O e-mail será enviado pelo <strong>licitaplena@licitaplena.com.br</strong>. Revise o destinatário antes de confirmar.</p>
+    <form id="modal-enviar-resumo-form" style="display:grid;gap:12px;">
+      <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">E-mail do cliente
+        <input id="modal-enviar-resumo-destino" type="email" required autocomplete="email" placeholder="cliente@empresa.com" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;">
+      </label>
+      <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">Nome do cliente <span style="font-weight:400;color:var(--texto-fraco);">(opcional)</span>
+        <input id="modal-enviar-resumo-nome" type="text" maxlength="100" autocomplete="name" placeholder="Nome do responsável" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;">
+      </label>
+      <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">Assunto
+        <input id="modal-enviar-resumo-assunto" type="text" required maxlength="180" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;">
+      </label>
+      <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">Prévia do resumo
+        <textarea id="modal-enviar-resumo-texto" readonly rows="12" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;line-height:1.45;resize:vertical;"></textarea>
+      </label>
+      <p id="modal-enviar-resumo-aviso" class="aviso" style="display:none;margin:0;"></p>
+      <div class="modal-ia-acoes-rodape" style="margin-top:0;">
+        <button type="submit" id="modal-enviar-resumo-confirmar" style="background:var(--azul);border-color:var(--azul);color:#fff;"><svg class='icone-ph'><use href='#ph-paper-plane-tilt'></use></svg> Enviar e-mail</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -2896,6 +2924,44 @@
     return linhas.join("\n");
   }
 
+  // Texto pronto para o licitante encaminhar ao cliente: usa o resumo estruturado quando
+  // disponível, sem prometer dado que não foi encontrado no edital.
+  function montarResumoParaCliente(edital, est) {
+    const linhas = [
+      "Resumo de oportunidade de licitação",
+      "",
+      `Objeto: ${edital.objeto || "Não informado"}`,
+      `Órgão: ${edital.orgao || "Não informado"}`,
+      `Local: ${[edital.municipio, edital.uf].filter(Boolean).join("/") || "Não informado"}`,
+      `Nº controle PNCP: ${edital.numeroControlePNCP || "Não informado"}`,
+      `Prazo de propostas: ${formatarPrazoPropostas(edital.encerramento) || "Não informado"}`,
+    ];
+    const adicionar = (rotulo, valor) => {
+      if (valor && !/^n[ãa]o informado$/i.test(String(valor).trim())) linhas.push(`${rotulo}: ${valor}`);
+    };
+    if (est) {
+      adicionar("Modalidade", est.identificacao && est.identificacao.modalidade);
+      adicionar("Data e horário da sessão", [est.sessaoPublica && est.sessaoPublica.data, est.sessaoPublica && est.sessaoPublica.horario].filter(Boolean).join(" às "));
+      adicionar("Valor estimado", est.detalhes && est.detalhes.valorEstimado);
+      adicionar("Critério de julgamento", est.detalhes && est.detalhes.criterioJulgamento);
+      adicionar("Modo de disputa", est.sessaoPublica && est.sessaoPublica.modoDisputa);
+      adicionar("Prazo de entrega", est.detalhes && est.detalhes.prazoEntrega);
+      if (est.resumoGeral) linhas.push("", "Visão geral:", est.resumoGeral);
+      if (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
+        linhas.push("", "Documentos de habilitação identificados:");
+        est.documentosHabilitacao.forEach((documento) => linhas.push(`• ${documento}`));
+      }
+      if (Array.isArray(est.outrasInformacoesRelevantes) && est.outrasInformacoesRelevantes.length) {
+        linhas.push("", "Pontos de atenção:");
+        est.outrasInformacoesRelevantes.forEach((ponto) => linhas.push(`• ${ponto}`));
+      }
+    } else {
+      linhas.push("", "O resumo completo ainda está sendo gerado. Consulte o edital oficial no PNCP antes de tomar uma decisão.");
+    }
+    linhas.push("", "Fonte: dados públicos do edital. Esta mensagem é um apoio à análise e deve ser conferida no documento oficial.");
+    return linhas.join("\n");
+  }
+
   function abrirModalIA(edital) {
     iaEditalAtual = edital;
     iaHistorico = [];
@@ -2919,9 +2985,15 @@
 
     document.getElementById("modal-ia-baixar").onclick = () => baixarEditalDireto(edital, document.getElementById("modal-ia-baixar"));
     document.getElementById("modal-ia-checklist-email").onclick = () => {
-      const corpo = montarChecklistTexto(edital, iaEstruturaAtual);
-      const assunto = encodeURIComponent(`Checklist — ${edital.objeto || "Licitação"}`);
-      window.location.href = `mailto:?subject=${assunto}&body=${encodeURIComponent(corpo)}`;
+      const corpo = montarResumoParaCliente(edital, iaEstruturaAtual);
+      document.getElementById("modal-enviar-resumo-destino").value = "";
+      document.getElementById("modal-enviar-resumo-nome").value = "";
+      document.getElementById("modal-enviar-resumo-assunto").value = `Oportunidade para análise — ${edital.objeto || "Licitação"}`;
+      document.getElementById("modal-enviar-resumo-texto").value = corpo;
+      const aviso = document.getElementById("modal-enviar-resumo-aviso");
+      aviso.style.display = "none";
+      aviso.textContent = "";
+      document.getElementById("modal-enviar-resumo-fundo").classList.add("aberto");
     };
     document.getElementById("modal-ia-checklist-doc").onclick = () => {
       const corpo = escapeHtml(montarChecklistTexto(edital, iaEstruturaAtual)).replace(/\n/g, "<br>");
@@ -2951,6 +3023,44 @@
   });
   document.getElementById("modal-ia-fundo").addEventListener("click", (ev) => {
     if (ev.target.id === "modal-ia-fundo") document.getElementById("modal-ia-fundo").classList.remove("aberto");
+  });
+  document.getElementById("modal-enviar-resumo-fechar").addEventListener("click", () => {
+    document.getElementById("modal-enviar-resumo-fundo").classList.remove("aberto");
+  });
+  document.getElementById("modal-enviar-resumo-fundo").addEventListener("click", (ev) => {
+    if (ev.target.id === "modal-enviar-resumo-fundo") document.getElementById("modal-enviar-resumo-fundo").classList.remove("aberto");
+  });
+  document.getElementById("modal-enviar-resumo-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const botao = document.getElementById("modal-enviar-resumo-confirmar");
+    const aviso = document.getElementById("modal-enviar-resumo-aviso");
+    const destino = document.getElementById("modal-enviar-resumo-destino").value.trim();
+    const nomeDestino = document.getElementById("modal-enviar-resumo-nome").value.trim();
+    const assunto = document.getElementById("modal-enviar-resumo-assunto").value.trim();
+    const texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
+    aviso.style.display = "none";
+    botao.disabled = true;
+    botao.textContent = "Enviando...";
+    try {
+      const token = await obterTokenSessao();
+      const resp = await fetch("/.netlify/functions/enviar-resumo-edital", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ destino, nomeDestino, assunto, texto }),
+      });
+      const dados = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(dados.erro || "Não foi possível enviar o e-mail.");
+      aviso.className = "aviso aviso-sucesso";
+      aviso.textContent = "E-mail enviado com sucesso pelo LicitaPlena.";
+      aviso.style.display = "block";
+      botao.textContent = "E-mail enviado";
+    } catch (e) {
+      aviso.className = "aviso";
+      aviso.textContent = e.message || "Não foi possível enviar o e-mail.";
+      aviso.style.display = "block";
+      botao.disabled = false;
+      botao.textContent = "Enviar e-mail";
+    }
   });
   document.getElementById("modal-ia-form").addEventListener("submit", (ev) => {
     ev.preventDefault();
