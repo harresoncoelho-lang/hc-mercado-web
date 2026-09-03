@@ -24,16 +24,33 @@ exports.handler = async (event) => {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15000);
-    const resp = await fetch(`${BASE_URL}/${cnpj}/compras/${ano}/${sequencial}/itens`, {
-      headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
-      signal: ctrl.signal,
-    });
-    clearTimeout(t);
-    if (!resp.ok) {
-      return { statusCode: 200, headers, body: JSON.stringify({ erro: null, itens: [] }) };
+    const tamanhoPagina = 100;
+    const itensPorNumero = new Map();
+    try {
+      for (let pagina = 1; pagina <= 20; pagina += 1) {
+        const resp = await fetch(`${BASE_URL}/${cnpj}/compras/${ano}/${sequencial}/itens?pagina=${pagina}&tamanhoPagina=${tamanhoPagina}`, {
+          headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
+          signal: ctrl.signal,
+        });
+        if (!resp.ok) break;
+        const dados = await resp.json();
+        const lote = Array.isArray(dados) ? dados : (dados.data || []);
+        if (!Array.isArray(lote) || lote.length === 0) break;
+        let novos = 0;
+        for (const item of lote) {
+          const chave = String(item.numeroItem ?? item.numero ?? "");
+          if (!chave || itensPorNumero.has(chave)) continue;
+          itensPorNumero.set(chave, item);
+          novos += 1;
+        }
+        // Algumas versões da API devolvem uma lista única e ignoram paginação. Parar ao
+        // detectar repetição evita loops e ainda preserva todos os itens recebidos.
+        if (lote.length < tamanhoPagina || novos === 0) break;
+      }
+    } finally {
+      clearTimeout(t);
     }
-    const dados = await resp.json();
-    const itens = (Array.isArray(dados) ? dados : []).map((i) => ({
+    const itens = [...itensPorNumero.values()].map((i) => ({
       numero: i.numeroItem,
       descricao: i.descricao || "",
       quantidade: i.quantidade,

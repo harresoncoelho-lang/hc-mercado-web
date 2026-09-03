@@ -4217,9 +4217,10 @@
   // Monta um par rótulo:valor do dl.boletim-meta, mostrando "Não informado" em vez de
   // esconder o campo quando a API do PNCP não trouxe valor pra ele (mesmo padrão que o
   // próprio PNCP usa na página do edital).
-  function campoBoletimMeta(rotulo, valor) {
+  function campoBoletimMeta(rotulo, valor, campoDetalhe) {
     const texto = (valor === null || valor === undefined || valor === "") ? "Não informado" : valor;
-    return `<div><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(String(texto))}</dd></div>`;
+    const atributoDetalhe = campoDetalhe ? ` data-detalhe-campo="${escapeHtml(campoDetalhe)}"` : "";
+    return `<div><dt>${escapeHtml(rotulo)}</dt><dd${atributoDetalhe}>${escapeHtml(String(texto))}</dd></div>`;
   }
 
   // Monta a lista de oportunidades no formato "cartão de boletim" (inspirado na página
@@ -4263,19 +4264,19 @@
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
             <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
             ${(!r.fonte && (r.esferaId === "F" || r.esferaId === "D") && r.codigoUnidade) ? campoBoletimMeta("UASG", r.codigoUnidade) : ""}
-            ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Registro de preço", r.srp === true ? "Sim" : (r.srp === false ? "Não" : null))}
-            ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome)}
-            ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal)}
-            ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria)}
+            ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome, "modalidadeNome")}
+            ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome, "tipoInstrumentoConvocatorioNome")}
+            ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome, "situacaoCompraNome")}
+            ${r.fonte ? "" : campoBoletimMeta("Registro de preço", r.srp === true ? "Sim" : (r.srp === false ? "Não" : null), "srp")}
+            ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome, "modoDisputaNome")}
+            ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal, "amparoLegal")}
+            ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria, "fonteOrcamentaria")}
             ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : ""}
             <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
-            ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado))}
-            ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado))}
-            ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null)}
-            ${r.fonte ? "" : campoBoletimMeta("Processo", r.processo)}
+            ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado), "valorTotalEstimado")}
+            ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado), "valorTotalHomologado")}
+            ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null, "numeroCompraAno")}
+            ${r.fonte ? "" : campoBoletimMeta("Processo", r.processo, "processo")}
             <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
           <div class="boletim-gerenciar">
@@ -4305,6 +4306,76 @@
     const n = Number(v);
     if (isNaN(n)) return "";
     return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+
+  // A busca de listagem do PNCP é intencionalmente resumida. Quando um cartão entra na
+  // tela, buscamos o registro oficial completo de forma preguiçosa (lazy): assim Boletim e
+  // Encontrar Licitações recebem modo de disputa, amparo, SRP, valores etc. sem travar a
+  // busca inicial nem disparar centenas de chamadas para cartões que o usuário não abriu.
+  function oportunidadePrecisaDetalhePncp(edital) {
+    if (!edital || edital.fonte || !edital.numeroControlePNCP) return false;
+    return CAMPOS_DETALHE_PNCP.some((campo) => edital[campo] === null || edital[campo] === undefined);
+  }
+
+  function textoCampoDetalhePncp(campo, edital) {
+    if (campo === "srp") return edital.srp === true ? "Sim" : (edital.srp === false ? "Não" : "Não informado");
+    if (campo === "valorTotalEstimado" || campo === "valorTotalHomologado") return formatarMoedaItem(edital[campo]) || "Não informado";
+    if (campo === "numeroCompraAno") {
+      return (edital.numeroCompra && edital.anoCompra) ? `${edital.numeroCompra}/${edital.anoCompra}` : "Não informado";
+    }
+    const valor = edital[campo];
+    return valor === null || valor === undefined || valor === "" ? "Não informado" : String(valor);
+  }
+
+  function aplicarDetalhePncpNoCard(card, edital) {
+    card.querySelectorAll("[data-detalhe-campo]").forEach((el) => {
+      el.textContent = textoCampoDetalhePncp(el.dataset.detalheCampo, edital);
+    });
+  }
+
+  async function enriquecerCardComDetalhePncp(card, resultados) {
+    if (card.dataset.detalhePncpCarregado === "1" || card.dataset.detalhePncpCarregando === "1") return;
+    const indice = Number(card.dataset.idx);
+    const edital = resultados[indice];
+    if (!oportunidadePrecisaDetalhePncp(edital)) return;
+    const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
+    if (!partes) return;
+    card.dataset.detalhePncpCarregando = "1";
+    try {
+      const resp = await fetch(`/.netlify/functions/pncp-detalhe?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      if (!resp.ok) return;
+      const dados = await resp.json();
+      if (!dados || !dados.detalhe) return;
+      Object.entries(dados.detalhe).forEach(([campo, valor]) => {
+        if (valor !== null && valor !== undefined) edital[campo] = valor;
+      });
+      aplicarDetalhePncpNoCard(card, edital);
+      card.dataset.detalhePncpCarregado = "1";
+    } catch (e) {
+      // A informação resumida continua visível se o PNCP estiver lento; uma nova busca
+      // poderá tentar o detalhe novamente sem quebrar o restante do painel.
+    } finally {
+      delete card.dataset.detalhePncpCarregando;
+    }
+  }
+
+  function habilitarEnriquecimentoDetalhesPncp(lista, resultados) {
+    const cards = Array.from(lista.querySelectorAll(".boletim-card"))
+      .filter((card) => oportunidadePrecisaDetalhePncp(resultados[Number(card.dataset.idx)]));
+    if (!cards.length) return;
+    const carregar = (card) => { void enriquecerCardComDetalhePncp(card, resultados); };
+    if (!("IntersectionObserver" in window)) {
+      cards.slice(0, 8).forEach(carregar);
+      return;
+    }
+    const observador = new IntersectionObserver((entradas, obs) => {
+      entradas.forEach((entrada) => {
+        if (!entrada.isIntersecting) return;
+        obs.unobserve(entrada.target);
+        carregar(entrada.target);
+      });
+    }, { rootMargin: "400px 0px" });
+    cards.forEach((card) => observador.observe(card));
   }
 
   function montarHtmlItens(itens) {
@@ -4525,6 +4596,7 @@
       // Encontrar Licitações ficavam sem nenhuma ação ligada a eles.
       const listaEl = alvo.querySelector(".lista-boletim");
       ligarAcoesBoletim(listaEl, resultados, () => renderizar(modoFiltro));
+      habilitarEnriquecimentoDetalhesPncp(listaEl, resultados);
 
       alvo.querySelectorAll(".btn-filtro-rapido").forEach((btn) => {
         btn.classList.toggle("ativo", btn.dataset.modo === modoFiltro);
