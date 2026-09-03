@@ -2138,7 +2138,7 @@
       <button type="button" id="modal-ia-baixar"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital Completo</button>
       <button type="button" id="modal-ia-checklist-email"><svg class='icone-ph'><use href='#ph-envelope-simple'></use></svg> Preparar e-mail ao cliente</button>
       <button type="button" id="modal-ia-checklist-doc"><svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist (.doc)</button>
-      <button type="button" id="modal-ia-imprimir"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir Checklist</button>
+      <button type="button" id="modal-ia-imprimir"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir resumo</button>
     </div>
   </div>
 </div>
@@ -2534,8 +2534,19 @@
   // No dossiê, ausência de dado também é informação operacional. Em vez de esconder uma
   // seção inteira, deixa explícito o que ainda precisa ser conferido no documento oficial.
   function valorLocalizadoIA(valor, padrao = "Não localizado no material lido — conferir o edital oficial.") {
-    if (valor && String(valor).trim() && !/^n[ãa]o informado$/i.test(String(valor).trim())) return String(valor).trim();
+    const texto = textoIA(valor);
+    if (texto && !/^n[ãa]o informado$/i.test(texto)) return texto;
     return padrao;
+  }
+
+  // A IA pode devolver, pontualmente, um item de lista estruturado em vez de uma string.
+  // Nunca deixamos isso vazar para a interface como "[object Object]".
+  function textoIA(valor) {
+    if (valor === null || valor === undefined) return "";
+    if (typeof valor !== "object") return String(valor).trim();
+    const textoPrincipal = valor.titulo || valor.pergunta || valor.texto || valor.descricao || valor.item || valor.conteudo || valor.motivo;
+    if (textoPrincipal) return String(textoPrincipal).trim();
+    return Object.values(valor).filter((v) => typeof v === "string" || typeof v === "number").join(" — ").trim();
   }
 
   function adicionarSecaoTextoIA(wrap, titulo, valor, padrao) {
@@ -2552,7 +2563,7 @@
     if (Array.isArray(itens) && itens.length) {
       const ul = document.createElement("ul");
       ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.5;";
-      itens.filter((item) => item && String(item).trim()).forEach((item) => {
+      itens.map(textoIA).filter(Boolean).forEach((item) => {
         const li = document.createElement("li");
         li.textContent = item;
         ul.appendChild(li);
@@ -2593,7 +2604,8 @@
       const def = RÓTULOS_ESTRUTURA_IA[chave];
       const linhas = Object.keys(def.campos)
         .map((campo) => [def.campos[campo], secaoDados[campo]])
-        .filter(([, v]) => v && String(v).trim() && !/^n[ãa]o informado$/i.test(String(v).trim()));
+        .map(([rotulo, v]) => [rotulo, textoIA(v)])
+        .filter(([, v]) => v && !/^n[ãa]o informado$/i.test(v));
       if (linhas.length === 0) continue;
       const secao = criarSecaoIA(def.titulo);
       const dl = document.createElement("dl");
@@ -2934,7 +2946,7 @@
     linhas.push("");
     if (est && Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
       linhas.push("Documentos de habilitação exigidos:");
-      est.documentosHabilitacao.forEach((d) => linhas.push(`[ ] ${d}`));
+      est.documentosHabilitacao.map(textoIA).filter(Boolean).forEach((d) => linhas.push(`[ ] ${d}`));
     } else {
       linhas.push("Documentos de habilitação: gere o Resumo do Edital com IA primeiro pra listar aqui.");
     }
@@ -2952,15 +2964,15 @@
       adicionar("Multas", est.multas);
       if (Array.isArray(est.declaracoesExigidas) && est.declaracoesExigidas.length) {
         linhas.push("", "Declarações e formulários:");
-        est.declaracoesExigidas.forEach((d) => linhas.push(`[ ] ${d}`));
+        est.declaracoesExigidas.map(textoIA).filter(Boolean).forEach((d) => linhas.push(`[ ] ${d}`));
       }
       if (Array.isArray(est.pendenciasParaConferencia) && est.pendenciasParaConferencia.length) {
         linhas.push("", "Pendências para conferência:");
-        est.pendenciasParaConferencia.forEach((p) => linhas.push(`[ ] ${p}`));
+        est.pendenciasParaConferencia.map(textoIA).filter(Boolean).forEach((p) => linhas.push(`[ ] ${p}`));
       }
       if (Array.isArray(est.questionamentosSugeridos) && est.questionamentosSugeridos.length) {
         linhas.push("", "Perguntas sugeridas ao órgão:");
-        est.questionamentosSugeridos.forEach((p) => linhas.push(`[ ] ${p}`));
+        est.questionamentosSugeridos.map(textoIA).filter(Boolean).forEach((p) => linhas.push(`[ ] ${p}`));
       }
       if (est.resumoGeral) {
         linhas.push("", "Visão geral:");
@@ -2968,6 +2980,91 @@
       }
     }
     return linhas.join("\n");
+  }
+
+  function montarHtmlImpressaoResumo(edital, est) {
+    const valor = (chave) => textoIA(chave);
+    const temValor = (chave) => {
+      const texto = valor(chave);
+      return texto && !/^n[ãa]o informado$/i.test(texto);
+    };
+    const escapar = (chave) => escapeHtml(valor(chave) || "Não informado");
+    const linha = (rotulo, dado) => temValor(dado) ? `<div class="campo"><dt>${escapeHtml(rotulo)}</dt><dd>${escapar(dado)}</dd></div>` : "";
+    const bloco = (titulo, conteudo) => conteudo ? `<section class="secao"><h2>${escapeHtml(titulo)}</h2>${conteudo}</section>` : "";
+    const grade = (linhas) => {
+      const conteudo = linhas.join("");
+      return conteudo ? `<dl class="grade">${conteudo}</dl>` : "";
+    };
+    const lista = (titulo, itens, vazio) => {
+      const visiveis = Array.isArray(itens) ? itens.map(textoIA).filter(Boolean) : [];
+      const corpo = visiveis.length
+        ? `<ul class="lista">${visiveis.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+        : `<p class="nao-informado">${escapeHtml(vazio)}</p>`;
+      return bloco(titulo, corpo);
+    };
+    const informacao = (titulo, dado) => bloco(titulo, `<p class="texto-secao">${escapar(dado)}</p>`);
+    const identificacao = est?.identificacao || {};
+    const sessao = est?.sessaoPublica || {};
+    const orgao = est?.orgao || {};
+    const detalhes = est?.detalhes || {};
+    const dataEmissao = new Date().toLocaleString("pt-BR", { dateStyle: "medium", timeStyle: "short" });
+    const sessaoDestaque = [valor(sessao.data), valor(sessao.horario)].filter(Boolean).join(" às ") || formatarPrazoPropostas(edital.encerramento) || "Não informado";
+
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Resumo do Edital - LicitaPlena</title>
+      <style>
+        @page { size: A4; margin: 14mm 13mm 16mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #17243a; font: 10.5pt/1.48 "Segoe UI", Arial, sans-serif; }
+        .topo { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; padding-bottom:15px; border-bottom:3px solid #1d5faa; }
+        .marca { display:flex; align-items:center; gap:9px; color:#102d56; font-weight:800; font-size:20pt; letter-spacing:-.7px; }
+        .marca-sinal { width:28px; height:28px; display:grid; place-items:center; border-radius:8px; background:#1f75df; color:#fff; font-size:11pt; letter-spacing:0; }
+        .metadados { text-align:right; color:#637085; font-size:8.5pt; line-height:1.45; }
+        h1 { margin:20px 0 3px; color:#102d56; font-size:20pt; line-height:1.15; letter-spacing:-.35px; }
+        .subtitulo { margin:0; color:#5d6f86; font-size:10.5pt; }
+        .objeto { margin:16px 0 18px; padding:12px 14px; background:#f3f7fc; border-left:4px solid #1f75df; color:#203853; font-size:11pt; line-height:1.5; }
+        .indicadores { display:grid; grid-template-columns:repeat(3, 1fr); gap:9px; margin:0 0 18px; }
+        .indicador { min-height:72px; padding:11px 12px; border:1px solid #dce5ef; border-radius:7px; background:#fff; }
+        .indicador span { display:block; color:#6a7789; font-size:8pt; font-weight:700; letter-spacing:.45px; text-transform:uppercase; }
+        .indicador strong { display:block; margin-top:5px; color:#132f56; font-size:13pt; line-height:1.22; }
+        .secao { margin:0 0 14px; break-inside:avoid; page-break-inside:avoid; }
+        .secao h2 { margin:0 0 9px; padding:7px 10px; background:#eef3f8; border-left:3px solid #1f75df; color:#193a63; font-size:11pt; line-height:1.25; }
+        .grade { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px 22px; margin:0; padding:0 4px; }
+        .campo { break-inside:avoid; }
+        dt { margin:0 0 2px; color:#6a7789; font-size:8.5pt; font-weight:600; }
+        dd { margin:0; color:#1c2b42; font-weight:500; }
+        .texto-secao, .nao-informado { margin:0; padding:0 4px; white-space:pre-line; }
+        .nao-informado { color:#637085; font-style:italic; }
+        .lista { margin:0; padding:0 6px 0 23px; }
+        .lista li { margin:0 0 5px; padding-left:2px; }
+        .rodape { margin-top:24px; padding-top:10px; border-top:1px solid #dce5ef; color:#6a7789; font-size:8pt; }
+        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+      </style></head><body>
+      <header class="topo"><div class="marca"><span class="marca-sinal">LP</span>LicitaPlena</div><div class="metadados">Resumo operacional do edital<br>Emitido em ${escapeHtml(dataEmissao)}</div></header>
+      <h1>Resumo do Edital</h1><p class="subtitulo">${escapeHtml(valor(identificacao.numero) || edital.numeroControlePNCP || edital.numero || "Licitação")}</p>
+      <div class="objeto"><strong>Objeto</strong><br>${escapeHtml(valor(identificacao.objeto) || edital.objeto || "Não informado")}</div>
+      <div class="indicadores"><div class="indicador"><span>Valor estimado</span><strong>${escapar(detalhes.valorEstimado || edital.valor)}</strong></div><div class="indicador"><span>Modalidade</span><strong>${escapar(identificacao.modalidade || edital.modalidade)}</strong></div><div class="indicador"><span>Data da sessão</span><strong>${escapeHtml(sessaoDestaque)}</strong></div></div>
+      ${bloco("Identificação da Licitação", grade([linha("Número", identificacao.numero || edital.numeroControlePNCP || edital.numero), linha("UASG", identificacao.uasg), linha("Contratação", identificacao.contratacao), linha("Modalidade", identificacao.modalidade || edital.modalidade), linha("Portal de realização", identificacao.portalRealizacao), linha("Regulamentação", identificacao.regulamentacao || est?.legislacao)]))}
+      ${bloco("Sessão Pública", grade([linha("Data", sessao.data), linha("Horário", sessao.horario), linha("Modo de disputa", sessao.modoDisputa), linha("Intervalo mínimo", sessao.intervaloMinimo)]))}
+      ${bloco("Órgão Responsável", grade([linha("Órgão", orgao.nome || edital.orgao), linha("E-mail", orgao.email), linha("Telefone", orgao.telefone), linha("Endereço", orgao.endereco || [edital.municipio, edital.uf].filter(Boolean).join(" / "))]))}
+      ${bloco("Detalhes da Licitação", grade([linha("Prazo de entrega", detalhes.prazoEntrega), linha("Critério de julgamento", detalhes.criterioJulgamento), linha("Preferência ME/EPP", detalhes.preferenciaMeEpp), linha("Visita técnica", detalhes.exigeVisitaTecnica), linha("Amostra", detalhes.exigeAmostra), linha("Prova de conceito", detalhes.provaConceito), linha("Margem de preferência", detalhes.margemPreferencia), linha("Restrições de regionalidade", detalhes.restricoesRegionalidade)]))}
+      ${bloco("Garantias e Prazos", grade([linha("Garantia de proposta", est?.garantias?.proposta), linha("Garantia contratual", est?.garantias?.contrato), linha("Vigência do contrato", est?.prazos?.vigenciaContrato), linha("Limite para propostas", est?.prazos?.limiteEnvioPropostas || edital.encerramento), linha("Recurso", est?.prazos?.prazoRecurso), linha("Impugnação", est?.prazos?.limiteImpugnacao)]))}
+      ${bloco("Critérios da Proposta", grade([linha("Validade da proposta", est?.criteriosProposta?.validadeProposta), linha("Desempate", est?.criteriosProposta?.criteriosDesempate), linha("Exigências comerciais", est?.criteriosProposta?.exigenciasPropostaComercial), linha("Programa de integridade", est?.criteriosProposta?.programaIntegridade)]))}
+      ${bloco("Resumo dos Itens", grade([linha("Total de itens", est?.itens?.totalItens), linha("Categorias", est?.itens?.categoriasPrincipais), linha("Descrição geral", est?.itens?.descricaoGeral), linha("Observações", est?.itens?.observacoes)]))}
+      ${lista("Documentos de Habilitação Exigidos", est?.documentosHabilitacao, "Não localizados no material analisado. Confira o edital oficial.")}
+      ${informacao("Atestado de Capacidade Técnica", est?.atestadoCapacidadeTecnica)}
+      ${lista("Declarações e Formulários", est?.declaracoesExigidas, "Nenhum item específico foi localizado no material analisado.")}
+      ${informacao("Legislação e Base Legal", est?.legislacao)}
+      ${informacao("Anexos e Documentos Complementares", est?.anexosDeclaracoes)}
+      ${informacao("Condições de Pagamento", est?.condicoesPagamento)}
+      ${informacao("Penalidades", est?.penalidades)}
+      ${informacao("Multas", est?.multas)}
+      ${lista("Outras Informações Relevantes", est?.outrasInformacoesRelevantes, "Nenhum ponto adicional foi identificado no material analisado.")}
+      ${lista("Pendências para Conferência", est?.pendenciasParaConferencia, "Nenhuma pendência adicional foi sinalizada.")}
+      ${lista("Possíveis Questionamentos", est?.possiveisQuestionamentos, "Nenhum questionamento com base concreta foi identificado.")}
+      ${lista("Perguntas Sugeridas ao Órgão", est?.questionamentosSugeridos, "Nenhuma pergunta adicional foi sugerida.")}
+      ${bloco("Visão Geral", est?.resumoGeral ? `<p class="texto-secao">${escapeHtml(textoIA(est.resumoGeral))}</p>` : "")}
+      <footer class="rodape">Documento gerado pelo LicitaPlena a partir de dados públicos e do material disponível. Use-o como apoio operacional e confira sempre o edital oficial antes de decidir.</footer>
+    </body></html>`;
   }
 
   // Texto pronto para o licitante encaminhar ao cliente: usa o resumo estruturado quando
@@ -3060,8 +3157,8 @@
     };
     document.getElementById("modal-ia-imprimir").onclick = () => {
       const janela = window.open("", "_blank");
-      const corpo = escapeHtml(montarChecklistTexto(edital, iaEstruturaAtual)).replace(/\n/g, "<br>");
-      janela.document.write(`<html><head><title>Checklist</title></head><body style="font-family:Arial,sans-serif;padding:24px;">${corpo}</body></html>`);
+      if (!janela) return;
+      janela.document.write(montarHtmlImpressaoResumo(edital, iaEstruturaAtual));
       janela.document.close();
       janela.focus();
       janela.print();
