@@ -26,7 +26,11 @@ const MODELO = process.env.GROQ_MODEL || MODELO_PADRAO;
 const CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const PNCP_ARQUIVOS_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
-const MAX_CARACTERES_TEXTO = 8000;
+// Um edital raramente cabe nos primeiros 8 mil caracteres: habilitação, multas,
+// pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
+// contexto suficiente para uma análise operacional sem estourar o tempo da Function.
+const MAX_CARACTERES_TEXTO = 24000;
+const VERSAO_RESUMO = 2;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
@@ -105,7 +109,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
         vistos.add(a.sequencialDocumento);
         return true;
       })
-      .slice(0, 6);
+      .slice(0, 12);
     if (candidatos.length === 0) return { texto: null, escaneado: false };
 
     // Cada require isolado no seu próprio try/catch: se adm-zip ou mammoth falharem por
@@ -178,7 +182,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
           const prioritariasZip = entradas.filter((e) => PALAVRAS_DOCUMENTO_PRINCIPAL.test(e.entryName));
           const ordemZip = [...prioritariasZip, ...entradas.filter((e) => !prioritariasZip.includes(e))];
           const textos = [];
-          for (const entrada of ordemZip.slice(0, 6)) {
+          for (const entrada of ordemZip.slice(0, 12)) {
             try {
               const conteudo = entrada.getData();
               const texto = /\.docx$/i.test(entrada.entryName) ? await textoDeDocx(conteudo) : await textoDePdf(conteudo);
@@ -242,15 +246,23 @@ const SCHEMA_ESTRUTURA = `{
   "sessaoPublica": {"data": "", "horario": "", "modoDisputa": "", "intervaloMinimo": ""},
   "orgao": {"nome": "", "email": "", "endereco": "", "telefone": ""},
   "detalhes": {"valorEstimado": "", "prazoEntrega": "", "margemPreferencia": "", "exigeVisitaTecnica": "", "exigeAmostra": "", "garantia": "", "criterioJulgamento": "", "preferenciaMeEpp": "", "restricoesRegionalidade": "", "provaConceito": ""},
-  "prazos": {"limiteEnvioPropostas": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": ""},
+  "garantias": {"proposta": "", "contrato": "", "adicional": "", "retomada": ""},
+  "entregaExecucao": {"prazo": "", "local": "", "condicoes": ""},
+  "prazos": {"limiteEnvioPropostas": "", "prazoDocumentoComplementar": "", "prazoDocumentoOriginal": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": ""},
   "criteriosProposta": {"validadeProposta": "", "criteriosDesempate": "", "exigenciasPropostaComercial": "", "programaIntegridade": ""},
   "itens": {"totalItens": "", "descricaoGeral": "", "categoriasPrincipais": "", "observacoes": ""},
-  "documentosHabilitacao": ["lista de documentos exigidos, um por item"],
+  "documentosHabilitacao": ["lista de documentos exigidos, um por item; incluir certidões, registros, balanços e atestados com a condição ou prazo quando houver"],
   "atestadoCapacidadeTecnica": "",
   "legislacao": "",
   "anexosDeclaracoes": "",
+  "declaracoesExigidas": ["cada declaração ou formulário exigido, um por item"],
   "condicoesPagamento": "",
   "penalidades": "",
+  "multas": "",
+  "documentosConsultados": ["nomes dos documentos efetivamente lidos"],
+  "pendenciasParaConferencia": ["itens que NÃO foram localizados no material lido e precisam ser conferidos no edital oficial; não use esta lista para repetir dados encontrados"],
+  "questionamentosSugeridos": ["perguntas objetivas para esclarecimento/impugnação apenas quando houver ambiguidade, conflito ou ausência material relevante"],
+  "possiveisQuestionamentos": ["cada item deve trazer: título — motivo concreto — referência ao trecho ou cláusula; só inclua se houver base no texto"],
   "outrasInformacoesRelevantes": ["lista de TODOS os pontos importantes do texto que não se encaixam nos campos acima — não limite a quantidade, inclua tudo que for relevante pra quem vai decidir participar"],
   "analiseCritica": {"conflitoObjetoMinuta": "", "conflitoPrazoVigenciaArp": "", "conflitoPrazosEntrega": "", "permiteSubcontratacao": "", "previsaoReajuste": "", "permiteRenovacao": "", "estabeleceCondicoesPagamento": ""},
   "resumoGeral": "resumo corrido e DETALHADO (8 a 14 frases), cobrindo objeto completo, órgão, valor, modalidade, datas/prazos, principais exigências de habilitação, forma de disputa e critério de julgamento — não é pra ser curto, é pra ser uma análise completa da oportunidade, como um analista de licitações faria pra um cliente"
@@ -383,7 +395,10 @@ exports.handler = async (event) => {
       // custo de IA pra gerar, então os dois precisam ficar em cache. Sem isso, todo edital
       // que cai no fallback reprocessava do zero A CADA vez que alguém abria o resumo de
       // novo, gastando cota da IA repetidamente à toa.
-      if (cache && (cache.estrutura || cache.resposta)) {
+      // Resumos antigos eram texto corrido e não traziam o checklist completo. Só usa
+      // cache da versão atual; assim uma evolução do dossiê chega para todos sem exigir
+      // que cada pessoa descubra como limpar dados do navegador.
+      if (cache && cache.versao === VERSAO_RESUMO && (cache.estrutura || cache.resposta)) {
         return {
           statusCode: 200,
           headers,
@@ -441,7 +456,7 @@ exports.handler = async (event) => {
   // modo === "resumo"
   if (fonteLida) {
     const mensagensEstrutura = [
-      { role: "system", content: `${REGRAS_BASE}\nVocê recebeu o texto real extraído do(s) documento(s) do edital (pode incluir edital, termo de referência e anexos). Leia com atenção e extraia as informações pedidas com o máximo de detalhe possível — preencha cada campo com o que estiver disponível no texto, mesmo que precise resumir um parágrafo inteiro num campo. Devolva SOMENTE um JSON válido (sem markdown, sem comentários, sem texto antes ou depois) no formato exato:\n${SCHEMA_ESTRUTURA}` },
+      { role: "system", content: `${REGRAS_BASE}\nVocê recebeu texto real extraído de documentos oficiais (edital, termo de referência e anexos). Produza um DOSSIÊ OPERACIONAL, não um parágrafo genérico. Leia o material inteiro e extraia os fatos ponto a ponto: datas, entrega, habilitação, declarações, legislação, julgamento, pagamento, garantias, penalidades/multas, anexos, riscos e prazos.\n\nRegra de evidência: só inclua um fato se ele estiver no texto fornecido. Se um campo não aparecer, escreva "Não informado". Use "pendenciasParaConferencia" para o que precisa de conferência; não invente cláusulas comuns de licitação. Em "questionamentosSugeridos", inclua apenas perguntas que tenham motivo explícito no texto (ambiguidade, contradição ou ausência relevante).\n\nDevolva SOMENTE um JSON válido (sem markdown, sem comentários, sem texto antes ou depois) no formato exato:\n${SCHEMA_ESTRUTURA}` },
       { role: "user", content: `Dados já conhecidos:\n${ficha}\n\nTexto extraído do edital (pode estar truncado):\n${textoEdital}` },
     ];
     // O modelo gratuito (8b) é mais fraco pra devolver JSON grande e válido de primeira —
@@ -463,6 +478,7 @@ exports.handler = async (event) => {
               textoEdital,
               fonteLida: true,
               motivoFonteNaoLida: null,
+              versao: VERSAO_RESUMO,
               geradoEm: new Date().toISOString(),
             });
           } catch (e) {
@@ -517,6 +533,7 @@ exports.handler = async (event) => {
         textoEdital: textoEdital || null,
         fonteLida,
         motivoFonteNaoLida,
+        versao: VERSAO_RESUMO,
         geradoEm: new Date().toISOString(),
       });
     } catch (e) {

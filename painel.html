@@ -2486,7 +2486,9 @@
     sessaoPublica: { titulo: "<svg class='icone-ph'><use href='#ph-calendar'></use></svg> Sessão Pública", campos: { data: "Data", horario: "Horário", modoDisputa: "Modo de disputa", intervaloMinimo: "Intervalo mínimo" } },
     orgao: { titulo: "<svg class='icone-ph'><use href='#ph-bank'></use></svg> Órgão Responsável", campos: { nome: "Órgão", email: "E-mail", endereco: "Endereço", telefone: "Telefone" } },
     detalhes: { titulo: "<svg class='icone-ph'><use href='#ph-briefcase'></use></svg> Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade", provaConceito: "Exigência de prova de conceito" } },
-    prazos: { titulo: "<svg class='icone-ph'><use href='#ph-alarm'></use></svg> Prazos Importantes", campos: { limiteEnvioPropostas: "Limite p/ envio de propostas", prazoRecurso: "Prazo p/ recurso", prazoContrarrazoes: "Prazo p/ contrarrazões", limiteEsclarecimentos: "Limite p/ esclarecimentos", limiteImpugnacao: "Limite p/ impugnação", vigenciaContrato: "Vigência do contrato" } },
+    garantias: { titulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Seguro e Garantias", campos: { proposta: "Garantia de proposta", contrato: "Garantia de contrato", adicional: "Garantia adicional", retomada: "Garantia de retomada" } },
+    entregaExecucao: { titulo: "<svg class='icone-ph'><use href='#ph-package'></use></svg> Entrega e Execução", campos: { prazo: "Prazo", local: "Local de entrega/execução", condicoes: "Condições de execução" } },
+    prazos: { titulo: "<svg class='icone-ph'><use href='#ph-alarm'></use></svg> Prazos Importantes", campos: { limiteEnvioPropostas: "Limite p/ envio de propostas", prazoDocumentoComplementar: "Documento complementar", prazoDocumentoOriginal: "Documento original", prazoRecurso: "Prazo p/ recurso", prazoContrarrazoes: "Prazo p/ contrarrazões", limiteEsclarecimentos: "Limite p/ esclarecimentos", limiteImpugnacao: "Limite p/ impugnação", vigenciaContrato: "Vigência do contrato" } },
     criteriosProposta: { titulo: "<svg class='icone-ph'><use href='#ph-receipt'></use></svg> Critérios da Proposta e Julgamento", campos: { validadeProposta: "Validade da proposta", criteriosDesempate: "Critérios de desempate", exigenciasPropostaComercial: "Exigências da proposta comercial", programaIntegridade: "Programa de integridade" } },
     itens: { titulo: "<svg class='icone-ph'><use href='#ph-package'></use></svg> Resumo dos Itens", campos: { totalItens: "Total de itens", descricaoGeral: "Descrição geral", categoriasPrincipais: "Categorias principais", observacoes: "Observações" } },
     analiseCritica: { titulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Análise Crítica", campos: { conflitoObjetoMinuta: "Conflito objeto/minuta", conflitoPrazoVigenciaArp: "Conflito prazo vigência/ARP", conflitoPrazosEntrega: "Conflito prazos de entrega", permiteSubcontratacao: "Permite subcontratação", previsaoReajuste: "Previsão de reajuste/repactuação", permiteRenovacao: "Permite renovação de contrato", estabeleceCondicoesPagamento: "Estabelece condições de pagamento" } },
@@ -2494,9 +2496,6 @@
 
   const CAMPOS_TEXTO_LIVRE_IA = [
     ["atestadoCapacidadeTecnica", "<svg class='icone-ph'><use href='#ph-graduation-cap'></use></svg> Atestado de Capacidade Técnica"],
-    ["legislacao", "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação"],
-    ["anexosDeclaracoes", "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Anexos e Declarações"],
-    ["condicoesPagamento", "<svg class='icone-ph'><use href='#ph-credit-card'></use></svg> Condições de Pagamento"],
   ];
 
   function renderizarCartoesTopoIA(est) {
@@ -2530,6 +2529,48 @@
     h4.innerHTML = titulo;
     secao.appendChild(h4);
     return secao;
+  }
+
+  // No dossiê, ausência de dado também é informação operacional. Em vez de esconder uma
+  // seção inteira, deixa explícito o que ainda precisa ser conferido no documento oficial.
+  function valorLocalizadoIA(valor, padrao = "Não localizado no material lido — conferir o edital oficial.") {
+    if (valor && String(valor).trim() && !/^n[ãa]o informado$/i.test(String(valor).trim())) return String(valor).trim();
+    return padrao;
+  }
+
+  function adicionarSecaoTextoIA(wrap, titulo, valor, padrao) {
+    const secao = criarSecaoIA(titulo);
+    const p = document.createElement("p");
+    p.style.cssText = "margin:8px 0 0;font-size:13px;line-height:1.5;";
+    p.textContent = valorLocalizadoIA(valor, padrao);
+    secao.appendChild(p);
+    wrap.appendChild(secao);
+  }
+
+  function adicionarSecaoListaIA(wrap, titulo, itens, vazio) {
+    const secao = criarSecaoIA(titulo);
+    if (Array.isArray(itens) && itens.length) {
+      const ul = document.createElement("ul");
+      ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.5;";
+      itens.filter((item) => item && String(item).trim()).forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        ul.appendChild(li);
+      });
+      if (ul.children.length) secao.appendChild(ul);
+      else {
+        const p = document.createElement("p");
+        p.style.cssText = "margin:8px 0 0;font-size:13px;";
+        p.textContent = vazio;
+        secao.appendChild(p);
+      }
+    } else {
+      const p = document.createElement("p");
+      p.style.cssText = "margin:8px 0 0;font-size:13px;";
+      p.textContent = vazio;
+      secao.appendChild(p);
+    }
+    wrap.appendChild(secao);
   }
 
   function renderizarEstruturaIA(est) {
@@ -2571,40 +2612,13 @@
       wrap.appendChild(secao);
     }
 
-    if (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
-      const secao = criarSecaoIA("<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos");
-      const ul = document.createElement("ul");
-      ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
-      est.documentosHabilitacao.forEach((d) => {
-        const li = document.createElement("li");
-        li.textContent = d;
-        ul.appendChild(li);
-      });
-      secao.appendChild(ul);
-      wrap.appendChild(secao);
-    }
-
-    if (Array.isArray(est.outrasInformacoesRelevantes) && est.outrasInformacoesRelevantes.length) {
-      const secao = criarSecaoIA("<svg class='icone-ph'><use href='#ph-info'></use></svg> Outras Informações Relevantes");
-      const ul = document.createElement("ul");
-      ul.style.cssText = "margin:8px 0 0;padding-left:18px;font-size:13px;";
-      est.outrasInformacoesRelevantes.forEach((d) => {
-        const li = document.createElement("li");
-        li.textContent = d;
-        ul.appendChild(li);
-      });
-      secao.appendChild(ul);
-      wrap.appendChild(secao);
-    }
-
-    if (est.penalidades && !/^n[ãa]o informado$/i.test(String(est.penalidades).trim())) {
-      const secao = criarSecaoIA("<svg class='icone-ph'><use href='#ph-warning'></use></svg> Penalidades");
-      const p = document.createElement("p");
-      p.style.cssText = "margin:8px 0 0;font-size:13px;";
-      p.textContent = est.penalidades;
-      secao.appendChild(p);
-      wrap.appendChild(secao);
-    }
+    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos", est.documentosHabilitacao, "Não localizados no material lido — conferir habilitação jurídica, fiscal/trabalhista, econômico-financeira e técnica no edital oficial.");
+    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Declarações e Formulários", est.declaracoesExigidas, "Nenhuma declaração ou formulário específico foi localizado no material lido.");
+    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação e Base Legal", est.legislacao);
+    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Anexos e Documentos Complementares", est.anexosDeclaracoes);
+    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-credit-card'></use></svg> Condições de Pagamento", est.condicoesPagamento);
+    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Penalidades", est.penalidades);
+    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Multas", est.multas);
 
     // Campos de texto livre (atestado técnico, legislação, anexos, condições de pagamento).
     CAMPOS_TEXTO_LIVRE_IA.forEach(([chave, titulo]) => {
@@ -2617,6 +2631,12 @@
       secao.appendChild(p);
       wrap.appendChild(secao);
     });
+
+    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-info'></use></svg> Outras Informações Relevantes", est.outrasInformacoesRelevantes, "Nenhum outro ponto crítico foi identificado no material lido.");
+    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Pendências para Conferência", est.pendenciasParaConferencia, "Nenhuma pendência adicional foi sinalizada pela análise.");
+    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Possíveis Questionamentos", est.possiveisQuestionamentos, "Nenhum possível questionamento com base concreta foi identificado no material lido.");
+    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Perguntas Sugeridas ao Órgão", est.questionamentosSugeridos, "Nenhum questionamento objetivo foi sugerido a partir do material lido.");
+    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Fontes Consultadas", est.documentosConsultados, "O texto extraído não identificou os nomes dos documentos consultados.");
 
     conversa.appendChild(wrap);
     conversa.scrollTop = conversa.scrollHeight;
@@ -2916,10 +2936,34 @@
     } else {
       linhas.push("Documentos de habilitação: gere o Resumo do Edital com IA primeiro pra listar aqui.");
     }
-    if (est && est.resumoGeral) {
+    if (est) {
+      const adicionar = (rotulo, valor) => {
+        if (valor && !/^n[ãa]o informado$/i.test(String(valor).trim())) linhas.push(`${rotulo}: ${valor}`);
+      };
       linhas.push("");
-      linhas.push("Resumo:");
-      linhas.push(est.resumoGeral);
+      linhas.push("Condições comerciais e operacionais:");
+      adicionar("Critério de julgamento", est.detalhes && est.detalhes.criterioJulgamento);
+      adicionar("Prazo de entrega", est.detalhes && est.detalhes.prazoEntrega);
+      adicionar("Condições de pagamento", est.condicoesPagamento);
+      adicionar("Legislação/base legal", est.legislacao);
+      adicionar("Penalidades", est.penalidades);
+      adicionar("Multas", est.multas);
+      if (Array.isArray(est.declaracoesExigidas) && est.declaracoesExigidas.length) {
+        linhas.push("", "Declarações e formulários:");
+        est.declaracoesExigidas.forEach((d) => linhas.push(`[ ] ${d}`));
+      }
+      if (Array.isArray(est.pendenciasParaConferencia) && est.pendenciasParaConferencia.length) {
+        linhas.push("", "Pendências para conferência:");
+        est.pendenciasParaConferencia.forEach((p) => linhas.push(`[ ] ${p}`));
+      }
+      if (Array.isArray(est.questionamentosSugeridos) && est.questionamentosSugeridos.length) {
+        linhas.push("", "Perguntas sugeridas ao órgão:");
+        est.questionamentosSugeridos.forEach((p) => linhas.push(`[ ] ${p}`));
+      }
+      if (est.resumoGeral) {
+        linhas.push("", "Visão geral:");
+        linhas.push(est.resumoGeral);
+      }
     }
     return linhas.join("\n");
   }
@@ -2951,6 +2995,13 @@
         linhas.push("", "Documentos de habilitação identificados:");
         est.documentosHabilitacao.forEach((documento) => linhas.push(`• ${documento}`));
       }
+      if (Array.isArray(est.declaracoesExigidas) && est.declaracoesExigidas.length) {
+        linhas.push("", "Declarações e formulários identificados:");
+        est.declaracoesExigidas.forEach((declaracao) => linhas.push(`• ${declaracao}`));
+      }
+      adicionar("Condições de pagamento", est.condicoesPagamento);
+      adicionar("Penalidades", est.penalidades);
+      adicionar("Multas", est.multas);
       if (Array.isArray(est.outrasInformacoesRelevantes) && est.outrasInformacoesRelevantes.length) {
         linhas.push("", "Pontos de atenção:");
         est.outrasInformacoesRelevantes.forEach((ponto) => linhas.push(`• ${ponto}`));
