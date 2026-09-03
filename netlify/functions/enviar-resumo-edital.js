@@ -7,9 +7,20 @@ const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
 const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
 const NOME_REMETENTE = "LicitaPlena";
 
+function normalizarTokenZepto(token) {
+  // Aceita tanto a chave pura quanto o valor copiado do exemplo de cabeçalho da
+  // documentação. A variável precisa guardar a chave do Agent, não o prefixo.
+  return String(token || "")
+    .trim()
+    .replace(/^Zoho-enczapikey\s+/i, "")
+    .replace(/^["']|["']$/g, "")
+    .trim();
+}
+
 function mensagemErroZepto(status, corpo) {
-  let erro = null;
-  try { erro = JSON.parse(corpo || "{}").error || null; } catch (e) { erro = null; }
+  let respostaProvedor = null;
+  try { respostaProvedor = JSON.parse(corpo || "{}"); } catch (e) { respostaProvedor = null; }
+  const erro = respostaProvedor && respostaProvedor.error || null;
   // Dependendo do tipo de recusa, o ZeptoMail pode devolver o código no erro
   // principal ou dentro de `details`. Tratamos ambos sem retornar a resposta do
   // provedor ao navegador (ela pode conter informações operacionais internas).
@@ -24,8 +35,15 @@ function mensagemErroZepto(status, corpo) {
   if (codigos.has("SMI_115")) return "O limite diário do agente de e-mail foi atingido. Tente novamente no próximo período.";
   if (codigos.has("SERR_156")) return "O agente do ZeptoMail restringe os IPs de envio. É preciso liberar o ambiente de produção na lista de IPs autorizados.";
   if (codigos.has("SM_113")) return "O endereço de remetente configurado não é aceito pelo ZeptoMail. Verifique o agente e o domínio licitaplena.com.br.";
+  const textoErro = [erro && erro.message, ...detalhes.map((d) => d && d.message)].filter(Boolean).join(" ");
+  if (/token|api[ _-]?key|authentication|authorization|credencial/i.test(textoErro)) {
+    return "A chave do serviço de e-mail não foi aceita. Use a Send API key do Agent do ZeptoMail na variável secreta ZEPTOMAIL_TOKEN.";
+  }
+  if (/domain|sender|remetente|from/i.test(textoErro)) {
+    return "O endereço remetente não foi aceito pelo Agent do ZeptoMail. Confirme licitaplena@licitaplena.com.br como remetente verificado.";
+  }
   if (status === 401 || status === 403) return "A chave do serviço de e-mail não foi aceita. Verifique a chave de envio do agente no ZeptoMail.";
-  return "O serviço de e-mail recusou o envio. Tente novamente ou verifique a configuração do ZeptoMail.";
+  return codigo ? `O serviço de e-mail recusou o envio (código ZeptoMail: ${codigo}). Verifique o Agent do ZeptoMail.` : "O serviço de e-mail recusou o envio. Verifique a Send API key e o remetente verificado no Agent do ZeptoMail.";
 }
 
 function escapeHtml(valor) {
@@ -79,7 +97,7 @@ exports.handler = async (event) => {
   if (!emailValido(destino)) return resposta(event, 400, { erro: "Informe um e-mail de destino válido." });
   if (!texto) return resposta(event, 400, { erro: "Não há conteúdo para enviar." });
 
-  const token = process.env.ZEPTOMAIL_TOKEN;
+  const token = normalizarTokenZepto(process.env.ZEPTOMAIL_TOKEN);
   if (!token) {
     return resposta(event, 503, { erro: "O serviço de e-mail ainda não foi configurado. Tente novamente após a conclusão da configuração." });
   }
@@ -118,4 +136,4 @@ exports.handler = async (event) => {
   }
 };
 
-exports.__test = { emailValido, montarHtml, mensagemErroZepto };
+exports.__test = { emailValido, montarHtml, mensagemErroZepto, normalizarTokenZepto };

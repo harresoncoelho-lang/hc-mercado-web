@@ -24,3 +24,15 @@ test("identifica domínio não verificado quando o código vem no erro principal
   assert.match(erro, /domínio remetente/i);
   assert.doesNotMatch(erro, /Sender domain/i);
 });
+
+test("aceita chave copiada junto com o prefixo do cabeçalho", () => {
+  assert.equal(__test.normalizarTokenZepto(' Zoho-enczapikey "chave-do-agent" '), "chave-do-agent");
+});
+
+test("identifica mensagem textual de credencial recusada", () => {
+  const erro = __test.mensagemErroZepto(400, JSON.stringify({
+    error: { code: "TM_4001", message: "Invalid API key" },
+  }));
+  assert.match(erro, /Send API key/i);
+  assert.doesNotMatch(erro, /Invalid API key/i);
+});
