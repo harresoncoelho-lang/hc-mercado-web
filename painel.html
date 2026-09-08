@@ -2689,6 +2689,51 @@
     return estrutura;
   }
 
+  // Última linha de defesa no navegador: gateways podem devolver uma página HTML de
+  // timeout antes de a Function conseguir responder em JSON. Nesse caso, não deixamos
+  // o cliente sem resumo nem sugerimos dados. Esta ficha usa apenas os campos públicos
+  // que já foram carregados do PNCP.
+  function montarEstruturaContingenciaLocal(edital) {
+    const naoInformado = "Não informado";
+    const local = [edital && edital.municipio, edital && edital.uf].filter(Boolean).join(" / ") || naoInformado;
+    const prazo = edital && edital.encerramento || naoInformado;
+    return {
+      dadosOficiais: {
+        publicacao: edital && edital.publicacao,
+        inicioRecebimento: edital && edital.inicioRecebimento,
+        prazoFinal: edital && edital.encerramento,
+        modalidade: edital && edital.modalidade,
+        modoDisputa: edital && edital.modoDisputa,
+        criterioJulgamento: edital && edital.criterioJulgamento,
+        regimeExecucao: edital && edital.regimeExecucao,
+      },
+      identificacao: {
+        objeto: edital && edital.objeto || naoInformado,
+        numero: edital && (edital.numeroControlePNCP || edital.numero) || naoInformado,
+        uasg: edital && edital.uasg || naoInformado,
+        contratacao: edital && edital.tipo || naoInformado,
+        modalidade: edital && edital.modalidade || naoInformado,
+        portalRealizacao: edital && edital.link || naoInformado,
+        regulamentacao: edital && edital.amparoLegal || naoInformado,
+      },
+      sessaoPublica: { data: prazo, horario: naoInformado, modoDisputa: edital && edital.modoDisputa || naoInformado },
+      orgao: { nome: edital && edital.orgao || naoInformado, endereco: local },
+      detalhes: { valorEstimado: edital && edital.valor || naoInformado, criterioJulgamento: edital && edital.criterioJulgamento || naoInformado, regimeExecucao: edital && edital.regimeExecucao || naoInformado },
+      prazos: { limiteEnvioPropostas: prazo },
+      itens: { descricaoGeral: edital && edital.objeto || naoInformado },
+      documentosHabilitacao: [], declaracoesExigidas: [],
+      pendenciasParaConferencia: ["A análise automática completa está indisponível agora. Esta ficha mostra somente dados oficiais já coletados; consulte o edital para exigências e anexos."],
+      resumoGeral: `Ficha oficial inicial da oportunidade: ${edital && edital.objeto || "objeto não informado"}. A análise detalhada do documento poderá ser tentada novamente quando o serviço estiver disponível.`,
+    };
+  }
+
+  function exibirResumoDeContingencia(mensagem) {
+    if (!iaEditalAtual) return;
+    const estrutura = montarEstruturaContingenciaLocal(iaEditalAtual);
+    renderizarEstruturaIA(estrutura);
+    escreverMensagemIA(mensagem || "A análise automática está indisponível neste momento. Exibimos a ficha com os dados oficiais disponíveis; tente abrir o resumo novamente em instantes.", "msg-carregando");
+  }
+
   function renderizarEstruturaIA(est) {
     const estruturaComFonte = aplicarDadosOficiaisNaEstruturaIA(est, iaEditalAtual);
     iaEstruturaAtual = { ...estruturaComFonte, itensPncp: iaItensPncpAtual || estruturaComFonte.itensPncp || [] };
@@ -2784,13 +2829,27 @@
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico, textoEdital: iaTextoEdital }),
       });
-      const dados = await resp.json();
+      let dados;
+      try {
+        dados = await resp.json();
+      } catch (erroResposta) {
+        carregando.remove();
+        if (modo === "resumo") {
+          exibirResumoDeContingencia("A análise automática demorou mais do que o esperado. Exibimos a ficha com os dados oficiais disponíveis; tente novamente em instantes para a leitura completa do edital.");
+          return;
+        }
+        throw erroResposta;
+      }
       carregando.remove();
       if (!resp.ok || dados.erro) {
+        if (modo === "resumo") {
+          exibirResumoDeContingencia(dados.erro || "A análise automática está indisponível agora. Exibimos a ficha com os dados oficiais disponíveis.");
+          return;
+        }
         escreverMensagemIA(dados.erro || "Não deu pra gerar a resposta agora.", "msg-erro");
         return;
       }
-      if (modo === "resumo") salvarCacheLocalResumo(iaEditalAtual, dados);
+      if (modo === "resumo" && !dados.modoDegradado) salvarCacheLocalResumo(iaEditalAtual, dados);
       if (dados.textoEdital) iaTextoEdital = dados.textoEdital;
       const mensagemFonteNaoLida = (motivo) => {
         if (motivo === "escaneado") {
@@ -2815,7 +2874,11 @@
       iaHistorico.push({ role: "assistant", content: dados.resposta });
     } catch (e) {
       carregando.remove();
-      escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
+      if (modo === "resumo") {
+        exibirResumoDeContingencia("Não foi possível concluir a análise automática agora. Exibimos a ficha com os dados oficiais disponíveis; tente novamente em instantes.");
+      } else {
+        escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
+      }
     } finally {
       iaCarregando = false;
     }

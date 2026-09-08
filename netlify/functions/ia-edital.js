@@ -30,6 +30,12 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
 const MAX_CARACTERES_TEXTO = 12000;
+// A Function tem uma janela de execução menor que a soma de vários downloads de
+// anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
+// uma resposta HTML/504 que o navegador interpreta como "não conectou".
+const MAX_DOCUMENTOS_PARA_LEITURA = 2;
+const TIMEOUT_LISTA_PNCP_MS = 4000;
+const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 const VERSAO_RESUMO = 3;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
@@ -87,7 +93,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
   if (!partes) return { texto: null, escaneado: false };
   try {
     const ctrl1 = new AbortController();
-    const t1 = setTimeout(() => ctrl1.abort(), 8000);
+    const t1 = setTimeout(() => ctrl1.abort(), TIMEOUT_LISTA_PNCP_MS);
     const respLista = await fetch(`${PNCP_ARQUIVOS_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos`, {
       headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
       signal: ctrl1.signal,
@@ -112,7 +118,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
         vistos.add(a.sequencialDocumento);
         return true;
       })
-      .slice(0, 12);
+      .slice(0, MAX_DOCUMENTOS_PARA_LEITURA);
     if (candidatos.length === 0) return { texto: null, escaneado: false };
 
     // Cada require isolado no seu próprio try/catch: se adm-zip ou mammoth falharem por
@@ -213,7 +219,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
       if (totalCaracteres >= MAX_CARACTERES_TEXTO) break;
       try {
         const ctrl2 = new AbortController();
-        const t2 = setTimeout(() => ctrl2.abort(), 15000);
+        const t2 = setTimeout(() => ctrl2.abort(), TIMEOUT_ARQUIVO_PNCP_MS);
         const respArquivo = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
           headers: { "User-Agent": USER_AGENT_NAVEGADOR },
           signal: ctrl2.signal,
@@ -390,6 +396,24 @@ function montarEstruturaBasica(edital, motivoFonteNaoLida) {
   };
 }
 
+function respostaDeContingencia(edital, motivoFonteNaoLida, aviso) {
+  const estrutura = montarEstruturaBasica(edital, motivoFonteNaoLida);
+  return {
+    statusCode: 200,
+    headers: null,
+    body: {
+      resposta: formatarEstruturaComoTexto(estrutura),
+      estrutura,
+      textoEdital: null,
+      fonteLida: false,
+      motivoFonteNaoLida,
+      modoDegradado: true,
+      aviso: aviso || "A análise automática está indisponível agora.",
+      erro: null,
+    },
+  };
+}
+
 exports.handler = async (event) => {
   const headers = cabecalhosPadrao(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
@@ -461,10 +485,22 @@ exports.handler = async (event) => {
   // ordem, abrir um resumo já salvo ainda incrementava o limite diário e podia
   // falhar por cota mesmo sem nenhuma chamada ao provedor.
   const limite = await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
+  if (!limite.ok && modo === "resumo") {
+    const contingencia = respostaDeContingencia(edital, "indisponivel", limite.erro);
+    contingencia.headers = headers;
+    contingencia.body = JSON.stringify(contingencia.body);
+    return contingencia;
+  }
   if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
+    if (modo === "resumo") {
+      const contingencia = respostaDeContingencia(edital, "indisponivel", "A configuração da análise automática está indisponível agora.");
+      contingencia.headers = headers;
+      contingencia.body = JSON.stringify(contingencia.body);
+      return contingencia;
+    }
     return { statusCode: 500, headers, body: JSON.stringify({ erro: "GROQ_API_KEY não configurado no Netlify." }) };
   }
 
@@ -509,11 +545,11 @@ exports.handler = async (event) => {
       { role: "system", content: `${REGRAS_BASE}\nVocê recebeu texto real extraído de documentos oficiais (edital, termo de referência e anexos). Produza um DOSSIÊ OPERACIONAL, não um parágrafo genérico. Leia o material inteiro e extraia os fatos ponto a ponto: datas, entrega, habilitação, declarações, legislação, julgamento, pagamento, garantias, penalidades/multas, anexos, riscos e prazos.\n\nRegra de evidência: só inclua um fato se ele estiver no texto fornecido. Se um campo não aparecer, escreva "Não informado". Use "pendenciasParaConferencia" para o que precisa de conferência; não invente cláusulas comuns de licitação. Em "questionamentosSugeridos", inclua apenas perguntas que tenham motivo explícito no texto (ambiguidade, contradição ou ausência relevante).\n\nDevolva SOMENTE um JSON válido (sem markdown, sem comentários, sem texto antes ou depois) no formato exato:\n${SCHEMA_ESTRUTURA}` },
       { role: "user", content: `Dados já conhecidos:\n${ficha}\n\nTexto extraído do edital (pode estar truncado):\n${textoEdital}` },
     ];
-    // O modelo gratuito (8b) é mais fraco pra devolver JSON grande e válido de primeira —
-    // tenta duas vezes antes de desistir e cair pro resumo em texto corrido.
-    for (let tentativa = 0; tentativa < 2; tentativa++) {
-      const r = await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 3200, timeoutMs: 28000, json: true, reasoningEffort: "low" });
-      if (!r.ok) break; // erro de API (ex.: limite atingido) — não adianta tentar de novo
+    // Uma única chamada com orçamento de tempo compatível com a Function. Antes eram
+    // duas tentativas de 28 s e, em caso de lentidão, o servidor morria antes de chegar
+    // ao fallback. A ficha oficial abaixo é preferível a um modal vazio.
+    const r = await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 1800, timeoutMs: 10500, json: true, reasoningEffort: "low" });
+    if (r.ok) {
       const estrutura = extrairJson(r.texto);
       if (estrutura) {
         const resposta = formatarEstruturaComoTexto(estrutura) || "Resumo gerado.";
@@ -548,9 +584,27 @@ exports.handler = async (event) => {
           }),
         };
       }
-      // IA não devolveu JSON válido nessa tentativa — tenta mais uma vez (ou desiste e
-      // segue pro resumo em texto corrido abaixo, que ainda usa o texto real do edital).
     }
+
+    // Já consumimos o orçamento de tempo da Function tentando a análise rica. Não
+    // fazemos uma segunda chamada longa em seguida: em hospedagem serverless isso era
+    // justamente o que encerrava a execução sem JSON e deixava o cliente com a tela
+    // vazia. A ficha abaixo preserva os dados públicos e permite uma nova tentativa.
+    const estrutura = montarEstruturaBasica(edital, motivoFonteNaoLida);
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        resposta: formatarEstruturaComoTexto(estrutura),
+        estrutura,
+        textoEdital: null,
+        fonteLida: false,
+        motivoFonteNaoLida,
+        modoDegradado: true,
+        aviso: "A leitura detalhada do documento não pôde ser concluída agora.",
+        erro: null,
+      }),
+    };
   }
 
   // Chegou aqui em dois cenários bem diferentes, e o texto importa:
@@ -569,28 +623,11 @@ exports.handler = async (event) => {
         { role: "system", content: REGRAS_BASE + "\nVocê só tem os campos estruturados abaixo, não o PDF completo do edital — deixe isso claro se for relevante." },
         { role: "user", content: `Dados da oportunidade:\n${ficha}\n\nFaça um resumo curto (4 a 6 frases) explicando do que se trata essa licitação: o que está sendo comprado, quem compra, o prazo, e o porte aproximado pelo valor estimado (se houver).` },
       ];
-  const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: fonteLida ? 900 : 500, timeoutMs: 20000 });
+  const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: fonteLida ? 700 : 400, timeoutMs: 7500 });
   if (!r2.ok) {
     const estrutura = montarEstruturaBasica(edital, motivoFonteNaoLida);
-    // Mesmo uma ficha de contingência precisa sobreviver a uma atualização da
-    // página: ela já reúne os dados públicos e evita repetir uma tentativa que
-    // falhou por indisponibilidade temporária da IA.
-    if (modo === "resumo" && storeResumos && edital.numeroControlePNCP) {
-      try {
-        await storeResumos.setJSON(edital.numeroControlePNCP, {
-          estrutura,
-          resposta: formatarEstruturaComoTexto(estrutura),
-          textoEdital: textoEdital || null,
-          fonteLida,
-          motivoFonteNaoLida,
-          modoDegradado: true,
-          versao: VERSAO_RESUMO,
-          geradoEm: new Date().toISOString(),
-        });
-      } catch (e) {
-        // Cache é uma otimização; a ficha ainda é devolvida ao usuário atual.
-      }
-    }
+    // Contingência não entra no cache: quando o serviço voltar, a pessoa deve poder
+    // obter a análise completa, em vez de ficar presa a uma ficha reduzida.
     return {
       statusCode: 200,
       headers,
