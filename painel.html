@@ -2473,7 +2473,7 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 2;
+  const VERSAO_CACHE_LOCAL_RESUMO = 3;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2531,11 +2531,11 @@
     identificacao: { titulo: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Identificação da Licitação", campos: { numero: "Número", uasg: "UASG", contratacao: "Contratação", modalidade: "Modalidade", portalRealizacao: "Portal de realização", regulamentacao: "Regulamentação" } },
     sessaoPublica: { titulo: "<svg class='icone-ph'><use href='#ph-calendar'></use></svg> Sessão Pública", campos: { data: "Data", horario: "Horário", modoDisputa: "Modo de disputa", intervaloMinimo: "Intervalo mínimo" } },
     orgao: { titulo: "<svg class='icone-ph'><use href='#ph-bank'></use></svg> Órgão Responsável", campos: { nome: "Órgão", email: "E-mail", endereco: "Endereço", telefone: "Telefone" } },
-    detalhes: { titulo: "<svg class='icone-ph'><use href='#ph-briefcase'></use></svg> Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", regimeExecucao: "Regime de execução", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade", provaConceito: "Exigência de prova de conceito" } },
+    detalhes: { titulo: "<svg class='icone-ph'><use href='#ph-briefcase'></use></svg> Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", tipoAnalise: "Tipo de análise", regimeExecucao: "Regime de execução", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade", provaConceito: "Exigência de prova de conceito" } },
     garantias: { titulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Seguro e Garantias", campos: { proposta: "Garantia de proposta", contrato: "Garantia de contrato", adicional: "Garantia adicional", retomada: "Garantia de retomada" } },
     entregaExecucao: { titulo: "<svg class='icone-ph'><use href='#ph-package'></use></svg> Entrega e Execução", campos: { prazo: "Prazo", local: "Local de entrega/execução", condicoes: "Condições de execução" } },
     prazos: { titulo: "<svg class='icone-ph'><use href='#ph-alarm'></use></svg> Prazos Importantes", campos: { limiteEnvioPropostas: "Limite p/ envio de propostas", prazoDocumentoComplementar: "Documento complementar", prazoDocumentoOriginal: "Documento original", prazoRecurso: "Prazo p/ recurso", prazoContrarrazoes: "Prazo p/ contrarrazões", limiteEsclarecimentos: "Limite p/ esclarecimentos", limiteImpugnacao: "Limite p/ impugnação", vigenciaContrato: "Vigência do contrato" } },
-    criteriosProposta: { titulo: "<svg class='icone-ph'><use href='#ph-receipt'></use></svg> Critérios da Proposta e Julgamento", campos: { validadeProposta: "Validade da proposta", criteriosDesempate: "Critérios de desempate", exigenciasPropostaComercial: "Exigências da proposta comercial", programaIntegridade: "Programa de integridade" } },
+    criteriosProposta: { titulo: "<svg class='icone-ph'><use href='#ph-receipt'></use></svg> Critérios da Proposta e Julgamento", campos: { validadeProposta: "Validade da proposta", criteriosDesempate: "Critérios de desempate", exigenciasPropostaComercial: "Exigências da proposta comercial", propostasLancesPor: "Propostas/lances por", programaIntegridade: "Programa de integridade" } },
     itens: { titulo: "<svg class='icone-ph'><use href='#ph-package'></use></svg> Resumo dos Itens", campos: { totalItens: "Total de itens", descricaoGeral: "Descrição geral", categoriasPrincipais: "Categorias principais", observacoes: "Observações" } },
     analiseCritica: { titulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Análise Crítica", campos: { conflitoObjetoMinuta: "Conflito objeto/minuta", conflitoPrazoVigenciaArp: "Conflito prazo vigência/ARP", conflitoPrazosEntrega: "Conflito prazos de entrega", permiteSubcontratacao: "Permite subcontratação", previsaoReajuste: "Previsão de reajuste/repactuação", permiteRenovacao: "Permite renovação de contrato", estabeleceCondicoesPagamento: "Estabelece condições de pagamento" } },
   };
@@ -2666,6 +2666,8 @@
   // IA, por uma leitura ambígua do PDF ou por um cache criado antes da consulta.
   function aplicarDadosOficiaisNaEstruturaIA(est, edital) {
     const estrutura = { ...(est || {}) };
+    const uasgOficial = edital && /^\d{5,6}$/.test(String(edital.uasg || edital.codigoUnidade || ""))
+      ? String(edital.uasg || edital.codigoUnidade) : "";
     const oficial = {
       publicacao: edital && edital.publicacao,
       inicioRecebimento: edital && edital.inicioRecebimento,
@@ -2674,18 +2676,30 @@
       modoDisputa: edital && edital.modoDisputa,
       criterioJulgamento: edital && edital.criterioJulgamento,
       regimeExecucao: edital && edital.regimeExecucao,
+      uasg: uasgOficial,
     };
     estrutura.dadosOficiais = oficial;
     estrutura.identificacao = { ...(estrutura.identificacao || {}) };
     estrutura.sessaoPublica = { ...(estrutura.sessaoPublica || {}) };
     if (oficial.modalidade) estrutura.identificacao.modalidade = oficial.modalidade;
+    if (oficial.uasg) estrutura.identificacao.uasg = oficial.uasg;
+    else delete estrutura.identificacao.uasg;
     if (oficial.modoDisputa) estrutura.sessaoPublica.modoDisputa = oficial.modoDisputa;
     estrutura.detalhes = { ...(estrutura.detalhes || {}) };
-    if (oficial.criterioJulgamento) estrutura.detalhes.criterioJulgamento = oficial.criterioJulgamento;
+    const temDadosOperacionaisDoPortal = Boolean(
+      estrutura.detalhes.tipoAnalise ||
+      estrutura.detalhes.regimeExecucao ||
+      estrutura.criteriosProposta && estrutura.criteriosProposta.propostasLancesPor
+    );
+    // Em portais que separam análise, lances e regime, só mostramos critério se
+    // ele vier explicitamente identificado. Não convertemos "preço global" do
+    // regime de execução em "critério de julgamento".
+    if (oficial.criterioJulgamento && !temDadosOperacionaisDoPortal) estrutura.detalhes.criterioJulgamento = oficial.criterioJulgamento;
     if (oficial.regimeExecucao) estrutura.detalhes.regimeExecucao = oficial.regimeExecucao;
     if (oficial.prazoFinal) {
       estrutura.prazos = { ...(estrutura.prazos || {}), limiteEnvioPropostas: oficial.prazoFinal };
     }
+    if (temDadosOperacionaisDoPortal && !estrutura.detalhes.criterioJulgamento) delete estrutura.dadosOficiais.criterioJulgamento;
     return estrutura;
   }
 
@@ -2718,7 +2732,7 @@
       },
       sessaoPublica: { data: prazo, horario: naoInformado, modoDisputa: edital && edital.modoDisputa || naoInformado },
       orgao: { nome: edital && edital.orgao || naoInformado, endereco: local },
-      detalhes: { valorEstimado: edital && edital.valor || naoInformado, criterioJulgamento: edital && edital.criterioJulgamento || naoInformado, regimeExecucao: edital && edital.regimeExecucao || naoInformado },
+      detalhes: { valorEstimado: edital && edital.valor || naoInformado, criterioJulgamento: edital && edital.criterioJulgamento || naoInformado, tipoAnalise: naoInformado, regimeExecucao: edital && edital.regimeExecucao || naoInformado },
       prazos: { limiteEnvioPropostas: prazo },
       itens: { descricaoGeral: edital && edital.objeto || naoInformado },
       documentosHabilitacao: [], declaracoesExigidas: [],
@@ -3309,8 +3323,14 @@
       const horarioSessao = valorUtil(est.sessaoPublica && est.sessaoPublica.horario);
       if (dataSessao || horarioSessao) adicionar("Data e horário da sessão", [dataSessao, horarioSessao].filter(Boolean).join(" às "));
       adicionar("Valor estimado", est.detalhes && est.detalhes.valorEstimado);
-      adicionar("Critério de julgamento", edital.criterioJulgamento || est.detalhes && est.detalhes.criterioJulgamento);
-      adicionar("Regime de execução", edital.regimeExecucao || est.detalhes && est.detalhes.regimeExecucao);
+      const temDadosOperacionaisDoPortal = Boolean(
+        est.detalhes && (est.detalhes.tipoAnalise || est.detalhes.regimeExecucao) ||
+        est.criteriosProposta && est.criteriosProposta.propostasLancesPor
+      );
+      adicionar("Critério de julgamento", est.detalhes && est.detalhes.criterioJulgamento || (!temDadosOperacionaisDoPortal ? edital.criterioJulgamento : ""));
+      adicionar("Tipo de análise", est.detalhes && est.detalhes.tipoAnalise);
+      adicionar("Propostas/lances por", est.criteriosProposta && est.criteriosProposta.propostasLancesPor);
+      adicionar("Regime de execução", est.detalhes && est.detalhes.regimeExecucao || edital.regimeExecucao);
       adicionar("Modo de disputa", est.sessaoPublica && est.sessaoPublica.modoDisputa);
       adicionar("Prazo de entrega", est.detalhes && est.detalhes.prazoEntrega);
       adicionar("Condições de execução", est.entregaExecucao && est.entregaExecucao.condicoes);

@@ -132,6 +132,9 @@ function montarConteudoEstruturado(resumo, edital) {
   const sessao = resumo.sessaoPublica || {};
   const orgao = resumo.orgao || {};
   const detalhes = resumo.detalhes || {};
+  const uasg = /^\d{5,6}$/.test(String(identificacao.uasg || "").trim()) ? identificacao.uasg : "";
+  const temDadosOperacionaisDoPortal = Boolean(detalhes.tipoAnalise || detalhes.regimeExecucao || resumo.criteriosProposta && resumo.criteriosProposta.propostasLancesPor);
+  const criterioJulgamento = detalhes.criterioJulgamento || (!temDadosOperacionaisDoPortal ? edital?.criterioJulgamento : "");
   const itensPncp = Array.isArray(resumo.itensPncp) ? resumo.itensPncp : [];
   const cards = [
     ["Modalidade", edital?.modalidade || identificacao.modalidade],
@@ -150,11 +153,11 @@ function montarConteudoEstruturado(resumo, edital) {
   const resumoGeral = valorResumo(resumo.resumoGeral);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">${destaque}
     ${secaoResumo("Visão geral", resumoGeral ? `<p style="margin:0;color:#162d4c;font-size:14px;line-height:1.6;">${escapeHtml(resumoGeral)}</p>` : "")}
-    ${secaoResumo("Identificação da licitação", tabelaResumo([["Número", identificacao.numero || edital?.numeroControlePNCP], ["UASG", identificacao.uasg], ["Contratação", identificacao.contratacao], ["Modalidade", edital?.modalidade || identificacao.modalidade], ["Portal de realização", identificacao.portalRealizacao], ["Regulamentação", identificacao.regulamentacao || resumo.legislacao]]))}
-    ${secaoResumo("Dados oficiais da publicação", tabelaResumo([["Publicado em", formatarDataHoraBR(edital?.publicacao)], ["Início do recebimento", formatarDataHoraBR(edital?.inicioRecebimento)], ["Prazo final de propostas", formatarDataHoraBR(edital?.encerramento)], ["Critério de julgamento", edital?.criterioJulgamento], ["Regime de execução", edital?.regimeExecucao]]))}
+    ${secaoResumo("Identificação da licitação", tabelaResumo([["Número", identificacao.numero || edital?.numeroControlePNCP], ["UASG", uasg], ["Contratação", identificacao.contratacao], ["Modalidade", edital?.modalidade || identificacao.modalidade], ["Portal de realização", identificacao.portalRealizacao], ["Regulamentação", identificacao.regulamentacao || resumo.legislacao]]))}
+    ${secaoResumo("Dados oficiais da publicação", tabelaResumo([["Publicado em", formatarDataHoraBR(edital?.publicacao)], ["Início do recebimento", formatarDataHoraBR(edital?.inicioRecebimento)], ["Prazo final de propostas", formatarDataHoraBR(edital?.encerramento)], ["Critério de julgamento", criterioJulgamento], ["Regime de execução", detalhes.regimeExecucao || edital?.regimeExecucao]]))}
     ${secaoResumo("Sessão pública", tabelaResumo([["Data", formatarDataHoraBR(sessao.data)], ["Horário", sessao.horario], ["Modo de disputa", edital?.modoDisputa || sessao.modoDisputa], ["Limite para propostas", formatarDataHoraBR(edital?.encerramento || resumo.prazos && resumo.prazos.limiteEnvioPropostas)]]))}
     ${secaoResumo("Órgão responsável", tabelaResumo([["Órgão", orgao.nome || edital?.orgao], ["E-mail", orgao.email], ["Telefone", orgao.telefone], ["Endereço", orgao.endereco || [edital?.municipio, edital?.uf].filter(Boolean).join("/")]]))}
-    ${secaoResumo("Detalhes da licitação", tabelaResumo([["Critério de julgamento", edital?.criterioJulgamento || detalhes.criterioJulgamento], ["Regime de execução", edital?.regimeExecucao || detalhes.regimeExecucao], ["Prazo de entrega", detalhes.prazoEntrega], ["Garantia", resumo.garantias && resumo.garantias.proposta], ["Condições de pagamento", resumo.condicoesPagamento], ["Penalidades", resumo.penalidades], ["Multas", resumo.multas]]))}
+    ${secaoResumo("Detalhes da licitação", tabelaResumo([["Critério de julgamento", criterioJulgamento], ["Tipo de análise", detalhes.tipoAnalise], ["Propostas/lances por", resumo.criteriosProposta && resumo.criteriosProposta.propostasLancesPor], ["Regime de execução", detalhes.regimeExecucao || edital?.regimeExecucao], ["Prazo de entrega", detalhes.prazoEntrega], ["Garantia", resumo.garantias && resumo.garantias.proposta], ["Condições de pagamento", resumo.condicoesPagamento], ["Penalidades", resumo.penalidades], ["Multas", resumo.multas]]))}
     ${secaoResumo("Documentos de habilitação", listaResumo(resumo.documentosHabilitacao))}
     ${secaoResumo("Declarações e formulários", listaResumo(resumo.declaracoesExigidas))}
     ${secaoResumo(`Itens da oportunidade (${itensPncp.length})`, itensHtml)}

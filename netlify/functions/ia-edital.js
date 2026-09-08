@@ -36,7 +36,7 @@ const MAX_CARACTERES_TEXTO = 12000;
 const MAX_DOCUMENTOS_PARA_LEITURA = 2;
 const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
-const VERSAO_RESUMO = 4;
+const VERSAO_RESUMO = 5;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
@@ -52,8 +52,10 @@ function montarFichaEdital(edital) {
     ["Município/UF", [edital.municipio, edital.uf].filter(Boolean).join(" / ")],
     ["Fonte", edital.fonte || "PNCP"],
     ["Nº do processo / controle", edital.numeroControlePNCP || edital.numero],
-    ["Modalidade oficial", edital.modalidade],
-    ["Modo de disputa oficial", edital.modoDisputa],
+  ["Modalidade oficial", edital.modalidade],
+  ["Modo de disputa oficial", edital.modoDisputa],
+  ["Critério de julgamento oficial", edital.criterioJulgamento],
+  ["Regime de execução oficial", edital.regimeExecucao],
     ["Publicado em", edital.publicacao],
     ["Início do recebimento de propostas", edital.inicioRecebimento],
     ["Prazo final de propostas", edital.encerramento],
@@ -249,6 +251,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
 const REGRAS_BASE = `Você é um analista de licitações experiente que ajuda pequenas e médias empresas brasileiras a entender oportunidades de licitação pública, dentro da ferramenta HC Licitações.
 - Nunca invente exigência, documento, cláusula, penalidade, prazo ou valor que não esteja explicitamente nos dados fornecidos. Quando uma informação não estiver disponível, use exatamente o texto "Não informado".
 - Os campos marcados como oficiais nos dados conhecidos têm precedência sobre qualquer frase do PDF. Não chame critério de julgamento, tipo de análise, regime de execução ou forma de preço de "modalidade". Preserve a modalidade oficial exatamente como recebida.
+- Critério de julgamento, tipo de análise, regime de execução e propostas/lances são conceitos distintos. Só preencha "criterioJulgamento" quando o material disser expressamente o critério ou "menor preço". Registre "Tipo de análise" e "Propostas/lances por" em seus campos próprios, sem deduzir um a partir do outro.
 - Responda sempre em português do Brasil, direto e em linguagem simples.
 - Quando tiver o texto completo do edital, seja EXAUSTIVO: extraia o máximo de informação possível de cada campo, com detalhes concretos (números, prazos, valores, percentuais, nomes) em vez de generalidades. Não resuma demais — o usuário quer análise completa, não um resumo curto.`;
 
@@ -256,11 +259,11 @@ const SCHEMA_ESTRUTURA = `{
   "identificacao": {"objeto": "", "numero": "", "uasg": "", "contratacao": "", "modalidade": "", "portalRealizacao": "", "regulamentacao": ""},
   "sessaoPublica": {"data": "", "horario": "", "modoDisputa": "", "intervaloMinimo": ""},
   "orgao": {"nome": "", "email": "", "endereco": "", "telefone": ""},
-  "detalhes": {"valorEstimado": "", "prazoEntrega": "", "margemPreferencia": "", "exigeVisitaTecnica": "", "exigeAmostra": "", "garantia": "", "criterioJulgamento": "", "preferenciaMeEpp": "", "restricoesRegionalidade": "", "provaConceito": ""},
+  "detalhes": {"valorEstimado": "", "prazoEntrega": "", "margemPreferencia": "", "exigeVisitaTecnica": "", "exigeAmostra": "", "garantia": "", "criterioJulgamento": "", "tipoAnalise": "", "regimeExecucao": "", "preferenciaMeEpp": "", "restricoesRegionalidade": "", "provaConceito": ""},
   "garantias": {"proposta": "", "contrato": "", "adicional": "", "retomada": ""},
   "entregaExecucao": {"prazo": "", "local": "", "condicoes": ""},
   "prazos": {"limiteEnvioPropostas": "", "prazoDocumentoComplementar": "", "prazoDocumentoOriginal": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": ""},
-  "criteriosProposta": {"validadeProposta": "", "criteriosDesempate": "", "exigenciasPropostaComercial": "", "programaIntegridade": ""},
+  "criteriosProposta": {"validadeProposta": "", "criteriosDesempate": "", "exigenciasPropostaComercial": "", "propostasLancesPor": "", "programaIntegridade": ""},
   "itens": {"totalItens": "", "descricaoGeral": "", "categoriasPrincipais": "", "observacoes": ""},
   "documentosHabilitacao": ["lista de documentos exigidos, um por item; incluir certidões, registros, balanços e atestados com a condição ou prazo quando houver"],
   "atestadoCapacidadeTecnica": "",
@@ -350,9 +353,42 @@ function formatarEstruturaComoTexto(est) {
     txt += linha("Valor estimado", est.detalhes.valorEstimado);
     txt += linha("Prazo de entrega", est.detalhes.prazoEntrega);
     txt += linha("Critério de julgamento", est.detalhes.criterioJulgamento);
+    txt += linha("Tipo de análise", est.detalhes.tipoAnalise);
+    txt += linha("Regime de execução", est.detalhes.regimeExecucao);
+    txt += linha("Propostas/lances por", est.criteriosProposta && est.criteriosProposta.propostasLancesPor);
     txt += linha("Garantia exigida", est.detalhes.garantia);
   }
   return txt.trim();
+}
+
+// Alguns portais estaduais trazem dados operacionais com rótulos próprios. Esses
+// valores têm precedência sobre uma interpretação da IA: "preço global" no
+// regime de execução, por exemplo, não é automaticamente critério de julgamento.
+function valorRotuladoDoTexto(texto, rotulo) {
+  if (!texto) return "";
+  const escapar = String(rotulo).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const achado = String(texto).match(new RegExp(`${escapar}\\s*[-–—:]\\s*([^\\r\\n]+)`, "i"));
+  return achado && achado[1] ? achado[1].replace(/\s+/g, " ").trim().slice(0, 300) : "";
+}
+
+function aplicarCamposOperacionaisDoTexto(estrutura, textoEdital) {
+  if (!estrutura || !textoEdital) return estrutura;
+  const propostasLancesPor = valorRotuladoDoTexto(textoEdital, "Propostas / Lances por");
+  const tipoAnalise = valorRotuladoDoTexto(textoEdital, "Tipo de Análise");
+  const regimeExecucao = valorRotuladoDoTexto(textoEdital, "Regime de Execução");
+  const criterioJulgamento = valorRotuladoDoTexto(textoEdital, "Critério de Julgamento");
+  const temCamposOperacionais = propostasLancesPor || tipoAnalise || regimeExecucao;
+
+  estrutura.detalhes = estrutura.detalhes && typeof estrutura.detalhes === "object" ? estrutura.detalhes : {};
+  estrutura.criteriosProposta = estrutura.criteriosProposta && typeof estrutura.criteriosProposta === "object" ? estrutura.criteriosProposta : {};
+  if (tipoAnalise) estrutura.detalhes.tipoAnalise = tipoAnalise;
+  if (regimeExecucao) estrutura.detalhes.regimeExecucao = regimeExecucao;
+  if (propostasLancesPor) estrutura.criteriosProposta.propostasLancesPor = propostasLancesPor;
+  if (criterioJulgamento) estrutura.detalhes.criterioJulgamento = criterioJulgamento;
+  // Quando a origem já separa os campos, não aceitamos que "preço global" do
+  // regime seja exibido como um critério que ela não informou expressamente.
+  if (temCamposOperacionais && !criterioJulgamento) delete estrutura.detalhes.criterioJulgamento;
+  return estrutura;
 }
 
 // O resumo não pode desaparecer quando o provedor de IA estiver temporariamente limitado.
@@ -373,11 +409,11 @@ function montarEstruturaBasica(edital, motivoFonteNaoLida) {
     },
     sessaoPublica: { data: prazo, horario: naoInformado, modoDisputa: edital.modoDisputa || naoInformado, intervaloMinimo: naoInformado },
     orgao: { nome: edital.orgao || naoInformado, email: naoInformado, endereco: local, telefone: naoInformado },
-    detalhes: { valorEstimado: edital.valor || naoInformado, prazoEntrega: naoInformado, margemPreferencia: naoInformado, exigeVisitaTecnica: naoInformado, exigeAmostra: naoInformado, garantia: naoInformado, criterioJulgamento: naoInformado, preferenciaMeEpp: naoInformado, restricoesRegionalidade: naoInformado, provaConceito: naoInformado },
+    detalhes: { valorEstimado: edital.valor || naoInformado, prazoEntrega: naoInformado, margemPreferencia: naoInformado, exigeVisitaTecnica: naoInformado, exigeAmostra: naoInformado, garantia: naoInformado, criterioJulgamento: edital.criterioJulgamento || naoInformado, tipoAnalise: naoInformado, regimeExecucao: edital.regimeExecucao || naoInformado, preferenciaMeEpp: naoInformado, restricoesRegionalidade: naoInformado, provaConceito: naoInformado },
     garantias: { proposta: naoInformado, contrato: naoInformado, adicional: naoInformado, retomada: naoInformado },
     entregaExecucao: { prazo: naoInformado, local: naoInformado, condicoes: naoInformado },
     prazos: { limiteEnvioPropostas: prazo, prazoDocumentoComplementar: naoInformado, prazoDocumentoOriginal: naoInformado, prazoRecurso: naoInformado, prazoContrarrazoes: naoInformado, limiteEsclarecimentos: naoInformado, limiteImpugnacao: naoInformado, vigenciaContrato: naoInformado },
-    criteriosProposta: { validadeProposta: naoInformado, criteriosDesempate: naoInformado, exigenciasPropostaComercial: naoInformado, programaIntegridade: naoInformado },
+    criteriosProposta: { validadeProposta: naoInformado, criteriosDesempate: naoInformado, exigenciasPropostaComercial: naoInformado, propostasLancesPor: naoInformado, programaIntegridade: naoInformado },
     itens: { totalItens: naoInformado, descricaoGeral: edital.objeto || naoInformado, categoriasPrincipais: naoInformado, observacoes: naoInformado },
     documentosHabilitacao: [],
     atestadoCapacidadeTecnica: naoInformado,
@@ -590,6 +626,7 @@ exports.handler = async (event) => {
     if (r.ok) {
       const estrutura = extrairJson(r.texto);
       if (estrutura) {
+        aplicarCamposOperacionaisDoTexto(estrutura, textoEdital);
         const resposta = formatarEstruturaComoTexto(estrutura) || "Resumo gerado.";
         // Salva no cache pra próxima vez (por qualquer pessoa) abrir instantâneo, sem
         // reprocessar. Se o cache não estiver disponível ou der erro, não trava o resumo —
