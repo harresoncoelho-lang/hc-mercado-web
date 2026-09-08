@@ -48,10 +48,27 @@ test("inclui o atalho no e-mail somente para link oficial do PNCP", () => {
 test("mantém uma faixa institucional azul compatível no cabeçalho", () => {
   const html = __test.montarHtml("Resumo", "");
   assert.match(html, /bgcolor="#082243"/);
+  assert.match(html, /width="820"/);
   assert.match(html, /background-image:linear-gradient\(#082243,#082243\)/);
   assert.match(html, /name="color-scheme" content="light"/);
   assert.match(html, /logo\.png\?v=20260908/);
   assert.match(html, /LicitaPlena/);
+});
+
+test("organiza o e-mail por seções quando recebe o resumo estruturado", () => {
+  const html = __test.montarHtml("Resumo simples", "", {
+    resumoGeral: "Visão completa da oportunidade.",
+    identificacao: { numero: "406/2026", modalidade: "Pregão Eletrônico" },
+    sessaoPublica: { data: "22/09/2026", horario: "09:30" },
+    orgao: { nome: "Órgão teste" },
+    documentosHabilitacao: ["Certidão negativa"],
+    itensPncp: [{ descricao: "Papel A4", quantidade: 10, unidade: "caixas" }],
+  }, { objeto: "Materiais" });
+  assert.match(html, /Identificação da licitação/);
+  assert.match(html, /Documentos de habilitação/);
+  assert.match(html, /Itens da oportunidade \(1\)/);
+  assert.match(html, /Papel A4/);
+  assert.doesNotMatch(html, />Resumo simples</);
 });
 
 test("normaliza destinatários separados por vírgula ou ponto e vírgula sem repetir", () => {

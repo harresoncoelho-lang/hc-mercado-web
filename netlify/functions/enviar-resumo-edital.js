@@ -84,12 +84,79 @@ function linkPncpValido(link) {
   }
 }
 
+function textoResumo(valor) {
+  if (valor === null || valor === undefined) return "";
+  if (typeof valor !== "object") return String(valor).trim();
+  const principal = valor.titulo || valor.pergunta || valor.texto || valor.descricao || valor.item || valor.conteudo || valor.motivo;
+  return principal ? String(principal).trim() : "";
+}
+
+function valorResumo(valor) {
+  const texto = textoResumo(valor);
+  return texto && !/^n[ãa]o informado$/i.test(texto) ? texto : "";
+}
+
+function tabelaResumo(linhas) {
+  const visiveis = linhas
+    .map(([rotulo, valor]) => [rotulo, valorResumo(valor)])
+    .filter(([, valor]) => valor);
+  if (!visiveis.length) return "";
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">${visiveis.map(([rotulo, valor]) => `<tr><td style="width:35%;padding:5px 12px 5px 0;color:#637085;font-size:13px;vertical-align:top;">${escapeHtml(rotulo)}</td><td style="padding:5px 0;color:#162d4c;font-size:13px;font-weight:600;vertical-align:top;">${escapeHtml(valor)}</td></tr>`).join("")}</table>`;
+}
+
+function listaResumo(itens) {
+  const visiveis = Array.isArray(itens) ? itens.map(valorResumo).filter(Boolean) : [];
+  if (!visiveis.length) return "";
+  return `<ul style="margin:0;padding:0 0 0 19px;color:#162d4c;font-size:13px;line-height:1.55;">${visiveis.map((item) => `<li style="margin:0 0 5px;">${escapeHtml(item)}</li>`).join("")}</ul>`;
+}
+
+function secaoResumo(titulo, conteudo) {
+  if (!conteudo) return "";
+  return `<tr><td style="padding:0 0 18px;"><div style="padding:14px 16px;border:1px solid #dce5f0;background:#f8fafc;"><div style="margin:0 0 9px;color:#102d56;font-size:15px;font-weight:700;">${escapeHtml(titulo)}</div>${conteudo}</div></td></tr>`;
+}
+
+function montarConteudoEstruturado(resumo, edital) {
+  if (!resumo || typeof resumo !== "object") return "";
+  const identificacao = resumo.identificacao || {};
+  const sessao = resumo.sessaoPublica || {};
+  const orgao = resumo.orgao || {};
+  const detalhes = resumo.detalhes || {};
+  const itensPncp = Array.isArray(resumo.itensPncp) ? resumo.itensPncp : [];
+  const cards = [
+    ["Modalidade", identificacao.modalidade || edital?.modalidade],
+    ["Data da sessão", sessao.data || edital?.encerramento],
+    ["Valor estimado", detalhes.valorEstimado || edital?.valor],
+  ].map(([rotulo, valor]) => [rotulo, valorResumo(valor)]).filter(([, valor]) => valor);
+  const destaque = cards.length ? `<tr><td style="padding:0 0 18px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:8px 0;margin:0 -8px;"><tr>${cards.map(([rotulo, valor]) => `<td style="padding:13px 14px;background:#eef3f9;border:1px solid #dce5f0;vertical-align:top;"><div style="color:#58708f;font-size:11px;font-weight:700;text-transform:uppercase;">${escapeHtml(rotulo)}</div><div style="margin-top:5px;color:#102d56;font-size:17px;font-weight:700;line-height:1.25;">${escapeHtml(valor)}</div></td>`).join("")}</tr></table></td></tr>` : "";
+  const itens = itensPncp.slice(0, 30).map((item, indice) => {
+    const descricao = valorResumo(item && item.descricao);
+    if (!descricao) return "";
+    const quantidade = [item.quantidade, item.unidade].filter((v) => v !== null && v !== undefined && v !== "").join(" ");
+    return `<li style="margin:0 0 6px;"><strong>${indice + 1}.</strong> ${escapeHtml(descricao)}${quantidade ? ` <span style="color:#637085;">— ${escapeHtml(quantidade)}</span>` : ""}</li>`;
+  }).filter(Boolean);
+  const itensHtml = itens.length ? `<ol style="margin:0;padding:0 0 0 20px;color:#162d4c;font-size:13px;line-height:1.5;">${itens.join("")}</ol>${itensPncp.length > 30 ? `<p style="margin:10px 0 0;color:#637085;font-size:12px;">Mostrando 30 de ${itensPncp.length} itens. Consulte o edital oficial para a relação completa.</p>` : ""}` : "";
+  const resumoGeral = valorResumo(resumo.resumoGeral);
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">${destaque}
+    ${secaoResumo("Visão geral", resumoGeral ? `<p style="margin:0;color:#162d4c;font-size:14px;line-height:1.6;">${escapeHtml(resumoGeral)}</p>` : "")}
+    ${secaoResumo("Identificação da licitação", tabelaResumo([["Número", identificacao.numero || edital?.numeroControlePNCP], ["UASG", identificacao.uasg], ["Contratação", identificacao.contratacao], ["Modalidade", identificacao.modalidade || edital?.modalidade], ["Portal de realização", identificacao.portalRealizacao], ["Regulamentação", identificacao.regulamentacao || resumo.legislacao]]))}
+    ${secaoResumo("Sessão pública", tabelaResumo([["Data", sessao.data], ["Horário", sessao.horario], ["Modo de disputa", sessao.modoDisputa], ["Limite para propostas", resumo.prazos && resumo.prazos.limiteEnvioPropostas || edital?.encerramento]]))}
+    ${secaoResumo("Órgão responsável", tabelaResumo([["Órgão", orgao.nome || edital?.orgao], ["E-mail", orgao.email], ["Telefone", orgao.telefone], ["Endereço", orgao.endereco || [edital?.municipio, edital?.uf].filter(Boolean).join("/")]]))}
+    ${secaoResumo("Detalhes da licitação", tabelaResumo([["Critério de julgamento", detalhes.criterioJulgamento], ["Prazo de entrega", detalhes.prazoEntrega], ["Garantia", resumo.garantias && resumo.garantias.proposta], ["Condições de pagamento", resumo.condicoesPagamento], ["Penalidades", resumo.penalidades], ["Multas", resumo.multas]]))}
+    ${secaoResumo("Documentos de habilitação", listaResumo(resumo.documentosHabilitacao))}
+    ${secaoResumo("Declarações e formulários", listaResumo(resumo.declaracoesExigidas))}
+    ${secaoResumo(`Itens da oportunidade (${itensPncp.length})`, itensHtml)}
+    ${secaoResumo("Pendências para conferência", listaResumo(resumo.pendenciasParaConferencia))}
+    ${secaoResumo("Perguntas sugeridas ao órgão", listaResumo(resumo.questionamentosSugeridos))}
+  </table>`;
+}
+
 function resposta(event, statusCode, body) {
   return { statusCode, headers: cabecalhosPadrao(event), body: JSON.stringify(body) };
 }
 
-function montarHtml(texto, linkEdital) {
+function montarHtml(texto, linkEdital, resumoEstruturado, edital) {
   const conteudo = escapeHtml(texto).replace(/\r?\n/g, "<br>");
+  const conteudoEstruturado = montarConteudoEstruturado(resumoEstruturado, edital);
   const chamadaEdital = linkPncpValido(linkEdital)
     ? `<div style="margin-top:24px;"><a href="${escapeHtml(linkEdital)}" style="display:inline-block;background:#1f75df;border-radius:7px;padding:12px 18px;color:#fff;text-decoration:none;font-weight:700;">Abrir licitação no PNCP</a><p style="margin:10px 0 0;color:#66778e;font-size:12px;">Use o portal oficial para consultar o edital, anexos e documentos do processo.</p></div>`
     : "";
@@ -97,9 +164,9 @@ function montarHtml(texto, linkEdital) {
     @media (prefers-color-scheme: dark) { .lp-cabecalho { background:#082243 !important; background-image:linear-gradient(#082243,#082243) !important; } }
   </style></head><body style="margin:0;padding:0;background:#eef3f9;font-family:Arial,sans-serif;color:#162d4c;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#eef3f9" style="width:100%;background:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
-      <table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:680px;background:#ffffff;border:1px solid #dce5f0;">
-        <tr><td class="lp-cabecalho" bgcolor="#082243" style="padding:20px 28px;background-color:#082243;background-image:linear-gradient(#082243,#082243);color:#ffffff;font-size:21px;font-weight:700;line-height:1.2;"><img src="${URL_LOGO}" alt="" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;border:0;"> <span style="vertical-align:middle;color:#ffffff;">LicitaPlena</span></td></tr>
-        <tr><td style="padding:28px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudo}${chamadaEdital}</td></tr>
+      <table role="presentation" width="820" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:820px;background:#ffffff;border:1px solid #dce5f0;">
+        <tr><td class="lp-cabecalho" bgcolor="#082243" style="padding:20px 32px;background-color:#082243;background-image:linear-gradient(#082243,#082243);color:#ffffff;-webkit-text-fill-color:#ffffff;font-size:21px;font-weight:700;line-height:1.2;"><img src="${URL_LOGO}" alt="" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;border:0;"> <span style="vertical-align:middle;color:#ffffff;-webkit-text-fill-color:#ffffff;">LicitaPlena</span></td></tr>
+        <tr><td style="padding:30px 36px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudoEstruturado || conteudo}${chamadaEdital}</td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;line-height:1.5;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</td></tr>
       </table>
     </td></tr></table></body></html>`;
@@ -129,6 +196,8 @@ exports.handler = async (event) => {
   const assunto = String(dados.assunto || "Oportunidade para análise").trim().slice(0, 180);
   const texto = String(dados.texto || "").trim().slice(0, 25000);
   const linkEdital = String(dados.linkEdital || "").trim().slice(0, 500);
+  const resumoEstruturado = dados.resumoEstruturado && typeof dados.resumoEstruturado === "object" ? dados.resumoEstruturado : null;
+  const edital = dados.edital && typeof dados.edital === "object" ? dados.edital : null;
   if (!destinos.length) return resposta(event, 400, { erro: "Informe ao menos um e-mail de destino." });
   if (destinos.length > MAX_DESTINATARIOS_POR_ENVIO) {
     return resposta(event, 400, { erro: `Envie no máximo ${MAX_DESTINATARIOS_POR_ENVIO} destinatários por vez.` });
@@ -163,7 +232,7 @@ exports.handler = async (event) => {
           to: [{ email_address: { address: destino, ...(nomeDestino ? { name: nomeDestino } : {}) } }],
           reply_to: [{ address: remetente, name: NOME_REMETENTE }],
           subject: assunto,
-          htmlbody: montarHtml(texto, linkEdital),
+          htmlbody: montarHtml(texto, linkEdital, resumoEstruturado, edital),
           textbody: texto,
         }),
       });
@@ -181,4 +250,4 @@ exports.handler = async (event) => {
   }
 };
 
-exports.__test = { emailValido, normalizarDestinatarios, linkPncpValido, montarHtml, mensagemErroZepto, normalizarTokenZepto };
+exports.__test = { emailValido, normalizarDestinatarios, linkPncpValido, montarHtml, montarConteudoEstruturado, mensagemErroZepto, normalizarTokenZepto };

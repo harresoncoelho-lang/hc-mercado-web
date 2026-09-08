@@ -2471,6 +2471,7 @@
   let iaCarregando = false;
   let iaTextoEdital = null;
   let iaEstruturaAtual = null;
+  let iaItensPncpAtual = null;
   const VERSAO_CACHE_LOCAL_RESUMO = 1;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -2627,8 +2628,31 @@
     wrap.appendChild(secao);
   }
 
+  function adicionarSecaoItensPncpIA(wrap, itens) {
+    if (!Array.isArray(itens) || !itens.length) return;
+    const secao = criarSecaoIA(`<svg class='icone-ph'><use href='#ph-package'></use></svg> Itens da Oportunidade (${itens.length})`);
+    const lista = document.createElement("ol");
+    lista.style.cssText = "margin:8px 0 0;padding-left:22px;font-size:13px;line-height:1.5;";
+    itens.slice(0, 100).forEach((item) => {
+      const descricao = textoIA(item && item.descricao);
+      if (!descricao) return;
+      const li = document.createElement("li");
+      const quantidade = [item.quantidade, item.unidade].filter((v) => v !== null && v !== undefined && v !== "").join(" ");
+      li.textContent = `${descricao}${quantidade ? ` — ${quantidade}` : ""}`;
+      lista.appendChild(li);
+    });
+    if (lista.children.length) secao.appendChild(lista);
+    if (itens.length > 100) {
+      const aviso = document.createElement("p");
+      aviso.style.cssText = "margin:8px 0 0;font-size:12px;color:var(--texto-fraco);";
+      aviso.textContent = `Mostrando os primeiros 100 de ${itens.length} itens. Consulte o edital oficial para a relação integral.`;
+      secao.appendChild(aviso);
+    }
+    if (lista.children.length) wrap.appendChild(secao);
+  }
+
   function renderizarEstruturaIA(est) {
-    iaEstruturaAtual = est;
+    iaEstruturaAtual = { ...est, itensPncp: iaItensPncpAtual || est.itensPncp || [] };
     renderizarCartoesTopoIA(est);
     const conversa = document.getElementById("modal-ia-conversa");
     const wrap = document.createElement("div");
@@ -2692,6 +2716,7 @@
     adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Possíveis Questionamentos", est.possiveisQuestionamentos, "Nenhum possível questionamento com base concreta foi identificado no material lido.");
     adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Perguntas Sugeridas ao Órgão", est.questionamentosSugeridos, "Nenhum questionamento objetivo foi sugerido a partir do material lido.");
     adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Fontes Consultadas", est.documentosConsultados, "O texto extraído não identificou os nomes dos documentos consultados.");
+    adicionarSecaoItensPncpIA(wrap, iaEstruturaAtual.itensPncp);
 
     conversa.appendChild(wrap);
     conversa.scrollTop = conversa.scrollHeight;
@@ -2754,6 +2779,31 @@
       escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
     } finally {
       iaCarregando = false;
+    }
+  }
+
+  async function carregarItensDoResumoIA(edital) {
+    const partes = partesNumeroControleCliente(edital && edital.numeroControlePNCP);
+    if (!partes) return;
+    try {
+      const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const dados = await resp.json();
+      const itens = Array.isArray(dados.itens) ? dados.itens : [];
+      if (!itens.length) return;
+      iaItensPncpAtual = itens;
+      if (iaEstruturaAtual) {
+        iaEstruturaAtual.itensPncp = itens;
+        const conversa = document.getElementById("modal-ia-conversa");
+        const wrap = document.createElement("div");
+        wrap.className = "msg-ia";
+        adicionarSecaoItensPncpIA(wrap, itens);
+        if (wrap.children.length) {
+          conversa.appendChild(wrap);
+          conversa.scrollTop = conversa.scrollHeight;
+        }
+      }
+    } catch (e) {
+      // A relação de itens é complementar; falha no PNCP não impede o resumo.
     }
   }
 
@@ -3164,6 +3214,17 @@
       adicionarLista("Pontos de atenção", est.outrasInformacoesRelevantes);
       adicionarLista("Pendências para conferência", est.pendenciasParaConferencia);
       adicionarLista("Perguntas sugeridas ao órgão", est.questionamentosSugeridos);
+      const itensPncp = Array.isArray(est.itensPncp) ? est.itensPncp : [];
+      if (itensPncp.length) {
+        linhas.push("", `Itens da oportunidade (${itensPncp.length}):`);
+        itensPncp.slice(0, 30).forEach((item, indice) => {
+          const descricao = valorUtil(item && item.descricao);
+          if (!descricao) return;
+          const quantidade = [item.quantidade, item.unidade].filter((v) => v !== null && v !== undefined && v !== "").join(" ");
+          linhas.push(`${indice + 1}. ${descricao}${quantidade ? ` — ${quantidade}` : ""}`);
+        });
+        if (itensPncp.length > 30) linhas.push(`Relação resumida: 30 de ${itensPncp.length} itens. Veja o edital oficial para a lista completa.`);
+      }
     } else {
       linhas.push("", "O resumo completo ainda está sendo gerado. Consulte o edital oficial no PNCP antes de tomar uma decisão.");
     }
@@ -3178,6 +3239,7 @@
     iaHistorico = [];
     iaTextoEdital = null;
     iaEstruturaAtual = null;
+    iaItensPncpAtual = null;
     document.getElementById("modal-ia-objeto").textContent = edital.objeto || "";
     document.getElementById("modal-ia-conversa").innerHTML = "";
     document.getElementById("modal-ia-pergunta").value = "";
@@ -3226,6 +3288,7 @@
     };
 
     document.getElementById("modal-ia-fundo").classList.add("aberto");
+    void carregarItensDoResumoIA(edital);
     const resumoLocal = lerCacheLocalResumo(edital);
     if (resumoLocal) {
       if (resumoLocal.estrutura) renderizarEstruturaIA(resumoLocal.estrutura);
@@ -3259,6 +3322,20 @@
     const assunto = document.getElementById("modal-enviar-resumo-assunto").value.trim();
     const texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
     const linkEdital = linkPncp(iaEditalAtual && iaEditalAtual.numeroControlePNCP) || iaEditalAtual && iaEditalAtual.link || "";
+    const resumoEstruturado = iaEstruturaAtual ? {
+      ...iaEstruturaAtual,
+      itensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp.slice(0, 30) : [],
+    } : null;
+    const editalResumo = iaEditalAtual ? {
+      objeto: iaEditalAtual.objeto,
+      orgao: iaEditalAtual.orgao,
+      municipio: iaEditalAtual.municipio,
+      uf: iaEditalAtual.uf,
+      numeroControlePNCP: iaEditalAtual.numeroControlePNCP,
+      modalidade: iaEditalAtual.modalidade,
+      valor: iaEditalAtual.valor,
+      encerramento: iaEditalAtual.encerramento,
+    } : null;
     aviso.style.display = "none";
     botao.disabled = true;
     botao.textContent = "Enviando...";
@@ -3267,7 +3344,7 @@
       const resp = await fetch("/.netlify/functions/enviar-resumo-edital", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ destinos, nomeDestino, assunto, texto, linkEdital }),
+        body: JSON.stringify({ destinos, nomeDestino, assunto, texto, linkEdital, resumoEstruturado, edital: editalResumo }),
       });
       const dados = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(dados.erro || "Não foi possível enviar o e-mail.");
