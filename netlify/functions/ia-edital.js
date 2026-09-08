@@ -36,7 +36,8 @@ const MAX_CARACTERES_TEXTO = 12000;
 const MAX_DOCUMENTOS_PARA_LEITURA = 2;
 const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
-const VERSAO_RESUMO = 3;
+const VERSAO_RESUMO = 4;
+const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
@@ -414,6 +415,29 @@ function respostaDeContingencia(edital, motivoFonteNaoLida, aviso) {
   };
 }
 
+// Uma falha temporária ao baixar o arquivo não pode fazer cada abertura repetir toda a
+// cadeia PNCP + IA. Guardamos a ficha oficial por pouco tempo: a reabertura é imediata e
+// sem nova cota, mas o sistema volta a tentar a leitura completa automaticamente depois.
+async function salvarContingenciaNoCache(store, edital, corpo) {
+  if (!store || !edital.numeroControlePNCP) return;
+  try {
+    await store.setJSON(edital.numeroControlePNCP, {
+      estrutura: corpo.estrutura,
+      resposta: corpo.resposta,
+      textoEdital: corpo.textoEdital || null,
+      fonteLida: false,
+      motivoFonteNaoLida: corpo.motivoFonteNaoLida || "indisponivel",
+      modoDegradado: true,
+      aviso: corpo.aviso || "A análise detalhada será tentada novamente em alguns minutos.",
+      expiraEm: new Date(Date.now() + DURACAO_CACHE_CONTINGENCIA_MS).toISOString(),
+      versao: VERSAO_RESUMO,
+      geradoEm: new Date().toISOString(),
+    });
+  } catch (e) {
+    // Cache é uma otimização; a resposta atual não pode depender dele.
+  }
+}
+
 exports.handler = async (event) => {
   const headers = cabecalhosPadrao(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
@@ -461,7 +485,8 @@ exports.handler = async (event) => {
       // Resumos antigos eram texto corrido e não traziam o checklist completo. Só usa
       // cache da versão atual; assim uma evolução do dossiê chega para todos sem exigir
       // que cada pessoa descubra como limpar dados do navegador.
-      if (cache && cache.versao === VERSAO_RESUMO && (cache.estrutura || cache.resposta)) {
+      const cacheAindaValido = !cache || !cache.expiraEm || new Date(cache.expiraEm).getTime() > Date.now();
+      if (cache && cacheAindaValido && cache.versao === VERSAO_RESUMO && (cache.estrutura || cache.resposta)) {
         return {
           statusCode: 200,
           headers,
@@ -471,6 +496,8 @@ exports.handler = async (event) => {
             textoEdital: cache.textoEdital || null,
             fonteLida: cache.fonteLida !== undefined ? cache.fonteLida : true,
             motivoFonteNaoLida: cache.motivoFonteNaoLida || null,
+            modoDegradado: Boolean(cache.modoDegradado),
+            aviso: cache.aviso || null,
             doCache: true,
             erro: null,
           }),
@@ -500,6 +527,7 @@ exports.handler = async (event) => {
   // com uma frase genérica e sem deixar espaço em branco no modal.
   if (modo === "resumo" && !fonteLida) {
     const contingencia = respostaDeContingencia(edital, motivoFonteNaoLida || "indisponivel", "O documento oficial não pôde ser lido automaticamente agora. A ficha abaixo mostra os dados públicos oficiais já coletados, sem inferir requisitos do edital.");
+    await salvarContingenciaNoCache(storeResumos, edital, contingencia.body);
     contingencia.headers = headers;
     contingencia.body = JSON.stringify(contingencia.body);
     return contingencia;

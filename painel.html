@@ -4602,23 +4602,25 @@
   // (api/search) — responde em milissegundos e cobre TODO o histórico (não só "aberto agora"),
   // o que também é o que permite a busca por período (Publicado de/até) ser retroativa de verdade.
   async function buscarOportunidadesAbertas(uf, palavras, maxPaginas) {
-    const encontrados = [];
+    const encontradosPorId = new Map();
     let falhaConexao = false;
-    const paramsBase = new URLSearchParams({
-      tipos_documento: "edital",
-      status: "todos",
-      ordenacao: "-data",
-      tam_pagina: "50",
-    });
-    if (uf) paramsBase.set("ufs", uf);
-    // Usa a primeira palavra do filtro também quando há UF. Sem isso, uma UF grande
-    // (como AM) pode ter dezenas de milhares de registros: o boletim tentava abrir até
-    // 15 páginas ao mesmo tempo, aumentava a instabilidade do PNCP e frequentemente não
-    // chegava aos editais publicados hoje que o cliente realmente procura.
-    if (palavras && palavras[0]) paramsBase.set("q", palavras[0]);
+    const termos = [...new Set((palavras || []).map((p) => p.trim()).filter(Boolean))];
+    // Cada expressão configurada precisa ser enviada ao PNCP. A versão anterior usava
+    // somente a primeira (por exemplo, "hospitalar") e filtrava o retorno localmente;
+    // como a API já havia descartado "expediente", essas oportunidades nunca chegavam
+    // ao boletim. Uma página recente por termo dá cobertura a todos os segmentos sem a
+    // avalanche de 15 páginas simultâneas que deixava a API instável.
+    const consultas = termos.length ? termos : [null];
 
-    function montarUrlPagina(pagina) {
-      const p = new URLSearchParams(paramsBase);
+    function montarUrlPagina(termo, pagina) {
+      const p = new URLSearchParams({
+        tipos_documento: "edital",
+        status: "todos",
+        ordenacao: "-data",
+        tam_pagina: "50",
+      });
+      if (uf) p.set("ufs", uf);
+      if (termo) p.set("q", termo);
       p.set("pagina", String(pagina));
       return `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${p.toString()}`)}`;
     }
@@ -4629,7 +4631,7 @@
         const objeto = item.description || item.title || "";
         const textoBusca = `${item.title || ""} ${objeto}`;
         if (bateComSegmento(textoBusca, palavras)) {
-          encontrados.push({
+          const oportunidade = {
             objeto,
             orgao: item.orgao_subrogado_nome || item.orgao_nome || "Órgão não informado",
             municipio: item.municipio_nome || "",
@@ -4657,48 +4659,51 @@
             situacaoCompraNome: item.situacao_nome || null,
             codigoUnidade: item.unidade_codigo || null,
             esferaId: item.esfera_id || null,
-          });
+          };
+          // Uma contratação pode atender mais de um termo do filtro. Mantemos uma única
+          // cópia, usando o identificador oficial como chave estável.
+          const chave = oportunidade.numeroControlePNCP || `${oportunidade.objeto}|${oportunidade.orgao}|${oportunidade.publicacao || ""}`;
+          if (!encontradosPorId.has(chave)) encontradosPorId.set(chave, oportunidade);
         }
       }
       return itens.length;
     }
 
-    async function buscarPagina(pagina) {
+    async function buscarPagina(termo, pagina) {
       // O proxy aguarda até 15 s pelo PNCP. Dá margem para a ida/volta pela Function e
       // uma inicialização eventual do Netlify, sem o navegador cancelar uma resposta
       // válida pouco antes de ela chegar.
-      const resp = await fetchPaginaComRetry(montarUrlPagina(pagina), 30000);
+      const resp = await fetchPaginaComRetry(montarUrlPagina(termo, pagina), 30000);
       if (!resp) return null;
       const texto = await resp.text();
       if (!texto) return null;
       try { return JSON.parse(texto); } catch (e) { return null; }
     }
 
-    // A 1ª página vem sozinha (sequencial) porque só ela nos diz quantos resultados
-    // existem de verdade ("total") — sem isso não dá pra saber quantas páginas pedir.
-    // Antes, o código pedia até 20 páginas *sempre* uma de cada vez (nunca "secava" antes
-    // disso, porque qualquer busca real do PNCP tem milhares de resultados totais) — 19 a
-    // 33s medidos na prática. Agora: só busca páginas 2+ em paralelo, e só até onde o total
-    // real manda (limitado a maxPaginas) — se o total já cabe em menos páginas, nem tenta
-    // as demais; se precisa de várias, elas saem todas ao mesmo tempo em vez de em fila.
-    const dados1 = await buscarPagina(1);
-    if (!dados1) return { encontrados, falhaConexao: true };
-    processarPagina(dados1);
-    const totalItens = Number(dados1.total) || (dados1.items || []).length;
-    const totalPaginas = Math.max(1, Math.ceil(totalItens / 50));
-    const ultimaPagina = Math.min(totalPaginas, maxPaginas);
+    const primeirasPaginas = await Promise.all(consultas.map((termo) => buscarPagina(termo, 1)));
+    for (const dados of primeirasPaginas) {
+      if (!dados) { falhaConexao = true; continue; }
+      processarPagina(dados);
+    }
 
-    if (ultimaPagina > 1) {
-      const restantes = [];
-      for (let p = 2; p <= ultimaPagina; p++) restantes.push(p);
-      const resultados = await Promise.all(restantes.map(buscarPagina));
-      for (const dados of resultados) {
-        if (!dados) { falhaConexao = true; continue; }
-        processarPagina(dados);
+    // Para busca com um único termo, preserva a navegação mais profunda solicitada pela
+    // tela. Em filtros compostos, a primeira página de cada termo é intencionalmente o
+    // limite: ela já contém os editais mais novos e evita sobrecarregar o PNCP.
+    if (consultas.length === 1 && primeirasPaginas[0]) {
+      const totalItens = Number(primeirasPaginas[0].total) || (primeirasPaginas[0].items || []).length;
+      const ultimaPagina = Math.min(Math.max(1, Math.ceil(totalItens / 50)), maxPaginas);
+      if (ultimaPagina > 1) {
+        const restantes = [];
+        for (let p = 2; p <= ultimaPagina; p++) restantes.push(p);
+        const resultados = await Promise.all(restantes.map((pagina) => buscarPagina(consultas[0], pagina)));
+        for (const dados of resultados) {
+          if (!dados) { falhaConexao = true; continue; }
+          processarPagina(dados);
+        }
       }
     }
 
-    return { encontrados, falhaConexao };
+    return { encontrados: [...encontradosPorId.values()], falhaConexao };
   }
 
   // Escaneia contratos históricos do PNCP filtrando por CNPJ do fornecedor (para a aba Analisar Empresa)
