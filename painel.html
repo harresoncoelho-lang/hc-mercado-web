@@ -2755,7 +2755,10 @@
       const def = RÓTULOS_ESTRUTURA_IA[chave];
       const linhas = Object.keys(def.campos)
         .map((campo) => [def.campos[campo], secaoDados[campo]])
-        .map(([rotulo, v]) => [rotulo, /data|publicado|prazo|recebimento/i.test(rotulo) ? formatarDataHoraIA(v) : textoIA(v)])
+        // Além dos rótulos que já trazem "data" ou "prazo", o limite de
+        // propostas também é uma data. Sem isso, ele acabava exibido no
+        // formato técnico ISO (2026-09-22T09:15:00) apenas neste campo.
+        .map(([rotulo, v]) => [rotulo, /data|publicado|prazo|recebimento|limite|vigência/i.test(rotulo) ? formatarDataHoraIA(v) : textoIA(v)])
         .filter(([, v]) => v && !/^n[ãa]o informado$/i.test(v));
       if (linhas.length === 0) continue;
       const secao = criarSecaoIA(def.titulo);
