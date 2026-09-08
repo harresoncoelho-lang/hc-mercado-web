@@ -3527,7 +3527,11 @@
         ? `E-mails enviados com sucesso a ${quantidade} destinatários pelo LicitaPlena.`
         : "E-mail enviado com sucesso pelo LicitaPlena.";
       aviso.style.display = "block";
-      botao.textContent = "E-mail enviado";
+      // O formulário permanece aberto justamente para permitir trocar somente o
+      // destinatário e encaminhar o mesmo resumo a outro cliente em seguida.
+      botao.disabled = false;
+      botao.textContent = "Enviar outro e-mail";
+      document.getElementById("modal-enviar-resumo-destino").focus();
     } catch (e) {
       aviso.className = "aviso";
       aviso.textContent = e.message || "Não foi possível enviar o e-mail.";
