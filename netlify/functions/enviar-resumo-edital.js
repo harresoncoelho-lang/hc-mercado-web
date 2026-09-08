@@ -96,6 +96,17 @@ function valorResumo(valor) {
   return texto && !/^n[ãa]o informado$/i.test(texto) ? texto : "";
 }
 
+// A API pública costuma entregar datas no padrão ISO. Não usamos `new Date()`
+// aqui porque ele pode deslocar a data conforme o fuso do servidor. A troca é
+// puramente textual e mantém o horário exato informado pela fonte.
+function formatarDataHoraBR(valor) {
+  const texto = valorResumo(valor);
+  const partes = texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/);
+  if (!partes) return texto;
+  const [, ano, mes, dia, hora, minuto] = partes;
+  return hora && minuto ? `${dia}/${mes}/${ano} às ${hora}:${minuto}` : `${dia}/${mes}/${ano}`;
+}
+
 function tabelaResumo(linhas) {
   const visiveis = linhas
     .map(([rotulo, valor]) => [rotulo, valorResumo(valor)])
@@ -124,7 +135,7 @@ function montarConteudoEstruturado(resumo, edital) {
   const itensPncp = Array.isArray(resumo.itensPncp) ? resumo.itensPncp : [];
   const cards = [
     ["Modalidade", identificacao.modalidade || edital?.modalidade],
-    ["Data da sessão", sessao.data || edital?.encerramento],
+    ["Data da sessão", formatarDataHoraBR(sessao.data || edital?.encerramento)],
     ["Valor estimado", detalhes.valorEstimado || edital?.valor],
   ].map(([rotulo, valor]) => [rotulo, valorResumo(valor)]).filter(([, valor]) => valor);
   const destaque = cards.length ? `<tr><td style="padding:0 0 18px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:8px 0;margin:0 -8px;"><tr>${cards.map(([rotulo, valor]) => `<td style="padding:13px 14px;background:#eef3f9;border:1px solid #dce5f0;vertical-align:top;"><div style="color:#58708f;font-size:11px;font-weight:700;text-transform:uppercase;">${escapeHtml(rotulo)}</div><div style="margin-top:5px;color:#102d56;font-size:17px;font-weight:700;line-height:1.25;">${escapeHtml(valor)}</div></td>`).join("")}</tr></table></td></tr>` : "";
@@ -139,7 +150,7 @@ function montarConteudoEstruturado(resumo, edital) {
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">${destaque}
     ${secaoResumo("Visão geral", resumoGeral ? `<p style="margin:0;color:#162d4c;font-size:14px;line-height:1.6;">${escapeHtml(resumoGeral)}</p>` : "")}
     ${secaoResumo("Identificação da licitação", tabelaResumo([["Número", identificacao.numero || edital?.numeroControlePNCP], ["UASG", identificacao.uasg], ["Contratação", identificacao.contratacao], ["Modalidade", identificacao.modalidade || edital?.modalidade], ["Portal de realização", identificacao.portalRealizacao], ["Regulamentação", identificacao.regulamentacao || resumo.legislacao]]))}
-    ${secaoResumo("Sessão pública", tabelaResumo([["Data", sessao.data], ["Horário", sessao.horario], ["Modo de disputa", sessao.modoDisputa], ["Limite para propostas", resumo.prazos && resumo.prazos.limiteEnvioPropostas || edital?.encerramento]]))}
+    ${secaoResumo("Sessão pública", tabelaResumo([["Data", formatarDataHoraBR(sessao.data)], ["Horário", sessao.horario], ["Modo de disputa", sessao.modoDisputa], ["Limite para propostas", formatarDataHoraBR(resumo.prazos && resumo.prazos.limiteEnvioPropostas || edital?.encerramento)]]))}
     ${secaoResumo("Órgão responsável", tabelaResumo([["Órgão", orgao.nome || edital?.orgao], ["E-mail", orgao.email], ["Telefone", orgao.telefone], ["Endereço", orgao.endereco || [edital?.municipio, edital?.uf].filter(Boolean).join("/")]]))}
     ${secaoResumo("Detalhes da licitação", tabelaResumo([["Critério de julgamento", detalhes.criterioJulgamento], ["Prazo de entrega", detalhes.prazoEntrega], ["Garantia", resumo.garantias && resumo.garantias.proposta], ["Condições de pagamento", resumo.condicoesPagamento], ["Penalidades", resumo.penalidades], ["Multas", resumo.multas]]))}
     ${secaoResumo("Documentos de habilitação", listaResumo(resumo.documentosHabilitacao))}
@@ -164,9 +175,9 @@ function montarHtml(texto, linkEdital, resumoEstruturado, edital) {
     @media (prefers-color-scheme: dark) { .lp-cabecalho { background:#082243 !important; background-image:linear-gradient(#082243,#082243) !important; } }
   </style></head><body style="margin:0;padding:0;background:#eef3f9;font-family:Arial,sans-serif;color:#162d4c;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#eef3f9" style="width:100%;background:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
-      <table role="presentation" width="820" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:820px;background:#ffffff;border:1px solid #dce5f0;">
+      <table role="presentation" width="960" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:960px;background:#ffffff;border:1px solid #dce5f0;">
         <tr><td class="lp-cabecalho" bgcolor="#082243" style="padding:20px 32px;background-color:#082243;background-image:linear-gradient(#082243,#082243);color:#ffffff;-webkit-text-fill-color:#ffffff;font-size:21px;font-weight:700;line-height:1.2;"><img src="${URL_LOGO}" alt="" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;border:0;"> <span style="vertical-align:middle;color:#ffffff;-webkit-text-fill-color:#ffffff;">LicitaPlena</span></td></tr>
-        <tr><td style="padding:30px 36px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudoEstruturado || conteudo}${chamadaEdital}</td></tr>
+        <tr><td style="padding:26px 24px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudoEstruturado || conteudo}${chamadaEdital}</td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;line-height:1.5;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</td></tr>
       </table>
     </td></tr></table></body></html>`;
@@ -250,4 +261,4 @@ exports.handler = async (event) => {
   }
 };
 
-exports.__test = { emailValido, normalizarDestinatarios, linkPncpValido, montarHtml, montarConteudoEstruturado, mensagemErroZepto, normalizarTokenZepto };
+exports.__test = { emailValido, normalizarDestinatarios, linkPncpValido, montarHtml, montarConteudoEstruturado, mensagemErroZepto, normalizarTokenZepto, formatarDataHoraBR };

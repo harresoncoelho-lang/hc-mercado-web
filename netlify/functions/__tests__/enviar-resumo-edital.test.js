@@ -48,7 +48,7 @@ test("inclui o atalho no e-mail somente para link oficial do PNCP", () => {
 test("mantém uma faixa institucional azul compatível no cabeçalho", () => {
   const html = __test.montarHtml("Resumo", "");
   assert.match(html, /bgcolor="#082243"/);
-  assert.match(html, /width="820"/);
+  assert.match(html, /width="960"/);
   assert.match(html, /background-image:linear-gradient\(#082243,#082243\)/);
   assert.match(html, /name="color-scheme" content="light"/);
   assert.match(html, /logo\.png\?v=20260908/);
@@ -69,6 +69,12 @@ test("organiza o e-mail por seções quando recebe o resumo estruturado", () => 
   assert.match(html, /Itens da oportunidade \(1\)/);
   assert.match(html, /Papel A4/);
   assert.doesNotMatch(html, />Resumo simples</);
+});
+
+test("formata datas ISO em dia/mês/ano sem deslocar o fuso", () => {
+  assert.equal(__test.formatarDataHoraBR("2026-09-22"), "22/09/2026");
+  assert.equal(__test.formatarDataHoraBR("2026-09-22T09:15"), "22/09/2026 às 09:15");
+  assert.equal(__test.formatarDataHoraBR("22/09/2026"), "22/09/2026");
 });
 
 test("normaliza destinatários separados por vírgula ou ponto e vírgula sem repetir", () => {

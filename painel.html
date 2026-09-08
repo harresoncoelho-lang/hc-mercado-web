@@ -2472,6 +2472,7 @@
   let iaTextoEdital = null;
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
+  let iaItensPncpCarregando = null;
   const VERSAO_CACHE_LOCAL_RESUMO = 1;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -2783,28 +2784,37 @@
   }
 
   async function carregarItensDoResumoIA(edital) {
+    if (Array.isArray(iaItensPncpAtual) && iaItensPncpAtual.length) return iaItensPncpAtual;
+    if (iaItensPncpCarregando) return iaItensPncpCarregando;
     const partes = partesNumeroControleCliente(edital && edital.numeroControlePNCP);
-    if (!partes) return;
-    try {
-      const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
-      const dados = await resp.json();
-      const itens = Array.isArray(dados.itens) ? dados.itens : [];
-      if (!itens.length) return;
-      iaItensPncpAtual = itens;
-      if (iaEstruturaAtual) {
-        iaEstruturaAtual.itensPncp = itens;
-        const conversa = document.getElementById("modal-ia-conversa");
-        const wrap = document.createElement("div");
-        wrap.className = "msg-ia";
-        adicionarSecaoItensPncpIA(wrap, itens);
-        if (wrap.children.length) {
-          conversa.appendChild(wrap);
-          conversa.scrollTop = conversa.scrollHeight;
+    if (!partes) return [];
+    iaItensPncpCarregando = (async () => {
+      try {
+        const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+        const dados = await resp.json();
+        const itens = Array.isArray(dados.itens) ? dados.itens : [];
+        if (!itens.length) return [];
+        iaItensPncpAtual = itens;
+        if (iaEstruturaAtual) {
+          iaEstruturaAtual.itensPncp = itens;
+          const conversa = document.getElementById("modal-ia-conversa");
+          const wrap = document.createElement("div");
+          wrap.className = "msg-ia";
+          adicionarSecaoItensPncpIA(wrap, itens);
+          if (wrap.children.length) {
+            conversa.appendChild(wrap);
+            conversa.scrollTop = conversa.scrollHeight;
+          }
         }
+        return itens;
+      } catch (e) {
+        // A relação de itens é complementar; falha no PNCP não impede o resumo.
+        return [];
+      } finally {
+        iaItensPncpCarregando = null;
       }
-    } catch (e) {
-      // A relação de itens é complementar; falha no PNCP não impede o resumo.
-    }
+    })();
+    return iaItensPncpCarregando;
   }
 
   // Baixa o arquivo real do edital (via proxy que lê a API pública do PNCP) em vez de só
@@ -3240,6 +3250,7 @@
     iaTextoEdital = null;
     iaEstruturaAtual = null;
     iaItensPncpAtual = null;
+    iaItensPncpCarregando = null;
     document.getElementById("modal-ia-objeto").textContent = edital.objeto || "";
     document.getElementById("modal-ia-conversa").innerHTML = "";
     document.getElementById("modal-ia-pergunta").value = "";
@@ -3320,12 +3331,8 @@
     const destinos = document.getElementById("modal-enviar-resumo-destino").value.trim();
     const nomeDestino = document.getElementById("modal-enviar-resumo-nome").value.trim();
     const assunto = document.getElementById("modal-enviar-resumo-assunto").value.trim();
-    const texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
+    let texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
     const linkEdital = linkPncp(iaEditalAtual && iaEditalAtual.numeroControlePNCP) || iaEditalAtual && iaEditalAtual.link || "";
-    const resumoEstruturado = iaEstruturaAtual ? {
-      ...iaEstruturaAtual,
-      itensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp.slice(0, 30) : [],
-    } : null;
     const editalResumo = iaEditalAtual ? {
       objeto: iaEditalAtual.objeto,
       orgao: iaEditalAtual.orgao,
@@ -3338,8 +3345,22 @@
     } : null;
     aviso.style.display = "none";
     botao.disabled = true;
-    botao.textContent = "Enviando...";
+    botao.textContent = "Carregando itens...";
     try {
+      // Os itens vêm direto da fonte pública e não consomem IA. Esperamos essa
+      // busca antes de montar o payload para que um clique rápido não omita a
+      // seção "Itens da oportunidade" do e-mail.
+      if (iaEditalAtual) await carregarItensDoResumoIA(iaEditalAtual);
+      if (iaEstruturaAtual) {
+        iaEstruturaAtual.itensPncp = Array.isArray(iaItensPncpAtual) ? iaItensPncpAtual : [];
+        texto = montarResumoParaCliente(iaEditalAtual, iaEstruturaAtual);
+        document.getElementById("modal-enviar-resumo-texto").value = texto;
+      }
+      botao.textContent = "Enviando...";
+      const resumoEstruturado = iaEstruturaAtual ? {
+        ...iaEstruturaAtual,
+        itensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp.slice(0, 30) : [],
+      } : null;
       const token = await obterTokenSessao();
       const resp = await fetch("/.netlify/functions/enviar-resumo-edital", {
         method: "POST",
