@@ -7,10 +7,9 @@ const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
 const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
 const NOME_REMETENTE = "LicitaPlena";
 const MAX_DESTINATARIOS_POR_ENVIO = 10;
-// Logo azul em fundo neutro: preserva contraste mesmo quando o cliente de e-mail
-// adapta cores para modo escuro, especialmente em telas móveis.
-// A versão evita que clientes de e-mail reutilizem um 404 antigo em cache.
-const URL_LOGO = "https://licitaplena.com.br/logo-assinatura-azul.png?v=20260902";
+// Logo branca para a faixa institucional azul. PNG é usado em vez de SVG porque
+// clientes de e-mail, especialmente em iPhone, têm suporte inconsistente a SVG.
+const URL_LOGO = "https://licitaplena.com.br/logo.png?v=20260908";
 
 function normalizarTokenZepto(token) {
   // Aceita tanto a chave pura quanto o valor copiado do exemplo de cabeçalho da
@@ -94,12 +93,14 @@ function montarHtml(texto, linkEdital) {
   const chamadaEdital = linkPncpValido(linkEdital)
     ? `<div style="margin-top:24px;"><a href="${escapeHtml(linkEdital)}" style="display:inline-block;background:#1f75df;border-radius:7px;padding:12px 18px;color:#fff;text-decoration:none;font-weight:700;">Abrir licitação no PNCP</a><p style="margin:10px 0 0;color:#66778e;font-size:12px;">Use o portal oficial para consultar o edital, anexos e documentos do processo.</p></div>`
     : "";
-  return `<!doctype html><html><body style="margin:0;background:#f4f7fb;font-family:Arial,sans-serif;color:#162d4c;">
-    <main style="max-width:680px;margin:24px auto;background:#fff;border:1px solid #dce5f0;border-radius:12px;overflow:hidden;">
-      <header style="padding:18px 28px;background:#fff;color:#071b70;border-bottom:1px solid #dce5f0;font-size:21px;font-weight:700;"><img src="${URL_LOGO}" alt="LicitaPlena" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;"> <span style="vertical-align:middle;">LicitaPlena</span></header>
-      <section style="padding:28px;font-size:15px;line-height:1.6;">${conteudo}${chamadaEdital}</section>
-      <footer style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</footer>
-    </main></body></html>`;
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#eef3f9;font-family:Arial,sans-serif;color:#162d4c;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#eef3f9" style="width:100%;background:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:680px;background:#ffffff;border:1px solid #dce5f0;">
+        <tr><td bgcolor="#082243" style="padding:20px 28px;background:#082243;color:#ffffff;font-size:21px;font-weight:700;line-height:1.2;"><img src="${URL_LOGO}" alt="" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;border:0;"> <span style="vertical-align:middle;color:#ffffff;">LicitaPlena</span></td></tr>
+        <tr><td style="padding:28px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudo}${chamadaEdital}</td></tr>
+        <tr><td style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;line-height:1.5;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</td></tr>
+      </table>
+    </td></tr></table></body></html>`;
 }
 
 exports.handler = async (event) => {
