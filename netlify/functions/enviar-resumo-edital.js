@@ -6,6 +6,7 @@ const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require
 const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
 const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
 const NOME_REMETENTE = "LicitaPlena";
+const MAX_DESTINATARIOS_POR_ENVIO = 10;
 // Logo azul em fundo neutro: preserva contraste mesmo quando o cliente de e-mail
 // adapta cores para modo escuro, especialmente em telas móveis.
 // A versão evita que clientes de e-mail reutilizem um 404 antigo em cache.
@@ -63,6 +64,18 @@ function emailValido(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
 }
 
+function normalizarDestinatarios(destinos) {
+  const lista = Array.isArray(destinos) ? destinos : [destinos];
+  const unicos = new Set();
+  for (const valor of lista) {
+    for (const email of String(valor || "").split(/[;,]+/)) {
+      const normalizado = email.trim().toLowerCase();
+      if (normalizado) unicos.add(normalizado);
+    }
+  }
+  return [...unicos];
+}
+
 function linkPncpValido(link) {
   try {
     const url = new URL(String(link || "").trim());
@@ -106,12 +119,20 @@ exports.handler = async (event) => {
     return resposta(event, 400, { erro: "Dados do envio inválidos." });
   }
 
-  const destino = String(dados.destino || "").trim().toLowerCase();
+  // Aceita o formato antigo (`destino`) e o novo (`destinos`). A separação por
+  // vírgula ou ponto e vírgula permite colar uma lista vinda do cliente.
+  const destinos = normalizarDestinatarios(dados.destinos || dados.destino);
   const nomeDestino = String(dados.nomeDestino || "").trim().slice(0, 100);
   const assunto = String(dados.assunto || "Oportunidade para análise").trim().slice(0, 180);
   const texto = String(dados.texto || "").trim().slice(0, 25000);
   const linkEdital = String(dados.linkEdital || "").trim().slice(0, 500);
-  if (!emailValido(destino)) return resposta(event, 400, { erro: "Informe um e-mail de destino válido." });
+  if (!destinos.length) return resposta(event, 400, { erro: "Informe ao menos um e-mail de destino." });
+  if (destinos.length > MAX_DESTINATARIOS_POR_ENVIO) {
+    return resposta(event, 400, { erro: `Envie no máximo ${MAX_DESTINATARIOS_POR_ENVIO} destinatários por vez.` });
+  }
+  if (destinos.some((destino) => !emailValido(destino))) {
+    return resposta(event, 400, { erro: "Há um e-mail de destino inválido. Separe os endereços por vírgula ou ponto e vírgula." });
+  }
   if (!texto) return resposta(event, 400, { erro: "Não há conteúdo para enviar." });
 
   const token = normalizarTokenZepto(process.env.ZEPTOMAIL_TOKEN);
@@ -124,33 +145,37 @@ exports.handler = async (event) => {
     // Não usamos variáveis antigas de remetente/resposta, pois uma delas pode apontar para
     // domínio não verificado e fazer o ZeptoMail rejeitar toda a mensagem.
     const remetente = REMETENTE_PADRAO;
-    const api = await fetch(ZEPTOMAIL_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Zoho-enczapikey ${token}`,
-      },
-      body: JSON.stringify({
-        from: { address: remetente, name: NOME_REMETENTE },
-        to: [{ email_address: { address: destino, ...(nomeDestino ? { name: nomeDestino } : {}) } }],
-        reply_to: [{ address: remetente, name: NOME_REMETENTE }],
-        subject: assunto,
-        htmlbody: montarHtml(texto, linkEdital),
-        textbody: texto,
-      }),
-    });
-    if (!api.ok) {
-      const corpo = await api.text();
-      const erro = mensagemErroZepto(api.status, corpo);
-      console.error("ZeptoMail recusou o envio:", api.status, erro);
-      return resposta(event, 502, { erro });
+    // Cada chamada recebe apenas um destinatário, para que e-mails de clientes
+    // nunca apareçam uns para os outros no cabeçalho da mensagem.
+    for (const destino of destinos) {
+      const api = await fetch(ZEPTOMAIL_URL, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Zoho-enczapikey ${token}`,
+        },
+        body: JSON.stringify({
+          from: { address: remetente, name: NOME_REMETENTE },
+          to: [{ email_address: { address: destino, ...(nomeDestino ? { name: nomeDestino } : {}) } }],
+          reply_to: [{ address: remetente, name: NOME_REMETENTE }],
+          subject: assunto,
+          htmlbody: montarHtml(texto, linkEdital),
+          textbody: texto,
+        }),
+      });
+      if (!api.ok) {
+        const corpo = await api.text();
+        const erro = mensagemErroZepto(api.status, corpo);
+        console.error("ZeptoMail recusou o envio:", api.status, erro);
+        return resposta(event, 502, { erro: destinos.length > 1 ? `O envio parou depois de algumas mensagens. ${erro}` : erro });
+      }
     }
-    return resposta(event, 200, { ok: true, mensagem: "E-mail enviado com sucesso." });
+    return resposta(event, 200, { ok: true, quantidade: destinos.length, mensagem: "E-mail enviado com sucesso." });
   } catch (e) {
     console.error("Falha ao enviar resumo por e-mail:", e.message);
     return resposta(event, 502, { erro: "Não foi possível enviar o e-mail agora. Tente novamente em instantes." });
   }
 };
 
-exports.__test = { emailValido, linkPncpValido, montarHtml, mensagemErroZepto, normalizarTokenZepto };
+exports.__test = { emailValido, normalizarDestinatarios, linkPncpValido, montarHtml, mensagemErroZepto, normalizarTokenZepto };

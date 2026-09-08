@@ -2149,10 +2149,11 @@
       <h3 style="margin:0;"><svg class='icone-ph'><use href='#ph-paper-plane-tilt'></use></svg> Enviar resumo ao cliente</h3>
       <button type="button" id="modal-enviar-resumo-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
-    <p style="margin:6px 0 16px;color:var(--texto-fraco);font-size:13px;line-height:1.45;">O e-mail será enviado pelo <strong>licitaplena@licitaplena.com.br</strong>. Revise o destinatário antes de confirmar.</p>
+    <p style="margin:6px 0 16px;color:var(--texto-fraco);font-size:13px;line-height:1.45;">O e-mail será enviado pelo <strong>licitaplena@licitaplena.com.br</strong>. Cada destinatário recebe uma cópia individual.</p>
     <form id="modal-enviar-resumo-form" style="display:grid;gap:12px;">
-      <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">E-mail do cliente
-        <input id="modal-enviar-resumo-destino" type="email" required autocomplete="email" placeholder="cliente@empresa.com" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;">
+      <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">E-mails dos clientes
+        <input id="modal-enviar-resumo-destino" type="text" required inputmode="email" autocomplete="email" placeholder="cliente1@empresa.com, cliente2@empresa.com" aria-describedby="modal-enviar-resumo-destino-ajuda" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;">
+        <span id="modal-enviar-resumo-destino-ajuda" style="font-size:12px;font-weight:400;color:var(--texto-fraco);">Separe os endereços por vírgula ou ponto e vírgula. Máximo de 10 por envio.</span>
       </label>
       <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">Nome do cliente <span style="font-weight:400;color:var(--texto-fraco);">(opcional)</span>
         <input id="modal-enviar-resumo-nome" type="text" maxlength="100" autocomplete="name" placeholder="Nome do responsável" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;">
@@ -3201,7 +3202,7 @@
     ev.preventDefault();
     const botao = document.getElementById("modal-enviar-resumo-confirmar");
     const aviso = document.getElementById("modal-enviar-resumo-aviso");
-    const destino = document.getElementById("modal-enviar-resumo-destino").value.trim();
+    const destinos = document.getElementById("modal-enviar-resumo-destino").value.trim();
     const nomeDestino = document.getElementById("modal-enviar-resumo-nome").value.trim();
     const assunto = document.getElementById("modal-enviar-resumo-assunto").value.trim();
     const texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
@@ -3214,12 +3215,15 @@
       const resp = await fetch("/.netlify/functions/enviar-resumo-edital", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ destino, nomeDestino, assunto, texto, linkEdital }),
+        body: JSON.stringify({ destinos, nomeDestino, assunto, texto, linkEdital }),
       });
       const dados = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(dados.erro || "Não foi possível enviar o e-mail.");
       aviso.className = "aviso aviso-sucesso";
-      aviso.textContent = "E-mail enviado com sucesso pelo LicitaPlena.";
+      const quantidade = Number(dados.quantidade || 1);
+      aviso.textContent = quantidade > 1
+        ? `E-mails enviados com sucesso a ${quantidade} destinatários pelo LicitaPlena.`
+        : "E-mail enviado com sucesso pelo LicitaPlena.";
       aviso.style.display = "block";
       botao.textContent = "E-mail enviado";
     } catch (e) {

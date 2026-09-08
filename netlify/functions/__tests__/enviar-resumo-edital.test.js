@@ -44,3 +44,10 @@ test("inclui o atalho no e-mail somente para link oficial do PNCP", () => {
   assert.match(__test.montarHtml("Resumo", oficial), /Abrir licitação no PNCP/);
   assert.doesNotMatch(__test.montarHtml("Resumo", "https://exemplo.com"), /Abrir licitação no PNCP/);
 });
+
+test("normaliza destinatários separados por vírgula ou ponto e vírgula sem repetir", () => {
+  assert.deepEqual(
+    __test.normalizarDestinatarios(" Cliente@Empresa.com;outro@empresa.com, cliente@empresa.com "),
+    ["cliente@empresa.com", "outro@empresa.com"],
+  );
+});
