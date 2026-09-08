@@ -2860,7 +2860,7 @@
       if (modo === "resumo" && dados.estrutura) {
         renderizarEstruturaIA(dados.estrutura);
         if (dados.modoDegradado) {
-          escreverMensagemIA("A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
+          escreverMensagemIA(dados.aviso || "A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
         } else if (!dados.fonteLida) {
           escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
         }

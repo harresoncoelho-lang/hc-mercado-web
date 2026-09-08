@@ -481,9 +481,33 @@ exports.handler = async (event) => {
     }
   }
 
-  // Só usa a cota de IA quando não havia um resumo reaproveitável. Antes desta
-  // ordem, abrir um resumo já salvo ainda incrementava o limite diário e podia
-  // falhar por cota mesmo sem nenhuma chamada ao provedor.
+  // Só tenta buscar o PDF na primeira chamada (resumo) — perguntas seguintes reaproveitam
+  // o texto já extraído, que o frontend manda de volta em body.textoEdital.
+  if (modo === "resumo" && !textoEdital && edital.numeroControlePNCP) {
+    const resultadoBusca = await buscarTextoEdital(edital.numeroControlePNCP);
+    if (resultadoBusca.texto) {
+      textoEdital = resultadoBusca.texto;
+      fonteLida = true;
+    } else {
+      motivoFonteNaoLida = resultadoBusca.escaneado ? "escaneado" : "indisponivel";
+    }
+  } else if (textoEdital) {
+    fonteLida = true;
+  }
+
+  // Sem texto de fonte primária, não há base para a IA completar ou "interpretar"
+  // exigências. Entregamos a ficha oficial estruturada imediatamente — sem gastar cota
+  // com uma frase genérica e sem deixar espaço em branco no modal.
+  if (modo === "resumo" && !fonteLida) {
+    const contingencia = respostaDeContingencia(edital, motivoFonteNaoLida || "indisponivel", "O documento oficial não pôde ser lido automaticamente agora. A ficha abaixo mostra os dados públicos oficiais já coletados, sem inferir requisitos do edital.");
+    contingencia.headers = headers;
+    contingencia.body = JSON.stringify(contingencia.body);
+    return contingencia;
+  }
+
+  // Só usa a cota de IA quando de fato há uma análise a executar. Antes desta
+  // ordem, uma oportunidade sem arquivo acessível ainda gastava a cota com um
+  // resumo genérico baseado nos mesmos campos que já estão na tela.
   const limite = await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
   if (!limite.ok && modo === "resumo") {
     const contingencia = respostaDeContingencia(edital, "indisponivel", limite.erro);
@@ -502,20 +526,6 @@ exports.handler = async (event) => {
       return contingencia;
     }
     return { statusCode: 500, headers, body: JSON.stringify({ erro: "GROQ_API_KEY não configurado no Netlify." }) };
-  }
-
-  // Só tenta buscar o PDF na primeira chamada (resumo) — perguntas seguintes reaproveitam
-  // o texto já extraído, que o frontend manda de volta em body.textoEdital.
-  if (modo === "resumo" && !textoEdital && edital.numeroControlePNCP) {
-    const resultadoBusca = await buscarTextoEdital(edital.numeroControlePNCP);
-    if (resultadoBusca.texto) {
-      textoEdital = resultadoBusca.texto;
-      fonteLida = true;
-    } else {
-      motivoFonteNaoLida = resultadoBusca.escaneado ? "escaneado" : "indisponivel";
-    }
-  } else if (textoEdital) {
-    fonteLida = true;
   }
 
   if (modo === "pergunta") {
