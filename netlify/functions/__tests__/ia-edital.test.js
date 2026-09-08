@@ -50,3 +50,9 @@ test("ia-edital troca automaticamente um modelo aposentado pelo modelo suportado
     global.fetch = fetchOriginal;
   }
 });
+
+test("consulta o cache antes de consumir a cota de IA", () => {
+  const fs = require("node:fs");
+  const fonte = fs.readFileSync(require.resolve("../ia-edital"), "utf8");
+  assert.ok(fonte.indexOf('storeResumos.get(edital.numeroControlePNCP') < fonte.indexOf('verificarLimiteDiario(sessao.userId, "ia-edital", 40)'));
+});

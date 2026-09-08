@@ -2471,6 +2471,48 @@
   let iaCarregando = false;
   let iaTextoEdital = null;
   let iaEstruturaAtual = null;
+  const VERSAO_CACHE_LOCAL_RESUMO = 1;
+  const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
+
+  function chaveCacheLocalResumo(edital) {
+    const identificador = edital && (edital.numeroControlePNCP || idOportunidade(edital));
+    return identificador ? `lp-resumo-edital-v${VERSAO_CACHE_LOCAL_RESUMO}:${identificador}` : "";
+  }
+
+  function lerCacheLocalResumo(edital) {
+    const chave = chaveCacheLocalResumo(edital);
+    if (!chave) return null;
+    try {
+      const registro = JSON.parse(localStorage.getItem(chave) || "null");
+      if (!registro || !registro.salvoEm || Date.now() - registro.salvoEm > VALIDADE_CACHE_LOCAL_RESUMO_MS) {
+        localStorage.removeItem(chave);
+        return null;
+      }
+      return registro;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function salvarCacheLocalResumo(edital, dados) {
+    const chave = chaveCacheLocalResumo(edital);
+    if (!chave || !dados || (!dados.estrutura && !dados.resposta)) return;
+    try {
+      // O texto integral do PDF pode ser grande; a cópia local guarda somente o
+      // resultado que a pessoa vê, enquanto o servidor preserva o texto completo.
+      localStorage.setItem(chave, JSON.stringify({
+        salvoEm: Date.now(),
+        estrutura: dados.estrutura || null,
+        resposta: dados.resposta || "",
+        fonteLida: Boolean(dados.fonteLida),
+        motivoFonteNaoLida: dados.motivoFonteNaoLida || null,
+        modoDegradado: Boolean(dados.modoDegradado),
+      }));
+    } catch (e) {
+      // Alguns navegadores podem bloquear armazenamento; o cache do servidor
+      // continua sendo a fonte persistente principal.
+    }
+  }
 
   function escreverMensagemIA(texto, classe) {
     const conversa = document.getElementById("modal-ia-conversa");
@@ -2684,6 +2726,7 @@
         escreverMensagemIA(dados.erro || "Não deu pra gerar a resposta agora.", "msg-erro");
         return;
       }
+      if (modo === "resumo") salvarCacheLocalResumo(iaEditalAtual, dados);
       if (dados.textoEdital) iaTextoEdital = dados.textoEdital;
       const mensagemFonteNaoLida = (motivo) => {
         if (motivo === "escaneado") {
@@ -3183,6 +3226,15 @@
     };
 
     document.getElementById("modal-ia-fundo").classList.add("aberto");
+    const resumoLocal = lerCacheLocalResumo(edital);
+    if (resumoLocal) {
+      if (resumoLocal.estrutura) renderizarEstruturaIA(resumoLocal.estrutura);
+      else escreverMensagemIA(resumoLocal.resposta, "");
+      iaHistorico.push({ role: "user", content: "(resumo inicial)" });
+      iaHistorico.push({ role: "assistant", content: resumoLocal.resposta || "Resumo recuperado." });
+      escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");
+      return;
+    }
     chamarIA("resumo", null);
   }
 

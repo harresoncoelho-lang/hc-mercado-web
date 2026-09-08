@@ -393,14 +393,6 @@ exports.handler = async (event) => {
 
   const sessao = await exigirUsuarioLogado(event);
   if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
-  const limite = await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
-  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
-
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    return { statusCode: 500, headers, body: JSON.stringify({ erro: "GROQ_API_KEY não configurado no Netlify." }) };
-  }
-
   let body;
   try {
     body = JSON.parse(event.body || "{}");
@@ -459,6 +451,17 @@ exports.handler = async (event) => {
     } catch (e) {
       // cache indisponível ou corrompido — segue pro fluxo normal (lê/analisa de novo)
     }
+  }
+
+  // Só usa a cota de IA quando não havia um resumo reaproveitável. Antes desta
+  // ordem, abrir um resumo já salvo ainda incrementava o limite diário e podia
+  // falhar por cota mesmo sem nenhuma chamada ao provedor.
+  const limite = await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
+  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
+
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return { statusCode: 500, headers, body: JSON.stringify({ erro: "GROQ_API_KEY não configurado no Netlify." }) };
   }
 
   // Só tenta buscar o PDF na primeira chamada (resumo) — perguntas seguintes reaproveitam
@@ -565,6 +568,25 @@ exports.handler = async (event) => {
   const r2 = await chamarGroq(apiKey, mensagens, { maxTokens: fonteLida ? 900 : 500, timeoutMs: 20000 });
   if (!r2.ok) {
     const estrutura = montarEstruturaBasica(edital, motivoFonteNaoLida);
+    // Mesmo uma ficha de contingência precisa sobreviver a uma atualização da
+    // página: ela já reúne os dados públicos e evita repetir uma tentativa que
+    // falhou por indisponibilidade temporária da IA.
+    if (modo === "resumo" && storeResumos && edital.numeroControlePNCP) {
+      try {
+        await storeResumos.setJSON(edital.numeroControlePNCP, {
+          estrutura,
+          resposta: formatarEstruturaComoTexto(estrutura),
+          textoEdital: textoEdital || null,
+          fonteLida,
+          motivoFonteNaoLida,
+          modoDegradado: true,
+          versao: VERSAO_RESUMO,
+          geradoEm: new Date().toISOString(),
+        });
+      } catch (e) {
+        // Cache é uma otimização; a ficha ainda é devolvida ao usuário atual.
+      }
+    }
     return {
       statusCode: 200,
       headers,
