@@ -2473,7 +2473,7 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 3;
+  const VERSAO_CACHE_LOCAL_RESUMO = 4;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2741,6 +2741,17 @@
     };
   }
 
+  // Versões antigas podiam guardar apenas o parágrafo de resposta. Esse formato
+  // não deve deixar o modal em branco em outro navegador: convertemos a cópia
+  // em uma ficha visual usando os mesmos dados públicos, sem chamar a IA.
+  function estruturarResumoTextualLocal(edital, resposta) {
+    const estrutura = montarEstruturaContingenciaLocal(edital);
+    const texto = String(resposta || "").trim();
+    if (texto) estrutura.resumoGeral = texto;
+    estrutura.pendenciasParaConferencia = ["Resumo recuperado do histórico. Os detalhes exibidos abaixo usam os dados públicos oficiais disponíveis."];
+    return estrutura;
+  }
+
   function exibirResumoDeContingencia(mensagem) {
     if (!iaEditalAtual) return;
     const estrutura = montarEstruturaContingenciaLocal(iaEditalAtual);
@@ -2874,8 +2885,8 @@
         }
         return "Não consegui localizar/baixar o documento desse edital agora (pode ser de um portal que não é o PNCP, ou o arquivo pode estar indisponível) — resumo baseado só nos dados já coletados.";
       };
-      if (modo === "resumo" && dados.estrutura) {
-        renderizarEstruturaIA(dados.estrutura);
+      if (modo === "resumo" && (dados.estrutura || dados.resposta)) {
+        renderizarEstruturaIA(dados.estrutura || estruturarResumoTextualLocal(iaEditalAtual, dados.resposta));
         if (dados.modoDegradado) {
           escreverMensagemIA(dados.aviso || "A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
         } else if (!dados.fonteLida) {
@@ -3433,8 +3444,7 @@
       void carregarItensDoResumoIA(edital);
       const resumoLocal = lerCacheLocalResumo(edital);
       if (resumoLocal) {
-        if (resumoLocal.estrutura) renderizarEstruturaIA(resumoLocal.estrutura);
-        else escreverMensagemIA(resumoLocal.resposta, "");
+        renderizarEstruturaIA(resumoLocal.estrutura || estruturarResumoTextualLocal(edital, resumoLocal.resposta));
         iaHistorico.push({ role: "user", content: "(resumo inicial)" });
         iaHistorico.push({ role: "assistant", content: resumoLocal.resposta || "Resumo recuperado." });
         escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");
