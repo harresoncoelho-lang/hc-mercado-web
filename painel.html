@@ -4611,10 +4611,11 @@
       tam_pagina: "50",
     });
     if (uf) paramsBase.set("ufs", uf);
-    // Sem UF pra restringir, o acervo nacional é grande demais pra paginar ao vivo — nesse
-    // caso usamos a 1ª palavra-chave como filtro no servidor (reduz bastante o volume) e
-    // ainda assim aplicamos o filtro completo (todas as palavras) no cliente logo abaixo.
-    if (!uf && palavras && palavras[0]) paramsBase.set("q", palavras[0]);
+    // Usa a primeira palavra do filtro também quando há UF. Sem isso, uma UF grande
+    // (como AM) pode ter dezenas de milhares de registros: o boletim tentava abrir até
+    // 15 páginas ao mesmo tempo, aumentava a instabilidade do PNCP e frequentemente não
+    // chegava aos editais publicados hoje que o cliente realmente procura.
+    if (palavras && palavras[0]) paramsBase.set("q", palavras[0]);
 
     function montarUrlPagina(pagina) {
       const p = new URLSearchParams(paramsBase);
@@ -4663,7 +4664,10 @@
     }
 
     async function buscarPagina(pagina) {
-      const resp = await fetchPaginaComRetry(montarUrlPagina(pagina), 15000);
+      // O proxy tem seu próprio timeout de 14 s. O navegador precisa de uma margem para
+      // a ida/volta pela Function e a inicialização eventual do Netlify; 15 s fazia o
+      // cliente cancelar uma resposta válida poucos instantes antes de ela chegar.
+      const resp = await fetchPaginaComRetry(montarUrlPagina(pagina), 24000);
       if (!resp) return null;
       const texto = await resp.text();
       if (!texto) return null;
