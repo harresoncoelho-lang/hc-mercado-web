@@ -93,10 +93,12 @@ function montarHtml(texto, linkEdital) {
   const chamadaEdital = linkPncpValido(linkEdital)
     ? `<div style="margin-top:24px;"><a href="${escapeHtml(linkEdital)}" style="display:inline-block;background:#1f75df;border-radius:7px;padding:12px 18px;color:#fff;text-decoration:none;font-weight:700;">Abrir licitação no PNCP</a><p style="margin:10px 0 0;color:#66778e;font-size:12px;">Use o portal oficial para consultar o edital, anexos e documentos do processo.</p></div>`
     : "";
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#eef3f9;font-family:Arial,sans-serif;color:#162d4c;">
+  return `<!doctype html><html><head><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><style>
+    @media (prefers-color-scheme: dark) { .lp-cabecalho { background:#082243 !important; background-image:linear-gradient(#082243,#082243) !important; } }
+  </style></head><body style="margin:0;padding:0;background:#eef3f9;font-family:Arial,sans-serif;color:#162d4c;">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#eef3f9" style="width:100%;background:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
       <table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:680px;background:#ffffff;border:1px solid #dce5f0;">
-        <tr><td bgcolor="#082243" style="padding:20px 28px;background:#082243;color:#ffffff;font-size:21px;font-weight:700;line-height:1.2;"><img src="${URL_LOGO}" alt="" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;border:0;"> <span style="vertical-align:middle;color:#ffffff;">LicitaPlena</span></td></tr>
+        <tr><td class="lp-cabecalho" bgcolor="#082243" style="padding:20px 28px;background-color:#082243;background-image:linear-gradient(#082243,#082243);color:#ffffff;font-size:21px;font-weight:700;line-height:1.2;"><img src="${URL_LOGO}" alt="" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;border:0;"> <span style="vertical-align:middle;color:#ffffff;">LicitaPlena</span></td></tr>
         <tr><td style="padding:28px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudo}${chamadaEdital}</td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;line-height:1.5;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</td></tr>
       </table>

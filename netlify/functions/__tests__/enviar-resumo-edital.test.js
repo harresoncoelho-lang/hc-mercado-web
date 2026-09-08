@@ -48,6 +48,8 @@ test("inclui o atalho no e-mail somente para link oficial do PNCP", () => {
 test("mantém uma faixa institucional azul compatível no cabeçalho", () => {
   const html = __test.montarHtml("Resumo", "");
   assert.match(html, /bgcolor="#082243"/);
+  assert.match(html, /background-image:linear-gradient\(#082243,#082243\)/);
+  assert.match(html, /name="color-scheme" content="light"/);
   assert.match(html, /logo\.png\?v=20260908/);
   assert.match(html, /LicitaPlena/);
 });
