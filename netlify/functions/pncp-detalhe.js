@@ -35,6 +35,8 @@ exports.handler = async (event) => {
     const detalhe = {
       modalidadeNome: dados.modalidadeNome || null,
       tipoInstrumentoConvocatorioNome: dados.tipoInstrumentoConvocatorioNome || null,
+      criterioJulgamento: dados.criterioJulgamentoCompraNome || dados.criterioJulgamentoNome || dados.criterioJulgamento || null,
+      regimeExecucao: dados.regimeExecucaoNome || dados.regimeExecucao || null,
       amparoLegal: dados.amparoLegal && (dados.amparoLegal.nome || dados.amparoLegal.descricao) || null,
       modoDisputaNome: dados.modoDisputaNome || null,
       srp: typeof dados.srp === "boolean" ? dados.srp : null,
@@ -48,6 +50,7 @@ exports.handler = async (event) => {
       codigoUnidade: dados.unidadeOrgao && dados.unidadeOrgao.codigoUnidade || null,
       esferaId: dados.orgaoEntidade && dados.orgaoEntidade.esferaId || null,
       encerramento: dados.dataEncerramentoProposta || null,
+      inicioRecebimento: dados.dataAberturaProposta || dados.dataInicioRecebimentoProposta || null,
       publicacao: dados.dataPublicacaoPncp || null,
     };
     return { statusCode: 200, headers, body: JSON.stringify({ erro: null, detalhe }) };

@@ -30,7 +30,7 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
 const MAX_CARACTERES_TEXTO = 12000;
-const VERSAO_RESUMO = 2;
+const VERSAO_RESUMO = 3;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
@@ -45,7 +45,10 @@ function montarFichaEdital(edital) {
     ["Município/UF", [edital.municipio, edital.uf].filter(Boolean).join(" / ")],
     ["Fonte", edital.fonte || "PNCP"],
     ["Nº do processo / controle", edital.numeroControlePNCP || edital.numero],
+    ["Modalidade oficial", edital.modalidade],
+    ["Modo de disputa oficial", edital.modoDisputa],
     ["Publicado em", edital.publicacao],
+    ["Início do recebimento de propostas", edital.inicioRecebimento],
     ["Prazo final de propostas", edital.encerramento],
     ["Valor estimado", edital.valor],
   ];
@@ -238,6 +241,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
 
 const REGRAS_BASE = `Você é um analista de licitações experiente que ajuda pequenas e médias empresas brasileiras a entender oportunidades de licitação pública, dentro da ferramenta HC Licitações.
 - Nunca invente exigência, documento, cláusula, penalidade, prazo ou valor que não esteja explicitamente nos dados fornecidos. Quando uma informação não estiver disponível, use exatamente o texto "Não informado".
+- Os campos marcados como oficiais nos dados conhecidos têm precedência sobre qualquer frase do PDF. Não chame critério de julgamento, tipo de análise, regime de execução ou forma de preço de "modalidade". Preserve a modalidade oficial exatamente como recebida.
 - Responda sempre em português do Brasil, direto e em linguagem simples.
 - Quando tiver o texto completo do edital, seja EXAUSTIVO: extraia o máximo de informação possível de cada campo, com detalhes concretos (números, prazos, valores, percentuais, nomes) em vez de generalidades. Não resuma demais — o usuário quer análise completa, não um resumo curto.`;
 

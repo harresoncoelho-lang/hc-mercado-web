@@ -38,12 +38,16 @@ test("pncp-detalhe normaliza os campos completos retornados pelo PNCP", async ()
     json: async () => ({
       modalidadeNome: "Pregão - Presencial",
       modoDisputaNome: "Aberto",
+      criterioJulgamentoCompraNome: "Menor preço por item",
+      regimeExecucaoNome: "Empreitada por preço unitário",
       amparoLegal: { nome: "Lei 14.133/2021, Art. 28, I" },
       srp: true,
       valorTotalEstimado: 397682.37,
       numeroCompra: "41",
       anoCompra: 2026,
       processo: "41",
+      dataAberturaProposta: "2026-09-08T11:25:00",
+      dataPublicacaoPncp: "2026-09-08T10:36:00",
       unidadeOrgao: { codigoUnidade: "926235" },
       orgaoEntidade: { esferaId: "F" },
       fontesOrcamentarias: [],
@@ -55,8 +59,12 @@ test("pncp-detalhe normaliza os campos completos retornados pelo PNCP", async ()
     assert.equal(resposta.statusCode, 200);
     assert.equal(corpo.detalhe.srp, true);
     assert.equal(corpo.detalhe.modoDisputaNome, "Aberto");
+    assert.equal(corpo.detalhe.criterioJulgamento, "Menor preço por item");
+    assert.equal(corpo.detalhe.regimeExecucao, "Empreitada por preço unitário");
     assert.equal(corpo.detalhe.amparoLegal, "Lei 14.133/2021, Art. 28, I");
     assert.equal(corpo.detalhe.valorTotalEstimado, 397682.37);
+    assert.equal(corpo.detalhe.inicioRecebimento, "2026-09-08T11:25:00");
+    assert.equal(corpo.detalhe.publicacao, "2026-09-08T10:36:00");
     assert.equal(corpo.detalhe.fonteOrcamentaria, null);
   } finally {
     global.fetch = fetchOriginal;

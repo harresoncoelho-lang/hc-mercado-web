@@ -63,11 +63,14 @@ test("organiza o e-mail por seções quando recebe o resumo estruturado", () => 
     orgao: { nome: "Órgão teste" },
     documentosHabilitacao: ["Certidão negativa"],
     itensPncp: [{ descricao: "Papel A4", quantidade: 10, unidade: "caixas" }],
-  }, { objeto: "Materiais" });
+  }, { objeto: "Materiais", modalidade: "Pregão Eletrônico", publicacao: "2026-09-08T10:36:00" });
   assert.match(html, /Identificação da licitação/);
   assert.match(html, /Documentos de habilitação/);
   assert.match(html, /Itens da oportunidade \(1\)/);
   assert.match(html, /Papel A4/);
+  assert.match(html, /Pregão Eletrônico/);
+  assert.match(html, /Dados oficiais da publicação/);
+  assert.match(html, /08\/09\/2026 às 10:36/);
   assert.doesNotMatch(html, />Resumo simples</);
 });
 

@@ -2473,7 +2473,7 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 1;
+  const VERSAO_CACHE_LOCAL_RESUMO = 2;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2527,10 +2527,11 @@
   }
 
   const RÓTULOS_ESTRUTURA_IA = {
+    dadosOficiais: { titulo: "<svg class='icone-ph'><use href='#ph-seal-check'></use></svg> Dados Oficiais do PNCP", campos: { publicacao: "Publicado em", inicioRecebimento: "Início do recebimento de propostas", prazoFinal: "Prazo final de propostas", modalidade: "Modalidade", modoDisputa: "Modo de disputa", criterioJulgamento: "Critério de julgamento", regimeExecucao: "Regime de execução" } },
     identificacao: { titulo: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Identificação da Licitação", campos: { numero: "Número", uasg: "UASG", contratacao: "Contratação", modalidade: "Modalidade", portalRealizacao: "Portal de realização", regulamentacao: "Regulamentação" } },
     sessaoPublica: { titulo: "<svg class='icone-ph'><use href='#ph-calendar'></use></svg> Sessão Pública", campos: { data: "Data", horario: "Horário", modoDisputa: "Modo de disputa", intervaloMinimo: "Intervalo mínimo" } },
     orgao: { titulo: "<svg class='icone-ph'><use href='#ph-bank'></use></svg> Órgão Responsável", campos: { nome: "Órgão", email: "E-mail", endereco: "Endereço", telefone: "Telefone" } },
-    detalhes: { titulo: "<svg class='icone-ph'><use href='#ph-briefcase'></use></svg> Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade", provaConceito: "Exigência de prova de conceito" } },
+    detalhes: { titulo: "<svg class='icone-ph'><use href='#ph-briefcase'></use></svg> Detalhes da Licitação", campos: { valorEstimado: "Valor estimado", prazoEntrega: "Prazo de entrega", margemPreferencia: "Margem de preferência", exigeVisitaTecnica: "Exige visita técnica", exigeAmostra: "Exige amostra", garantia: "Garantia", criterioJulgamento: "Critério de julgamento", regimeExecucao: "Regime de execução", preferenciaMeEpp: "Preferência ME/EPP", restricoesRegionalidade: "Restrições de regionalidade", provaConceito: "Exigência de prova de conceito" } },
     garantias: { titulo: "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Seguro e Garantias", campos: { proposta: "Garantia de proposta", contrato: "Garantia de contrato", adicional: "Garantia adicional", retomada: "Garantia de retomada" } },
     entregaExecucao: { titulo: "<svg class='icone-ph'><use href='#ph-package'></use></svg> Entrega e Execução", campos: { prazo: "Prazo", local: "Local de entrega/execução", condicoes: "Condições de execução" } },
     prazos: { titulo: "<svg class='icone-ph'><use href='#ph-alarm'></use></svg> Prazos Importantes", campos: { limiteEnvioPropostas: "Limite p/ envio de propostas", prazoDocumentoComplementar: "Documento complementar", prazoDocumentoOriginal: "Documento original", prazoRecurso: "Prazo p/ recurso", prazoContrarrazoes: "Prazo p/ contrarrazões", limiteEsclarecimentos: "Limite p/ esclarecimentos", limiteImpugnacao: "Limite p/ impugnação", vigenciaContrato: "Vigência do contrato" } },
@@ -2556,7 +2557,7 @@
     if (cartoes.length === 0) { alvo.style.display = "none"; return; }
     alvo.style.display = "grid";
     alvo.innerHTML = cartoes.map(([rotulo, v]) => `
-      <div class="modal-ia-cartao-topo"><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(v)}</dd></div>
+      <div class="modal-ia-cartao-topo"><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(formatarDataHoraIA(v))}</dd></div>
     `).join("");
   }
 
@@ -2592,6 +2593,14 @@
     const textoPrincipal = valor.titulo || valor.pergunta || valor.texto || valor.descricao || valor.item || valor.conteudo || valor.motivo;
     if (textoPrincipal) return String(textoPrincipal).trim();
     return Object.values(valor).filter((v) => typeof v === "string" || typeof v === "number").join(" — ").trim();
+  }
+
+  function formatarDataHoraIA(valor) {
+    const texto = textoIA(valor);
+    const partes = texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::\d{2})?)?$/);
+    if (!partes) return texto;
+    const [, ano, mes, dia, hora, minuto] = partes;
+    return hora && minuto ? `${dia}/${mes}/${ano} às ${hora}:${minuto}` : `${dia}/${mes}/${ano}`;
   }
 
   function adicionarSecaoTextoIA(wrap, titulo, valor, padrao) {
@@ -2652,9 +2661,38 @@
     if (lista.children.length) wrap.appendChild(secao);
   }
 
+  // As informações de modalidade, publicação, recebimento e disputa vêm do
+  // detalhe estruturado do PNCP. Elas não podem ser substituídas por texto da
+  // IA, por uma leitura ambígua do PDF ou por um cache criado antes da consulta.
+  function aplicarDadosOficiaisNaEstruturaIA(est, edital) {
+    const estrutura = { ...(est || {}) };
+    const oficial = {
+      publicacao: edital && edital.publicacao,
+      inicioRecebimento: edital && edital.inicioRecebimento,
+      prazoFinal: edital && edital.encerramento,
+      modalidade: edital && edital.modalidade,
+      modoDisputa: edital && edital.modoDisputa,
+      criterioJulgamento: edital && edital.criterioJulgamento,
+      regimeExecucao: edital && edital.regimeExecucao,
+    };
+    estrutura.dadosOficiais = oficial;
+    estrutura.identificacao = { ...(estrutura.identificacao || {}) };
+    estrutura.sessaoPublica = { ...(estrutura.sessaoPublica || {}) };
+    if (oficial.modalidade) estrutura.identificacao.modalidade = oficial.modalidade;
+    if (oficial.modoDisputa) estrutura.sessaoPublica.modoDisputa = oficial.modoDisputa;
+    estrutura.detalhes = { ...(estrutura.detalhes || {}) };
+    if (oficial.criterioJulgamento) estrutura.detalhes.criterioJulgamento = oficial.criterioJulgamento;
+    if (oficial.regimeExecucao) estrutura.detalhes.regimeExecucao = oficial.regimeExecucao;
+    if (oficial.prazoFinal) {
+      estrutura.prazos = { ...(estrutura.prazos || {}), limiteEnvioPropostas: oficial.prazoFinal };
+    }
+    return estrutura;
+  }
+
   function renderizarEstruturaIA(est) {
-    iaEstruturaAtual = { ...est, itensPncp: iaItensPncpAtual || est.itensPncp || [] };
-    renderizarCartoesTopoIA(est);
+    const estruturaComFonte = aplicarDadosOficiaisNaEstruturaIA(est, iaEditalAtual);
+    iaEstruturaAtual = { ...estruturaComFonte, itensPncp: iaItensPncpAtual || estruturaComFonte.itensPncp || [] };
+    renderizarCartoesTopoIA(iaEstruturaAtual);
     const conversa = document.getElementById("modal-ia-conversa");
     const wrap = document.createElement("div");
     wrap.className = "msg-ia";
@@ -2672,7 +2710,7 @@
       const def = RÓTULOS_ESTRUTURA_IA[chave];
       const linhas = Object.keys(def.campos)
         .map((campo) => [def.campos[campo], secaoDados[campo]])
-        .map(([rotulo, v]) => [rotulo, textoIA(v)])
+        .map(([rotulo, v]) => [rotulo, /data|publicado|prazo|recebimento/i.test(rotulo) ? formatarDataHoraIA(v) : textoIA(v)])
         .filter(([, v]) => v && !/^n[ãa]o informado$/i.test(v));
       if (linhas.length === 0) continue;
       const secao = criarSecaoIA(def.titulo);
@@ -3181,6 +3219,8 @@
       `Órgão: ${edital.orgao || "Não informado"}`,
       `Local: ${[edital.municipio, edital.uf].filter(Boolean).join("/") || "Não informado"}`,
       `Nº controle PNCP: ${edital.numeroControlePNCP || "Não informado"}`,
+      `Publicado em: ${formatarPrazoPropostas(edital.publicacao) || "Não informado"}`,
+      `Início do recebimento de propostas: ${formatarPrazoPropostas(edital.inicioRecebimento) || "Não informado"}`,
       `Prazo de propostas: ${formatarPrazoPropostas(edital.encerramento) || "Não informado"}`,
     ];
     const valorUtil = (valor) => {
@@ -3203,7 +3243,8 @@
       const horarioSessao = valorUtil(est.sessaoPublica && est.sessaoPublica.horario);
       if (dataSessao || horarioSessao) adicionar("Data e horário da sessão", [dataSessao, horarioSessao].filter(Boolean).join(" às "));
       adicionar("Valor estimado", est.detalhes && est.detalhes.valorEstimado);
-      adicionar("Critério de julgamento", est.detalhes && est.detalhes.criterioJulgamento);
+      adicionar("Critério de julgamento", edital.criterioJulgamento || est.detalhes && est.detalhes.criterioJulgamento);
+      adicionar("Regime de execução", edital.regimeExecucao || est.detalhes && est.detalhes.regimeExecucao);
       adicionar("Modo de disputa", est.sessaoPublica && est.sessaoPublica.modoDisputa);
       adicionar("Prazo de entrega", est.detalhes && est.detalhes.prazoEntrega);
       adicionar("Condições de execução", est.entregaExecucao && est.entregaExecucao.condicoes);
@@ -3299,17 +3340,22 @@
     };
 
     document.getElementById("modal-ia-fundo").classList.add("aberto");
-    void carregarItensDoResumoIA(edital);
-    const resumoLocal = lerCacheLocalResumo(edital);
-    if (resumoLocal) {
-      if (resumoLocal.estrutura) renderizarEstruturaIA(resumoLocal.estrutura);
-      else escreverMensagemIA(resumoLocal.resposta, "");
-      iaHistorico.push({ role: "user", content: "(resumo inicial)" });
-      iaHistorico.push({ role: "assistant", content: resumoLocal.resposta || "Resumo recuperado." });
-      escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");
-      return;
-    }
-    chamarIA("resumo", null);
+    (async () => {
+      // O resumo só é montado depois da leitura do detalhe oficial. Assim, campos
+      // como modalidade e data de publicação não dependem do card resumido.
+      await enriquecerEditalComDetalhePncp(edital);
+      void carregarItensDoResumoIA(edital);
+      const resumoLocal = lerCacheLocalResumo(edital);
+      if (resumoLocal) {
+        if (resumoLocal.estrutura) renderizarEstruturaIA(resumoLocal.estrutura);
+        else escreverMensagemIA(resumoLocal.resposta, "");
+        iaHistorico.push({ role: "user", content: "(resumo inicial)" });
+        iaHistorico.push({ role: "assistant", content: resumoLocal.resposta || "Resumo recuperado." });
+        escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");
+        return;
+      }
+      chamarIA("resumo", null);
+    })();
   }
 
   document.getElementById("modal-ia-fechar").addEventListener("click", () => {
@@ -3340,8 +3386,13 @@
       uf: iaEditalAtual.uf,
       numeroControlePNCP: iaEditalAtual.numeroControlePNCP,
       modalidade: iaEditalAtual.modalidade,
+      modoDisputa: iaEditalAtual.modoDisputa,
+      criterioJulgamento: iaEditalAtual.criterioJulgamento,
+      regimeExecucao: iaEditalAtual.regimeExecucao,
       valor: iaEditalAtual.valor,
       encerramento: iaEditalAtual.encerramento,
+      inicioRecebimento: iaEditalAtual.inicioRecebimento,
+      publicacao: iaEditalAtual.publicacao,
     } : null;
     aviso.style.display = "none";
     botao.disabled = true;
@@ -3592,6 +3643,14 @@
   // pra "Data fim de recebimento de propostas": "05/08/2026 00:59 (horário de Brasília)".
   function formatarPrazoPropostas(iso) {
     if (!iso) return "Não informado";
+    // Datas do PNCP sem fuso (ou somente YYYY-MM-DD) representam o horário
+    // informado pela fonte. Converter com Date nesse caso pode retroceder um dia
+    // no Amazonas/Brasília; por isso formatamos os componentes literalmente.
+    const partes = String(iso).trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/);
+    if (partes) {
+      const [, ano, mes, dia, hora, minuto] = partes;
+      return hora && minuto ? `${dia}/${mes}/${ano} ${hora}:${minuto} (horário de Brasília)` : `${dia}/${mes}/${ano}`;
+    }
     const d = new Date(iso);
     if (isNaN(d.getTime())) return String(iso);
     const dia = String(d.getDate()).padStart(2, "0");
@@ -4203,7 +4262,7 @@
   // vivo não tem com o que o robô já coletou, mantendo os campos "frescos" (encerramento,
   // publicação) da busca ao vivo.
   const CAMPOS_DETALHE_PNCP = [
-    "amparoLegal", "modoDisputaNome", "srp", "fonteOrcamentaria", "situacaoCompraNome",
+    "amparoLegal", "modoDisputaNome", "criterioJulgamento", "regimeExecucao", "srp", "fonteOrcamentaria", "situacaoCompraNome",
     "valorTotalEstimado", "valorTotalHomologado", "numeroCompra", "anoCompra", "processo",
     "tipoInstrumentoConvocatorioNome", "codigoUnidade", "esferaId",
   ];
@@ -4765,22 +4824,41 @@
     });
   }
 
+  async function enriquecerEditalComDetalhePncp(edital) {
+    if (!edital || !edital.numeroControlePNCP) return edital;
+    const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
+    if (!partes) return edital;
+    try {
+      const resp = await fetch(`/.netlify/functions/pncp-detalhe?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      if (!resp.ok) return edital;
+      const dados = await resp.json();
+      const detalhe = dados && dados.detalhe;
+      if (!detalhe) return edital;
+      Object.entries(detalhe).forEach(([campo, valor]) => {
+        if (valor !== null && valor !== undefined && valor !== "") edital[campo] = valor;
+      });
+      // O endpoint detalhado do PNCP é a referência para estes cinco campos.
+      if (detalhe.modalidadeNome) edital.modalidade = detalhe.modalidadeNome;
+      if (detalhe.modoDisputaNome) edital.modoDisputa = detalhe.modoDisputaNome;
+      if (detalhe.criterioJulgamento) edital.criterioJulgamento = detalhe.criterioJulgamento;
+      if (detalhe.regimeExecucao) edital.regimeExecucao = detalhe.regimeExecucao;
+      if (detalhe.publicacao) edital.publicacao = detalhe.publicacao;
+      if (detalhe.inicioRecebimento) edital.inicioRecebimento = detalhe.inicioRecebimento;
+      if (detalhe.encerramento) edital.encerramento = detalhe.encerramento;
+    } catch (e) {
+      // Mantém os dados que já estavam na listagem se o PNCP estiver indisponível.
+    }
+    return edital;
+  }
+
   async function enriquecerCardComDetalhePncp(card, resultados) {
     if (card.dataset.detalhePncpCarregado === "1" || card.dataset.detalhePncpCarregando === "1") return;
     const indice = Number(card.dataset.idx);
     const edital = resultados[indice];
     if (!oportunidadePrecisaDetalhePncp(edital)) return;
-    const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
-    if (!partes) return;
     card.dataset.detalhePncpCarregando = "1";
     try {
-      const resp = await fetch(`/.netlify/functions/pncp-detalhe?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
-      if (!resp.ok) return;
-      const dados = await resp.json();
-      if (!dados || !dados.detalhe) return;
-      Object.entries(dados.detalhe).forEach(([campo, valor]) => {
-        if (valor !== null && valor !== undefined) edital[campo] = valor;
-      });
+      await enriquecerEditalComDetalhePncp(edital);
       aplicarDetalhePncpNoCard(card, edital);
       card.dataset.detalhePncpCarregado = "1";
     } catch (e) {
