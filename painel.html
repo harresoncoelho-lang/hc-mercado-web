@@ -2845,7 +2845,7 @@
     }
   }
 
-  async function chamarIA(modo, pergunta) {
+  async function chamarIA(modo, pergunta, opcoes = {}) {
     if (iaCarregando) return;
     iaCarregando = true;
     const mensagemEspera = modo === "resumo" ? "Lendo o edital e gerando o resumo... (pode levar alguns segundos)" : "Pensando...";
@@ -2855,7 +2855,7 @@
       const resp = await fetch("/.netlify/functions/ia-edital", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico, textoEdital: iaTextoEdital }),
+        body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
       });
       let dados;
       try {
@@ -3444,7 +3444,12 @@
       void carregarItensDoResumoIA(edital);
       const resumoLocal = lerCacheLocalResumo(edital);
       if (resumoLocal) {
-        renderizarEstruturaIA(resumoLocal.estrutura || estruturarResumoTextualLocal(edital, resumoLocal.resposta));
+        if (!resumoLocal.estrutura) {
+          escreverMensagemIA("Atualizando o resumo completo a partir da fonte oficial...", "msg-carregando");
+          chamarIA("resumo", null, { reprocessarEstrutura: true });
+          return;
+        }
+        renderizarEstruturaIA(resumoLocal.estrutura);
         iaHistorico.push({ role: "user", content: "(resumo inicial)" });
         iaHistorico.push({ role: "assistant", content: resumoLocal.resposta || "Resumo recuperado." });
         escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");

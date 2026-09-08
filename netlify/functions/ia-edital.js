@@ -488,7 +488,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ erro: "Corpo inválido." }) };
   }
 
-  const { modo, edital, pergunta, historico } = body;
+  const { modo, edital, pergunta, historico, reprocessarEstrutura } = body;
   let { textoEdital } = body;
   if (!edital || typeof edital !== "object") {
     return { statusCode: 400, headers, body: JSON.stringify({ erro: "Informe os dados do edital." }) };
@@ -522,7 +522,13 @@ exports.handler = async (event) => {
       // cache da versão atual; assim uma evolução do dossiê chega para todos sem exigir
       // que cada pessoa descubra como limpar dados do navegador.
       const cacheAindaValido = !cache || !cache.expiraEm || new Date(cache.expiraEm).getTime() > Date.now();
-      if (cache && cacheAindaValido && cache.versao === VERSAO_RESUMO && (cache.estrutura || cache.resposta)) {
+      // Um resumo antigo em texto corrido é útil como contingência, mas não deve
+      // impedir que outro navegador recupere o dossiê estruturado. Quando o
+      // cliente pede a atualização, reaproveitamos apenas uma estrutura completa;
+      // caso contrário, lemos a fonte novamente e substituímos o cache incompleto.
+      const cachePodeResponder = cache && cacheAindaValido && cache.versao === VERSAO_RESUMO &&
+        (cache.estrutura || (cache.resposta && !reprocessarEstrutura));
+      if (cachePodeResponder) {
         return {
           statusCode: 200,
           headers,
