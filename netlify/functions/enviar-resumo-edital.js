@@ -133,8 +133,7 @@ function montarConteudoEstruturado(resumo, edital) {
   const orgao = resumo.orgao || {};
   const detalhes = resumo.detalhes || {};
   const uasg = /^\d{5,6}$/.test(String(identificacao.uasg || "").trim()) ? identificacao.uasg : "";
-  const temDadosOperacionaisDoPortal = Boolean(detalhes.tipoAnalise || detalhes.regimeExecucao || resumo.criteriosProposta && resumo.criteriosProposta.propostasLancesPor);
-  const criterioJulgamento = detalhes.criterioJulgamento || (!temDadosOperacionaisDoPortal ? edital?.criterioJulgamento : "");
+  const criterioJulgamento = detalhes.criterioJulgamento || "";
   const itensPncp = Array.isArray(resumo.itensPncp) ? resumo.itensPncp : [];
   const cards = [
     ["Modalidade", edital?.modalidade || identificacao.modalidade],

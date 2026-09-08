@@ -2473,7 +2473,7 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 4;
+  const VERSAO_CACHE_LOCAL_RESUMO = 5;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2674,7 +2674,7 @@
       prazoFinal: edital && edital.encerramento,
       modalidade: edital && edital.modalidade,
       modoDisputa: edital && edital.modoDisputa,
-      criterioJulgamento: edital && edital.criterioJulgamento,
+      criterioJulgamento: "",
       regimeExecucao: edital && edital.regimeExecucao,
       uasg: uasgOficial,
     };
@@ -2686,20 +2686,14 @@
     else delete estrutura.identificacao.uasg;
     if (oficial.modoDisputa) estrutura.sessaoPublica.modoDisputa = oficial.modoDisputa;
     estrutura.detalhes = { ...(estrutura.detalhes || {}) };
-    const temDadosOperacionaisDoPortal = Boolean(
-      estrutura.detalhes.tipoAnalise ||
-      estrutura.detalhes.regimeExecucao ||
-      estrutura.criteriosProposta && estrutura.criteriosProposta.propostasLancesPor
-    );
-    // Em portais que separam análise, lances e regime, só mostramos critério se
-    // ele vier explicitamente identificado. Não convertemos "preço global" do
-    // regime de execução em "critério de julgamento".
-    if (oficial.criterioJulgamento && !temDadosOperacionaisDoPortal) estrutura.detalhes.criterioJulgamento = oficial.criterioJulgamento;
     if (oficial.regimeExecucao) estrutura.detalhes.regimeExecucao = oficial.regimeExecucao;
     if (oficial.prazoFinal) {
       estrutura.prazos = { ...(estrutura.prazos || {}), limiteEnvioPropostas: oficial.prazoFinal };
     }
-    if (temDadosOperacionaisDoPortal && !estrutura.detalhes.criterioJulgamento) delete estrutura.dadosOficiais.criterioJulgamento;
+    // O PNCP não é usado como atalho para preencher critério de julgamento:
+    // o campo só é exibido quando o próprio documento/portal o nomeia assim.
+    // Isso impede que regime por preço global vire, por inferência, critério.
+    delete estrutura.dadosOficiais.criterioJulgamento;
     return estrutura;
   }
 
@@ -2732,7 +2726,7 @@
       },
       sessaoPublica: { data: prazo, horario: naoInformado, modoDisputa: edital && edital.modoDisputa || naoInformado },
       orgao: { nome: edital && edital.orgao || naoInformado, endereco: local },
-      detalhes: { valorEstimado: edital && edital.valor || naoInformado, criterioJulgamento: edital && edital.criterioJulgamento || naoInformado, tipoAnalise: naoInformado, regimeExecucao: edital && edital.regimeExecucao || naoInformado },
+      detalhes: { valorEstimado: edital && edital.valor || naoInformado, tipoAnalise: naoInformado, regimeExecucao: edital && edital.regimeExecucao || naoInformado },
       prazos: { limiteEnvioPropostas: prazo },
       itens: { descricaoGeral: edital && edital.objeto || naoInformado },
       documentosHabilitacao: [], declaracoesExigidas: [],
@@ -3334,11 +3328,7 @@
       const horarioSessao = valorUtil(est.sessaoPublica && est.sessaoPublica.horario);
       if (dataSessao || horarioSessao) adicionar("Data e horário da sessão", [dataSessao, horarioSessao].filter(Boolean).join(" às "));
       adicionar("Valor estimado", est.detalhes && est.detalhes.valorEstimado);
-      const temDadosOperacionaisDoPortal = Boolean(
-        est.detalhes && (est.detalhes.tipoAnalise || est.detalhes.regimeExecucao) ||
-        est.criteriosProposta && est.criteriosProposta.propostasLancesPor
-      );
-      adicionar("Critério de julgamento", est.detalhes && est.detalhes.criterioJulgamento || (!temDadosOperacionaisDoPortal ? edital.criterioJulgamento : ""));
+      adicionar("Critério de julgamento", est.detalhes && est.detalhes.criterioJulgamento);
       adicionar("Tipo de análise", est.detalhes && est.detalhes.tipoAnalise);
       adicionar("Propostas/lances por", est.criteriosProposta && est.criteriosProposta.propostasLancesPor);
       adicionar("Regime de execução", est.detalhes && est.detalhes.regimeExecucao || edital.regimeExecucao);
