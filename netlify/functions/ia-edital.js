@@ -36,7 +36,7 @@ const MAX_CARACTERES_TEXTO = 12000;
 const MAX_DOCUMENTOS_PARA_LEITURA = 2;
 const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
-const VERSAO_RESUMO = 6;
+const VERSAO_RESUMO = 5;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
@@ -52,9 +52,10 @@ function montarFichaEdital(edital) {
     ["Município/UF", [edital.municipio, edital.uf].filter(Boolean).join(" / ")],
     ["Fonte", edital.fonte || "PNCP"],
     ["Nº do processo / controle", edital.numeroControlePNCP || edital.numero],
-    ["Modalidade oficial", edital.modalidade],
-    ["Modo de disputa oficial", edital.modoDisputa],
-    ["Regime de execução oficial", edital.regimeExecucao],
+  ["Modalidade oficial", edital.modalidade],
+  ["Modo de disputa oficial", edital.modoDisputa],
+  ["Critério de julgamento oficial", edital.criterioJulgamento],
+  ["Regime de execução oficial", edital.regimeExecucao],
     ["Publicado em", edital.publicacao],
     ["Início do recebimento de propostas", edital.inicioRecebimento],
     ["Prazo final de propostas", edital.encerramento],
@@ -408,7 +409,7 @@ function montarEstruturaBasica(edital, motivoFonteNaoLida) {
     },
     sessaoPublica: { data: prazo, horario: naoInformado, modoDisputa: edital.modoDisputa || naoInformado, intervaloMinimo: naoInformado },
     orgao: { nome: edital.orgao || naoInformado, email: naoInformado, endereco: local, telefone: naoInformado },
-    detalhes: { valorEstimado: edital.valor || naoInformado, prazoEntrega: naoInformado, margemPreferencia: naoInformado, exigeVisitaTecnica: naoInformado, exigeAmostra: naoInformado, garantia: naoInformado, tipoAnalise: naoInformado, regimeExecucao: edital.regimeExecucao || naoInformado, preferenciaMeEpp: naoInformado, restricoesRegionalidade: naoInformado, provaConceito: naoInformado },
+    detalhes: { valorEstimado: edital.valor || naoInformado, prazoEntrega: naoInformado, margemPreferencia: naoInformado, exigeVisitaTecnica: naoInformado, exigeAmostra: naoInformado, garantia: naoInformado, criterioJulgamento: edital.criterioJulgamento || naoInformado, tipoAnalise: naoInformado, regimeExecucao: edital.regimeExecucao || naoInformado, preferenciaMeEpp: naoInformado, restricoesRegionalidade: naoInformado, provaConceito: naoInformado },
     garantias: { proposta: naoInformado, contrato: naoInformado, adicional: naoInformado, retomada: naoInformado },
     entregaExecucao: { prazo: naoInformado, local: naoInformado, condicoes: naoInformado },
     prazos: { limiteEnvioPropostas: prazo, prazoDocumentoComplementar: naoInformado, prazoDocumentoOriginal: naoInformado, prazoRecurso: naoInformado, prazoContrarrazoes: naoInformado, limiteEsclarecimentos: naoInformado, limiteImpugnacao: naoInformado, vigenciaContrato: naoInformado },
