@@ -33,7 +33,9 @@ exports.handler = async (event) => {
 
   try {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 14000);
+    // A busca do PNCP costuma responder pouco depois dos 14 s em horários de pico.
+    // Encerrar antes disso fazia o Boletim cair no cache mesmo com a API ainda ativa.
+    const t = setTimeout(() => ctrl.abort(), 15000);
     const resp = await fetch(destino.toString(), {
       headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
       signal: ctrl.signal,

@@ -4664,10 +4664,10 @@
     }
 
     async function buscarPagina(pagina) {
-      // O proxy tem seu próprio timeout de 14 s. O navegador precisa de uma margem para
-      // a ida/volta pela Function e a inicialização eventual do Netlify; 15 s fazia o
-      // cliente cancelar uma resposta válida poucos instantes antes de ela chegar.
-      const resp = await fetchPaginaComRetry(montarUrlPagina(pagina), 24000);
+      // O proxy aguarda até 15 s pelo PNCP. Dá margem para a ida/volta pela Function e
+      // uma inicialização eventual do Netlify, sem o navegador cancelar uma resposta
+      // válida pouco antes de ela chegar.
+      const resp = await fetchPaginaComRetry(montarUrlPagina(pagina), 30000);
       if (!resp) return null;
       const texto = await resp.text();
       if (!texto) return null;
