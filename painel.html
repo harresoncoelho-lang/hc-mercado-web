@@ -1935,14 +1935,20 @@
     function atualizarResumo() {
       if (!resumo) return;
       const partes = [];
-      const ufs = ufsDoSelect(document.getElementById("op-uf"));
+      // Este bloco é executado antes do script que declara os helpers dos selects de
+      // UF. Ler as opções nativamente aqui evita uma corrida de inicialização que
+      // quebrava todo o resumo de filtros ao carregar a página.
+      const selectUf = document.getElementById("op-uf");
+      const ufs = selectUf
+        ? Array.from(selectUf.selectedOptions).map((opcao) => opcao.value.trim().toUpperCase()).filter(Boolean)
+        : [];
       const municipio = document.getElementById("op-municipio").value;
       const palavras = document.getElementById("op-palavras").value.trim();
       const dataDe = document.getElementById("op-data-de").value;
       const dataAte = document.getElementById("op-data-ate").value;
       if (palavras) partes.push(palavras);
       if (municipio) partes.push(municipio);
-      else if (ufs.length) partes.push(textoUfs(ufs));
+      else if (ufs.length) partes.push(ufs.join(", "));
       if (dataDe || dataAte) partes.push(`${dataDe || "início"} a ${dataAte || "hoje"}`);
       resumo.textContent = partes.length ? partes.join(" · ") : "Nenhum filtro preenchido";
       resumo.title = resumo.textContent;
@@ -2390,8 +2396,11 @@
   // ---- Status das Ferramentas: mostra atualização E cobertura de cada fonte ----
   const FONTES_STATUS = [
     { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
-    { arquivo: "data/contratos_meta.json", nome: "Contratos assinados (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg>" },
-    { arquivo: "data/mercado_meta.json", nome: "Inteligência de Mercado", icone: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>" },
+    // Contratos e atas agora moram no Supabase. Consultar o último registro direto
+    // dali impede que este painel acuse um metadado estático antigo como se a coleta
+    // inteira estivesse parada.
+    { tabelaSupabase: "contratos", nome: "Contratos assinados (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg>" },
+    { tabelaSupabase: "mercado_atas", nome: "Inteligência de Mercado", icone: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>" },
     // "Licitações federais (Portal da Transparência)" existiu até 05/08/2026, quando o
     // commit f5b6299 ("Redesenha Portal da Transparência...") aposentou de propósito
     // scripts/coletar_transparencia.js (e seu workflow) em favor do radar de convênios/
@@ -2428,6 +2437,17 @@
           const dados = await carregarBlobSupabase(fonte.supabase);
           if (!dados) return { ...fonte, ok: false };
           return { ...fonte, ok: true, atualizadoEm: dados.atualizadoEm || null };
+        }
+        if (fonte.tabelaSupabase) {
+          await aguardarSupabaseAutenticado();
+          const { data, error } = await window.__sbClient
+            .from(fonte.tabelaSupabase)
+            .select("atualizado_em")
+            .order("atualizado_em", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (error || !data) return { ...fonte, ok: false };
+          return { ...fonte, ok: true, atualizadoEm: data.atualizado_em || null };
         }
         const resp = await fetch(fonte.arquivo);
         if (!resp.ok) return { ...fonte, ok: false };
@@ -4720,6 +4740,16 @@
       }
     }
 
+    // O cliente Supabase é criado antes do painel, mas a restauração da sessão é
+    // assíncrona. As consultas automáticas não podem sair com a chave anônima antes
+    // de o token do usuário aprovado estar pronto, pois a RLS das bases de mercado
+    // corretamente recusa esse acesso. Centralizar a espera elimina essa corrida em
+    // todas as ferramentas que usam a base privada.
+    async function aguardarSupabaseAutenticado() {
+      if (window.__clientePronto) await window.__clientePronto;
+      if (!window.__sbClient) throw new Error("Cliente Supabase não inicializado.");
+    }
+
     // Carrega um blob salvo pelo robô direto na tabela public.dados_robo do Supabase
     // (chave -> json). Usado pelos arquivos pequenos que antes eram servidos como
     // data/convenios.json e data/sistema_s_am.json — migrados pro banco pra parar de
@@ -4727,6 +4757,7 @@
     // muda, o código do site não).
     async function carregarBlobSupabase(chave) {
       try {
+        await aguardarSupabaseAutenticado();
         const { data, error } = await window.__sbClient
           .from("dados_robo")
           .select("dado")
@@ -4754,6 +4785,7 @@
   // normalmente por ser pequeno.
   async function carregarMercadoSegmentos(palavras, uf) {
     try {
+      await aguardarSupabaseAutenticado();
       const meta = await carregarMeta("data/mercado_meta.json");
       let query = window.__sbClient.from("mercado_atas").select("dado").limit(4000);
       if (uf) query = query.eq("uf_orgao", uf);
@@ -6950,6 +6982,7 @@ let resultados = resultadosBrutos.filter((r) => {
   const CACHE_CONTRATOS_TTL_MS = 5 * 60 * 1000;
   async function carregarResumoInteligenciaMercado(palavras, dias, uf) {
     try {
+      await aguardarSupabaseAutenticado();
       const { data, error } = await window.__sbClient.rpc("resumo_inteligencia_mercado", {
         p_termos: palavras,
         p_dias: dias,
@@ -6977,6 +7010,7 @@ let resultados = resultadosBrutos.filter((r) => {
     </div><div class="carregando">Resumo pronto. Carregando os detalhes para aprofundar a análise...</div>`;
   }
   async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, uf, limite = 5000 }) {
+    await aguardarSupabaseAutenticado();
     const chaveCache = JSON.stringify({ palavras: palavras || [], dias: dias || null, cnpjFornecedor: cnpjFornecedor || null, uf: uf || null, limite });
     const entradaCache = cacheConsultasContratos.get(chaveCache);
     if (entradaCache && (Date.now() - entradaCache.em) < CACHE_CONTRATOS_TTL_MS) {
@@ -7034,6 +7068,7 @@ let resultados = resultadosBrutos.filter((r) => {
   // Mantê-los separados evita somar duas vezes o mercado e deixa explícita a procedência.
   async function consultarResultadosHomologadosComprasGov({ palavras, dias, uf, limite = 500 }) {
     try {
+      await aguardarSupabaseAutenticado();
       const estadoPromise = carregarBlobSupabase("comprasgov_resultados_estado");
       let query = window.__sbClient.from("comprasgov_resultados").select("dado", { count: "planned" }).limit(limite);
       if (typeof dias === "number" && dias > 0) {
