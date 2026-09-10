@@ -2915,11 +2915,18 @@
       wrap.appendChild(secao);
     });
 
-    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-info'></use></svg> Outras Informações Relevantes", est.outrasInformacoesRelevantes, "Nenhum outro ponto crítico foi identificado no material lido.");
-    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Pendências para Conferência", est.pendenciasParaConferencia, "Nenhuma pendência adicional foi sinalizada pela análise.");
-    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Possíveis Questionamentos", est.possiveisQuestionamentos, "Nenhum possível questionamento com base concreta foi identificado no material lido.");
-    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Perguntas Sugeridas ao Órgão", est.questionamentosSugeridos, "Nenhum questionamento objetivo foi sugerido a partir do material lido.");
-    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Fontes Consultadas", est.documentosConsultados, "O texto extraído não identificou os nomes dos documentos consultados.");
+    // Essas listas devem mostrar somente achados concretos. Frases padrão como
+    // "nenhuma pendência" ou "nenhum questionamento" não são evidência do
+    // edital e davam a falsa impressão de uma análise completa.
+    const adicionarListaConfirmada = (titulo, lista) => {
+      const valores = listaConfirmada(lista);
+      if (valores.length) adicionarSecaoListaIA(wrap, titulo, valores, "");
+    };
+    adicionarListaConfirmada("<svg class='icone-ph'><use href='#ph-info'></use></svg> Outras Informações Relevantes", est.outrasInformacoesRelevantes);
+    adicionarListaConfirmada("<svg class='icone-ph'><use href='#ph-warning'></use></svg> Pendências para Conferência", est.pendenciasParaConferencia);
+    adicionarListaConfirmada("<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Possíveis Questionamentos", est.possiveisQuestionamentos);
+    adicionarListaConfirmada("<svg class='icone-ph'><use href='#ph-chat-circle'></use></svg> Perguntas Sugeridas ao Órgão", est.questionamentosSugeridos);
+    adicionarListaConfirmada("<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Fontes Consultadas", est.documentosConsultados);
     adicionarSecaoItensPncpIA(wrap, iaEstruturaAtual.itensPncp);
 
     if (anterior) anterior.replaceWith(wrap);
