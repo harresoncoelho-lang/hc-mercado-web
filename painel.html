@@ -3361,7 +3361,10 @@
     const valor = (chave) => textoIA(chave);
     const temValor = (chave) => {
       const texto = valor(chave);
-      return texto && !/^n[ãa]o informado$/i.test(texto);
+      return texto &&
+        !/^n[ãa]o informado$/i.test(texto) &&
+        !/^n[ãa]o localizado no material lido/i.test(texto) &&
+        !/^nenhum(?:a)? (?:declara[cç][ãa]o|documento|pend[êe]ncia|outro ponto|questionamento)/i.test(texto);
     };
     const escapar = (chave) => escapeHtml(valor(chave) || "Não informado");
     const linha = (rotulo, dado) => temValor(dado) ? `<div class="campo"><dt>${escapeHtml(rotulo)}</dt><dd>${escapar(dado)}</dd></div>` : "";
@@ -3371,13 +3374,11 @@
       return conteudo ? `<dl class="grade">${conteudo}</dl>` : "";
     };
     const lista = (titulo, itens, vazio) => {
-      const visiveis = Array.isArray(itens) ? itens.map(textoIA).filter(Boolean) : [];
-      const corpo = visiveis.length
-        ? `<ul class="lista">${visiveis.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
-        : `<p class="nao-informado">${escapeHtml(vazio)}</p>`;
-      return bloco(titulo, corpo);
+      const visiveis = Array.isArray(itens) ? itens.map(textoIA).filter((item) => temValor(item)) : [];
+      if (!visiveis.length) return "";
+      return bloco(titulo, `<ul class="lista">${visiveis.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`);
     };
-    const informacao = (titulo, dado) => bloco(titulo, `<p class="texto-secao">${escapar(dado)}</p>`);
+    const informacao = (titulo, dado) => temValor(dado) ? bloco(titulo, `<p class="texto-secao">${escapar(dado)}</p>`) : "";
     const identificacao = est?.identificacao || {};
     const sessao = est?.sessaoPublica || {};
     const orgao = est?.orgao || {};
