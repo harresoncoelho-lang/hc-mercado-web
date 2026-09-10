@@ -2846,11 +2846,14 @@
       wrap.appendChild(p);
     }
 
-    const fonteNaoLida = est.fonteLida === false;
     const temConteudoConfirmado = (valor) => {
       const texto = textoIA(valor);
-      return Boolean(texto) && !/^n[ãa]o informado$/i.test(texto) && !/^n[ãa]o localizado no material lido/i.test(texto);
+      return Boolean(texto) &&
+        !/^n[ãa]o informado$/i.test(texto) &&
+        !/^n[ãa]o localizado no material lido/i.test(texto) &&
+        !/^nenhum(?:a)? (?:declara[cç][ãa]o|documento|pend[êe]ncia|outro ponto|questionamento)/i.test(texto);
     };
+    const listaConfirmada = (lista) => Array.isArray(lista) ? lista.filter(temConteudoConfirmado) : [];
 
     for (const chave of Object.keys(RÓTULOS_ESTRUTURA_IA)) {
       const secaoDados = est[chave];
@@ -2861,7 +2864,10 @@
         // Quando o documento não pôde ser lido, não preenchemos a tela com
         // dezenas de "não localizado". Exibimos o que é oficial e confirmável;
         // o aviso de pendência já deixa claro o limite daquela ficha.
-        .filter(([, v]) => !fonteNaoLida || temConteudoConfirmado(v))
+        // "Não informado" e "não localizado" nunca ajudam a decisão, mesmo
+        // quando o arquivo foi lido. Eles pertencem ao aviso de pendência, não a
+        // dezenas de linhas vazias que fazem parecer haver um dossiê completo.
+        .filter(([, v]) => temConteudoConfirmado(v))
         // Além dos rótulos que já trazem "data" ou "prazo", o limite de
         // propostas também é uma data. Sem isso, ele acabava exibido no
         // formato técnico ISO (2026-09-22T09:15:00) apenas neste campo.
@@ -2887,18 +2893,20 @@
       wrap.appendChild(secao);
     }
 
-    if (!fonteNaoLida || (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length)) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos", est.documentosHabilitacao, "Não localizados no material lido — conferir habilitação jurídica, fiscal/trabalhista, econômico-financeira e técnica no edital oficial.");
-    if (!fonteNaoLida || (Array.isArray(est.declaracoesExigidas) && est.declaracoesExigidas.length)) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Declarações e Formulários", est.declaracoesExigidas, "Nenhuma declaração ou formulário específico foi localizado no material lido.");
-    if (!fonteNaoLida || temConteudoConfirmado(est.legislacao)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação e Base Legal", est.legislacao);
-    if (!fonteNaoLida || temConteudoConfirmado(est.anexosDeclaracoes)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Anexos e Documentos Complementares", est.anexosDeclaracoes);
-    if (!fonteNaoLida || temConteudoConfirmado(est.condicoesPagamento)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-credit-card'></use></svg> Condições de Pagamento", est.condicoesPagamento);
-    if (!fonteNaoLida || temConteudoConfirmado(est.penalidades)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Penalidades", est.penalidades);
-    if (!fonteNaoLida || temConteudoConfirmado(est.multas)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Multas", est.multas);
+    const documentosConfirmados = listaConfirmada(est.documentosHabilitacao);
+    const declaracoesConfirmadas = listaConfirmada(est.declaracoesExigidas);
+    if (documentosConfirmados.length) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos", documentosConfirmados, "");
+    if (declaracoesConfirmadas.length) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Declarações e Formulários", declaracoesConfirmadas, "");
+    if (temConteudoConfirmado(est.legislacao)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação e Base Legal", est.legislacao);
+    if (temConteudoConfirmado(est.anexosDeclaracoes)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Anexos e Documentos Complementares", est.anexosDeclaracoes);
+    if (temConteudoConfirmado(est.condicoesPagamento)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-credit-card'></use></svg> Condições de Pagamento", est.condicoesPagamento);
+    if (temConteudoConfirmado(est.penalidades)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Penalidades", est.penalidades);
+    if (temConteudoConfirmado(est.multas)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Multas", est.multas);
 
     // Campos de texto livre (atestado técnico, legislação, anexos, condições de pagamento).
     CAMPOS_TEXTO_LIVRE_IA.forEach(([chave, titulo]) => {
       const valor = est[chave];
-      if (!valor || /^n[ãa]o informado$/i.test(String(valor).trim()) || (fonteNaoLida && !temConteudoConfirmado(valor))) return;
+      if (!valor || !temConteudoConfirmado(valor)) return;
       const secao = criarSecaoIA(titulo);
       const p = document.createElement("p");
       p.style.cssText = "margin:8px 0 0;font-size:13px;";
