@@ -32,6 +32,23 @@ jobs:
           INTERVALO_MS_OPORTUNIDADES: "900"
           MIN_UFS_OK_OPORTUNIDADES: "1"
         run: node scripts/atualizar_dados.js
+      - name: Preparar dossiês recém-coletados
+        env:
+          LICITAPLENA_URL: "https://licitaplena.com.br"
+          # A recuperação é a rota de entrada dos editais durante o dia. Preparar
+          # aqui elimina a espera de uma coleta diária para o primeiro clique.
+          MAX_DOSSIES_POR_EXECUCAO: "120"
+          DIAS_PUBLICACAO_DOSSIE: "7"
+          CONCORRENCIA_DOSSIES: "3"
+          REPROCESSAR_PARCIAL_APOS_HORAS: "24"
+          DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$DOSSIES_EDITAIS_CHAVE" ]; then
+            echo "DOSSIES_EDITAIS_CHAVE não configurada; preparação antecipada aguardará a configuração do segredo."
+            exit 0
+          fi
+          node scripts/preparar_dossies_editais.js
       - name: Publicar recuperação válida
         run: |
           git config user.name "hc-licitacoes-bot"

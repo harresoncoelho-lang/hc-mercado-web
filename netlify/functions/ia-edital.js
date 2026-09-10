@@ -517,9 +517,9 @@ function respostaDeContingencia(edital, motivoFonteNaoLida, aviso) {
 // cadeia PNCP + IA. Guardamos a ficha oficial por pouco tempo: a reabertura é imediata e
 // sem nova cota, mas o sistema volta a tentar a leitura completa automaticamente depois.
 async function salvarContingenciaNoCache(store, edital, corpo) {
-  if (!store || !edital.numeroControlePNCP) return;
+  if (!edital.numeroControlePNCP) return;
   try {
-    await store.setJSON(edital.numeroControlePNCP, {
+    const contingencia = {
       estrutura: corpo.estrutura,
       resposta: corpo.resposta,
       textoEdital: corpo.textoEdital || null,
@@ -530,7 +530,13 @@ async function salvarContingenciaNoCache(store, edital, corpo) {
       expiraEm: new Date(Date.now() + DURACAO_CACHE_CONTINGENCIA_MS).toISOString(),
       versao: VERSAO_RESUMO,
       geradoEm: new Date().toISOString(),
-    });
+    };
+    if (store) await store.setJSON(edital.numeroControlePNCP, contingencia);
+    // A cópia durável não é usada para prolongar a contingência no clique: expira em
+    // quinze minutos como o Blob. Ela registra, porém, que este edital já foi tentado
+    // para o robô priorizar os dossiês inéditos e só reabrir esta tentativa depois da
+    // janela de reprocessamento agendada.
+    await salvarDossiePersistido(edital.numeroControlePNCP, contingencia);
   } catch (e) {
     // Cache é uma otimização; a resposta atual não pode depender dele.
   }

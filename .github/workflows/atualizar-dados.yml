@@ -48,10 +48,12 @@ jobs:
           # dossiê pronto. O painel não deve transformar o primeiro clique do cliente
           # em uma fila de leitura; processamos toda a janela recente com paralelismo
           # conservador para respeitar PNCP e o provedor de análise.
-          MAX_DOSSIES_POR_EXECUCAO: "60"
+          MAX_DOSSIES_POR_EXECUCAO: "180"
           DIAS_PUBLICACAO_DOSSIE: "7"
           CONCORRENCIA_DOSSIES: "3"
+          REPROCESSAR_PARCIAL_APOS_HORAS: "24"
           DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ -z "$DOSSIES_EDITAIS_CHAVE" ]; then
             echo "DOSSIES_EDITAIS_CHAVE não configurada; preparação antecipada aguardará a configuração do segredo."
