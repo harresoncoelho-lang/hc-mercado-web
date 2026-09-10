@@ -371,6 +371,8 @@
     border-radius: 6px;
     font-size: 14px;
   }
+  .campo select.select-uf-multiplo { min-height: 128px; padding: 4px 8px; }
+  .campo .dica-multiplos { margin: 0; font-size: 11px; color: var(--texto-fraco); text-transform: none; }
   /* O ícone padrão do calendário nativo (input type=date) vem escuro e quase invisível
      em cima do nosso fundo escuro -- inverte a cor pra ficar claro/visível e aumenta a
      área clicável, já que era isso que tornava difícil clicar certinho nele. */
@@ -1591,7 +1593,8 @@
     <div class="painel-filtros" id="bol-config-painel" style="display:none;">
       <div class="campo">
         <label>Estado (UF)</label>
-        <select id="bol-uf" class="select-uf"></select>
+        <select id="bol-uf" class="select-uf select-uf-multiplo" multiple aria-describedby="bol-uf-ajuda"></select>
+        <p id="bol-uf-ajuda" class="dica-multiplos">Selecione um ou mais estados. Sem seleção, pesquisa todos.</p>
       </div>
       <div class="campo" style="flex:2">
         <label>Palavras-chave (separadas por vírgula)</label>
@@ -1621,7 +1624,8 @@
       </div>
       <div class="campo">
         <label>Estado (UF) — opcional</label>
-        <select id="op-uf" class="select-uf"></select>
+        <select id="op-uf" class="select-uf select-uf-multiplo" multiple aria-describedby="op-uf-ajuda"></select>
+        <p id="op-uf-ajuda" class="dica-multiplos">Selecione um ou mais estados. Sem seleção, pesquisa todos.</p>
       </div>
       <div class="campo">
         <label>Município</label>
@@ -1876,14 +1880,14 @@
     function atualizarResumo() {
       if (!resumo) return;
       const partes = [];
-      const uf = document.getElementById("op-uf").value;
+      const ufs = ufsDoSelect(document.getElementById("op-uf"));
       const municipio = document.getElementById("op-municipio").value;
       const palavras = document.getElementById("op-palavras").value.trim();
       const dataDe = document.getElementById("op-data-de").value;
       const dataAte = document.getElementById("op-data-ate").value;
       if (palavras) partes.push(palavras);
       if (municipio) partes.push(municipio);
-      else if (uf) partes.push(uf);
+      else if (ufs.length) partes.push(textoUfs(ufs));
       if (dataDe || dataAte) partes.push(`${dataDe || "início"} a ${dataAte || "hoje"}`);
       resumo.textContent = partes.length ? partes.join(" · ") : "Nenhum filtro preenchido";
       resumo.title = resumo.textContent;
@@ -3562,11 +3566,38 @@
     ["SP", "São Paulo"], ["SE", "Sergipe"], ["TO", "Tocantins"],
   ];
 
-  // Popula todos os <select class="select-uf"> da página com os 27 estados + opção "Todos".
+  const SIGLAS_UF_VALIDAS = new Set(ESTADOS_BR.map(([sigla]) => sigla));
+
+  // Aceita o formato antigo (uma string) e o novo (uma lista de UFs). Centralizar esta
+  // conversão evita que uma fonte trate "AM,RR" como se fosse uma UF inexistente.
+  function normalizarUfs(valor) {
+    const valores = Array.isArray(valor) ? valor : String(valor || "").split(",");
+    return [...new Set(valores.map((uf) => String(uf || "").trim().toUpperCase()).filter((uf) => SIGLAS_UF_VALIDAS.has(uf)))];
+  }
+  function ufEstaSelecionada(uf, ufs) {
+    const selecionadas = normalizarUfs(ufs);
+    return selecionadas.length === 0 || selecionadas.includes(String(uf || "").trim().toUpperCase());
+  }
+  function ufsDoSelect(select) {
+    if (!select) return [];
+    return normalizarUfs(select.multiple ? Array.from(select.selectedOptions).map((opcao) => opcao.value) : select.value);
+  }
+  function definirUfsNoSelect(select, ufs) {
+    const selecionadas = new Set(normalizarUfs(ufs));
+    Array.from(select.options).forEach((opcao) => { opcao.selected = selecionadas.has(opcao.value); });
+  }
+  function textoUfs(ufs) {
+    const selecionadas = normalizarUfs(ufs);
+    return selecionadas.length ? selecionadas.join(", ") : "todos os estados";
+  }
+
+  // Popula todos os <select class="select-uf"> da página com os 27 estados. Nos campos
+  // múltiplos, ausência de seleção significa "todos"; assim não há uma opção "Todos"
+  // conflitante com uma seleção de várias UFs.
   function popularSelectsUf() {
     document.querySelectorAll("select.select-uf").forEach((sel) => {
       if (sel.dataset.populado === "1") return;
-      let opcoes = '<option value="">Todos os estados</option>';
+      let opcoes = sel.multiple ? "" : '<option value="">Todos os estados</option>';
       for (const [sigla, nome] of ESTADOS_BR) {
         opcoes += `<option value="${sigla}">${sigla} — ${nome}</option>`;
       }
@@ -3615,11 +3646,13 @@
 
   // Preenche um <select class="select-municipio"> com os municípios de uma UF específica —
   // ou com a lista nacional inteira, se nenhuma UF estiver selecionada no select irmão.
-  function renderOpcoesMunicipio(sel, uf, municipios) {
-    const lista = uf ? municipios.filter((m) => m.uf === uf) : municipios;
-    let opcoes = `<option value="">${uf ? "Todos os municípios de " + escapeHtml(uf) : "Todos os municípios"}</option>`;
+  function renderOpcoesMunicipio(sel, ufs, municipios) {
+    const selecionadas = normalizarUfs(ufs);
+    const lista = selecionadas.length ? municipios.filter((m) => selecionadas.includes(m.uf)) : municipios;
+    const sufixo = selecionadas.length === 1 ? " de " + escapeHtml(selecionadas[0]) : "";
+    let opcoes = `<option value="">Todos os municípios${sufixo}</option>`;
     for (const m of lista) {
-      opcoes += `<option value="${escapeHtml(m.nome)}">${escapeHtml(m.nome)}${!uf && m.uf ? " — " + escapeHtml(m.uf) : ""}</option>`;
+      opcoes += `<option value="${escapeHtml(m.nome)}">${escapeHtml(m.nome)}${!selecionadas.length && m.uf ? " — " + escapeHtml(m.uf) : ""}</option>`;
     }
     const valorAtual = sel.value;
     sel.innerHTML = opcoes;
@@ -3642,7 +3675,7 @@
       const municipios = await carregarTodosMunicipios();
       selects.forEach((sel) => {
         const selUf = sel.closest(".painel-filtros, .filtros-lateral, aside")?.querySelector("select.select-uf") || null;
-        renderOpcoesMunicipio(sel, selUf ? selUf.value.trim().toUpperCase() : "", municipios);
+        renderOpcoesMunicipio(sel, selUf ? ufsDoSelect(selUf) : [], municipios);
         if (selUf && !selUf.dataset.ligadoMunicipio) {
           selUf.dataset.ligadoMunicipio = "1";
           selUf.addEventListener("change", () => {
@@ -3651,7 +3684,7 @@
             // existindo na lista nacional completa) e o usuário precisa rolar manualmente
             // até o topo pra voltar a "Todos os municípios".
             sel.value = "";
-            renderOpcoesMunicipio(sel, selUf.value.trim().toUpperCase(), municipios);
+            renderOpcoesMunicipio(sel, ufsDoSelect(selUf), municipios);
           });
         }
       });
@@ -4325,13 +4358,13 @@
   }
   // Busca oportunidades abertas do Sistema S/AM (SENAC, SESC) que batem com o mesmo
   // filtro de UF e palavras-chave usado na busca de oportunidades do PNCP.
-  async function buscarExtrasSistemaS(uf, palavras) {
+  async function buscarExtrasSistemaS(ufs, palavras) {
     try {
       const cache = await carregarBlobSupabase("sistema_s_am");
       if (!cache || !Array.isArray(cache.registros)) return [];
       return cache.registros
         .filter(sistemaSEstaAberta)
-        .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
+        .filter((r) => ufEstaSelecionada(r.uf, ufs) && bateComSegmento(r.objeto, palavras))
         .map(normalizarSistemaS);
     } catch (e) {
       return [];
@@ -4371,10 +4404,10 @@
     "valorTotalEstimado", "valorTotalHomologado", "numeroCompra", "anoCompra", "processo",
     "tipoInstrumentoConvocatorioNome", "codigoUnidade", "esferaId",
   ];
-  function mesclarComCacheRobo(resultadosAoVivo, registrosCache, uf, palavras) {
+  function mesclarComCacheRobo(resultadosAoVivo, registrosCache, ufs, palavras) {
     const doRoboPorChave = new Map();
     registrosCache
-      .filter((r) => (!uf || r.uf === uf) && bateComSegmento(r.objeto, palavras))
+      .filter((r) => ufEstaSelecionada(r.uf, ufs) && bateComSegmento(r.objeto, palavras))
       .forEach((r) => { if (r.numeroControlePNCP) doRoboPorChave.set(r.numeroControlePNCP, r); });
 
     const completos = resultadosAoVivo.map((r) => {
@@ -4643,9 +4676,10 @@
   // licitações abertas. Trocamos pro endpoint que o PRÓPRIO site pncp.gov.br usa na busca
   // (api/search) — responde em milissegundos e cobre TODO o histórico (não só "aberto agora"),
   // o que também é o que permite a busca por período (Publicado de/até) ser retroativa de verdade.
-  async function buscarOportunidadesAbertas(uf, palavras, maxPaginas) {
+  async function buscarOportunidadesAbertas(ufs, palavras, maxPaginas) {
     const encontradosPorId = new Map();
     let falhaConexao = false;
+    const ufsSelecionadas = normalizarUfs(ufs);
     const termos = [...new Set((palavras || []).map((p) => p.trim()).filter(Boolean))];
     // Cada expressão configurada precisa ser enviada ao PNCP. A versão anterior usava
     // somente a primeira (por exemplo, "hospitalar") e filtrava o retorno localmente;
@@ -4654,14 +4688,14 @@
     // avalanche de 15 páginas simultâneas que deixava a API instável.
     const consultas = termos.length ? termos : [null];
 
-    function montarUrlPagina(termo, pagina) {
+    function montarUrlPagina(termo, pagina, ufConsulta) {
       const p = new URLSearchParams({
         tipos_documento: "edital",
         status: "todos",
         ordenacao: "-data",
         tam_pagina: "50",
       });
-      if (uf) p.set("ufs", uf);
+      if (ufConsulta) p.set("ufs", ufConsulta);
       if (termo) p.set("q", termo);
       p.set("pagina", String(pagina));
       return `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${p.toString()}`)}`;
@@ -4672,12 +4706,15 @@
       for (const item of itens) {
         const objeto = item.description || item.title || "";
         const textoBusca = `${item.title || ""} ${objeto}`;
-        if (bateComSegmento(textoBusca, palavras)) {
+        // A API de busca às vezes devolve registros de outra UF mesmo recebendo "ufs".
+        // Esta proteção local é obrigatória: nenhum resultado fora da seleção chega ao
+        // Boletim ou ao Encontrar Licitações, independentemente da fonte.
+        if (ufEstaSelecionada(item.uf, ufsSelecionadas) && bateComSegmento(textoBusca, palavras)) {
           const oportunidade = {
             objeto,
             orgao: item.orgao_subrogado_nome || item.orgao_nome || "Órgão não informado",
             municipio: item.municipio_nome || "",
-            uf: item.uf || uf || "",
+            uf: item.uf || "",
             encerramento: item.data_fim_vigencia || null,
             publicacao: item.data_publicacao_pncp || item.createdAt || null,
             numeroControlePNCP: item.numero_controle_pncp || null,
@@ -4711,18 +4748,20 @@
       return itens.length;
     }
 
-    async function buscarPagina(termo, pagina) {
+    async function buscarPagina(termo, pagina, ufConsulta) {
       // O proxy aguarda até 15 s pelo PNCP. Dá margem para a ida/volta pela Function e
       // uma inicialização eventual do Netlify, sem o navegador cancelar uma resposta
       // válida pouco antes de ela chegar.
-      const resp = await fetchPaginaComRetry(montarUrlPagina(termo, pagina), 30000);
+      const resp = await fetchPaginaComRetry(montarUrlPagina(termo, pagina, ufConsulta), 30000);
       if (!resp) return null;
       const texto = await resp.text();
       if (!texto) return null;
       try { return JSON.parse(texto); } catch (e) { return null; }
     }
 
-    const primeirasPaginas = await Promise.all(consultas.map((termo) => buscarPagina(termo, 1)));
+    const consultasUf = ufsSelecionadas.length ? ufsSelecionadas : [""];
+    const primeirasConsultas = consultasUf.flatMap((ufConsulta) => consultas.map((termo) => ({ termo, ufConsulta })));
+    const primeirasPaginas = await Promise.all(primeirasConsultas.map(({ termo, ufConsulta }) => buscarPagina(termo, 1, ufConsulta)));
     for (const dados of primeirasPaginas) {
       if (!dados) { falhaConexao = true; continue; }
       processarPagina(dados);
@@ -4731,13 +4770,13 @@
     // Para busca com um único termo, preserva a navegação mais profunda solicitada pela
     // tela. Em filtros compostos, a primeira página de cada termo é intencionalmente o
     // limite: ela já contém os editais mais novos e evita sobrecarregar o PNCP.
-    if (consultas.length === 1 && primeirasPaginas[0]) {
+    if (consultas.length === 1 && consultasUf.length === 1 && primeirasPaginas[0]) {
       const totalItens = Number(primeirasPaginas[0].total) || (primeirasPaginas[0].items || []).length;
       const ultimaPagina = Math.min(Math.max(1, Math.ceil(totalItens / 50)), maxPaginas);
       if (ultimaPagina > 1) {
         const restantes = [];
         for (let p = 2; p <= ultimaPagina; p++) restantes.push(p);
-        const resultados = await Promise.all(restantes.map((pagina) => buscarPagina(consultas[0], pagina)));
+        const resultados = await Promise.all(restantes.map((pagina) => buscarPagina(consultas[0], pagina, consultasUf[0])));
         for (const dados of resultados) {
           if (!dados) { falhaConexao = true; continue; }
           processarPagina(dados);
@@ -5245,9 +5284,10 @@
       return null;
     }
   }
-  function salvarFiltroBoletim(uf, palavrasRaw) {
+  function salvarFiltroBoletim(ufs, palavrasRaw) {
     try {
-      localStorage.setItem("hc_boletim_filtro", JSON.stringify({ uf, palavrasRaw }));
+      const lista = normalizarUfs(ufs);
+      localStorage.setItem("hc_boletim_filtro", JSON.stringify({ ufs: lista, uf: lista[0] || "", palavrasRaw }));
     } catch (e) { /* localStorage indisponível */ }
   }
 
@@ -5388,7 +5428,7 @@
       return;
     }
 
-    const uf = (filtro.uf || "").trim().toUpperCase();
+    const ufs = normalizarUfs(filtro.ufs || filtro.uf);
     const palavras = filtro.palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
     alvo.innerHTML = '<div class="carregando">Gerando boletim...</div>';
     document.getElementById("bol-calendario").innerHTML = "";
@@ -5403,7 +5443,7 @@
       // fonte rápida de "Encontrar Licitações") e filtra pra recência, igual ao boletim
       // por e-mail. "Encontrar Licitações" é quem faz a busca livre em todo o histórico.
       const DIAS_BOLETIM = 3;
-      const resp = await buscarOportunidadesAbertas(uf, palavras, 15);
+      const resp = await buscarOportunidadesAbertas(ufs, palavras, 15);
       let resultadosBrutos = resp.encontrados;
 
       // Corrige bug real: quando a busca ao vivo no PNCP falha (API lenta/fora do ar), o
@@ -5413,7 +5453,7 @@
       // cobre) o que a busca ao vivo nao trouxe, sem duplicar o que ja veio ao vivo.
       const cacheOportunidades = await carregarCache("data/oportunidades_abertas.json");
       if (cacheOportunidades && Array.isArray(cacheOportunidades.registros) && cacheOportunidades.registros.length > 0) {
-        resultadosBrutos = mesclarComCacheRobo(resultadosBrutos, cacheOportunidades.registros, uf, palavras);
+        resultadosBrutos = mesclarComCacheRobo(resultadosBrutos, cacheOportunidades.registros, ufs, palavras);
       }
 
       const limiteRecencia = new Date(Date.now() - DIAS_BOLETIM * 24 * 60 * 60 * 1000);
@@ -5432,12 +5472,14 @@ let resultados = resultadosBrutos.filter((r) => {
   return publicacaoRecente || aindaAberta;
 });
       const agora = new Date();
-      metaEl.textContent = `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · filtro: ${uf ? uf + " · " : ""}${palavras.join(", ")} · últimos ${DIAS_BOLETIM} dias`;
+      metaEl.textContent = `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · estados: ${textoUfs(ufs)} · ${palavras.join(", ")} · últimos ${DIAS_BOLETIM} dias`;
       let avisoHtml = resp.falhaConexao
         ? '<div class="aviso">A API pública do PNCP não respondeu agora — mostrando também o que o robô já tinha coletado, então a lista abaixo pode não estar 100% atualizada.</div>'
         : "";
 
-      resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));
+      resultados = resultados
+        .concat(await buscarExtrasSistemaS(ufs, palavras))
+        .filter((r) => ufEstaSelecionada(r.uf, ufs));
 
       if (resultados.length === 0) {
         alvo.innerHTML = avisoHtml + '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na coleta mais recente.</div>';
@@ -5465,20 +5507,20 @@ let resultados = resultadosBrutos.filter((r) => {
     const visivel = painel.style.display !== "none";
     if (!visivel) {
       const filtro = lerFiltroBoletim();
-      document.getElementById("bol-uf").value = (filtro && filtro.uf) || "";
+      definirUfsNoSelect(document.getElementById("bol-uf"), filtro && (filtro.ufs || filtro.uf));
       document.getElementById("bol-palavras").value = (filtro && filtro.palavrasRaw) || "";
     }
     painel.style.display = visivel ? "none" : "flex";
   });
 
   document.getElementById("bol-salvar").addEventListener("click", () => {
-    const uf = document.getElementById("bol-uf").value.trim().toUpperCase();
+    const ufs = ufsDoSelect(document.getElementById("bol-uf"));
     const palavrasRaw = document.getElementById("bol-palavras").value.trim();
     if (!palavrasRaw) {
       alert("Informe ao menos uma palavra-chave pro filtro do boletim.");
       return;
     }
-    salvarFiltroBoletim(uf, palavrasRaw);
+    salvarFiltroBoletim(ufs, palavrasRaw);
     document.getElementById("bol-config-painel").style.display = "none";
     gerarBoletim();
   });
@@ -5514,9 +5556,10 @@ let resultados = resultadosBrutos.filter((r) => {
   // Salva o último filtro usado (e, junto com opJaBuscado, evita que o usuário precise
   // refiltrar tudo de novo toda vez que sai da aba e volta, ou recarrega a página — mesma
   // ideia já usada no filtro salvo do Boletim.
-  function salvarFiltroOportunidades(uf, municipio, dataDe, dataAte, palavrasRaw, uasg, avancados) {
+  function salvarFiltroOportunidades(ufs, municipio, dataDe, dataAte, palavrasRaw, uasg, avancados) {
     try {
-      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ uf, municipio, dataDe, dataAte, palavrasRaw, uasg, ...avancados }));
+      const lista = normalizarUfs(ufs);
+      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ ufs: lista, uf: lista[0] || "", municipio, dataDe, dataAte, palavrasRaw, uasg, ...avancados }));
     } catch (e) { /* localStorage indisponível */ }
   }
   function lerFiltroOportunidades() {
@@ -5533,7 +5576,7 @@ let resultados = resultadosBrutos.filter((r) => {
 
   async function buscarOportunidades() {
     opJaBuscado = true;
-    const uf = document.getElementById("op-uf").value.trim().toUpperCase();
+    const ufs = ufsDoSelect(document.getElementById("op-uf"));
     const municipioFiltro = document.getElementById("op-municipio").value.trim().toLowerCase();
     const dataDe = document.getElementById("op-data-de").value;
     const dataAte = document.getElementById("op-data-ate").value;
@@ -5554,7 +5597,7 @@ let resultados = resultadosBrutos.filter((r) => {
       return;
     }
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
-    salvarFiltroOportunidades(uf, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro, {
+    salvarFiltroOportunidades(ufs, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro, {
       esfera: esferaFiltro,
       valorMin: valorMinRaw,
       valorMax: valorMaxRaw,
@@ -5570,17 +5613,19 @@ let resultados = resultadosBrutos.filter((r) => {
       // histórico, não só "aberto agora" — ver comentário na função). O cache do robô
       // (data/oportunidades_abertas.json) é só um complemento pra garantir cobertura
       // extra caso o robô já tenha visto algo que a busca ao vivo não trouxe nesta página.
-      const resp = await buscarOportunidadesAbertas(uf, palavras, 20);
+      const resp = await buscarOportunidadesAbertas(ufs, palavras, 20);
       let resultados = resp.encontrados;
       const falhaConexao = resp.falhaConexao;
       let avisoFonte = "";
 
       const cache = await carregarCache("data/oportunidades_abertas.json");
       if (cache && Array.isArray(cache.registros) && cache.registros.length > 0) {
-        resultados = mesclarComCacheRobo(resultados, cache.registros, uf, palavras);
+        resultados = mesclarComCacheRobo(resultados, cache.registros, ufs, palavras);
       }
 
-      resultados = resultados.concat(await buscarExtrasSistemaS(uf, palavras));
+      resultados = resultados
+        .concat(await buscarExtrasSistemaS(ufs, palavras))
+        .filter((r) => ufEstaSelecionada(r.uf, ufs));
 
       if (municipioFiltro) {
         // Registros do Sistema S/AM não têm município discriminado (só UF) — mantém
@@ -5659,7 +5704,7 @@ let resultados = resultadosBrutos.filter((r) => {
   async function restaurarOportunidades() {
     const filtro = lerFiltroOportunidades();
     if (!filtro || !filtro.palavrasRaw) return;
-    document.getElementById("op-uf").value = filtro.uf || "";
+    definirUfsNoSelect(document.getElementById("op-uf"), filtro.ufs || filtro.uf);
     document.getElementById("op-data-de").value = filtro.dataDe || "";
     document.getElementById("op-data-ate").value = filtro.dataAte || "";
     document.getElementById("op-palavras").value = filtro.palavrasRaw || "";
@@ -5672,7 +5717,7 @@ let resultados = resultadosBrutos.filter((r) => {
     if (filtro.municipio) {
       try {
         const municipios = await carregarTodosMunicipios();
-        renderOpcoesMunicipio(document.getElementById("op-municipio"), (filtro.uf || "").toUpperCase(), municipios);
+        renderOpcoesMunicipio(document.getElementById("op-municipio"), filtro.ufs || filtro.uf, municipios);
         document.getElementById("op-municipio").value = filtro.municipio;
       } catch (e) { /* segue sem restaurar o município se a lista não carregar a tempo */ }
     }
