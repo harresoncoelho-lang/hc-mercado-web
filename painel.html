@@ -414,6 +414,20 @@
   .seletor-ufs-acoes { display: flex; justify-content: space-between; gap: 8px; padding: 7px 8px 3px; border-top: 1px solid var(--input-borda); margin-top: 4px; }
   .seletor-ufs-acoes button { appearance: none; background: transparent; border: 0; padding: 4px 0; color: var(--azul); cursor: pointer; font: inherit; font-size: 12px; }
   .campo .dica-multiplos { margin: 0; font-size: 11px; color: var(--texto-fraco); text-transform: none; }
+  /* Os campos de UF têm uma dica abaixo do controle. Sem esta regra, o flex alinhava
+     todos os demais campos pelo rodapé da dica e deixava seus rótulos/desenhos fora
+     de linha. Nos dois filtros principais, todos começam pela mesma linha; o botão
+     começa na altura dos controles. */
+  #bol-config-painel, #op-filtros-principais { align-items: flex-start; }
+  #bol-config-painel > .btn-buscar, #op-filtros-principais > .btn-buscar {
+    align-self: flex-start;
+    margin-top: 23px;
+  }
+  @media (max-width: 768px) {
+    #bol-config-painel > .btn-buscar, #op-filtros-principais > .btn-buscar {
+      margin-top: 0;
+    }
+  }
   /* O ícone padrão do calendário nativo (input type=date) vem escuro e quase invisível
      em cima do nosso fundo escuro -- inverte a cor pra ficar claro/visível e aumenta a
      área clicável, já que era isso que tornava difícil clicar certinho nele. */
