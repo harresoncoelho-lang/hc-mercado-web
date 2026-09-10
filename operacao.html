@@ -85,7 +85,35 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   async function enviarArquivo(file) { if (!file) return {}; const seguro = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-"); const caminho = `${estado.orgId}/${estado.empresaId}/${crypto.randomUUID()}-${seguro}`; const { error } = await sb.storage.from("operacao-documentos").upload(caminho, file, { upsert: false }); if (error) throw error; return { arquivo_caminho: caminho, arquivo_nome: file.name }; }
   async function abrirArquivo(caminho) { const { data, error } = await sb.storage.from("operacao-documentos").createSignedUrl(caminho, 60); if (error) { aviso("Não foi possível abrir o arquivo: " + error.message, "erro"); return; } window.open(data.signedUrl, "_blank", "noopener"); }
   async function salvarDocumento(ev) { ev.preventDefault(); if (!estado.empresaId) return; const form = new FormData(ev.currentTarget); const tipo = form.get("tipo") === "personalizado" ? String(form.get("tipo_personalizado") || "").trim() : form.get("tipo"); if (!tipo) { aviso("Informe o tipo personalizado do documento.", "erro"); return; } const btn = $("btn-salvar-documento"); btn.disabled = true; try { const arquivo = await enviarArquivo(form.get("arquivo")); const { error } = await sb.from("operacao_documentos").insert({ organizacao_id: estado.orgId, empresa_id: estado.empresaId, tipo, titulo: form.get("titulo") || null, emissao: form.get("emissao") || null, vencimento: form.get("vencimento") || null, orgao_emissor: form.get("orgao_emissor") || null, responsavel: form.get("responsavel") || null, observacoes: form.get("observacoes") || null, ...arquivo }); if (error) throw error; ev.currentTarget.reset(); fecharModal("modal-documento"); await carregarDocumentos(); } catch (e) { aviso("Não foi possível salvar o documento: " + e.message, "erro"); } finally { btn.disabled = false; } }
-  async function salvarEmpresa(ev) { ev.preventDefault(); const form = new FormData(ev.currentTarget); const { error } = await sb.from("operacao_empresas").insert({ organizacao_id: estado.orgId, razao_social: String(form.get("razao_social")).trim(), cnpj: normalizarCnpj(form.get("cnpj")), responsavel: form.get("responsavel") || null }); if (error) { aviso("Não foi possível salvar a empresa: " + error.message, "erro"); return; } ev.currentTarget.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); }
+  async function selecionarEmpresaExistente(empresa, form) { estado.empresaId = empresa.id; form.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); $("empresa-atual").value = empresa.id; await carregarDados(); aviso("Esta empresa já estava cadastrada e foi aberta para você.", "info"); }
+  async function salvarEmpresa(ev) {
+    ev.preventDefault();
+    const form = ev.currentTarget, dados = new FormData(form), cnpj = normalizarCnpj(dados.get("cnpj"));
+    const razaoSocial = String(dados.get("razao_social") || "").trim(), responsavel = String(dados.get("responsavel") || "").trim() || null;
+    const btn = form.querySelector('button[type="submit"]');
+    if (cnpj && cnpj.length !== 14) { aviso("Informe um CNPJ com 14 dígitos.", "erro"); return; }
+    btn.disabled = true;
+    try {
+      // CNPJ identifica uma empresa dentro da assessoria. Em vez de expor um erro técnico
+      // de chave única, reaproveita o cadastro existente e já o torna a empresa ativa.
+      if (cnpj) {
+        const { data: existente, error: erroConsulta } = await sb.from("operacao_empresas").select("id").eq("organizacao_id", estado.orgId).eq("cnpj", cnpj).maybeSingle();
+        if (erroConsulta) throw erroConsulta;
+        if (existente) { await selecionarEmpresaExistente(existente, form); return; }
+      }
+      const { data: criada, error } = await sb.from("operacao_empresas").insert({ organizacao_id: estado.orgId, razao_social: razaoSocial, cnpj, responsavel }).select("id").single();
+      if (error) {
+        // Protege também contra dois envios simultâneos em abas diferentes.
+        if (error.code === "23505" && cnpj) {
+          const { data: existente } = await sb.from("operacao_empresas").select("id").eq("organizacao_id", estado.orgId).eq("cnpj", cnpj).maybeSingle();
+          if (existente) { await selecionarEmpresaExistente(existente, form); return; }
+        }
+        throw error;
+      }
+      estado.empresaId = criada.id; form.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); aviso("Empresa cadastrada com sucesso.", "info");
+    } catch (e) { aviso("Não foi possível salvar a empresa agora. " + (e.message || "Tente novamente."), "erro"); }
+    finally { btn.disabled = false; }
+  }
   async function salvarEvento(ev) { ev.preventDefault(); const f = new FormData(ev.currentTarget); const { error } = await sb.from("operacao_agenda").insert({ organizacao_id: estado.orgId, empresa_id: estado.empresaId, categoria: f.get("categoria"), titulo: f.get("titulo"), vencimento: new Date(f.get("vencimento")).toISOString(), responsavel: f.get("responsavel") || null, observacoes: f.get("observacoes") || null }); if (error) { aviso("Não foi possível salvar o compromisso: " + error.message, "erro"); return; } ev.currentTarget.reset(); fecharModal("modal-evento"); await carregarAgenda(); }
   function exportar() { const linhas = [["Tipo","Título","Emissão","Vencimento","Órgão emissor","Responsável","Status","Observações"]]; estado.documentos.forEach(d => linhas.push([d.tipo,d.titulo || "",d.emissao || "",d.vencimento || "",d.orgao_emissor || "",d.responsavel || "",statusDoc(d)[1],d.observacoes || ""])); const csv = "\ufeff" + linhas.map(l => l.map(v => `"${String(v).replace(/\"/g, '\"\"')}"`).join(";")).join("\r\n"); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"})); a.download = "documentos-licitaplena.csv"; a.click(); URL.revokeObjectURL(a.href); }
   $("empresa-atual").addEventListener("change", async e => { estado.empresaId = e.target.value; await carregarDados(); }); $("btn-nova-empresa").onclick = () => abrirModal("modal-empresa"); $("btn-novo-documento").onclick = () => abrirModal("modal-documento"); $("btn-novo-evento").onclick = () => abrirModal("modal-evento"); $("btn-atualizar").onclick = carregarDados; $("btn-exportar").onclick = exportar; $("form-documento").addEventListener("submit", salvarDocumento); $("form-empresa").addEventListener("submit", salvarEmpresa); $("form-evento").addEventListener("submit", salvarEvento); $("doc-tipo").addEventListener("change", e => { $("campo-tipo-personalizado").style.display = e.target.value === "personalizado" ? "block" : "none"; });
