@@ -647,8 +647,14 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   const ufsComFalhaFinais = recuperarPendentes
     ? UFS.filter((uf) => ufsAlvo.includes(uf) ? falhasDestaExecucao.includes(uf) : pendentesAnteriores.has(uf))
     : falhasDestaExecucao;
+  const tentativaEm = new Date().toISOString();
+  // Uma indisponibilidade total do PNCP não pode se passar por atualização recente.
+  // Mantemos o último instante de dados efetivamente coletados e registramos a tentativa
+  // separadamente; assim o painel pode avisar sobre a fonte sem derrubar a base já útil.
+  const houveAtualizacao = ufsOk.length > 0;
   return {
-    atualizadoEm: new Date().toISOString(),
+    atualizadoEm: houveAtualizacao ? tentativaEm : ((existentes && existentes.atualizadoEm) || tentativaEm),
+    ultimaTentativaEm: tentativaEm,
     retencaoDias: RETENCAO_DIAS_OPORTUNIDADES,
     totalRegistros: registros.length,
     ufsComFalha: ufsComFalhaFinais,
@@ -1162,19 +1168,19 @@ async function main() {
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   console.log("Gravado data/oportunidades_abertas.json");
 
-  // Não publique uma execução que não conseguiu consultar nenhuma UF: preservar o último
-  // arquivo bom é preferível a registrar uma coleta "atualizada" que, na prática, só
-  // carrega cache antigo. O GitHub Actions ficará vermelho e permitirá intervenção antes
-  // de a base incompleta chegar ao painel.
+  // Uma indisponibilidade do PNCP não deve abortar o pipeline inteiro. A função de coleta
+  // já preserva a última base íntegra, expõe saudeFonte/ufsComFalha e agora também mantém
+  // atualizadoEm no último dado realmente lido. Isso permite que as demais rotinas — em
+  // especial a preparação antecipada dos dossiês — continuem usando a base confiável.
   const MIN_UFS_OK_OPORTUNIDADES = parseInt(process.env.MIN_UFS_OK_OPORTUNIDADES || "24", 10);
   const ufsOkOportunidades = UFS.length - oportunidades.ufsComFalha.length;
   if (recuperarPendentes && !oportunidades.semPendencias && oportunidades.ufsOkNaExecucao.length === 0) {
-    throw new Error("Recuperação de oportunidades não conseguiu atualizar nenhuma UF pendente; o último boletim íntegro será preservado.");
+    console.warn("[oportunidades] Recuperação não atualizou nenhuma UF pendente; o último boletim íntegro foi preservado.");
   }
   if (!recuperarPendentes && ufsOkOportunidades < MIN_UFS_OK_OPORTUNIDADES) {
-    throw new Error(
-      `Coleta de oportunidades com cobertura insuficiente: ${ufsOkOportunidades}/${UFS.length} UFs concluídas ` +
-      `(mínimo para publicar: ${MIN_UFS_OK_OPORTUNIDADES}). O último boletim íntegro será preservado.`
+    console.warn(
+      `[oportunidades] Cobertura parcial/indisponível: ${ufsOkOportunidades}/${UFS.length} UFs concluídas ` +
+      `(referência operacional: ${MIN_UFS_OK_OPORTUNIDADES}). O último boletim íntegro foi preservado.`
     );
   }
 
