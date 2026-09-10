@@ -44,9 +44,13 @@ jobs:
       - name: Preparar dossiês dos editais novos
         env:
           LICITAPLENA_URL: "https://licitaplena.com.br"
-          MAX_DOSSIES_POR_EXECUCAO: "12"
-          DIAS_PUBLICACAO_DOSSIE: "3"
-          CONCORRENCIA_DOSSIES: "2"
+          # O lote anterior de 12 deixava a maior parte das oportunidades novas sem
+          # dossiê pronto. O painel não deve transformar o primeiro clique do cliente
+          # em uma fila de leitura; processamos toda a janela recente com paralelismo
+          # conservador para respeitar PNCP e o provedor de análise.
+          MAX_DOSSIES_POR_EXECUCAO: "60"
+          DIAS_PUBLICACAO_DOSSIE: "7"
+          CONCORRENCIA_DOSSIES: "3"
           DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
         run: |
           if [ -z "$DOSSIES_EDITAIS_CHAVE" ]; then

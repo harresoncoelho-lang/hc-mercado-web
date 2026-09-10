@@ -29,14 +29,14 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // Um edital raramente cabe nos primeiros 8 mil caracteres: habilitação, multas,
 // pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
-const MAX_CARACTERES_TEXTO = 12000;
+const MAX_CARACTERES_TEXTO = 22000;
 // A Function tem uma janela de execução menor que a soma de vários downloads de
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
-const MAX_DOCUMENTOS_PARA_LEITURA = 2;
+const MAX_DOCUMENTOS_PARA_LEITURA = 3;
 const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
-const VERSAO_RESUMO = 5;
+const VERSAO_RESUMO = 6;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");

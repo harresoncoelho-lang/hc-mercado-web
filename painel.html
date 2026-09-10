@@ -2518,7 +2518,7 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 4;
+  const VERSAO_CACHE_LOCAL_RESUMO = 5;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2640,6 +2640,20 @@
     return Object.values(valor).filter((v) => typeof v === "string" || typeof v === "number").join(" — ").trim();
   }
 
+  // A API de itens de alguns portais devolve a descrição com marcação do sistema
+  // de origem (por exemplo, <br> e <font>). O resumo nunca deve expor esse HTML
+  // técnico ao cliente, seja na tela, no e-mail, no checklist ou na impressão.
+  function descricaoItemIA(valor) {
+    const bruto = textoIA(valor);
+    if (!bruto) return "";
+    const area = document.createElement("textarea");
+    area.innerHTML = bruto
+      .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+      .replace(/<\/(p|div|li|tr|h[1-6])\s*>/gi, "\n")
+      .replace(/<[^>]*>/g, " ");
+    return area.value.replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
+  }
+
   function formatarDataHoraIA(valor) {
     const texto = textoIA(valor);
     const partes = texto.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::\d{2})?)?$/);
@@ -2689,7 +2703,7 @@
     const lista = document.createElement("ol");
     lista.style.cssText = "margin:8px 0 0;padding-left:22px;font-size:13px;line-height:1.5;";
     itens.slice(0, 100).forEach((item) => {
-      const descricao = textoIA(item && item.descricao);
+      const descricao = descricaoItemIA(item && item.descricao);
       if (!descricao) return;
       const li = document.createElement("li");
       const quantidade = [item.quantidade, item.unidade].filter((v) => v !== null && v !== undefined && v !== "").join(" ");
@@ -2809,8 +2823,10 @@
     iaEstruturaAtual = { ...estruturaComFonte, itensPncp: iaItensPncpAtual || estruturaComFonte.itensPncp || [] };
     renderizarCartoesTopoIA(iaEstruturaAtual);
     const conversa = document.getElementById("modal-ia-conversa");
+    const anterior = conversa.querySelector("[data-resumo-estrutura]");
     const wrap = document.createElement("div");
     wrap.className = "msg-ia";
+    wrap.dataset.resumoEstrutura = "1";
 
     if (est.resumoGeral) {
       const p = document.createElement("p");
@@ -2828,9 +2844,10 @@
         // Além dos rótulos que já trazem "data" ou "prazo", o limite de
         // propostas também é uma data. Sem isso, ele acabava exibido no
         // formato técnico ISO (2026-09-22T09:15:00) apenas neste campo.
-        .map(([rotulo, v]) => [rotulo, /data|publicado|prazo|recebimento|limite|vigência/i.test(rotulo) ? formatarDataHoraIA(v) : textoIA(v)])
-        .filter(([, v]) => v && !/^n[ãa]o informado$/i.test(v));
-      if (linhas.length === 0) continue;
+        .map(([rotulo, v]) => {
+          const valor = /data|publicado|prazo|recebimento|limite|vigência/i.test(rotulo) ? formatarDataHoraIA(v) : textoIA(v);
+          return [rotulo, valorLocalizadoIA(valor)];
+        });
       const secao = criarSecaoIA(def.titulo);
       const dl = document.createElement("dl");
       dl.style.cssText = "margin:8px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;";
@@ -2875,7 +2892,8 @@
     adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Fontes Consultadas", est.documentosConsultados, "O texto extraído não identificou os nomes dos documentos consultados.");
     adicionarSecaoItensPncpIA(wrap, iaEstruturaAtual.itensPncp);
 
-    conversa.appendChild(wrap);
+    if (anterior) anterior.replaceWith(wrap);
+    else conversa.appendChild(wrap);
     conversa.scrollTop = conversa.scrollHeight;
   }
 
@@ -2960,6 +2978,14 @@
   async function carregarItensDoResumoIA(edital) {
     if (Array.isArray(iaItensPncpAtual) && iaItensPncpAtual.length) return iaItensPncpAtual;
     if (iaItensPncpCarregando) return iaItensPncpCarregando;
+    const chaveCache = `itens-pncp-v1:${idOportunidade(edital)}`;
+    try {
+      const salvo = JSON.parse(localStorage.getItem(chaveCache) || "null");
+      if (salvo && Array.isArray(salvo.itens) && salvo.itens.length && Date.now() - Number(salvo.em || 0) < 6 * 60 * 60 * 1000) {
+        iaItensPncpAtual = salvo.itens;
+        return salvo.itens;
+      }
+    } catch (e) { /* cache local é apenas otimização */ }
     const partes = partesNumeroControleCliente(edital && edital.numeroControlePNCP);
     if (!partes) return [];
     iaItensPncpCarregando = (async () => {
@@ -2969,16 +2995,10 @@
         const itens = Array.isArray(dados.itens) ? dados.itens : [];
         if (!itens.length) return [];
         iaItensPncpAtual = itens;
+        try { localStorage.setItem(chaveCache, JSON.stringify({ em: Date.now(), itens })); } catch (e) { /* quota não impede o resumo */ }
         if (iaEstruturaAtual) {
           iaEstruturaAtual.itensPncp = itens;
-          const conversa = document.getElementById("modal-ia-conversa");
-          const wrap = document.createElement("div");
-          wrap.className = "msg-ia";
-          adicionarSecaoItensPncpIA(wrap, itens);
-          if (wrap.children.length) {
-            conversa.appendChild(wrap);
-            conversa.scrollTop = conversa.scrollHeight;
-          }
+          renderizarEstruturaIA(iaEstruturaAtual);
         }
         return itens;
       } catch (e) {
@@ -3260,6 +3280,34 @@
     return linhas.join("\n");
   }
 
+  // O arquivo .doc é HTML compatível com Word. Ao invés de despejar texto cru,
+  // entregamos uma folha operacional pronta para uso, usando a mesma fonte do
+  // resumo que aparece no painel e no e-mail.
+  function montarHtmlChecklist(edital, est) {
+    const texto = montarChecklistTexto(edital, est);
+    const blocos = texto.split(/\n\n+/).map((bloco) => {
+      const linhas = bloco.split("\n").filter(Boolean);
+      if (!linhas.length) return "";
+      const titulo = linhas.shift();
+      const conteudo = linhas.map((linha) => {
+        const marcado = /^\[ \]\s*/.test(linha);
+        const limpo = linha.replace(/^\[ \]\s*/, "");
+        return marcado
+          ? `<li class="check"><span class="caixa">☐</span>${escapeHtml(limpo)}</li>`
+          : `<li>${escapeHtml(limpo)}</li>`;
+      }).join("");
+      return `<section><h2>${escapeHtml(titulo)}</h2>${conteudo ? `<ul>${conteudo}</ul>` : ""}</section>`;
+    }).join("");
+    const numero = escapeHtml((est && est.identificacao && est.identificacao.numero) || edital.numeroControlePNCP || edital.numero || "Não informado");
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Checklist - LicitaPlena</title><style>
+      @page { size:A4; margin:15mm; } body { font-family:Arial,sans-serif; color:#162d4c; font-size:10.5pt; line-height:1.45; }
+      header { border-bottom:3px solid #1f75df; padding-bottom:13px; margin-bottom:20px; } .marca { color:#102d56; font-size:20pt; font-weight:700; } .meta { color:#66778e; margin-top:4px; }
+      h1 { margin:0 0 4px; color:#102d56; font-size:20pt; } h2 { margin:0; padding:8px 10px; background:#eef3f9; color:#193a63; font-size:11.5pt; border-left:3px solid #1f75df; }
+      section { margin:0 0 16px; page-break-inside:avoid; } ul { margin:9px 0 0; padding:0 0 0 23px; } li { margin:0 0 6px; } .check { list-style:none; margin-left:-22px; } .caixa { display:inline-block; width:22px; font-size:15pt; vertical-align:-1px; color:#1f75df; }
+      footer { margin-top:24px; padding-top:10px; border-top:1px solid #dce5ef; color:#66778e; font-size:8.5pt; }
+    </style></head><body><header><div class="marca">LicitaPlena</div><div class="meta">Checklist operacional do edital · Nº ${numero}</div></header><h1>Checklist de Licitação</h1>${blocos}<footer>Gerado pelo LicitaPlena a partir do dossiê disponível. Confirme sempre o edital e anexos oficiais antes de decidir.</footer></body></html>`;
+  }
+
   function montarHtmlImpressaoResumo(edital, est) {
     const valor = (chave) => textoIA(chave);
     const temValor = (chave) => {
@@ -3285,6 +3333,16 @@
     const sessao = est?.sessaoPublica || {};
     const orgao = est?.orgao || {};
     const detalhes = est?.detalhes || {};
+    const itensPncp = Array.isArray(est?.itensPncp) ? est.itensPncp : [];
+    const itensImpressao = itensPncp.slice(0, 100).map((item, indice) => {
+      const descricao = descricaoItemIA(item && item.descricao);
+      if (!descricao) return "";
+      const quantidade = [item.quantidade, item.unidade].filter((v) => v !== null && v !== undefined && v !== "").join(" ");
+      return `<li><strong>${indice + 1}.</strong> ${escapeHtml(descricao)}${quantidade ? ` <span class="quantidade">— ${escapeHtml(quantidade)}</span>` : ""}</li>`;
+    }).filter(Boolean);
+    const itensImpressaoHtml = itensImpressao.length
+      ? `<ol class="lista itens">${itensImpressao.join("")}</ol>${itensPncp.length > itensImpressao.length ? `<p class="nao-informado">Mostrando ${itensImpressao.length} de ${itensPncp.length} itens. Consulte o edital oficial para a relação integral.</p>` : ""}`
+      : "";
     const dataEmissao = new Date().toLocaleString("pt-BR", { dateStyle: "medium", timeStyle: "short" });
     const sessaoDestaque = [valor(sessao.data), valor(sessao.horario)].filter(Boolean).join(" às ") || formatarPrazoPropostas(edital.encerramento) || "Não informado";
 
@@ -3314,6 +3372,7 @@
         .nao-informado { color:#637085; font-style:italic; }
         .lista { margin:0; padding:0 6px 0 23px; }
         .lista li { margin:0 0 5px; padding-left:2px; }
+        .quantidade { color:#637085; } .itens { font-size:9.5pt; line-height:1.42; }
         .rodape { margin-top:24px; padding-top:10px; border-top:1px solid #dce5ef; color:#6a7789; font-size:8pt; }
         @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
       </style></head><body>
@@ -3328,6 +3387,7 @@
       ${bloco("Garantias e Prazos", grade([linha("Garantia de proposta", est?.garantias?.proposta), linha("Garantia contratual", est?.garantias?.contrato), linha("Vigência do contrato", est?.prazos?.vigenciaContrato), linha("Limite para propostas", est?.prazos?.limiteEnvioPropostas || edital.encerramento), linha("Recurso", est?.prazos?.prazoRecurso), linha("Impugnação", est?.prazos?.limiteImpugnacao)]))}
       ${bloco("Critérios da Proposta", grade([linha("Validade da proposta", est?.criteriosProposta?.validadeProposta), linha("Desempate", est?.criteriosProposta?.criteriosDesempate), linha("Exigências comerciais", est?.criteriosProposta?.exigenciasPropostaComercial), linha("Programa de integridade", est?.criteriosProposta?.programaIntegridade)]))}
       ${bloco("Resumo dos Itens", grade([linha("Total de itens", est?.itens?.totalItens), linha("Categorias", est?.itens?.categoriasPrincipais), linha("Descrição geral", est?.itens?.descricaoGeral), linha("Observações", est?.itens?.observacoes)]))}
+      ${bloco(`Itens da oportunidade (${itensPncp.length})`, itensImpressaoHtml)}
       ${lista("Documentos de Habilitação Exigidos", est?.documentosHabilitacao, "Não localizados no material analisado. Confira o edital oficial.")}
       ${informacao("Atestado de Capacidade Técnica", est?.atestadoCapacidadeTecnica)}
       ${lista("Declarações e Formulários", est?.declaracoesExigidas, "Nenhum item específico foi localizado no material analisado.")}
@@ -3411,7 +3471,7 @@
       if (itensPncp.length) {
         linhas.push("", `Itens da oportunidade (${itensPncp.length}):`);
         itensPncp.slice(0, 30).forEach((item, indice) => {
-          const descricao = valorUtil(item && item.descricao);
+          const descricao = descricaoItemIA(item && item.descricao);
           if (!descricao) return;
           const quantidade = [item.quantidade, item.unidade].filter((v) => v !== null && v !== undefined && v !== "").join(" ");
           linhas.push(`${indice + 1}. ${descricao}${quantidade ? ` — ${quantidade}` : ""}`);
@@ -3463,8 +3523,7 @@
       document.getElementById("modal-enviar-resumo-fundo").classList.add("aberto");
     };
     document.getElementById("modal-ia-checklist-doc").onclick = () => {
-      const corpo = escapeHtml(montarChecklistTexto(edital, iaEstruturaAtual)).replace(/\n/g, "<br>");
-      const html = `<html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;">${corpo}</body></html>`;
+      const html = montarHtmlChecklist(edital, iaEstruturaAtual);
       const blob = new Blob(["\ufeff", html], { type: "application/msword" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -3487,6 +3546,11 @@
       // isso faz o resumo pré-processado abrir imediatamente, inclusive em outro navegador.
       // O detalhe oficial segue em paralelo apenas para complementar cards ainda sem dossiê.
       const detalhePncp = enriquecerEditalComDetalhePncp(edital);
+      // O detalhe oficial pode chegar após um dossiê já persistido. Atualizamos a
+      // estrutura visível no mesmo modal, sem exigir fechar/reabrir e sem duplicar seções.
+      void detalhePncp.then(() => {
+        if (iaEditalAtual === edital && iaEstruturaAtual) renderizarEstruturaIA(iaEstruturaAtual);
+      }).catch(() => {});
       void carregarItensDoResumoIA(edital);
       const resumoLocal = lerCacheLocalResumo(edital);
       if (resumoLocal) {
@@ -3558,6 +3622,7 @@
       botao.textContent = "Enviando...";
       const resumoEstruturado = iaEstruturaAtual ? {
         ...iaEstruturaAtual,
+        totalItensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp.length : 0,
         itensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp.slice(0, 30) : [],
       } : null;
       const token = await obterTokenSessao();

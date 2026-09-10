@@ -96,6 +96,23 @@ function valorResumo(valor) {
   return texto && !/^n[ãa]o informado$/i.test(texto) ? texto : "";
 }
 
+// Alguns portais publicam descrições de item com tags do sistema de origem.
+// O e-mail é uma saída para cliente e nunca deve revelar esse HTML técnico.
+function descricaoItemResumo(valor) {
+  const bruto = textoResumo(valor);
+  return bruto
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|li|tr|h[1-6])\s*>/gi, "\n")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s*\n\s*/g, "\n")
+    .trim();
+}
+
 // A API pública costuma entregar datas no padrão ISO. Não usamos `new Date()`
 // aqui porque ele pode deslocar a data conforme o fuso do servidor. A troca é
 // puramente textual e mantém o horário exato informado pela fonte.
@@ -136,6 +153,7 @@ function montarConteudoEstruturado(resumo, edital) {
   const temDadosOperacionaisDoPortal = Boolean(detalhes.tipoAnalise || detalhes.regimeExecucao || resumo.criteriosProposta && resumo.criteriosProposta.propostasLancesPor);
   const criterioJulgamento = detalhes.criterioJulgamento || (!temDadosOperacionaisDoPortal ? edital?.criterioJulgamento : "");
   const itensPncp = Array.isArray(resumo.itensPncp) ? resumo.itensPncp : [];
+  const totalItensPncp = Math.max(itensPncp.length, Number(resumo.totalItensPncp) || 0);
   const cards = [
     ["Modalidade", edital?.modalidade || identificacao.modalidade],
     ["Publicado em", formatarDataHoraBR(edital?.publicacao)],
@@ -144,12 +162,12 @@ function montarConteudoEstruturado(resumo, edital) {
   ].map(([rotulo, valor]) => [rotulo, valorResumo(valor)]).filter(([, valor]) => valor);
   const destaque = cards.length ? `<tr><td style="padding:0 0 18px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:8px 0;margin:0 -8px;"><tr>${cards.map(([rotulo, valor]) => `<td style="padding:13px 14px;background:#eef3f9;border:1px solid #dce5f0;vertical-align:top;"><div style="color:#58708f;font-size:11px;font-weight:700;text-transform:uppercase;">${escapeHtml(rotulo)}</div><div style="margin-top:5px;color:#102d56;font-size:17px;font-weight:700;line-height:1.25;">${escapeHtml(valor)}</div></td>`).join("")}</tr></table></td></tr>` : "";
   const itens = itensPncp.slice(0, 30).map((item, indice) => {
-    const descricao = valorResumo(item && item.descricao);
+    const descricao = descricaoItemResumo(item && item.descricao);
     if (!descricao) return "";
     const quantidade = [item.quantidade, item.unidade].filter((v) => v !== null && v !== undefined && v !== "").join(" ");
     return `<li style="margin:0 0 6px;"><strong>${indice + 1}.</strong> ${escapeHtml(descricao)}${quantidade ? ` <span style="color:#637085;">— ${escapeHtml(quantidade)}</span>` : ""}</li>`;
   }).filter(Boolean);
-  const itensHtml = itens.length ? `<ol style="margin:0;padding:0 0 0 20px;color:#162d4c;font-size:13px;line-height:1.5;">${itens.join("")}</ol>${itensPncp.length > 30 ? `<p style="margin:10px 0 0;color:#637085;font-size:12px;">Mostrando 30 de ${itensPncp.length} itens. Consulte o edital oficial para a relação completa.</p>` : ""}` : "";
+  const itensHtml = itens.length ? `<ol style="margin:0;padding:0 0 0 20px;color:#162d4c;font-size:13px;line-height:1.5;">${itens.join("")}</ol>${totalItensPncp > itensPncp.length ? `<p style="margin:10px 0 0;color:#637085;font-size:12px;">Mostrando ${itensPncp.length} de ${totalItensPncp} itens. Há outros itens no processo; consulte o edital oficial para a relação completa.</p>` : ""}` : "";
   const resumoGeral = valorResumo(resumo.resumoGeral);
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">${destaque}
     ${secaoResumo("Visão geral", resumoGeral ? `<p style="margin:0;color:#162d4c;font-size:14px;line-height:1.6;">${escapeHtml(resumoGeral)}</p>` : "")}
@@ -160,7 +178,7 @@ function montarConteudoEstruturado(resumo, edital) {
     ${secaoResumo("Detalhes da licitação", tabelaResumo([["Critério de julgamento", criterioJulgamento], ["Tipo de análise", detalhes.tipoAnalise], ["Propostas/lances por", resumo.criteriosProposta && resumo.criteriosProposta.propostasLancesPor], ["Regime de execução", detalhes.regimeExecucao || edital?.regimeExecucao], ["Prazo de entrega", detalhes.prazoEntrega], ["Garantia", resumo.garantias && resumo.garantias.proposta], ["Condições de pagamento", resumo.condicoesPagamento], ["Penalidades", resumo.penalidades], ["Multas", resumo.multas]]))}
     ${secaoResumo("Documentos de habilitação", listaResumo(resumo.documentosHabilitacao))}
     ${secaoResumo("Declarações e formulários", listaResumo(resumo.declaracoesExigidas))}
-    ${secaoResumo(`Itens da oportunidade (${itensPncp.length})`, itensHtml)}
+    ${secaoResumo(`Itens da oportunidade (${totalItensPncp})`, itensHtml)}
     ${secaoResumo("Pendências para conferência", listaResumo(resumo.pendenciasParaConferencia))}
     ${secaoResumo("Perguntas sugeridas ao órgão", listaResumo(resumo.questionamentosSugeridos))}
   </table>`;
