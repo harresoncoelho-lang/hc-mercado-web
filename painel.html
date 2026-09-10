@@ -5539,6 +5539,37 @@
     } catch (e) { /* localStorage indisponível */ }
   }
 
+  // Uma atualização de página não deve deixar o cliente olhando uma tela vazia enquanto
+  // o PNCP responde. Guardamos somente o resultado já filtrado da última edição: ele é
+  // exibido imediatamente e a conferência com as fontes continua em segundo plano.
+  const BOL_CACHE_VERSAO = 1;
+  function chaveCacheBoletim(filtro) {
+    const ufs = normalizarUfs(filtro && (filtro.ufs || filtro.uf)).sort().join(",");
+    const palavras = String((filtro && filtro.palavrasRaw) || "").trim().toLowerCase();
+    return `hc_boletim_resultado_v${BOL_CACHE_VERSAO}:${ufs}:${palavras}`;
+  }
+  function lerCacheResultadoBoletim(filtro) {
+    try {
+      const bruto = sessionStorage.getItem(chaveCacheBoletim(filtro));
+      const cache = bruto ? JSON.parse(bruto) : null;
+      return cache && Array.isArray(cache.resultados) ? cache : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function salvarCacheResultadoBoletim(filtro, resultados) {
+    try {
+      sessionStorage.setItem(chaveCacheBoletim(filtro), JSON.stringify({
+        salvoEm: new Date().toISOString(),
+        resultados,
+      }));
+    } catch (e) { /* sessão sem espaço ou indisponível: o boletim segue normal */ }
+  }
+  function metaBoletim(ufs, palavras, sufixo = "") {
+    const agora = new Date();
+    return `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · estados: ${textoUfs(ufs)} · ${palavras.join(", ")} · últimos 3 dias${sufixo}`;
+  }
+
   // Controla se o boletim já foi gerado nessa visita à página — evita refazer a busca ao vivo
   // (e mostrar "Gerando boletim..." de novo) toda vez que o usuário só troca de aba e volta.
   // Só busca de novo quando o filtro é salvo ou o botão "Atualizar boletim" é clicado.
@@ -5678,13 +5709,22 @@
 
     const ufs = normalizarUfs(filtro.ufs || filtro.uf);
     const palavras = filtro.palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
-    alvo.innerHTML = '<div class="carregando">Gerando boletim...</div>';
-    document.getElementById("bol-calendario").innerHTML = "";
-    // Toda vez que o boletim é gerado de novo (troca de aba ou novo filtro salvo), volta o
-    // calendário pro mês atual e sem dia selecionado — uma visão "limpa" a cada carregamento.
-    bolMesReferencia = new Date();
-    bolMesReferencia.setDate(1);
-    bolDiaSelecionado = null;
+    const cacheInicial = lerCacheResultadoBoletim(filtro);
+    if (cacheInicial) {
+      // Mantém a última edição visível já no primeiro frame; nenhum clique nem refresh
+      // precisa esperar o PNCP. A nova consulta abaixo substitui este resultado ao terminar.
+      renderizarBoletimComCalendario(cacheInicial.resultados, '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Exibindo a última versão do boletim enquanto os dados são atualizados em segundo plano.</div>');
+      const quando = new Date(cacheInicial.salvoEm || Date.now());
+      metaEl.textContent = metaBoletim(ufs, palavras, ` · última edição carregada às ${quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}; atualizando em segundo plano`);
+    } else {
+      alvo.innerHTML = '<div class="carregando">Carregando a primeira edição do boletim...</div>';
+      document.getElementById("bol-calendario").innerHTML = "";
+      // Sem uma edição anterior, começa a visão limpa. Depois disso, refreshes passam
+      // a reutilizar a edição cacheada e deixam de mostrar a tela em branco.
+      bolMesReferencia = new Date();
+      bolMesReferencia.setDate(1);
+      bolDiaSelecionado = null;
+    }
 
     try {
       // Boletim = só o que é NOVIDADE (publicado nos últimos dias) — busca ao vivo (mesma
@@ -5719,8 +5759,7 @@ let resultados = resultadosBrutos.filter((r) => {
   })();
   return publicacaoRecente || aindaAberta;
 });
-      const agora = new Date();
-      metaEl.textContent = `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · estados: ${textoUfs(ufs)} · ${palavras.join(", ")} · últimos ${DIAS_BOLETIM} dias`;
+      metaEl.textContent = metaBoletim(ufs, palavras);
       let avisoHtml = resp.falhaConexao
         ? '<div class="aviso">A API pública do PNCP não respondeu agora — mostrando também o que o robô já tinha coletado, então a lista abaixo pode não estar 100% atualizada.</div>'
         : "";
@@ -5730,14 +5769,23 @@ let resultados = resultadosBrutos.filter((r) => {
         .filter((r) => ufEstaSelecionada(r.uf, ufs));
 
       if (resultados.length === 0) {
+        if (cacheInicial) {
+          metaEl.textContent = metaBoletim(ufs, palavras, " · a atualização não trouxe novos resultados; mantendo a última edição disponível");
+          return;
+        }
         alvo.innerHTML = avisoHtml + '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na coleta mais recente.</div>';
               bolResultadosCompletos = [];
               if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
         return;
       }
 
+      salvarCacheResultadoBoletim(filtro, resultados);
       renderizarBoletimComCalendario(resultados, avisoHtml);
     } catch (e) {
+      if (cacheInicial) {
+        metaEl.textContent = metaBoletim(ufs, palavras, " · não foi possível atualizar agora; mantendo a última edição disponível");
+        return;
+      }
       alvo.innerHTML = `<div class="aviso">Erro ao gerar boletim: ${escapeHtml(String(e))}</div>`;
     }
   }
