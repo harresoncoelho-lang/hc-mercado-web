@@ -3629,6 +3629,10 @@
     const selecionadas = new Set(normalizarUfs(ufs));
     Array.from(select.options).forEach((opcao) => { opcao.selected = selecionadas.has(opcao.value); });
     atualizarSeletorUfs(select);
+    // Alguns navegadores restauram o estado de um <select> logo após o script de
+    // inicialização. Agenda uma segunda sincronização para que os chips sempre
+    // reflitam o filtro recuperado, inclusive ao voltar para a aba de busca.
+    requestAnimationFrame(() => atualizarSeletorUfs(select));
   }
   function textoUfs(ufs) {
     const selecionadas = normalizarUfs(ufs);
@@ -5846,10 +5850,14 @@ let resultados = resultadosBrutos.filter((r) => {
       } catch (e) { /* segue sem restaurar o município se a lista não carregar a tempo */ }
     }
     await buscarOportunidades();
+    atualizarSeletorUfs(document.getElementById("op-uf"));
   }
   restaurarOportunidades();
 
   document.querySelector('nav button[data-alvo="oportunidades"]').addEventListener("click", () => {
+    // A aba pode voltar do cache visual do navegador: força os chips a espelharem
+    // o select nativo que guarda o filtro selecionado.
+    atualizarSeletorUfs(document.getElementById("op-uf"));
     // Voltar pra essa aba não deve refazer a busca ao vivo de novo — só a restauração
     // inicial (ao carregar a página) ou clicar em "Buscar oportunidades" fazem isso.
     if (!opJaBuscado) restaurarOportunidades();
