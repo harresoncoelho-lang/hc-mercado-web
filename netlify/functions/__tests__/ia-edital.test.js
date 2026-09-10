@@ -56,3 +56,9 @@ test("consulta o cache antes de consumir a cota de IA", () => {
   const fonte = fs.readFileSync(require.resolve("../ia-edital"), "utf8");
   assert.ok(fonte.indexOf('storeResumos.get(edital.numeroControlePNCP') < fonte.indexOf('verificarLimiteDiario(sessao.userId, "ia-edital", 40)'));
 });
+
+test("não deixa um rótulo operacional engolir o texto seguinte do portal", () => {
+  const { __test } = carregarComModelo(null);
+  const texto = "Critério de Julgamento - Menor preço por item MODO DE DISPUTA - Aberto PREFERÊNCIA ME/EPP - Sim";
+  assert.equal(__test.valorRotuladoDoTexto(texto, "Critério de Julgamento"), "Menor preço por item");
+});

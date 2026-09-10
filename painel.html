@@ -2518,7 +2518,7 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 5;
+  const VERSAO_CACHE_LOCAL_RESUMO = 6;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2771,6 +2771,7 @@
     const local = [edital && edital.municipio, edital && edital.uf].filter(Boolean).join(" / ") || naoInformado;
     const prazo = edital && edital.encerramento || naoInformado;
     return {
+      fonteLida: false,
       dadosOficiais: {
         publicacao: edital && edital.publicacao,
         inicioRecebimento: edital && edital.inicioRecebimento,
@@ -2820,7 +2821,17 @@
 
   function renderizarEstruturaIA(est) {
     const estruturaComFonte = aplicarDadosOficiaisNaEstruturaIA(est, iaEditalAtual);
-    iaEstruturaAtual = { ...estruturaComFonte, itensPncp: iaItensPncpAtual || estruturaComFonte.itensPncp || [] };
+    const itensPncp = iaItensPncpAtual || estruturaComFonte.itensPncp || [];
+    iaEstruturaAtual = {
+      ...estruturaComFonte,
+      itensPncp,
+      // Havendo relação oficial de itens, ela é a referência de contagem também
+      // para o card "Resumo dos Itens" — nunca a contagem eventualmente citada
+      // no texto resumido pela IA.
+      itens: Array.isArray(itensPncp) && itensPncp.length
+        ? { ...(estruturaComFonte.itens || {}), totalItens: itensPncp.length }
+        : estruturaComFonte.itens,
+    };
     renderizarCartoesTopoIA(iaEstruturaAtual);
     const conversa = document.getElementById("modal-ia-conversa");
     const anterior = conversa.querySelector("[data-resumo-estrutura]");
@@ -2835,12 +2846,22 @@
       wrap.appendChild(p);
     }
 
+    const fonteNaoLida = est.fonteLida === false;
+    const temConteudoConfirmado = (valor) => {
+      const texto = textoIA(valor);
+      return Boolean(texto) && !/^n[ãa]o informado$/i.test(texto) && !/^n[ãa]o localizado no material lido/i.test(texto);
+    };
+
     for (const chave of Object.keys(RÓTULOS_ESTRUTURA_IA)) {
       const secaoDados = est[chave];
       if (!secaoDados) continue;
       const def = RÓTULOS_ESTRUTURA_IA[chave];
       const linhas = Object.keys(def.campos)
         .map((campo) => [def.campos[campo], secaoDados[campo]])
+        // Quando o documento não pôde ser lido, não preenchemos a tela com
+        // dezenas de "não localizado". Exibimos o que é oficial e confirmável;
+        // o aviso de pendência já deixa claro o limite daquela ficha.
+        .filter(([, v]) => !fonteNaoLida || temConteudoConfirmado(v))
         // Além dos rótulos que já trazem "data" ou "prazo", o limite de
         // propostas também é uma data. Sem isso, ele acabava exibido no
         // formato técnico ISO (2026-09-22T09:15:00) apenas neste campo.
@@ -2848,6 +2869,7 @@
           const valor = /data|publicado|prazo|recebimento|limite|vigência/i.test(rotulo) ? formatarDataHoraIA(v) : textoIA(v);
           return [rotulo, valorLocalizadoIA(valor)];
         });
+      if (!linhas.length) continue;
       const secao = criarSecaoIA(def.titulo);
       const dl = document.createElement("dl");
       dl.style.cssText = "margin:8px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:13px;";
@@ -2865,18 +2887,18 @@
       wrap.appendChild(secao);
     }
 
-    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos", est.documentosHabilitacao, "Não localizados no material lido — conferir habilitação jurídica, fiscal/trabalhista, econômico-financeira e técnica no edital oficial.");
-    adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Declarações e Formulários", est.declaracoesExigidas, "Nenhuma declaração ou formulário específico foi localizado no material lido.");
-    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação e Base Legal", est.legislacao);
-    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Anexos e Documentos Complementares", est.anexosDeclaracoes);
-    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-credit-card'></use></svg> Condições de Pagamento", est.condicoesPagamento);
-    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Penalidades", est.penalidades);
-    adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Multas", est.multas);
+    if (!fonteNaoLida || (Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length)) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos", est.documentosHabilitacao, "Não localizados no material lido — conferir habilitação jurídica, fiscal/trabalhista, econômico-financeira e técnica no edital oficial.");
+    if (!fonteNaoLida || (Array.isArray(est.declaracoesExigidas) && est.declaracoesExigidas.length)) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Declarações e Formulários", est.declaracoesExigidas, "Nenhuma declaração ou formulário específico foi localizado no material lido.");
+    if (!fonteNaoLida || temConteudoConfirmado(est.legislacao)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação e Base Legal", est.legislacao);
+    if (!fonteNaoLida || temConteudoConfirmado(est.anexosDeclaracoes)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-paperclip'></use></svg> Anexos e Documentos Complementares", est.anexosDeclaracoes);
+    if (!fonteNaoLida || temConteudoConfirmado(est.condicoesPagamento)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-credit-card'></use></svg> Condições de Pagamento", est.condicoesPagamento);
+    if (!fonteNaoLida || temConteudoConfirmado(est.penalidades)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Penalidades", est.penalidades);
+    if (!fonteNaoLida || temConteudoConfirmado(est.multas)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-warning'></use></svg> Multas", est.multas);
 
     // Campos de texto livre (atestado técnico, legislação, anexos, condições de pagamento).
     CAMPOS_TEXTO_LIVRE_IA.forEach(([chave, titulo]) => {
       const valor = est[chave];
-      if (!valor || /^n[ãa]o informado$/i.test(String(valor).trim())) return;
+      if (!valor || /^n[ãa]o informado$/i.test(String(valor).trim()) || (fonteNaoLida && !temConteudoConfirmado(valor))) return;
       const secao = criarSecaoIA(titulo);
       const p = document.createElement("p");
       p.style.cssText = "margin:8px 0 0;font-size:13px;";
@@ -2949,7 +2971,9 @@
         return "Não consegui localizar/baixar o documento desse edital agora (pode ser de um portal que não é o PNCP, ou o arquivo pode estar indisponível) — resumo baseado só nos dados já coletados.";
       };
       if (modo === "resumo" && (dados.estrutura || dados.resposta)) {
-        renderizarEstruturaIA(dados.estrutura || estruturarResumoTextualLocal(iaEditalAtual, dados.resposta));
+        const estruturaRecebida = dados.estrutura || estruturarResumoTextualLocal(iaEditalAtual, dados.resposta);
+        if (typeof dados.fonteLida === "boolean") estruturaRecebida.fonteLida = dados.fonteLida;
+        renderizarEstruturaIA(estruturaRecebida);
         if (dados.modoDegradado) {
           escreverMensagemIA(dados.aviso || "A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
         } else if (!dados.fonteLida) {
@@ -2982,7 +3006,7 @@
     try {
       const salvo = JSON.parse(localStorage.getItem(chaveCache) || "null");
       if (salvo && Array.isArray(salvo.itens) && salvo.itens.length && Date.now() - Number(salvo.em || 0) < 6 * 60 * 60 * 1000) {
-        iaItensPncpAtual = salvo.itens;
+        sincronizarItensPncpNoResumo(edital, salvo.itens, false);
         return salvo.itens;
       }
     } catch (e) { /* cache local é apenas otimização */ }
@@ -2994,12 +3018,8 @@
         const dados = await resp.json();
         const itens = Array.isArray(dados.itens) ? dados.itens : [];
         if (!itens.length) return [];
-        iaItensPncpAtual = itens;
+        sincronizarItensPncpNoResumo(edital, itens, false);
         try { localStorage.setItem(chaveCache, JSON.stringify({ em: Date.now(), itens })); } catch (e) { /* quota não impede o resumo */ }
-        if (iaEstruturaAtual) {
-          iaEstruturaAtual.itensPncp = itens;
-          renderizarEstruturaIA(iaEstruturaAtual);
-        }
         return itens;
       } catch (e) {
         // A relação de itens é complementar; falha no PNCP não impede o resumo.
@@ -3009,6 +3029,20 @@
       }
     })();
     return iaItensPncpCarregando;
+  }
+
+  // O total que aparece no dossiê e o que o usuário abre em "Ver itens" devem
+  // vir da mesma lista oficial. A IA pode resumir uma quantidade mencionada no
+  // documento, mas não pode substituir a contagem retornada pelo PNCP.
+  function sincronizarItensPncpNoResumo(edital, itens, renderizar = true) {
+    const lista = Array.isArray(itens) ? itens : [];
+    if (!lista.length) return;
+    if (!iaEditalAtual || idOportunidade(iaEditalAtual) !== idOportunidade(edital)) return;
+    iaItensPncpAtual = lista;
+    if (!iaEstruturaAtual) return;
+    iaEstruturaAtual.itensPncp = lista;
+    iaEstruturaAtual.itens = { ...(iaEstruturaAtual.itens || {}), totalItens: lista.length };
+    if (renderizar && document.getElementById("modal-ia-conversa")) renderizarEstruturaIA(iaEstruturaAtual);
   }
 
   // Baixa o arquivo real do edital (via proxy que lê a API pública do PNCP) em vez de só
@@ -5281,7 +5315,12 @@
     try {
       const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
       const dados = await resp.json();
-      painel.innerHTML = montarHtmlItens(Array.isArray(dados.itens) ? dados.itens : []);
+      const itens = Array.isArray(dados.itens) ? dados.itens : [];
+      painel.innerHTML = montarHtmlItens(itens);
+      sincronizarItensPncpNoResumo(edital, itens);
+      try {
+        localStorage.setItem(`itens-pncp-v1:${idOportunidade(edital)}`, JSON.stringify({ em: Date.now(), itens }));
+      } catch (e) { /* cache local é apenas otimização */ }
     } catch (e) {
       painel.innerHTML = `<p class="itens-vazio">Erro ao buscar os itens. Tenta de novo em alguns segundos.</p>`;
     }

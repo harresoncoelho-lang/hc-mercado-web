@@ -36,7 +36,9 @@ const MAX_CARACTERES_TEXTO = 22000;
 const MAX_DOCUMENTOS_PARA_LEITURA = 3;
 const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
-const VERSAO_RESUMO = 6;
+// Incrementada quando a normalização estrutural muda, para que um dossiê antigo
+// nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
+const VERSAO_RESUMO = 7;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
@@ -365,7 +367,7 @@ async function chamarGroq(apiKey, mensagens, opts) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { chamarGroq };
+exports.__test = { chamarGroq, valorRotuladoDoTexto };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -414,7 +416,21 @@ function valorRotuladoDoTexto(texto, rotulo) {
   if (!texto) return "";
   const escapar = String(rotulo).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const achado = String(texto).match(new RegExp(`${escapar}\\s*[-–—:]\\s*([^\\r\\n]+)`, "i"));
-  return achado && achado[1] ? achado[1].replace(/\s+/g, " ").trim().slice(0, 300) : "";
+  if (!achado || !achado[1]) return "";
+
+  // Alguns extratores de PDF removem as quebras de linha das telas dos portais.
+  // Sem este limite, por exemplo, "Critério de julgamento: Menor preço por
+  // item MODO DE DISPUTA: ..." virava um campo de centenas de caracteres.
+  // Interrompemos no próximo rótulo conhecido, mesmo quando ele chegou colado
+  // ao valor na mesma linha.
+  const proximoRotulo = /\s+(?=(?:MODO\s+DE\s+DISPUTA|PREFER[ÊE]NCIA(?:\s+ME\s*\/\s*EPP)?|CNPJ(?:\s+N[ºO])?|REGIME\s+DE\s+EXECU[CÇ][ÃA]O|PROPOSTAS?\s*\/\s*LANCES?\s+POR|TIPO\s+DE\s+AN[ÁA]LISE|RECEBIMENTO\s+DE\s+PROPOSTAS?|LOCAL|EDITAL\s+PARA\s+SRP)\b)/i;
+  const inicioProximoRotulo = achado[1].search(proximoRotulo);
+  const valor = inicioProximoRotulo >= 0 ? achado[1].slice(0, inicioProximoRotulo) : achado[1];
+  return valor
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[;,:-]+$/, "")
+    .slice(0, 160);
 }
 
 function aplicarCamposOperacionaisDoTexto(estrutura, textoEdital) {
