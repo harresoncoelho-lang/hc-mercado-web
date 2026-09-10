@@ -3442,9 +3442,10 @@
 
     document.getElementById("modal-ia-fundo").classList.add("aberto");
     (async () => {
-      // O resumo só é montado depois da leitura do detalhe oficial. Assim, campos
-      // como modalidade e data de publicação não dependem do card resumido.
-      await enriquecerEditalComDetalhePncp(edital);
+      // O dossiê pronto é a fonte prioritária. Não aguardamos o PNCP antes de consultá-lo:
+      // isso faz o resumo pré-processado abrir imediatamente, inclusive em outro navegador.
+      // O detalhe oficial segue em paralelo apenas para complementar cards ainda sem dossiê.
+      const detalhePncp = enriquecerEditalComDetalhePncp(edital);
       void carregarItensDoResumoIA(edital);
       const resumoLocal = lerCacheLocalResumo(edital);
       if (resumoLocal) {
@@ -3460,6 +3461,7 @@
         return;
       }
       chamarIA("resumo", null);
+      void detalhePncp.catch(() => {});
     })();
   }
 

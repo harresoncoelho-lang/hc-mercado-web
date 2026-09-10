@@ -41,6 +41,20 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/atualizar_dados.js
 
+      - name: Preparar dossiês dos editais novos
+        env:
+          LICITAPLENA_URL: "https://licitaplena.com.br"
+          MAX_DOSSIES_POR_EXECUCAO: "12"
+          DIAS_PUBLICACAO_DOSSIE: "3"
+          CONCORRENCIA_DOSSIES: "2"
+          DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
+        run: |
+          if [ -z "$DOSSIES_EDITAIS_CHAVE" ]; then
+            echo "DOSSIES_EDITAIS_CHAVE não configurada; preparação antecipada aguardará a configuração do segredo."
+            exit 0
+          fi
+          node scripts/preparar_dossies_editais.js
+
       - name: Consolidar base de empresas (Fase 1)
         run: node scripts/coletar_empresas.js
 

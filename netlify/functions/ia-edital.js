@@ -38,12 +38,58 @@ const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 const VERSAO_RESUMO = 5;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
+const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
 // navegador. Manda em todo fetch pro PNCP por segurança.
 const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+// O Blob mantém a leitura extremamente rápida; o Supabase é a fonte durável e
+// consultável do dossiê (status, versão e conteúdo), inclusive para auditoria.
+async function buscarDossiePersistido(numeroControlePNCP) {
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!chave || !numeroControlePNCP) return null;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/dossies_editais?numero_controle_pncp=eq.${encodeURIComponent(numeroControlePNCP)}&select=dossie,versao,expira_em`;
+    const resposta = await fetch(url, { headers: { apikey: chave, Authorization: `Bearer ${chave}` } });
+    if (!resposta.ok) return null;
+    const linhas = await resposta.json();
+    const linha = linhas[0];
+    if (!linha || !linha.dossie || (linha.expira_em && new Date(linha.expira_em).getTime() <= Date.now())) return null;
+    return { ...linha.dossie, versao: linha.versao || linha.dossie.versao };
+  } catch (e) {
+    return null;
+  }
+}
+
+async function salvarDossiePersistido(numeroControlePNCP, dossie) {
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!chave || !numeroControlePNCP || !dossie) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/dossies_editais?on_conflict=numero_controle_pncp`, {
+      method: "POST",
+      headers: {
+        apikey: chave,
+        Authorization: `Bearer ${chave}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify([{
+        numero_controle_pncp: numeroControlePNCP,
+        versao: dossie.versao || VERSAO_RESUMO,
+        status: dossie.modoDegradado ? "parcial" : "pronto",
+        fonte_lida: Boolean(dossie.fonteLida),
+        dossie,
+        atualizado_em: new Date().toISOString(),
+        gerado_em: dossie.geradoEm || new Date().toISOString(),
+      }]),
+    });
+  } catch (e) {
+    // O resumo atual continua válido mesmo se a camada de auditoria estiver indisponível.
+  }
+}
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -479,7 +525,13 @@ exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: JSON.stringify({ erro: "Use POST." }) };
 
-  const sessao = await exigirUsuarioLogado(event);
+  // O coletor agendado usa a mesma análise que o cliente, mas não possui uma sessão
+  // de navegador. A chave só é aceita se estiver configurada no ambiente; portanto,
+  // a ausência da variável jamais transforma esta rota autenticada em pública.
+  const chaveRobo = process.env.DOSSIES_EDITAIS_CHAVE;
+  const cabecalhosRecebidos = event.headers || {};
+  const ehRoboInterno = Boolean(chaveRobo && cabecalhosRecebidos["x-licitaplena-dossies-chave"] === chaveRobo);
+  const sessao = ehRoboInterno ? { ok: true, userId: "robo-dossies-editais" } : await exigirUsuarioLogado(event);
   if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
   let body;
   try {
@@ -510,9 +562,10 @@ exports.handler = async (event) => {
     storeResumos = null; // sem cache disponível — segue funcionando normalmente, só mais devagar
   }
 
-  if (modo === "resumo" && storeResumos && edital.numeroControlePNCP) {
+  if (modo === "resumo" && edital.numeroControlePNCP) {
     try {
-      const cache = await storeResumos.get(edital.numeroControlePNCP, { type: "json" });
+      let cache = storeResumos ? await storeResumos.get(edital.numeroControlePNCP, { type: "json" }) : null;
+      if (!cache) cache = await buscarDossiePersistido(edital.numeroControlePNCP);
       // Aceita tanto o cache do resumo ESTRUTURADO (JSON, caminho ideal) quanto do resumo
       // em TEXTO CORRIDO (fallback, quando a extração em JSON não deu certo) — os dois têm
       // custo de IA pra gerar, então os dois precisam ficar em cache. Sem isso, todo edital
@@ -578,7 +631,9 @@ exports.handler = async (event) => {
   // Só usa a cota de IA quando de fato há uma análise a executar. Antes desta
   // ordem, uma oportunidade sem arquivo acessível ainda gastava a cota com um
   // resumo genérico baseado nos mesmos campos que já estão na tela.
-  const limite = await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
+  // O orçamento do robô é controlado pelo próprio job (quantidade máxima por execução).
+  // Não mistura esse processamento de base com a cota diária individual dos clientes.
+  const limite = ehRoboInterno ? { ok: true } : await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
   if (!limite.ok && modo === "resumo") {
     const contingencia = respostaDeContingencia(edital, "indisponivel", limite.erro);
     contingencia.headers = headers;
@@ -637,20 +692,24 @@ exports.handler = async (event) => {
         // Salva no cache pra próxima vez (por qualquer pessoa) abrir instantâneo, sem
         // reprocessar. Se o cache não estiver disponível ou der erro, não trava o resumo —
         // o usuário atual já recebe a resposta normalmente de qualquer forma.
-        if (storeResumos && edital.numeroControlePNCP) {
+        if (edital.numeroControlePNCP) {
+          const dossiePronto = {
+            estrutura,
+            resposta,
+            textoEdital,
+            fonteLida: true,
+            motivoFonteNaoLida: null,
+            versao: VERSAO_RESUMO,
+            geradoEm: new Date().toISOString(),
+          };
           try {
-            await storeResumos.setJSON(edital.numeroControlePNCP, {
-              estrutura,
-              resposta,
-              textoEdital,
-              fonteLida: true,
-              motivoFonteNaoLida: null,
-              versao: VERSAO_RESUMO,
-              geradoEm: new Date().toISOString(),
-            });
+            if (storeResumos) {
+              await storeResumos.setJSON(edital.numeroControlePNCP, dossiePronto);
+            }
           } catch (e) {
             // não crítico — só significa que não vai ficar em cache dessa vez
           }
+          await salvarDossiePersistido(edital.numeroControlePNCP, dossiePronto);
         }
         return {
           statusCode: 200,
