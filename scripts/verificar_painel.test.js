@@ -35,3 +35,11 @@ test("status usa a atualização real das tabelas que migraram para o Supabase",
   assert.match(html, /tabelaSupabase: "mercado_atas"/);
   assert.match(html, /await aguardarSupabaseAutenticado\(\);/);
 });
+
+test("diagnóstico limita a amostra rica de contratos para evitar resposta pesada", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  assert.match(html, /consultarContratosSupabase\(\{ palavras, dias, cnpjFornecedor, uf, limite = 1000 \}\)/);
+  assert.match(html, /const limiteSeguro = Math\.min\(Math\.max\(Number\(limite\) \|\| 1000, 1\), 1000\)/);
+});

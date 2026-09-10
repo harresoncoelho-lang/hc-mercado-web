@@ -7009,7 +7009,7 @@ let resultados = resultadosBrutos.filter((r) => {
       </div>
     </div><div class="carregando">Resumo pronto. Carregando os detalhes para aprofundar a análise...</div>`;
   }
-  async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, uf, limite = 5000 }) {
+  async function consultarContratosSupabase({ palavras, dias, cnpjFornecedor, uf, limite = 1000 }) {
     await aguardarSupabaseAutenticado();
     const chaveCache = JSON.stringify({ palavras: palavras || [], dias: dias || null, cnpjFornecedor: cnpjFornecedor || null, uf: uf || null, limite });
     const entradaCache = cacheConsultasContratos.get(chaveCache);
@@ -7019,7 +7019,12 @@ let resultados = resultadosBrutos.filter((r) => {
     // A contagem exata obriga o Postgres a percorrer toda a base antes de devolver os
     // registros. Para o diagnóstico ela só serve como indicador de recorte, portanto a
     // estimativa do planejador elimina essa espera sem afetar os contratos exibidos.
-    let query = window.__sbClient.from("contratos").select("dado", { count: "planned" }).limit(limite);
+    // Cada registro inclui o JSON bruto do contrato. Pedir milhares deles de uma vez
+    // fazia a API devolver dezenas de MB e, em navegadores normais, podia estourar o
+    // tempo/resposta antes de mostrar qualquer resultado. O resumo agregado vem pela
+    // RPC abaixo; aqui precisamos só de uma amostra rica para os aprofundamentos.
+    const limiteSeguro = Math.min(Math.max(Number(limite) || 1000, 1), 1000);
+    let query = window.__sbClient.from("contratos").select("dado", { count: "planned" }).limit(limiteSeguro);
     if (typeof dias === "number" && dias > 0) {
       const limiteDataIso = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       query = query.or(`data_assinatura.gte.${limiteDataIso},data_assinatura.is.null`);
