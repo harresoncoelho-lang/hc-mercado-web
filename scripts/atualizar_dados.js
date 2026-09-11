@@ -463,6 +463,17 @@ function extrairFonteOrcamentaria(item) {
   return null;
 }
 
+function ufsPendentesDeAtualizacao(existentes, agora = new Date()) {
+  const inicioDoDia = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
+  const falhas = new Set(Array.isArray(existentes && existentes.ufsComFalha) ? existentes.ufsComFalha : []);
+  const cobertura = (existentes && existentes.coberturaPorUf) || {};
+  return UFS.filter((uf) => {
+    const atualizadoEm = cobertura[uf] && cobertura[uf].atualizadoEm;
+    const ultimaColeta = atualizadoEm ? new Date(atualizadoEm).getTime() : NaN;
+    return falhas.has(uf) || !Number.isFinite(ultimaColeta) || ultimaColeta < inicioDoDia;
+  });
+}
+
 async function coletarOportunidadesAbertas(caminhoArquivo) {
   // Orçamento maior (era 6 min fixo) e busca em PARALELO por UF (era 1 UF de cada vez) —
   // com 27 UFs e a API do PNCP às vezes lenta, rodar sequencial estourava o orçamento
@@ -498,10 +509,10 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
   const recuperarPendentes = process.env.RECUPERAR_UFS_PENDENTES === "1";
-  const pendentesAnteriores = new Set(Array.isArray(existentes && existentes.ufsComFalha) ? existentes.ufsComFalha : []);
-  // No modo de recuperação, uma execução curta toca somente as UFs pendentes
-  // do último boletim. O restante da cobertura continua válido e não precisa
-  // ser consultado de novo para corrigir um único estado instável.
+  const pendentesAnteriores = new Set(ufsPendentesDeAtualizacao(existentes));
+  // Uma UF sem erro também precisa de recuperação se sua última coleta ficou em
+  // outro dia. Só olhar ufsComFalha deixava AM preso em 03/09, mesmo com editais
+  // novos disponíveis. UFs já coletadas hoje (UTC, como o cron) não são repetidas.
   const ufsAlvo = recuperarPendentes && pendentesAnteriores.size > 0
     ? UFS.filter((uf) => pendentesAnteriores.has(uf))
     : UFS;
@@ -685,7 +696,8 @@ async function gravarBoletinsPorUf(fs, path, diretorio, oportunidades) {
       return !Number.isFinite(publicacao) || publicacao >= limitePublicacao || (Number.isFinite(encerramento) && encerramento >= agora);
     });
     await fs.writeFile(path.join(diretorio, `${uf}.json`), JSON.stringify({
-      atualizadoEm: oportunidades && oportunidades.atualizadoEm,
+      atualizadoEm: oportunidades && oportunidades.coberturaPorUf && oportunidades.coberturaPorUf[uf]
+        ? oportunidades.coberturaPorUf[uf].atualizadoEm : null,
       ultimaTentativaEm: oportunidades && oportunidades.ultimaTentativaEm,
       uf,
       totalRegistros: selecionados.length,

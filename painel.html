@@ -1271,10 +1271,13 @@
   .bol-cal-dia {
     position: relative; aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
     border-radius: var(--raio-pq); border: 1px solid transparent; font-size: 13px; color: var(--texto-fraco);
+    background: transparent; font-family: inherit; padding: 0; min-width: 0;
   }
   .bol-cal-dia.vazio { visibility: hidden; }
+  .bol-cal-dia[data-dia] { cursor: pointer; }
   .bol-cal-dia.tem-dados { color: var(--texto); border-color: var(--azul); background: var(--chip-fundo); cursor: pointer; font-weight: 700; }
-  .bol-cal-dia.tem-dados:hover { background: var(--azul); color: #fff; }
+  .bol-cal-dia[data-dia]:hover { background: var(--azul); color: #fff; }
+  .bol-cal-dia[data-dia]:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
   .bol-cal-dia.hoje { border-color: var(--laranja); }
   .bol-cal-dia.selecionado { background: var(--azul); color: #fff; border-color: var(--azul); }
   .bol-cal-dia-badge {
@@ -5644,17 +5647,17 @@
       return null;
     }
   }
-  function salvarCacheResultadoBoletim(filtro, resultados) {
+  function salvarCacheResultadoBoletim(filtro, resultados, atualizadoAoVivoEm = null) {
     try {
       localStorage.setItem(chaveCacheBoletim(filtro), JSON.stringify({
         salvoEm: new Date().toISOString(),
+        atualizadoAoVivoEm,
         resultados,
       }));
     } catch (e) { /* armazenamento indisponível: o boletim segue normal */ }
   }
   function metaBoletim(ufs, palavras, sufixo = "") {
-    const agora = new Date();
-    return `Boletim de ${agora.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}, ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · estados: ${textoUfs(ufs)} · ${palavras.join(", ")} · últimos 3 dias${sufixo}`;
+    return `Boletim · estados: ${textoUfs(ufs)} · ${palavras.join(", ")} · publicações recentes e oportunidades abertas${sufixo}`;
   }
 
   // Controla se o boletim já foi gerado nessa visita à página — evita refazer a busca ao vivo
@@ -5678,6 +5681,8 @@
     if (!iso) return null;
     const d = new Date(iso);
     if (isNaN(d.getTime())) return null;
+    // Uma data civil sem horário não deve recuar um dia ao ser convertida de UTC.
+    if (typeof iso === "string" && /^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   }
 
@@ -5716,14 +5721,14 @@
       if (itens.length > 0) classes.push("tem-dados");
       if (chave === hojeChave) classes.push("hoje");
       if (chave === diaSelecionado) classes.push("selecionado");
-      html += `<div class="${classes.join(" ")}" data-dia="${chave}" title="${itens.length > 0 ? itens.length + " oportunidade(s) publicada(s) nesse dia" : ""}">
+      html += `<button type="button" class="${classes.join(" ")}" data-dia="${chave}" aria-pressed="${chave === diaSelecionado}" aria-label="${chave.split("-").reverse().join("/")}: ${itens.length} oportunidade(s)" title="${itens.length} oportunidade(s) publicada(s) nesse dia">
         <span class="bol-cal-dia-numero">${dia}</span>
         ${itens.length > 0 ? `<span class="bol-cal-dia-badge">${itens.length}</span>` : ""}
-      </div>`;
+      </button>`;
     }
     html += `</div>`;
     if (diaSelecionado) {
-      html += `<div class="bol-cal-filtro-ativo">Mostrando oportunidades de ${formatarDataIso(diaSelecionado)}<button type="button" id="bol-cal-limpar">Ver todos os dias ✕</button></div>`;
+      html += `<div class="bol-cal-filtro-ativo">Mostrando oportunidades de ${diaSelecionado.split("-").reverse().join("/")}<button type="button" id="bol-cal-limpar">Ver todos os dias ✕</button></div>`;
     } else {
       html += `<p class="bol-cal-legenda">Os dias marcados tiveram editais novos publicados. Clique num dia pra ver só as oportunidades daquela data.</p>`;
     }
@@ -5747,7 +5752,7 @@
       bolDiaSelecionado = null;
       aoMudar();
     });
-    alvoCalendario.querySelectorAll(".bol-cal-dia.tem-dados").forEach((el) => {
+    alvoCalendario.querySelectorAll(".bol-cal-dia[data-dia]").forEach((el) => {
       el.addEventListener("click", () => {
         const chave = el.dataset.dia;
         bolDiaSelecionado = bolDiaSelecionado === chave ? null : chave;
@@ -5807,7 +5812,7 @@
 
   function resultadosDoRoboParaBoletim(cacheRobo, ufs, palavras) {
     const registros = cacheRobo && Array.isArray(cacheRobo.registros) ? cacheRobo.registros : [];
-    return filtrarResultadosDoBoletim(mesclarComCacheRobo([], registros, ufs, palavras));
+    return mesclarComCacheRobo([], registros, ufs, palavras);
   }
 
   async function carregarBaseDoRoboParaBoletim(ufs) {
@@ -5816,14 +5821,30 @@
     // base nacional para abrir um boletim de AM, RR ou qualquer outro filtro específico.
     if (estados.length > 0) {
       const bases = await Promise.all(estados.map((uf) => carregarCache(`data/boletim/${uf}.json`)));
-      return { registros: bases.flatMap((base) => (base && Array.isArray(base.registros) ? base.registros : [])) };
+      return {
+        registros: bases.flatMap((base) => (base && Array.isArray(base.registros) ? base.registros : [])),
+        coberturaPorUf: Object.fromEntries(estados.map((uf, i) => [uf, {
+          atualizadoEm: bases[i]?.coberturaPorUf?.[uf]?.atualizadoEm || bases[i]?.atualizadoEm || null,
+        }])),
+      };
     }
     // Sem estado é uma busca nacional propositalmente mais ampla; preserva a cobertura
     // completa para esse caso excepcional, sem penalizar o fluxo normal com UF definida.
     return carregarCache("data/oportunidades_abertas.json");
   }
 
-  function complementarBoletimComSistemaS(filtro, ufs, palavras, resultadosBase, metaEl) {
+  function frescorBaseBoletim(base) {
+    const cobertura = Object.entries(base?.coberturaPorUf || {});
+    const datas = cobertura.length ? cobertura : [["base", { atualizadoEm: base?.atualizadoEm }]];
+    const desatualizada = datas.some(([, dado]) => !dado?.atualizadoEm || !Number.isFinite(Date.parse(dado.atualizadoEm)) || Date.now() - Date.parse(dado.atualizadoEm) > 24 * 60 * 60 * 1000);
+    const descricao = datas.map(([uf, dado]) => {
+      const data = new Date(dado?.atualizadoEm || NaN);
+      return `${uf}: ${isNaN(data) ? "coleta sem data confirmada" : data.toLocaleString("pt-BR")}`;
+    }).join("; ");
+    return ` · última coleta: ${descricao}${desatualizada ? ' · A base pode estar desatualizada. Use "Atualizar boletim" para consultar o PNCP.' : ""}`;
+  }
+
+  function complementarBoletimComSistemaS(filtro, ufs, palavras, resultadosBase, metaEl, sufixo = "", atualizadoAoVivoEm = null) {
     const chaveDaEdicao = chaveCacheBoletim(filtro);
     // Sistema S fica fora do caminho crítico da primeira pintura. Quando existir dado
     // complementar, ele entra depois sem deixar a tela em estado de carregamento.
@@ -5831,9 +5852,9 @@
       if (!extras || extras.length === 0 || chaveCacheBoletim(lerFiltroBoletim() || {}) !== chaveDaEdicao) return;
       const resultados = combinarResultadosDoBoletim(resultadosBase, extras)
         .filter((r) => ufEstaSelecionada(r.uf, ufs));
-      salvarCacheResultadoBoletim(filtro, resultados);
+      salvarCacheResultadoBoletim(filtro, resultados, atualizadoAoVivoEm);
       renderizarBoletimComCalendario(resultados, "");
-      metaEl.textContent = metaBoletim(ufs, palavras);
+      metaEl.textContent = metaBoletim(ufs, palavras, sufixo);
     }).catch(() => {});
   }
 
@@ -5860,9 +5881,9 @@
     if (cacheInicial) {
       // A edição anterior vem do próprio navegador de forma síncrona: login e refresh não
       // dependem da rede para ter conteúdo na tela.
-      renderizarBoletimComCalendario(cacheInicial.resultados, "");
+      renderizarBoletimComCalendario(filtrarResultadosDoBoletim(cacheInicial.resultados), "");
       const quando = new Date(cacheInicial.salvoEm || Date.now());
-      metaEl.textContent = metaBoletim(ufs, palavras, ` · última edição carregada às ${quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`);
+      metaEl.textContent = metaBoletim(ufs, palavras, ` · edição salva no navegador em ${quando.toLocaleString("pt-BR")}; verificando a última coleta`);
     } else {
       alvo.innerHTML = '<div class="carregando">Carregando a primeira edição do boletim...</div>';
       document.getElementById("bol-calendario").innerHTML = "";
@@ -5878,19 +5899,33 @@
       // enriquecidos e é independente da disponibilidade momentânea do PNCP.
       const cacheOportunidades = await carregarBaseDoRoboParaBoletim(ufs);
       if (!atualizarAoVivo) {
-        const resultados = resultadosDoRoboParaBoletim(cacheOportunidades, ufs, palavras);
+        const resultadosRobo = resultadosDoRoboParaBoletim(cacheOportunidades, ufs, palavras);
+        const idsRobo = new Set(resultadosRobo.map((registro) => registro.numeroControlePNCP).filter(Boolean));
+        const registrosCache = (cacheInicial?.resultados || []).filter((registro) => {
+          const coleta = Date.parse(cacheOportunidades?.coberturaPorUf?.[registro.uf]?.atualizadoEm);
+          // Uma projeção posterior à consulta manual já pode ter retirado editais encerrados.
+          return !registro.numeroControlePNCP || idsRobo.has(registro.numeroControlePNCP)
+            || !(coleta > Date.parse(cacheInicial.atualizadoAoVivoEm));
+        });
+        // Uma coleta antiga não pode apagar editais encontrados na atualização manual.
+        const registrosCachePrioritarios = registrosCache.filter((registro) => {
+          const coleta = Date.parse(cacheOportunidades?.coberturaPorUf
+            ? cacheOportunidades.coberturaPorUf[registro.uf]?.atualizadoEm
+            : cacheOportunidades?.atualizadoEm);
+          return !Number.isFinite(coleta) || Date.parse(cacheInicial.atualizadoAoVivoEm) > coleta;
+        });
+        const resultados = filtrarResultadosDoBoletim(combinarResultadosDoBoletim(
+          combinarResultadosDoBoletim(registrosCachePrioritarios, resultadosRobo), registrosCache));
+        const sufixo = frescorBaseBoletim(cacheOportunidades);
+        metaEl.textContent = metaBoletim(ufs, palavras, sufixo);
         if (resultados.length === 0) {
-          if (!cacheInicial) {
-            alvo.innerHTML = '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na última coleta do robô.</div>';
-            bolResultadosCompletos = [];
-            if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
-          }
+          salvarCacheResultadoBoletim(filtro, [], cacheInicial?.atualizadoAoVivoEm || null);
+          renderizarBoletimComCalendario([], '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na última coleta do robô.</div>');
           return;
         }
-        salvarCacheResultadoBoletim(filtro, resultados);
+        salvarCacheResultadoBoletim(filtro, resultados, cacheInicial?.atualizadoAoVivoEm || null);
         renderizarBoletimComCalendario(resultados, "");
-        metaEl.textContent = metaBoletim(ufs, palavras);
-        complementarBoletimComSistemaS(filtro, ufs, palavras, resultados, metaEl);
+        complementarBoletimComSistemaS(filtro, ufs, palavras, resultados, metaEl, sufixo, cacheInicial?.atualizadoAoVivoEm || null);
         return;
       }
 
@@ -5921,7 +5956,11 @@
         return;
       }
 
-      salvarCacheResultadoBoletim(filtro, resultados);
+      const atualizadoAoVivoEm = resp.falhaConexao ? cacheInicial?.atualizadoAoVivoEm || null : new Date().toISOString();
+      salvarCacheResultadoBoletim(filtro, resultados, atualizadoAoVivoEm);
+      metaEl.textContent = metaBoletim(ufs, palavras, resp.falhaConexao
+        ? frescorBaseBoletim(cacheOportunidades)
+        : ` · consulta ao PNCP em ${new Date(atualizadoAoVivoEm).toLocaleString("pt-BR")}`);
       renderizarBoletimComCalendario(resultados, avisoHtml);
     } catch (e) {
       if (cacheInicial) {
