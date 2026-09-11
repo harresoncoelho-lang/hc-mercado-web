@@ -42,4 +42,16 @@ test("diagnóstico limita a amostra rica de contratos para evitar resposta pesad
   const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
   assert.match(html, /consultarContratosSupabase\(\{ palavras, dias, cnpjFornecedor, uf, limite = 1000 \}\)/);
   assert.match(html, /const limiteSeguro = Math\.min\(Math\.max\(Number\(limite\) \|\| 1000, 1\), 1000\)/);
+  assert.match(html, /from\("mercado_atas"\)\.select\("dado"\)\.limit\(1000\)/);
+});
+
+test("dashboard espera a sessão antes de consultar as bases privadas", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const inicio = html.indexOf("async function carregarVisaoGeralMercado()");
+  const fim = html.indexOf("window.__atualizarDashboard", inicio);
+  const bloco = html.slice(inicio, fim);
+  assert.ok(inicio >= 0 && fim > inicio);
+  assert.match(bloco, /await aguardarSupabaseAutenticado\(\);/);
 });

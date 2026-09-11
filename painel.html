@@ -33,12 +33,14 @@
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     sb.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
+        if (typeof window.__resolverClientePronto === "function") window.__resolverClientePronto(null);
         window.location.replace("login.html");
         return;
       }
       const { data: cliente } = await sb.from("clientes").select("nome, empresa, cnpj, telefone, status, segmento, atividades, estados_interesse, como_conheceu, quantidade_funcionarios, licitacoes_por_mes, faturamento_anual, como_pretende_usar, plano").eq("id", session.user.id).maybeSingle();
             if (!cliente || cliente.status !== "aprovado") {
                       await sb.auth.signOut();
+                      if (typeof window.__resolverClientePronto === "function") window.__resolverClientePronto(null);
                       window.location.replace("login.html");
                       return;
             }
@@ -46,6 +48,13 @@
             window.__clienteEmailAtual = session.user.email || "";
             if (typeof window.__resolverClientePronto === "function") window.__resolverClientePronto(cliente);
             if (typeof window.__preencherIdentidadeUsuario === "function") window.__preencherIdentidadeUsuario();
+    }).catch((erro) => {
+      // Evita que os módulos do painel fiquem presos indefinidamente se a sessão/perfil
+      // falhar durante a inicialização. A guarda redireciona para o login e as consultas
+      // que dependem de RLS passam a falhar de forma controlada.
+      console.error("[sessão] não foi possível iniciar o painel:", erro);
+      if (typeof window.__resolverClientePronto === "function") window.__resolverClientePronto(null);
+      window.location.replace("login.html");
     });
         window.__sbClient = sb;
   })();
@@ -4745,9 +4754,9 @@
     // de o token do usuário aprovado estar pronto, pois a RLS das bases de mercado
     // corretamente recusa esse acesso. Centralizar a espera elimina essa corrida em
     // todas as ferramentas que usam a base privada.
-    async function aguardarSupabaseAutenticado() {
-      if (window.__clientePronto) await window.__clientePronto;
-      if (!window.__sbClient) throw new Error("Cliente Supabase não inicializado.");
+  async function aguardarSupabaseAutenticado() {
+    if (window.__clientePronto) await window.__clientePronto;
+    if (!window.__sbClient || !window.__clienteAtual) throw new Error("Sessão Supabase não inicializada.");
     }
 
     // Carrega um blob salvo pelo robô direto na tabela public.dados_robo do Supabase
@@ -4787,7 +4796,9 @@
     try {
       await aguardarSupabaseAutenticado();
       const meta = await carregarMeta("data/mercado_meta.json");
-      let query = window.__sbClient.from("mercado_atas").select("dado").limit(4000);
+      // A lista detalhada alimenta rankings e amostras; mais de mil JSONs completos
+      // não melhora a tela e só aumenta a latência da resposta.
+      let query = window.__sbClient.from("mercado_atas").select("dado").limit(1000);
       if (uf) query = query.eq("uf_orgao", uf);
       const termos = (palavras || []).map(sanitizarParaIlike).filter(Boolean);
       if (termos.length > 0) {
@@ -8577,8 +8588,12 @@ let resultados = resultadosBrutos.filter((r) => {
   let mercadoGeralJaCarregado = false;
   async function carregarVisaoGeralMercado() {
     if (mercadoGeralJaCarregado) return;
+    try {
+      await aguardarSupabaseAutenticado();
+    } catch (e) {
+      return;
+    }
     mercadoGeralJaCarregado = true;
-    if (!window.__sbClient) return;
 
     const elTotal = document.getElementById("dash-mercado-total");
     const elNovasHoje = document.getElementById("dash-mercado-novas-hoje");
