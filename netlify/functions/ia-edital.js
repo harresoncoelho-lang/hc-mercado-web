@@ -39,7 +39,7 @@ const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
-const VERSAO_RESUMO = 10;
+const VERSAO_RESUMO = 11;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
@@ -384,6 +384,25 @@ const SCHEMA_ESTRUTURA = `{
   "resumoGeral": "resumo corrido e DETALHADO (8 a 14 frases), cobrindo objeto completo, órgão, valor, modalidade, datas/prazos, principais exigências de habilitação, forma de disputa e critério de julgamento — não é pra ser curto, é pra ser uma análise completa da oportunidade, como um analista de licitações faria pra um cliente"
 }`;
 
+function diagnosticarLimiteProvedor(resp, corpoErro) {
+  let erro = {};
+  try { erro = JSON.parse(corpoErro)?.error || {}; } catch (_) { /* resposta não JSON */ }
+  const codigos = ["rate_limit_exceeded", "request_too_large", "context_length_exceeded", "tokens_limit_exceeded"];
+  const diagnostico = { status: resp.status, codigo: codigos.includes(erro.code) ? erro.code : "nao_identificado", limites: {} };
+  for (const cabecalho of ["x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "retry-after"]) {
+    const valor = resp.headers?.get?.(cabecalho);
+    if (valor && /^[\d.]+$/.test(valor) && Number.isFinite(Number(valor))) diagnostico.limites[cabecalho] = Number(valor);
+  }
+  // A mensagem pode conter identificadores privados. Extraímos somente números
+  // rotulados pelo provedor; nunca registramos a mensagem nem o corpo integral.
+  const mensagem = typeof erro.message === "string" ? erro.message : "";
+  for (const [, rotulo, valor] of mensagem.matchAll(/\b(Limit|Requested|Used)\s*:?\s*(\d[\d,]*)\b/gi)) {
+    const numero = Number(valor.replace(/,/g, ""));
+    if (Number.isSafeInteger(numero)) diagnostico.limites[rotulo.toLowerCase()] = numero;
+  }
+  return diagnostico;
+}
+
 async function chamarGroq(apiKey, mensagens, opts) {
   const modelos = [...new Set([MODELO, MODELO_PADRAO])];
   for (let indice = 0; indice < modelos.length; indice += 1) {
@@ -407,18 +426,16 @@ async function chamarGroq(apiKey, mensagens, opts) {
       }
       const corpoErro = await resp.text();
       console.warn(`ia-edital: provedor respondeu HTTP ${resp.status}`);
-      if (resp.status === 429) {
-        const limites = {};
-        for (const cabecalho of ["x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "retry-after"]) {
-          const valor = resp.headers?.get?.(cabecalho);
-          if (valor && /^[\d.]+$/.test(valor)) limites[cabecalho] = Number(valor);
-        }
-        console.warn("ia-edital: limites do provedor", JSON.stringify(limites));
-        return { ok: false, erro: "O robô de IA atingiu o limite de uso disponível agora. Tente novamente mais tarde; os dados básicos da licitação continuam acessíveis." };
+      if (resp.status === 429 || resp.status === 413) {
+        const diagnostico = diagnosticarLimiteProvedor(resp, corpoErro);
+        console.warn("ia-edital: limites do provedor", JSON.stringify(diagnostico));
+        return { ok: false, diagnostico, erro: resp.status === 413
+          ? "O provedor de IA recusou o tamanho desta solicitação. A síntese não foi concluída; as cláusulas extraídas permanecem disponíveis."
+          : "O robô de IA atingiu o limite de uso disponível agora. Tente novamente mais tarde; os dados básicos da licitação continuam acessíveis." };
       }
       const modeloIndisponivel = resp.status === 404 && /model_not_found|does not exist|not available/i.test(corpoErro);
       if (modeloIndisponivel && indice < modelos.length - 1) continue;
-      return { ok: false, erro: `Falha ao consultar a IA (${resp.status}): ${corpoErro.slice(0, 200)}` };
+      return { ok: false, erro: `Falha ao consultar a IA (HTTP ${resp.status}).` };
     } catch (e) {
       console.warn(`ia-edital: chamada ao provedor interrompida (${e?.name || "erro"})`);
       return { ok: false, erro: `Erro ao consultar a IA: ${String((e && e.message) || e)}` };
@@ -741,7 +758,7 @@ exports.handler = async (event) => {
       // impedir que outro navegador recupere o dossiê estruturado. Quando o
       // cliente pede a atualização, reaproveitamos apenas uma estrutura completa;
       // caso contrário, lemos a fonte novamente e substituímos o cache incompleto.
-      const cachePodeResponder = cache && cacheAindaValido && cache.versao === VERSAO_RESUMO &&
+      const cachePodeResponder = cache && !cache.modoDegradado && cacheAindaValido && cache.versao === VERSAO_RESUMO &&
         (cache.estrutura || (cache.resposta && !reprocessarEstrutura));
       if (cachePodeResponder) {
         return {
@@ -826,7 +843,7 @@ exports.handler = async (event) => {
       }
     }
     mensagens.push({ role: "user", content: `${contextoTexto}Dados da oportunidade:\n${ficha}\n\nPergunta: ${pergunta.trim()}` });
-    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 600, timeoutMs: 20000 });
+    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 2500, timeoutMs: 20000, reasoningEffort: "low" });
     if (!r.ok) return { statusCode: 502, headers, body: JSON.stringify({ erro: r.erro }) };
     return { statusCode: 200, headers, body: JSON.stringify({ resposta: r.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, motivoFonteNaoLida, erro: null }) };
   }
@@ -898,6 +915,8 @@ exports.handler = async (event) => {
     // justamente o que encerrava a execução sem JSON e deixava o cliente com a tela
     // vazia. A ficha abaixo preserva os dados públicos e permite uma nova tentativa.
     const estrutura = complementarRequisitos(montarEstruturaBasica(edital, motivoFonteNaoLida), textoEdital);
+    if (r.diagnostico) estrutura.falhaSintese = r.diagnostico;
+    if (r.erro) estrutura.pendenciasParaConferencia.push(r.erro);
     if (contextoResumo.parcial) estrutura.pendenciasParaConferencia.push("A fonte excedeu o orçamento de contexto da IA; somente seções completas selecionadas foram encaminhadas para síntese.");
     aplicarCamposOperacionaisDoTexto(estrutura, textoEdital);
     estrutura.coberturaLeitura = coberturaLeitura;

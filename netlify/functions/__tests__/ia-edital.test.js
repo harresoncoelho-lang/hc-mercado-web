@@ -57,6 +57,22 @@ test("consulta o cache antes de consumir a cota de IA", () => {
   assert.ok(fonte.indexOf('storeResumos.get(edital.numeroControlePNCP') < fonte.indexOf('verificarLimiteDiario(sessao.userId, "ia-edital", 40)'));
 });
 
+test("diagnóstico de 413 conserva somente código permitido e limites numéricos", async () => {
+  const fetchOriginal = global.fetch;
+  const warnOriginal = console.warn;
+  const logs = [];
+  console.warn = (...args) => logs.push(args.join(" "));
+  global.fetch = async () => ({ ok: false, status: 413, headers: { get: () => null }, text: async () => JSON.stringify({
+    error: { code: "rate_limit_exceeded", message: "Private organization SECRET_ORG. Limit 8000, Requested 59,598; Used 42. Key SECRET_KEY" },
+  }) });
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarGroq("SECRET_KEY", [{ role: "user", content: "DOCUMENTO_PRIVADO" }]);
+    assert.equal(resultado.ok, false);
+    assert.deepEqual(resultado.diagnostico, { status: 413, codigo: "rate_limit_exceeded", limites: { limit: 8000, requested: 59598, used: 42 } });
+    assert.ok(!JSON.stringify([resultado, logs]).match(/SECRET|DOCUMENTO_PRIVADO/));
+  } finally { global.fetch = fetchOriginal; console.warn = warnOriginal; }
+});
+
 test("não deixa um rótulo operacional engolir o texto seguinte do portal", () => {
   const { __test } = carregarComModelo(null);
   const texto = "Critério de Julgamento - Menor preço por item MODO DE DISPUTA - Aberto PREFERÊNCIA ME/EPP - Sim";

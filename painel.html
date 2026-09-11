@@ -2564,7 +2564,7 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 10;
+  const VERSAO_CACHE_LOCAL_RESUMO = 11;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2577,7 +2577,7 @@
     if (!chave) return null;
     try {
       const registro = JSON.parse(localStorage.getItem(chave) || "null");
-      if (!registro || !registro.salvoEm || Date.now() - registro.salvoEm > VALIDADE_CACHE_LOCAL_RESUMO_MS) {
+      if (!registro || registro.modoDegradado || !registro.salvoEm || Date.now() - registro.salvoEm > VALIDADE_CACHE_LOCAL_RESUMO_MS) {
         localStorage.removeItem(chave);
         return null;
       }
@@ -2589,7 +2589,7 @@
 
   function salvarCacheLocalResumo(edital, dados) {
     const chave = chaveCacheLocalResumo(edital);
-    if (!chave || !dados || (!dados.estrutura && !dados.resposta)) return;
+    if (!chave || !dados || dados.modoDegradado || (!dados.estrutura && !dados.resposta)) return;
     try {
       // O texto integral do PDF pode ser grande; a cópia local guarda somente o
       // resultado que a pessoa vê, enquanto o servidor preserva o texto completo.
