@@ -2564,8 +2564,8 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 6;
-  const VALIDADE_CACHE_LOCAL_RESUMO_MS = 30 * 24 * 60 * 60 * 1000;
+  const VERSAO_CACHE_LOCAL_RESUMO = 10;
+  const VALIDADE_CACHE_LOCAL_RESUMO_MS = 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
     const identificador = edital && (edital.numeroControlePNCP || idOportunidade(edital));
@@ -2595,7 +2595,7 @@
       // resultado que a pessoa vê, enquanto o servidor preserva o texto completo.
       localStorage.setItem(chave, JSON.stringify({
         salvoEm: Date.now(),
-        estrutura: dados.estrutura || null,
+        estrutura: dados.estrutura ? { ...dados.estrutura, fonteLida: Boolean(dados.fonteLida), modoDegradado: Boolean(dados.modoDegradado) } : null,
         resposta: dados.resposta || "",
         fonteLida: Boolean(dados.fonteLida),
         motivoFonteNaoLida: dados.motivoFonteNaoLida || null,
@@ -2885,6 +2885,11 @@
     wrap.className = "msg-ia";
     wrap.dataset.resumoEstrutura = "1";
 
+    const avisoLeitura = document.createElement("p");
+    avisoLeitura.className = "aviso";
+    avisoLeitura.textContent = avisoCoberturaLeitura(est);
+    wrap.appendChild(avisoLeitura);
+
     if (est.resumoGeral) {
       const p = document.createElement("p");
       p.style.margin = "0 0 12px";
@@ -2941,6 +2946,10 @@
 
     const documentosConfirmados = listaConfirmada(est.documentosHabilitacao);
     const declaracoesConfirmadas = listaConfirmada(est.declaracoesExigidas);
+    const credenciamentoConfirmado = listaConfirmada(est.documentosCredenciamento);
+    const propostaConfirmada = listaConfirmada(est.requisitosProposta);
+    if (credenciamentoConfirmado.length) adicionarSecaoListaIA(wrap, "Credenciamento e participação", credenciamentoConfirmado, "");
+    if (propostaConfirmada.length) adicionarSecaoListaIA(wrap, "Preparação e envio da proposta", propostaConfirmada, "");
     if (documentosConfirmados.length) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-files'></use></svg> Documentos de Habilitação Exigidos", documentosConfirmados, "");
     if (declaracoesConfirmadas.length) adicionarSecaoListaIA(wrap, "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Declarações e Formulários", declaracoesConfirmadas, "");
     if (temConteudoConfirmado(est.legislacao)) adicionarSecaoTextoIA(wrap, "<svg class='icone-ph'><use href='#ph-scales'></use></svg> Legislação e Base Legal", est.legislacao);
@@ -3034,6 +3043,7 @@
       if (modo === "resumo" && (dados.estrutura || dados.resposta)) {
         const estruturaRecebida = dados.estrutura || estruturarResumoTextualLocal(iaEditalAtual, dados.resposta);
         if (typeof dados.fonteLida === "boolean") estruturaRecebida.fonteLida = dados.fonteLida;
+        estruturaRecebida.modoDegradado = Boolean(dados.modoDegradado);
         renderizarEstruturaIA(estruturaRecebida);
         if (dados.modoDegradado) {
           escreverMensagemIA(dados.aviso || "A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
@@ -3331,11 +3341,39 @@
     }
   }
 
+  function avisoCoberturaLeitura(est) {
+    if (!est?.fonteLida) return "O edital não foi lido. Esta ficha usa dados públicos e não comprova os documentos exigidos. Gere a análise do edital antes de exportar o checklist.";
+    const cobertura = est.coberturaLeitura || {};
+    const lidos = Array.isArray(cobertura.documentosLidos) ? cobertura.documentosLidos : [];
+    const naoLidos = Array.isArray(cobertura.documentosNaoLidos) ? cobertura.documentosNaoLidos : [];
+    const parcial = cobertura.parcial !== false || naoLidos.length > 0 || est.modoDegradado;
+    const partes = [parcial ? "Leitura parcial: o checklist não confirma a totalidade das exigências." : "Requisitos extraídos do material analisado; confira as referências de cada item no edital."];
+    if (lidos.length) partes.push(`Documentos lidos: ${lidos.join("; ")}.`);
+    if (naoLidos.length) partes.push(`Documentos não lidos: ${naoLidos.join("; ")}.`);
+    if (Array.isArray(cobertura.motivos) && cobertura.motivos.length) partes.push(cobertura.motivos.join("; "));
+    return partes.join(" ");
+  }
+
+  function podeGerarChecklist(est) {
+    return est?.fonteLida === true && ["documentosCredenciamento", "requisitosProposta", "documentosHabilitacao", "declaracoesExigidas"]
+      .some((chave) => Array.isArray(est[chave]) && est[chave].some((item) => {
+        const texto = textoIA(item);
+        return texto && !/^(?:n[ãa]o (?:informado|localizado)|nenhum(?:a)?\b)/i.test(texto);
+      }));
+  }
+
   function montarChecklistTexto(edital, est) {
     const linhas = [];
     linhas.push(`Checklist — ${edital.objeto || "Licitação"}`);
     linhas.push(`Órgão: ${edital.orgao || "-"}`);
     linhas.push(`Nº controle PNCP: ${edital.numeroControlePNCP || "-"}`);
+    linhas.push(avisoCoberturaLeitura(est));
+    for (const [chave, titulo] of [["documentosCredenciamento", "Credenciamento e participação"], ["requisitosProposta", "Preparação e envio da proposta"]]) {
+      if (Array.isArray(est?.[chave]) && est[chave].length) {
+        linhas.push("", `${titulo}:`);
+        est[chave].map(textoIA).filter(Boolean).forEach((item) => linhas.push(`[ ] ${item}`));
+      }
+    }
     linhas.push("");
     if (est && Array.isArray(est.documentosHabilitacao) && est.documentosHabilitacao.length) {
       linhas.push("Documentos de habilitação exigidos:");
@@ -3363,6 +3401,7 @@
         linhas.push("", "Pendências para conferência:");
         est.pendenciasParaConferencia.map(textoIA).filter(Boolean).forEach((p) => linhas.push(`[ ] ${p}`));
       }
+      if (est.anexosDeclaracoes) linhas.push("", "Anexos e modelos citados:", textoIA(est.anexosDeclaracoes));
       if (Array.isArray(est.questionamentosSugeridos) && est.questionamentosSugeridos.length) {
         linhas.push("", "Perguntas sugeridas ao órgão:");
         est.questionamentosSugeridos.map(textoIA).filter(Boolean).forEach((p) => linhas.push(`[ ] ${p}`));
@@ -3475,6 +3514,7 @@
       </style></head><body>
       <header class="topo"><div class="marca"><img class="marca-logo" src="${logoUrl}" alt="Logo LicitaPlena">LicitaPlena</div><div class="metadados">Resumo operacional do edital<br>Emitido em ${escapeHtml(dataEmissao)}</div></header>
       <h1>Resumo do Edital</h1><p class="subtitulo">${escapeHtml(valor(identificacao.numero) || edital.numeroControlePNCP || edital.numero || "Licitação")}</p>
+      <p class="texto-secao">${escapeHtml(avisoCoberturaLeitura(est))}</p>
       <div class="objeto"><strong>Objeto</strong><br>${escapeHtml(valor(identificacao.objeto) || edital.objeto || "Não informado")}</div>
       <div class="indicadores"><div class="indicador"><span>Valor estimado</span><strong>${escapar(detalhes.valorEstimado || edital.valor)}</strong></div><div class="indicador"><span>Modalidade</span><strong>${escapar(identificacao.modalidade || edital.modalidade)}</strong></div><div class="indicador"><span>Data da sessão</span><strong>${escapeHtml(sessaoDestaque)}</strong></div></div>
       ${bloco("Identificação da Licitação", grade([linha("Número", identificacao.numero || edital.numeroControlePNCP || edital.numero), linha("UASG", identificacao.uasg), linha("Contratação", identificacao.contratacao), linha("Modalidade", identificacao.modalidade || edital.modalidade), linha("Portal de realização", identificacao.portalRealizacao), linha("Regulamentação", identificacao.regulamentacao || est?.legislacao)]))}
@@ -3486,6 +3526,8 @@
       ${bloco("Resumo dos Itens", grade([linha("Total de itens", est?.itens?.totalItens), linha("Categorias", est?.itens?.categoriasPrincipais), linha("Descrição geral", est?.itens?.descricaoGeral), linha("Observações", est?.itens?.observacoes)]))}
       ${bloco(`Itens da oportunidade (${itensPncp.length})`, itensImpressaoHtml)}
       ${lista("Documentos de Habilitação Exigidos", est?.documentosHabilitacao, "Não localizados no material analisado. Confira o edital oficial.")}
+      ${lista("Credenciamento e participação", est?.documentosCredenciamento, "")}
+      ${lista("Preparação e envio da proposta", est?.requisitosProposta, "")}
       ${informacao("Atestado de Capacidade Técnica", est?.atestadoCapacidadeTecnica)}
       ${lista("Declarações e Formulários", est?.declaracoesExigidas, "Nenhum item específico foi localizado no material analisado.")}
       ${informacao("Legislação e Base Legal", est?.legislacao)}
@@ -3503,6 +3545,10 @@
   }
 
   async function baixarChecklistDocx(edital, est, botao) {
+    if (!podeGerarChecklist(est)) {
+      escreverMensagemIA("O checklist ainda não tem requisitos extraídos do edital. Abra ou atualize o Resumo do Edital e aguarde a leitura dos documentos antes de exportar.", "msg-erro");
+      return;
+    }
     const textoOriginal = botao.textContent;
     botao.disabled = true;
     botao.textContent = "Gerando checklist...";
@@ -3565,6 +3611,7 @@
       visiveis.forEach((item) => linhas.push(`• ${item}`));
     };
     if (est) {
+      linhas.push("", avisoCoberturaLeitura(est));
       adicionar("Modalidade", est.identificacao && est.identificacao.modalidade);
       const dataSessao = valorUtil(est.sessaoPublica && est.sessaoPublica.data);
       const horarioSessao = valorUtil(est.sessaoPublica && est.sessaoPublica.horario);
@@ -3587,6 +3634,8 @@
       adicionar("Validade da proposta", est.criteriosProposta && est.criteriosProposta.validadeProposta);
       adicionar("Exigências da proposta comercial", est.criteriosProposta && est.criteriosProposta.exigenciasPropostaComercial);
       if (est.resumoGeral) linhas.push("", "Visão geral:", est.resumoGeral);
+      adicionarLista("Credenciamento e participação", est.documentosCredenciamento);
+      adicionarLista("Preparação e envio da proposta", est.requisitosProposta);
       adicionarLista("Documentos de habilitação identificados", est.documentosHabilitacao);
       adicionar("Atestado de capacidade técnica", est.atestadoCapacidadeTecnica);
       adicionarLista("Declarações e formulários identificados", est.declaracoesExigidas);

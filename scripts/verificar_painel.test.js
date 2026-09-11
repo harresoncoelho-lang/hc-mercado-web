@@ -66,6 +66,53 @@ test("exportações do edital usam DOCX real e a marca visual oficial", () => {
   assert.doesNotMatch(html.slice(html.indexOf("function montarHtmlImpressaoResumo"), html.indexOf("function montarResumoParaCliente")), /marca-sinal/);
 });
 
+test("texto preparado para e-mail preserva requisitos e cobertura da leitura", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const trecho = (inicio, fim) => html.slice(html.indexOf(inicio), html.indexOf(fim, html.indexOf(inicio)));
+  const contexto = vm.createContext({ formatarPrazoPropostas: () => "", linkPncp: () => "" });
+  vm.runInContext([
+    trecho("function textoIA(", "// A API de itens"),
+    trecho("function avisoCoberturaLeitura(", "function podeGerarChecklist("),
+    trecho("function montarResumoParaCliente(", "function abrirModalIA("),
+  ].join("\n"), contexto);
+  const texto = contexto.montarResumoParaCliente({}, {
+    fonteLida: true,
+    documentosCredenciamento: ["Procuração do representante [Edital, item 3.1]"],
+    requisitosProposta: ["Proposta assinada com validade de 90 dias [Edital, item 5.2]"],
+    coberturaLeitura: { parcial: true, documentosLidos: ["Edital"], documentosNaoLidos: ["Anexo II"], motivos: ["Documento escaneado"] },
+  });
+  assert.match(texto, /Credenciamento e participação:\n• Procuração do representante \[Edital, item 3\.1\]/);
+  assert.match(texto, /Preparação e envio da proposta:\n• Proposta assinada com validade de 90 dias \[Edital, item 5\.2\]/);
+  assert.match(texto, /Leitura parcial/);
+  assert.match(texto, /Documentos não lidos: Anexo II/);
+  assert.match(texto, /Documento escaneado/);
+});
+
+test("resumo local expira após 24 horas e mantém a cópia recente", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const inicio = html.indexOf("const VERSAO_CACHE_LOCAL_RESUMO =");
+  const fim = html.indexOf("function salvarCacheLocalResumo(", inicio);
+  const registros = new Map();
+  const contexto = vm.createContext({ localStorage: {
+    getItem: (chave) => registros.get(chave),
+    removeItem: (chave) => registros.delete(chave),
+  } });
+  vm.runInContext(html.slice(inicio, fim), contexto);
+  const edital = { numeroControlePNCP: "01171012000141-1-000005/2026" };
+  const chave = contexto.chaveCacheLocalResumo(edital);
+  registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 25 * 60 * 60 * 1000, estrutura: { resumoGeral: "Antigo" } }));
+  assert.equal(contexto.lerCacheLocalResumo(edital), null);
+  assert.equal(registros.has(chave), false);
+  registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 23 * 60 * 60 * 1000, estrutura: { resumoGeral: "Recente" } }));
+  assert.equal(contexto.lerCacheLocalResumo(edital).estrutura.resumoGeral, "Recente");
+});
+
 test("boletim abre pela coleta do robô e só consulta PNCP por atualização explícita", () => {
   const fs = require("node:fs");
   const path = require("node:path");

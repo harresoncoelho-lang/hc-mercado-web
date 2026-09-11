@@ -169,7 +169,13 @@ function montarConteudoEstruturado(resumo, edital) {
   }).filter(Boolean);
   const itensHtml = itens.length ? `<ol style="margin:0;padding:0 0 0 20px;color:#162d4c;font-size:13px;line-height:1.5;">${itens.join("")}</ol>${totalItensPncp > itensPncp.length ? `<p style="margin:10px 0 0;color:#637085;font-size:12px;">Mostrando ${itensPncp.length} de ${totalItensPncp} itens. Há outros itens no processo; consulte o edital oficial para a relação completa.</p>` : ""}` : "";
   const resumoGeral = valorResumo(resumo.resumoGeral);
+  const cobertura = resumo.coberturaLeitura || {};
+  const statusLeitura = !resumo.fonteLida ? "O edital não foi lido; esta ficha não confirma os documentos exigidos."
+    : cobertura.parcial !== false || resumo.modoDegradado || cobertura.documentosNaoLidos?.length
+      ? "Leitura parcial: a totalidade das exigências ainda precisa ser conferida no edital."
+      : "Requisitos extraídos dos documentos analisados; confira as referências de cada item.";
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">${destaque}
+    ${secaoResumo("Cobertura da leitura", `<p>${escapeHtml(statusLeitura)}</p>${tabelaResumo([["Documentos lidos", Array.isArray(cobertura.documentosLidos) ? cobertura.documentosLidos.join("; ") : ""], ["Documentos não lidos", Array.isArray(cobertura.documentosNaoLidos) ? cobertura.documentosNaoLidos.join("; ") : ""]])}${listaResumo(cobertura.motivos)}`)}
     ${secaoResumo("Visão geral", resumoGeral ? `<p style="margin:0;color:#162d4c;font-size:14px;line-height:1.6;">${escapeHtml(resumoGeral)}</p>` : "")}
     ${secaoResumo("Identificação da licitação", tabelaResumo([["Número", identificacao.numero || edital?.numeroControlePNCP], ["UASG", uasg], ["Contratação", identificacao.contratacao], ["Modalidade", edital?.modalidade || identificacao.modalidade], ["Portal de realização", identificacao.portalRealizacao], ["Regulamentação", identificacao.regulamentacao || resumo.legislacao]]))}
     ${secaoResumo("Dados oficiais da publicação", tabelaResumo([["Publicado em", formatarDataHoraBR(edital?.publicacao)], ["Início do recebimento", formatarDataHoraBR(edital?.inicioRecebimento)], ["Prazo final de propostas", formatarDataHoraBR(edital?.encerramento)], ["Critério de julgamento", criterioJulgamento], ["Regime de execução", detalhes.regimeExecucao || edital?.regimeExecucao]]))}
@@ -177,7 +183,10 @@ function montarConteudoEstruturado(resumo, edital) {
     ${secaoResumo("Órgão responsável", tabelaResumo([["Órgão", orgao.nome || edital?.orgao], ["E-mail", orgao.email], ["Telefone", orgao.telefone], ["Endereço", orgao.endereco || [edital?.municipio, edital?.uf].filter(Boolean).join("/")]]))}
     ${secaoResumo("Detalhes da licitação", tabelaResumo([["Critério de julgamento", criterioJulgamento], ["Tipo de análise", detalhes.tipoAnalise], ["Propostas/lances por", resumo.criteriosProposta && resumo.criteriosProposta.propostasLancesPor], ["Regime de execução", detalhes.regimeExecucao || edital?.regimeExecucao], ["Prazo de entrega", detalhes.prazoEntrega], ["Garantia", resumo.garantias && resumo.garantias.proposta], ["Condições de pagamento", resumo.condicoesPagamento], ["Penalidades", resumo.penalidades], ["Multas", resumo.multas]]))}
     ${secaoResumo("Documentos de habilitação", listaResumo(resumo.documentosHabilitacao))}
+    ${secaoResumo("Credenciamento e participação", listaResumo(resumo.documentosCredenciamento))}
+    ${secaoResumo("Preparação e envio da proposta", listaResumo(resumo.requisitosProposta))}
     ${secaoResumo("Declarações e formulários", listaResumo(resumo.declaracoesExigidas))}
+    ${secaoResumo("Anexos e modelos citados", tabelaResumo([["Referências", resumo.anexosDeclaracoes]]))}
     ${secaoResumo(`Itens da oportunidade (${totalItensPncp})`, itensHtml)}
     ${secaoResumo("Pendências para conferência", listaResumo(resumo.pendenciasParaConferencia))}
     ${secaoResumo("Perguntas sugeridas ao órgão", listaResumo(resumo.questionamentosSugeridos))}

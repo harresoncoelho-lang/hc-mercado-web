@@ -10,9 +10,9 @@
     "verify": "npm test && npm run lint"
   },
   "dependencies": {
-    "@netlify/blobs": "^10.7.12",
-    "adm-zip": "^0.5.10",
-    "mammoth": "^1.7.0",
+    "@netlify/blobs": "^10.7.13",
+    "adm-zip": "^0.6.1",
+    "mammoth": "^1.12.1",
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {

@@ -1,0 +1,219 @@
+// Conserva as cláusulas operacionais da fonte: a síntese da IA não pode apagar
+// documentos ou condições de participação porque acabou seu orçamento de tokens.
+function limparLinhas(texto) {
+  const linhas = texto.split(/\r?\n/).map((linha) => linha.replace(/[ \t]+/g, " ").trim());
+  const repeticoes = new Map();
+  for (const linha of linhas) if (linha) repeticoes.set(linha, (repeticoes.get(linha) || 0) + 1);
+  return linhas.filter((linha) => !/^(Folha:|Código verificador:|A autenticidade deste documento|https:\/\/edoc\.)/i.test(linha) &&
+    !(repeticoes.get(linha) >= 4 && !/^\d+[.)]|^\[Página|^---/.test(linha)));
+}
+
+function categoriaSecao(titulo) {
+  if (/habilita[cç][aã]o|regularidade fiscal|qualifica[cç][aã]o t[eé]cnica|econ[oô]mico.?financeira/i.test(titulo)) return "documentosHabilitacao";
+  if (/credenciamento|representa[cç][aã]o do licitante/i.test(titulo)) return "documentosCredenciamento";
+  if (/proposta|cadastramento|amostra|cat[aá]logo|an[aá]lise da ficha|ficha t[eé]cnica|apresenta[cç][aã]o.*document/i.test(titulo)) return "requisitosProposta";
+  if (/declara[cç][oõ][eẽ]s|declara[cç][aã]o|formul[aá]rio/i.test(titulo)) return "declaracoesExigidas";
+  return null;
+}
+
+function extrairRequisitosOperacionais(texto) {
+  const resultado = { documentosHabilitacao: [], documentosCredenciamento: [], requisitosProposta: [], declaracoesExigidas: [] };
+  let documento = "Documento oficial", pagina = "", categoria = null, raiz = "", bloco = null;
+  const guardar = () => {
+    if (!bloco) return;
+    const conteudo = bloco.linhas.join(" ").replace(/\s+/g, " ").trim();
+    if (!bloco.categoria && /dever[aá]|dever[aã]o|exigid|apresenta[cç][aã]o|obrigat/i.test(conteudo)) {
+      if (/declara[cç][aã]o|declara[cç][oõ]es/i.test(conteudo)) bloco.categoria = "declaracoesExigidas";
+      else if (/ficha t[eé]cnica|cat[aá]logo|amostra|proposta reformulada|documentos de habilita[cç][aã]o/i.test(conteudo)) bloco.categoria = "requisitosProposta";
+    }
+    if (!bloco.categoria) return;
+    if (conteudo.length < 6) return;
+    const item = `${conteudo} [${bloco.documento}${bloco.pagina ? `, página ${bloco.pagina}` : ""}]`;
+    resultado[bloco.categoria].push(item);
+    if (bloco.categoria !== "declaracoesExigidas" && /declara(?:ção|ções|r|m)|\bdeclaro\b/i.test(conteudo)) resultado.declaracoesExigidas.push(item);
+  };
+  for (const linha of limparLinhas(texto)) {
+    const doc = linha.match(/^--- (.+) ---$/);
+    if (doc) { guardar(); bloco = null; documento = doc[1]; categoria = null; raiz = ""; continue; }
+    const pg = linha.match(/^\[Página (\d+)\]$/);
+    if (pg) { pagina = pg[1]; continue; }
+    const tituloSemNumero = linha.length < 100 && /^(Habilita[cç][aã]o|Qualifica[cç][aã]o|Regularidade fiscal|Credenciamento|Documentos de habilita[cç][aã]o|Declara[cç][oõ]es exigidas)/i.test(linha) && !/[.;]$/.test(linha);
+    if (tituloSemNumero && categoriaSecao(linha)) {
+      guardar(); bloco = null; categoria = categoriaSecao(linha); raiz = ""; continue;
+    }
+    const numero = linha.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])\s+(.+)/);
+    const anexo = /^ANEXO\s+[IVX\d]+/i.test(linha);
+    const cabecalho = numero && numero[2].length < 150 && numero[2] === numero[2].toUpperCase() && /[A-ZÀ-Ú]/.test(numero[2]);
+    if (numero || anexo) {
+      guardar(); bloco = null;
+      if (anexo) { categoria = categoriaSecao(linha); raiz = ""; }
+      else if ((cabecalho && categoriaSecao(numero[2])) || !numero[1].includes(".")) { categoria = categoriaSecao(numero[2]); raiz = numero[1].split(".")[0]; }
+      else if (raiz && numero[1].split(".")[0] !== raiz) categoria = null;
+      bloco = { categoria, documento, pagina, linhas: [linha] };
+    } else if (bloco && linha) bloco.linhas.push(linha);
+  }
+  guardar();
+  for (const chave of Object.keys(resultado)) resultado[chave] = [...new Set(resultado[chave])];
+  return resultado;
+}
+
+function selecionarAcoesChecklist(requisitos) {
+  const saida = Object.fromEntries(Object.keys(requisitos).map((chave) => [chave, []]));
+  const vistos = new Map();
+  const normalizar = (texto) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  for (const chave of ["declaracoesExigidas", "documentosCredenciamento", "documentosHabilitacao", "requisitosProposta"]) {
+    for (const item of requisitos[chave] || []) {
+      const semReferencia = item.replace(/\s*\[[^\]]+\]$/, "");
+      const corpo = semReferencia.replace(/^\d+(?:\.\d+)*\.\s*/, "");
+      // Títulos, consequências e atos do órgão não são tarefas a marcar como
+      // documentos preparados pelo licitante. Continuam acessíveis no edital.
+      const documentoConcreto = /licen[cç]a|alvar[aá]|certid[aã]o|atestado|inscri[cç][aã]o|comprovante|certificado|dever|exigid/i.test(corpo);
+      if ((corpo === corpo.toUpperCase() && categoriaSecao(corpo) && !documentoConcreto) || /^(Regularidade Fiscal|Habilitação Econômico|Disposições Gerais)/i.test(corpo)) continue;
+      if (/declaração ou documentação falsa|informações inverídicas|comportamento inidôneo|A não.regularização|A ausência de apresentação|A não observância|DA JUSTIFICATIVA|PLANO DE CONTRATAÇÃO/i.test(corpo)) continue;
+      if (/^(A aceitação|Após análise|Caberá ao pregoeiro|O CSC|A Comissão|Considera-se|Recebida a Proposta|Durante a análise|Examinada a proposta|No final da sessão|As fichas técnicas aprovadas|Serão considerados|Para efeito de avaliação|A indicação do lance|O desatendimento|Informações complementares|Qualquer dúvida|O credenciamento junto|O credenciamento é o nível básico|O licitante responsabiliza)/i.test(corpo)) continue;
+      if (/^(?:A análise de que|Havendo necessidade de avaliação|As fichas técnicas poderão ser abertas|Será classificada|Caso as fichas técnicas não sejam aprovadas|Constatada a existência|O licitante que não encaminhar|Se a documentação de habilitação|Quando ocorrer o fracassado|Havendo licitantes inabilitados|Após a análise da aceitabilidade|Caso a proposta de preços reformulada|O erro no preço total)/i.test(corpo)) continue;
+      if (/^(?:O descumprimento|Havendo necessidade de analisar|Será inabilitado|Constatado o atendimento|Na hipótese de o fornecedor não atender|Em qualquer caso, concluída|A consulta (?:aos|no)|Para fins de análise da proposta|Se a proposta ou lance|Encerrada a análise quanto|Havendo necessidade, a sessão|Será desclassificada a proposta|contiver vícios|apresentar preços inexequíveis)/i.test(corpo)) continue;
+      if (/(?:gestor|pregoeiro) (?:verificará|examinará)|o órgão diligenciará/i.test(corpo) && !/envio|prazo de|apresenta[cç][aã]o/.test(corpo)) continue;
+      if (chave === "requisitosProposta" && /^(Tempo de disputa|Término diário|Para o julgamento e classificação|Os critérios objetivos que ensejarão|Serão desclassificadas|A inexequibilidade|Cadastro Nacional de Empresas|Apresentar fichas técnicas em desconformidade|Apresentar fichas técnicas que reproduzam|Ofertar produto com|Deixar de apresentar|Ofertar a ficha técnica|Não se considerará qualquer oferta)/i.test(corpo)) continue;
+      if (/às seguintes declarações\s*:/i.test(corpo)) continue;
+      const identidade = normalizar(corpo);
+      // Iguais nas duas fontes ou repetidos em categorias aparecem uma vez,
+      // acumulando referências. Não fundimos requisitos apenas semelhantes.
+      if (vistos.has(identidade)) {
+        const anterior = vistos.get(identidade);
+        const referencia = item.match(/\[[^\]]+\]$/)?.[0];
+        if (referencia && !saida[anterior.chave][anterior.indice].includes(referencia)) saida[anterior.chave][anterior.indice] += ` ${referencia}`;
+        continue;
+      }
+      vistos.set(identidade, { chave, indice: saida[chave].length });
+      saida[chave].push(item);
+    }
+  }
+  // Subitens que apenas detalham o mesmo requisito ficam junto dele. Evita
+  // transformar cada condição de um atestado ou assinatura em documento novo.
+  for (const [chave, itens] of Object.entries(saida)) {
+    const agrupados = [];
+    for (const item of itens) {
+      const numero = item.match(/^(\d+(?:\.\d+)+)\./)?.[1];
+      const documento = item.match(/\[([^,\]]+)/)?.[1];
+      const pai = numero && agrupados.findLast((anterior) => {
+        const numeroPai = anterior.match(/^(\d+(?:\.\d+)+)\./)?.[1];
+        const profundidade = chave === "documentosHabilitacao" ? 4 : 2;
+        return numeroPai && numeroPai.split(".").length >= profundidade && numero.startsWith(`${numeroPai}.`) &&
+          anterior.includes(`[${documento},`) && anterior.length + item.length < 1800;
+      });
+      if (pai) agrupados[agrupados.indexOf(pai)] += ` Condição: ${item}`;
+      else agrupados.push(item);
+    }
+    saida[chave] = agrupados;
+  }
+  return saida;
+}
+
+function catalogarRequisitos(texto) {
+  const requisitos = selecionarAcoesChecklist(extrairRequisitosOperacionais(texto));
+  let sequencia = 0;
+  return Object.entries(requisitos).flatMap(([categoria, itens]) => itens.map((textoItem) => ({
+    id: `R${String(++sequencia).padStart(4, "0")}`, categoria, texto: textoItem,
+  })));
+}
+
+function preservarCondicoesQuantificadas(fontes, resumo) {
+  const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s*\([^)]*\)/g, "").replace(/\s+/g, " ");
+  const destino = normalizar(resumo);
+  for (const fonte of fontes) {
+    const origem = normalizar(fonte.texto.replace(/\[[^\]]+\]/g, ""));
+    const limites = origem.match(/\b\d{2}\/\d{2}\/\d{4}\b|\b\d+(?:[.,]\d+)?\s*%|\b\d+\s+(?:dias?|horas?|meses|anos?|exercicios?)\b|\b(?:fgts|cndt|inss|cnpj|mei|matriz|filial)\b/g) || [];
+    if (limites.some((limite) => !destino.includes(limite))) return false;
+    // Uma referência correta não prova que a IA conservou a aplicabilidade.
+    // Sem equivalência semântica verificável, conservamos literalmente a oração
+    // condicional (ou a cláusula inteira quando oferece alternativas).
+    const literal = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const corpo = literal(fonte.texto.replace(/\[[^\]]+\]/g, "").replace(/^\d+(?:\.\d+)*\.\s*/, ""));
+    const condicao = corpo.match(/\b(?:se|salvo|exceto|caso|quando|desde que|em se tratando|na hipotese|somente|apenas)\b[\s\S]*/)?.[0];
+    const alternativa = /\b(?:ou|alternativamente)\b/.test(corpo);
+    const exigenciaLiteral = alternativa ? corpo : condicao;
+    if (exigenciaLiteral && !literal(resumo).includes(exigenciaLiteral.replace(/[.;\s]+$/, ""))) return false;
+  }
+  return true;
+}
+
+function complementarRequisitos(estrutura, texto) {
+  const catalogo = catalogarRequisitos(texto);
+  const requisitos = selecionarAcoesChecklist(extrairRequisitosOperacionais(texto));
+  let sintetizados = 0;
+  for (const [chave, itens] of Object.entries(requisitos)) {
+    const fontes = catalogo.filter((fonte) => fonte.categoria === chave);
+    const cobertos = new Set();
+    const sinteticos = [];
+    for (const item of Array.isArray(estrutura[chave]) ? estrutura[chave] : []) {
+      if (typeof item !== "string") continue;
+      const ids = [...new Set(item.match(/\bR\d{4}\b/g) || [])];
+      if (!ids.length || ids.some((id) => !fontes.some((fonte) => fonte.id === id))) continue;
+      const citadas = fontes.filter((fonte) => ids.includes(fonte.id));
+      const referencias = citadas.map((fonte) => {
+        const clausulas = [...fonte.texto.matchAll(/(?:^|Condição: )(\d+(?:\.\d+)+)\./g)].map((m) => m[1]);
+        const documentos = [...new Set(fonte.texto.match(/\[[^\]]+\]/g) || [])].join("; ");
+        return `${documentos}${clausulas.length ? `, cláusulas ${clausulas.join(", ")}` : ""}`;
+      });
+      const resumo = item.replace(/\[?R\d{4}(?:\s*[,;]\s*R\d{4})*\]?/g, "").trim();
+      if (resumo.length < 15 || !preservarCondicoesQuantificadas(citadas, resumo)) continue;
+      sinteticos.push(`${resumo} — ${referencias.join("; ")}`);
+      for (const id of ids) cobertos.add(id);
+    }
+    sintetizados += cobertos.size;
+    if (itens.length) estrutura[chave] = [...sinteticos, ...fontes.filter((fonte) => !cobertos.has(fonte.id)).map((fonte) => fonte.texto)];
+    else estrutura[chave] = [];
+  }
+  estrutura.coberturaSintese = { requisitosIdentificados: catalogo.length, requisitosSintetizados: sintetizados, requisitosComplementados: catalogo.length - sintetizados };
+  const faltantes = Object.keys(requisitos).filter((chave) => !requisitos[chave].length);
+  if (faltantes.length) {
+    estrutura.pendenciasParaConferencia = [...(estrutura.pendenciasParaConferencia || []),
+      `A extração de cláusulas não identificou todas as etapas (${faltantes.join(", ")}). A ausência de uma lista não confirma dispensa de requisitos.`];
+  }
+  return estrutura;
+}
+
+function prepararContextoResumo(texto, limite = 260000) {
+  const catalogo = catalogarRequisitos(texto).map((fonte) => `[${fonte.id}] ${fonte.categoria}: ${fonte.texto}`);
+  const cabecalho = "CATÁLOGO DE REQUISITOS: cite os IDs entre colchetes nas listas de síntese; preserve condições, alternativas e prazos.\n";
+  const integral = `${cabecalho}${catalogo.join("\n")}\nFONTE INTEGRAL EXTRAÍDA:\n${texto}`;
+  if (integral.length <= limite) return { texto: integral, parcial: false };
+
+  const partes = ["CONTEXTO PARCIAL: nem todas as seções da fonte couberam. Não deduza ausência de exigências; registre esta limitação nas pendências.", cabecalho];
+  let ocupado = partes.join("\n").length;
+  const adicionar = (parte) => {
+    if (ocupado + parte.length + 1 > limite) return;
+    partes.push(parte); ocupado += parte.length + 1;
+  };
+  for (const item of catalogo) adicionar(item);
+  // Para fontes acima do orçamento, seleciona seções inteiras. Não corta uma
+  // cláusula no último caractere nem escolhe apenas a última menção de um tema.
+  const secoes = texto.split(/(?=^--- .+ ---$|^\d+\.\s+[A-ZÀ-Ú][A-ZÀ-Ú /,-]{2,}\s*$|^ANEXO\s+[IVX\d]+)/m);
+  const temas = /pagamento|liquida[cç][aã]o|entrega|execu[cç][aã]o|penalidade|san[cç][oõ]es|multa|impugna[cç][aã]o|recurso|garantia|subcontrata[cç][aã]o/i;
+  let documento = "";
+  const ordenadas = secoes.map((secao, indice) => {
+    const marcador = secao.match(/^--- .+ ---$/m)?.[0];
+    if (marcador) documento = marcador;
+    return { secao: marcador ? secao : `${documento}\n${secao}`, indice, prioridade: Number(temas.test(secao.slice(0, 250))) };
+  });
+  ordenadas.sort((a, b) => b.prioridade - a.prioridade || a.indice - b.indice);
+  for (const { secao } of ordenadas) adicionar(secao);
+  return { texto: partes.join("\n"), parcial: true };
+}
+
+function selecionarContexto(texto, limite = 22000, pergunta = "") {
+  if (texto.length <= limite && pergunta) return texto;
+  if (pergunta) {
+    const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const termos = normalizar(pergunta).match(/[a-z]{4,}/g)?.filter((termo) => !/^(qual|quais|como|para|esse|este|edital|preciso|sobre)$/.test(termo)) || [];
+    const trechos = Array.from({ length: Math.ceil(texto.length / 3000) }, (_, indice) => {
+      const trecho = texto.slice(Math.max(0, indice * 3000 - 300), (indice + 1) * 3000);
+      return { trecho, indice, pontos: termos.reduce((soma, termo) => soma + Number(normalizar(trecho).includes(termo)), 0) };
+    });
+    return trechos.sort((a, b) => b.pontos - a.pontos || a.indice - b.indice).slice(0, 6).sort((a, b) => a.indice - b.indice).map((parte) => parte.trecho).join("\n[Trecho selecionado]\n").slice(0, limite);
+  }
+  return prepararContextoResumo(texto, limite).texto;
+}
+
+module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo };

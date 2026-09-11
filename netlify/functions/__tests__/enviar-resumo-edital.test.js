@@ -86,3 +86,18 @@ test("normaliza destinatários separados por vírgula ou ponto e vírgula sem re
     ["cliente@empresa.com", "outro@empresa.com"],
   );
 });
+
+test("e-mail preserva credenciamento proposta referências e leitura parcial", () => {
+  const requisito = `${"Texto do requisito. ".repeat(25)}[Edital (#1), página 12]`;
+  const html = __test.montarHtml("Resumo", "", {
+    fonteLida: true, documentosCredenciamento: [requisito], requisitosProposta: ["Enviar planilha [item 5.4]"],
+    anexosDeclaracoes: "Modelo de declaração — Anexo IV",
+    coberturaLeitura: { parcial: true, documentosLidos: ["Edital"], documentosNaoLidos: ["Anexo técnico"], motivos: ["PDF escaneado"] },
+  }, {});
+  assert.ok(html.includes(requisito));
+  assert.match(html, /Enviar planilha/);
+  assert.match(html, /Leitura parcial/);
+  assert.match(html, /Anexo técnico/);
+  assert.match(html, /PDF escaneado/);
+  assert.match(html, /Modelo de declaração/);
+});
