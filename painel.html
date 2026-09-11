@@ -2211,7 +2211,7 @@
     <div class="modal-ia-acoes-rodape">
       <button type="button" id="modal-ia-baixar"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital Completo</button>
       <button type="button" id="modal-ia-checklist-email"><svg class='icone-ph'><use href='#ph-envelope-simple'></use></svg> Preparar e-mail ao cliente</button>
-      <button type="button" id="modal-ia-checklist-doc"><svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist (.doc)</button>
+      <button type="button" id="modal-ia-checklist-doc"><svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist (.docx)</button>
       <button type="button" id="modal-ia-imprimir"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir resumo</button>
     </div>
   </div>
@@ -3438,6 +3438,7 @@
       : "";
     const dataEmissao = new Date().toLocaleString("pt-BR", { dateStyle: "medium", timeStyle: "short" });
     const sessaoDestaque = [valor(sessao.data), valor(sessao.horario)].filter(Boolean).join(" às ") || formatarPrazoPropostas(edital.encerramento) || "Não informado";
+    const logoUrl = escapeHtml(new URL("logo.png", window.location.href).href);
 
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Resumo do Edital - LicitaPlena</title>
       <style>
@@ -3445,8 +3446,8 @@
         * { box-sizing: border-box; }
         body { margin: 0; color: #17243a; font: 10.5pt/1.48 "Segoe UI", Arial, sans-serif; }
         .topo { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; padding-bottom:15px; border-bottom:3px solid #1d5faa; }
-        .marca { display:flex; align-items:center; gap:9px; color:#102d56; font-weight:800; font-size:20pt; letter-spacing:-.7px; }
-        .marca-sinal { width:28px; height:28px; display:grid; place-items:center; border-radius:8px; background:#1f75df; color:#fff; font-size:11pt; letter-spacing:0; }
+        .marca { display:flex; align-items:center; gap:10px; color:#102d56; font-weight:800; font-size:20pt; letter-spacing:-.7px; }
+        .marca-logo { width:31px; height:31px; object-fit:contain; background:#0b2d57; border-radius:8px; padding:6px; }
         .metadados { text-align:right; color:#637085; font-size:8.5pt; line-height:1.45; }
         h1 { margin:20px 0 3px; color:#102d56; font-size:20pt; line-height:1.15; letter-spacing:-.35px; }
         .subtitulo { margin:0; color:#5d6f86; font-size:10.5pt; }
@@ -3469,7 +3470,7 @@
         .rodape { margin-top:24px; padding-top:10px; border-top:1px solid #dce5ef; color:#6a7789; font-size:8pt; }
         @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
       </style></head><body>
-      <header class="topo"><div class="marca"><span class="marca-sinal">LP</span>LicitaPlena</div><div class="metadados">Resumo operacional do edital<br>Emitido em ${escapeHtml(dataEmissao)}</div></header>
+      <header class="topo"><div class="marca"><img class="marca-logo" src="${logoUrl}" alt="Logo LicitaPlena">LicitaPlena</div><div class="metadados">Resumo operacional do edital<br>Emitido em ${escapeHtml(dataEmissao)}</div></header>
       <h1>Resumo do Edital</h1><p class="subtitulo">${escapeHtml(valor(identificacao.numero) || edital.numeroControlePNCP || edital.numero || "Licitação")}</p>
       <div class="objeto"><strong>Objeto</strong><br>${escapeHtml(valor(identificacao.objeto) || edital.objeto || "Não informado")}</div>
       <div class="indicadores"><div class="indicador"><span>Valor estimado</span><strong>${escapar(detalhes.valorEstimado || edital.valor)}</strong></div><div class="indicador"><span>Modalidade</span><strong>${escapar(identificacao.modalidade || edital.modalidade)}</strong></div><div class="indicador"><span>Data da sessão</span><strong>${escapeHtml(sessaoDestaque)}</strong></div></div>
@@ -3496,6 +3497,40 @@
       ${bloco("Visão Geral", est?.resumoGeral ? `<p class="texto-secao">${escapeHtml(textoIA(est.resumoGeral))}</p>` : "")}
       <footer class="rodape">Documento gerado pelo LicitaPlena a partir de dados públicos e do material disponível. Use-o como apoio operacional e confira sempre o edital oficial antes de decidir.</footer>
     </body></html>`;
+  }
+
+  async function baixarChecklistDocx(edital, est, botao) {
+    const textoOriginal = botao.textContent;
+    botao.disabled = true;
+    botao.textContent = "Gerando checklist...";
+    try {
+      await aguardarSupabaseAutenticado();
+      const { data: { session } } = await window.__sbClient.auth.getSession();
+      if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
+      const resposta = await fetch("/.netlify/functions/gerar-checklist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ edital, resumoEstruturado: est || {} }),
+      });
+      if (!resposta.ok) {
+        const erro = await resposta.json().catch(() => ({}));
+        throw new Error(erro.erro || "Não foi possível gerar o checklist agora.");
+      }
+      const blob = await resposta.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "checklist-licitacao.docx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (erro) {
+      escreverMensagemIA(erro.message || "Não foi possível gerar o checklist agora.", "msg-erro");
+    } finally {
+      botao.disabled = false;
+      botao.textContent = textoOriginal;
+    }
   }
 
   // Texto pronto para o licitante encaminhar ao cliente: usa o resumo estruturado quando
@@ -3616,13 +3651,7 @@
       document.getElementById("modal-enviar-resumo-fundo").classList.add("aberto");
     };
     document.getElementById("modal-ia-checklist-doc").onclick = () => {
-      const html = montarHtmlChecklist(edital, iaEstruturaAtual);
-      const blob = new Blob(["\ufeff", html], { type: "application/msword" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "checklist-licitacao.doc";
-      a.click();
-      URL.revokeObjectURL(a.href);
+      void baixarChecklistDocx(edital, iaEstruturaAtual, document.getElementById("modal-ia-checklist-doc"));
     };
     document.getElementById("modal-ia-imprimir").onclick = () => {
       const janela = window.open("", "_blank");

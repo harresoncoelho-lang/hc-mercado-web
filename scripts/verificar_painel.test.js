@@ -55,3 +55,13 @@ test("dashboard espera a sessão antes de consultar as bases privadas", () => {
   assert.ok(inicio >= 0 && fim > inicio);
   assert.match(bloco, /await aguardarSupabaseAutenticado\(\);/);
 });
+
+test("exportações do edital usam DOCX real e a marca visual oficial", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  assert.match(html, /Gerar Checklist \(\.docx\)/);
+  assert.match(html, /\/.netlify\/functions\/gerar-checklist/);
+  assert.match(html, /logo\.png/);
+  assert.doesNotMatch(html.slice(html.indexOf("function montarHtmlImpressaoResumo"), html.indexOf("function montarResumoParaCliente")), /marca-sinal/);
+});
