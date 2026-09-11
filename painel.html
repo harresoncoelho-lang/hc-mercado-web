@@ -5625,10 +5625,11 @@
     } catch (e) { /* localStorage indisponível */ }
   }
 
-  // Uma atualização de página não deve deixar o cliente olhando uma tela vazia enquanto
-  // o PNCP responde. Guardamos somente o resultado já filtrado da última edição: ele é
-  // exibido imediatamente e a conferência com as fontes continua em segundo plano.
-  const BOL_CACHE_VERSAO = 1;
+  // A tela do boletim é uma leitura da base já coletada pelo robô. O resultado filtrado
+  // também fica no navegador para sobreviver a fechar/abrir o Chrome e a um novo login.
+  // Consultar o PNCP é uma ação explícita de atualização, nunca uma condição para a tela
+  // aparecer: assim o cliente vê a última edição no primeiro frame.
+  const BOL_CACHE_VERSAO = 2;
   function chaveCacheBoletim(filtro) {
     const ufs = normalizarUfs(filtro && (filtro.ufs || filtro.uf)).sort().join(",");
     const palavras = String((filtro && filtro.palavrasRaw) || "").trim().toLowerCase();
@@ -5636,7 +5637,7 @@
   }
   function lerCacheResultadoBoletim(filtro) {
     try {
-      const bruto = sessionStorage.getItem(chaveCacheBoletim(filtro));
+      const bruto = localStorage.getItem(chaveCacheBoletim(filtro));
       const cache = bruto ? JSON.parse(bruto) : null;
       return cache && Array.isArray(cache.resultados) ? cache : null;
     } catch (e) {
@@ -5645,11 +5646,11 @@
   }
   function salvarCacheResultadoBoletim(filtro, resultados) {
     try {
-      sessionStorage.setItem(chaveCacheBoletim(filtro), JSON.stringify({
+      localStorage.setItem(chaveCacheBoletim(filtro), JSON.stringify({
         salvoEm: new Date().toISOString(),
         resultados,
       }));
-    } catch (e) { /* sessão sem espaço ou indisponível: o boletim segue normal */ }
+    } catch (e) { /* armazenamento indisponível: o boletim segue normal */ }
   }
   function metaBoletim(ufs, palavras, sufixo = "") {
     const agora = new Date();
@@ -5776,9 +5777,69 @@
     desenhar();
   }
 
-  async function gerarBoletim() {
-    // Marca como "já gerado" logo de cara — impede que só trocar de aba e voltar dispare uma
-    // nova busca ao vivo (o botão "Atualizar boletim" ou salvar um novo filtro é que força isso).
+  function filtrarResultadosDoBoletim(resultados) {
+    const DIAS_BOLETIM = 3;
+    const limiteRecencia = new Date(Date.now() - DIAS_BOLETIM * 24 * 60 * 60 * 1000);
+    const agora = new Date();
+    return (resultados || []).filter((r) => {
+      const publicacaoRecente = (() => {
+        if (!r.publicacao) return true;
+        const d = new Date(r.publicacao);
+        return isNaN(d) || d >= limiteRecencia;
+      })();
+      const aindaAberta = (() => {
+        if (!r.encerramento) return false;
+        const f = new Date(r.encerramento);
+        return !isNaN(f) && f >= agora;
+      })();
+      return publicacaoRecente || aindaAberta;
+    });
+  }
+
+  function combinarResultadosDoBoletim(resultados, complementos) {
+    const porChave = new Map();
+    [...(resultados || []), ...(complementos || [])].forEach((r) => {
+      const chave = r.numeroControlePNCP || `${r.objeto || ""}|${r.orgao || ""}|${r.publicacao || ""}`;
+      if (!porChave.has(chave)) porChave.set(chave, r);
+    });
+    return Array.from(porChave.values());
+  }
+
+  function resultadosDoRoboParaBoletim(cacheRobo, ufs, palavras) {
+    const registros = cacheRobo && Array.isArray(cacheRobo.registros) ? cacheRobo.registros : [];
+    return filtrarResultadosDoBoletim(mesclarComCacheRobo([], registros, ufs, palavras));
+  }
+
+  async function carregarBaseDoRoboParaBoletim(ufs) {
+    const estados = normalizarUfs(ufs);
+    // Cada UF tem uma projeção leve criada pelo robô. Isso evita baixar os ~10 MB da
+    // base nacional para abrir um boletim de AM, RR ou qualquer outro filtro específico.
+    if (estados.length > 0) {
+      const bases = await Promise.all(estados.map((uf) => carregarCache(`data/boletim/${uf}.json`)));
+      return { registros: bases.flatMap((base) => (base && Array.isArray(base.registros) ? base.registros : [])) };
+    }
+    // Sem estado é uma busca nacional propositalmente mais ampla; preserva a cobertura
+    // completa para esse caso excepcional, sem penalizar o fluxo normal com UF definida.
+    return carregarCache("data/oportunidades_abertas.json");
+  }
+
+  function complementarBoletimComSistemaS(filtro, ufs, palavras, resultadosBase, metaEl) {
+    const chaveDaEdicao = chaveCacheBoletim(filtro);
+    // Sistema S fica fora do caminho crítico da primeira pintura. Quando existir dado
+    // complementar, ele entra depois sem deixar a tela em estado de carregamento.
+    void buscarExtrasSistemaS(ufs, palavras).then((extras) => {
+      if (!extras || extras.length === 0 || chaveCacheBoletim(lerFiltroBoletim() || {}) !== chaveDaEdicao) return;
+      const resultados = combinarResultadosDoBoletim(resultadosBase, extras)
+        .filter((r) => ufEstaSelecionada(r.uf, ufs));
+      salvarCacheResultadoBoletim(filtro, resultados);
+      renderizarBoletimComCalendario(resultados, "");
+      metaEl.textContent = metaBoletim(ufs, palavras);
+    }).catch(() => {});
+  }
+
+  async function gerarBoletim({ atualizarAoVivo = false } = {}) {
+    // Marca como "já gerado" logo de cara — trocar de aba e voltar não cria trabalho
+    // de rede. Só o botão "Atualizar boletim" consulta o PNCP ao vivo.
     bolJaGerado = true;
     const alvo = document.getElementById("bol-resultado");
     const metaEl = document.getElementById("bol-meta");
@@ -5797,11 +5858,11 @@
     const palavras = filtro.palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
     const cacheInicial = lerCacheResultadoBoletim(filtro);
     if (cacheInicial) {
-      // Mantém a última edição visível já no primeiro frame; nenhum clique nem refresh
-      // precisa esperar o PNCP. A nova consulta abaixo substitui este resultado ao terminar.
-      renderizarBoletimComCalendario(cacheInicial.resultados, '<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Exibindo a última versão do boletim enquanto os dados são atualizados em segundo plano.</div>');
+      // A edição anterior vem do próprio navegador de forma síncrona: login e refresh não
+      // dependem da rede para ter conteúdo na tela.
+      renderizarBoletimComCalendario(cacheInicial.resultados, "");
       const quando = new Date(cacheInicial.salvoEm || Date.now());
-      metaEl.textContent = metaBoletim(ufs, palavras, ` · última edição carregada às ${quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}; atualizando em segundo plano`);
+      metaEl.textContent = metaBoletim(ufs, palavras, ` · última edição carregada às ${quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`);
     } else {
       alvo.innerHTML = '<div class="carregando">Carregando a primeira edição do boletim...</div>';
       document.getElementById("bol-calendario").innerHTML = "";
@@ -5813,45 +5874,40 @@
     }
 
     try {
-      // Boletim = só o que é NOVIDADE (publicado nos últimos dias) — busca ao vivo (mesma
-      // fonte rápida de "Encontrar Licitações") e filtra pra recência, igual ao boletim
-      // por e-mail. "Encontrar Licitações" é quem faz a busca livre em todo o histórico.
-      const DIAS_BOLETIM = 3;
+      // A base do robô é sempre a primeira fonte do boletim. Ela já contém os detalhes
+      // enriquecidos e é independente da disponibilidade momentânea do PNCP.
+      const cacheOportunidades = await carregarBaseDoRoboParaBoletim(ufs);
+      if (!atualizarAoVivo) {
+        const resultados = resultadosDoRoboParaBoletim(cacheOportunidades, ufs, palavras);
+        if (resultados.length === 0) {
+          if (!cacheInicial) {
+            alvo.innerHTML = '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na última coleta do robô.</div>';
+            bolResultadosCompletos = [];
+            if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
+          }
+          return;
+        }
+        salvarCacheResultadoBoletim(filtro, resultados);
+        renderizarBoletimComCalendario(resultados, "");
+        metaEl.textContent = metaBoletim(ufs, palavras);
+        complementarBoletimComSistemaS(filtro, ufs, palavras, resultados, metaEl);
+        return;
+      }
+
+      // A conferência ao vivo só ocorre por ação explícita do usuário. Mesmo aqui, a
+      // edição já visível continua na tela enquanto o PNCP responde.
       const resp = await buscarOportunidadesAbertas(ufs, palavras, 15);
       let resultadosBrutos = resp.encontrados;
-
-      // Corrige bug real: quando a busca ao vivo no PNCP falha (API lenta/fora do ar), o
-      // Boletim ficava vazio mesmo com o robo ja tendo coletado e salvo essas mesmas
-      // oportunidades horas antes -- "Encontrar Licitacoes" ja mesclava com esse cache do
-      // robo, o Boletim nao. Agora os dois usam a mesma protecao: o cache complementa (e
-      // cobre) o que a busca ao vivo nao trouxe, sem duplicar o que ja veio ao vivo.
-      const cacheOportunidades = await carregarCache("data/oportunidades_abertas.json");
       if (cacheOportunidades && Array.isArray(cacheOportunidades.registros) && cacheOportunidades.registros.length > 0) {
         resultadosBrutos = mesclarComCacheRobo(resultadosBrutos, cacheOportunidades.registros, ufs, palavras);
       }
-
-      const limiteRecencia = new Date(Date.now() - DIAS_BOLETIM * 24 * 60 * 60 * 1000);
-      const agoraFiltro = new Date();
-let resultados = resultadosBrutos.filter((r) => {
-  const publicacaoRecente = (() => {
-    if (!r.publicacao) return true;
-    const d = new Date(r.publicacao);
-    return isNaN(d) || d >= limiteRecencia;
-  })();
-  const aindaAberta = (() => {
-    if (!r.encerramento) return false;
-    const f = new Date(r.encerramento);
-    return !isNaN(f) && f >= agoraFiltro;
-  })();
-  return publicacaoRecente || aindaAberta;
-});
+      let resultados = filtrarResultadosDoBoletim(resultadosBrutos);
       metaEl.textContent = metaBoletim(ufs, palavras);
       let avisoHtml = resp.falhaConexao
         ? '<div class="aviso">A API pública do PNCP não respondeu agora — mostrando também o que o robô já tinha coletado, então a lista abaixo pode não estar 100% atualizada.</div>'
         : "";
 
-      resultados = resultados
-        .concat(await buscarExtrasSistemaS(ufs, palavras))
+      resultados = combinarResultadosDoBoletim(resultados, await buscarExtrasSistemaS(ufs, palavras))
         .filter((r) => ufEstaSelecionada(r.uf, ufs));
 
       if (resultados.length === 0) {
@@ -5882,7 +5938,7 @@ let resultados = resultadosBrutos.filter((r) => {
     if (!bolJaGerado) gerarBoletim();
   });
 
-  document.getElementById("bol-atualizar").addEventListener("click", gerarBoletim);
+  document.getElementById("bol-atualizar").addEventListener("click", () => gerarBoletim({ atualizarAoVivo: true }));
 
   document.getElementById("bol-config-toggle").addEventListener("click", () => {
     const painel = document.getElementById("bol-config-painel");
@@ -6080,9 +6136,8 @@ let resultados = resultadosBrutos.filter((r) => {
 
   document.getElementById("op-buscar").addEventListener("click", buscarOportunidades);
 
-  // Restaura o último filtro salvo (se houver) e busca de novo automaticamente — assim o
-  // usuário reabre "Encontrar Licitações" e já vê o resultado de antes, sem preencher tudo
-  // de novo. Só roda uma vez, no carregamento da página.
+  // Restaura o último filtro salvo apenas quando a ferramenta é aberta. Consultas de
+  // ferramentas escondidas durante o login só competem por rede e atrasam a primeira tela.
   async function restaurarOportunidades() {
     const filtro = lerFiltroOportunidades();
     if (!filtro || !filtro.palavrasRaw) return;
@@ -6106,8 +6161,6 @@ let resultados = resultadosBrutos.filter((r) => {
     await buscarOportunidades();
     atualizarSeletorUfs(document.getElementById("op-uf"));
   }
-  restaurarOportunidades();
-
   document.querySelector('nav button[data-alvo="oportunidades"]').addEventListener("click", () => {
     // A aba pode voltar do cache visual do navegador: força os chips a espelharem
     // o select nativo que guarda o filtro selecionado.
@@ -8090,7 +8143,10 @@ let resultados = resultadosBrutos.filter((r) => {
     renderizarConvenios(cacheConvenios || null, uf, municipioFiltro, palavras);
   }
 
-  document.querySelector('nav button[data-alvo="transparencia"]').addEventListener("click", executarBuscaConvenios);
+  document.querySelector('nav button[data-alvo="transparencia"]').addEventListener("click", async () => {
+    await restaurarConvenios();
+    executarBuscaConvenios();
+  });
   document.getElementById("cv-buscar").addEventListener("click", executarBuscaConvenios);
 
   // ---- Raio-X financeiro de fornecedor (via Netlify Function, token fica no servidor) ----
@@ -8486,7 +8542,6 @@ let resultados = resultadosBrutos.filter((r) => {
   }
   if (window.__clientePronto) window.__clientePronto.then(aplicarUfPadraoDoPerfil);
 
-  restaurarDiagnostico();
   document.querySelector('nav button[data-alvo="diagnostico"]').addEventListener("click", () => {
     if (!dgJaBuscado) restaurarDiagnostico();
   });
@@ -8499,12 +8554,14 @@ let resultados = resultadosBrutos.filter((r) => {
     if (filtro.dias) document.getElementById("emp-dias").value = filtro.dias;
     document.getElementById("emp-buscar").click();
   }
-  restaurarEmpresa();
   document.querySelector('nav button[data-alvo="empresa"]').addEventListener("click", () => {
     if (!empJaBuscado) restaurarEmpresa();
   });
 
+  let conveniosFiltroRestaurado = false;
   async function restaurarConvenios() {
+    if (conveniosFiltroRestaurado) return;
+    conveniosFiltroRestaurado = true;
     const filtro = lerFiltroConvenios();
     if (!filtro) return;
     document.getElementById("cv-uf").value = filtro.uf || "";
@@ -8519,15 +8576,12 @@ let resultados = resultadosBrutos.filter((r) => {
     // Não precisa chamar executarBuscaConvenios() aqui: o nav já chama sempre que a aba
     // Convênios e Emendas Federais é aberta, e os campos acima de agora vão junto nessa busca.
   }
-  restaurarConvenios();
-
   async function restaurarRaioX() {
     const filtro = lerFiltroRaioX();
     if (!filtro || !filtro.cnpj) return;
     document.getElementById("fn-cnpj").value = filtro.cnpj;
     document.getElementById("fn-buscar").click();
   }
-  restaurarRaioX();
   document.querySelector('nav button[data-alvo="transparencia"]').addEventListener("click", () => {
     if (!fnJaBuscado) restaurarRaioX();
   });
@@ -8538,7 +8592,6 @@ let resultados = resultadosBrutos.filter((r) => {
     document.getElementById("pp-busca").value = filtro.termo;
     document.getElementById("pp-buscar-categoria").click();
   }
-  restaurarPrecos();
   document.querySelector('nav button[data-alvo="precos"]').addEventListener("click", () => {
     if (!ppJaBuscado) restaurarPrecos();
   });

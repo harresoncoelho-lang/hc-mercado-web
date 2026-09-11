@@ -666,6 +666,34 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   };
 }
 
+// O painel não deve baixar e interpretar toda a base nacional (que cresce para vários MB)
+// quando o cliente acompanha somente um ou poucos estados. Estes arquivos são a projeção
+// leve do boletim por UF: mantêm apenas registros publicados há 3 dias ou ainda abertos.
+// A filtragem por palavras-chave continua no navegador, mas a transferência inicial deixa
+// de depender da base nacional completa.
+async function gravarBoletinsPorUf(fs, path, diretorio, oportunidades) {
+  const agora = Date.now();
+  const limitePublicacao = agora - 3 * 24 * 60 * 60 * 1000;
+  const registros = Array.isArray(oportunidades && oportunidades.registros) ? oportunidades.registros : [];
+  await fs.mkdir(diretorio, { recursive: true });
+
+  await Promise.all(UFS.map(async (uf) => {
+    const selecionados = registros.filter((r) => {
+      if (r.uf !== uf) return false;
+      const publicacao = r.publicacao ? new Date(r.publicacao).getTime() : NaN;
+      const encerramento = r.encerramento ? new Date(r.encerramento).getTime() : NaN;
+      return !Number.isFinite(publicacao) || publicacao >= limitePublicacao || (Number.isFinite(encerramento) && encerramento >= agora);
+    });
+    await fs.writeFile(path.join(diretorio, `${uf}.json`), JSON.stringify({
+      atualizadoEm: oportunidades && oportunidades.atualizadoEm,
+      ultimaTentativaEm: oportunidades && oportunidades.ultimaTentativaEm,
+      uf,
+      totalRegistros: selecionados.length,
+      registros: selecionados,
+    }), "utf8");
+  }));
+}
+
 // ---------- Mercado por segmento: atas de registro de preço + empresas vencedoras ----------
 // Antes só processava atas cujo objeto batesse com uma lista fixa de ~10 segmentos — o
 // problema é que qualquer cliente cujo ramo não estivesse nessa lista via o painel
@@ -1167,6 +1195,8 @@ async function main() {
   const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   console.log("Gravado data/oportunidades_abertas.json");
+  await gravarBoletinsPorUf(fs, path, path.join(dirDados, "boletim"), oportunidades);
+  console.log("Gravados data/boletim/{UF}.json para abertura rápida do painel");
 
   // Uma indisponibilidade do PNCP não deve abortar o pipeline inteiro. A função de coleta
   // já preserva a última base íntegra, expõe saudeFonte/ufsComFalha e agora também mantém
