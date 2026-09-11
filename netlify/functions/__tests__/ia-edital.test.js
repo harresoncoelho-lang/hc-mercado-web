@@ -62,3 +62,17 @@ test("não deixa um rótulo operacional engolir o texto seguinte do portal", () 
   const texto = "Critério de Julgamento - Menor preço por item MODO DE DISPUTA - Aberto PREFERÊNCIA ME/EPP - Sim";
   assert.equal(__test.valorRotuladoDoTexto(texto, "Critério de Julgamento"), "Menor preço por item");
 });
+
+test("remove combinações artificiais de certidões antes de exibir o dossiê", () => {
+  const { __test } = carregarComModelo(null);
+  const lista = __test.normalizarListaDoDossie([
+    "Certidão negativa de débitos federais",
+    "Certidão Negativa de Débitos de Tributos Federais – Receita Federal – Receita Estadual – Receita Municipal – ICMS – PIS/PASEP – COFINS – INSS",
+    "Certidão negativa de débitos federais",
+    "Certidão negativa de débitos trabalhistas",
+  ], 15);
+  assert.deepEqual(lista, [
+    "Certidão negativa de débitos federais",
+    "Certidão negativa de débitos trabalhistas",
+  ]);
+});

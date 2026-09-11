@@ -38,7 +38,7 @@ const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
-const VERSAO_RESUMO = 7;
+const VERSAO_RESUMO = 8;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
@@ -313,11 +313,11 @@ const SCHEMA_ESTRUTURA = `{
   "prazos": {"limiteEnvioPropostas": "", "prazoDocumentoComplementar": "", "prazoDocumentoOriginal": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": ""},
   "criteriosProposta": {"validadeProposta": "", "criteriosDesempate": "", "exigenciasPropostaComercial": "", "propostasLancesPor": "", "programaIntegridade": ""},
   "itens": {"totalItens": "", "descricaoGeral": "", "categoriasPrincipais": "", "observacoes": ""},
-  "documentosHabilitacao": ["lista de documentos exigidos, um por item; incluir certidões, registros, balanços e atestados com a condição ou prazo quando houver"],
+  "documentosHabilitacao": ["lista de documentos exigidos, um por item (máximo 15); não crie combinações, variações ou alternativas de certidões — só registre uma exigência que esteja literalmente identificável no texto"],
   "atestadoCapacidadeTecnica": "",
   "legislacao": "",
   "anexosDeclaracoes": "",
-  "declaracoesExigidas": ["cada declaração ou formulário exigido, um por item"],
+  "declaracoesExigidas": ["cada declaração ou formulário exigido, um por item (máximo 12); não crie variações de uma mesma declaração"],
   "condicoesPagamento": "",
   "penalidades": "",
   "multas": "",
@@ -367,7 +367,7 @@ async function chamarGroq(apiKey, mensagens, opts) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { chamarGroq, valorRotuladoDoTexto };
+exports.__test = { chamarGroq, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -391,6 +391,59 @@ function extrairJson(texto) {
     }
     return null;
   }
+}
+
+// Modelos de linguagem podem transformar uma lista de certidões em combinações
+// artificiais (federal + estadual + municipal + ICMS + ...). Isso não é uma
+// exigência do edital e não pode chegar ao cliente. A proteção abaixo atua antes
+// de renderizar ou persistir o dossiê: remove combinações, normaliza duplicados e
+// limita as listas a uma quantidade que possa ser auditada.
+function chaveLista(valor) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function itemCombinatorioDeCertidao(texto) {
+  const chave = chaveLista(texto);
+  if (!/certidao|regularidade|debitos/.test(chave)) return false;
+  const marcadores = [
+    "receita federal", "receita estadual", "receita municipal", "icms",
+    "pis pasep", "cofins", "inss", "iss", "simples nacional",
+  ];
+  return marcadores.filter((marcador) => chave.includes(marcador)).length >= 3;
+}
+
+function normalizarListaDoDossie(valor, limite) {
+  const saida = [];
+  const chaves = new Set();
+  for (const bruto of (Array.isArray(valor) ? valor : [])) {
+    const texto = String(bruto || "").replace(/\s+/g, " ").trim();
+    const chave = chaveLista(texto);
+    if (!texto || texto.length > 280 || /^nao informado$/.test(chave) || itemCombinatorioDeCertidao(texto)) continue;
+    // Uma exigência mais longa que apenas repete uma já listada não acrescenta
+    // informação e era a origem visual da cascata de certidões no modal.
+    if ([...chaves].some((existente) => existente.includes(chave) || chave.includes(existente))) continue;
+    chaves.add(chave);
+    saida.push(texto);
+    if (saida.length >= limite) break;
+  }
+  return saida;
+}
+
+function sanitizarListasDoDossie(estrutura) {
+  if (!estrutura || typeof estrutura !== "object") return estrutura;
+  estrutura.documentosHabilitacao = normalizarListaDoDossie(estrutura.documentosHabilitacao, 15);
+  estrutura.declaracoesExigidas = normalizarListaDoDossie(estrutura.declaracoesExigidas, 12);
+  estrutura.documentosConsultados = normalizarListaDoDossie(estrutura.documentosConsultados, 12);
+  estrutura.pendenciasParaConferencia = normalizarListaDoDossie(estrutura.pendenciasParaConferencia, 12);
+  estrutura.questionamentosSugeridos = normalizarListaDoDossie(estrutura.questionamentosSugeridos, 10);
+  estrutura.possiveisQuestionamentos = normalizarListaDoDossie(estrutura.possiveisQuestionamentos, 10);
+  estrutura.outrasInformacoesRelevantes = normalizarListaDoDossie(estrutura.outrasInformacoesRelevantes, 15);
+  return estrutura;
 }
 
 function formatarEstruturaComoTexto(est) {
@@ -709,6 +762,7 @@ exports.handler = async (event) => {
     if (r.ok) {
       const estrutura = extrairJson(r.texto);
       if (estrutura) {
+        sanitizarListasDoDossie(estrutura);
         aplicarCamposOperacionaisDoTexto(estrutura, textoEdital);
         const resposta = formatarEstruturaComoTexto(estrutura) || "Resumo gerado.";
         // Salva no cache pra próxima vez (por qualquer pessoa) abrir instantâneo, sem

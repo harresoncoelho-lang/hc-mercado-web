@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const AdmZip = require("adm-zip");
-const { __test } = require("./gerar-checklist");
+const { __test } = require("../gerar-checklist");
 
 const edital = {
   numero: "413/2026",
