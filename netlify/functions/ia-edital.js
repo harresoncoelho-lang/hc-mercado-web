@@ -31,6 +31,7 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
 const MAX_CARACTERES_TEXTO = 600000;
 const { complementarRequisitos, selecionarContexto, prepararContextoResumo } = require("./_edital_operacional");
+const { executarEtapa, respostaProgresso } = require("./_resumo_progressivo");
 // A Function tem uma janela de execução menor que a soma de vários downloads de
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
@@ -39,7 +40,7 @@ const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
-const VERSAO_RESUMO = 12;
+const VERSAO_RESUMO = 13;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
@@ -400,6 +401,8 @@ function diagnosticarLimiteProvedor(resp, corpoErro) {
     const numero = Number(valor.replace(/,/g, ""));
     if (Number.isSafeInteger(numero)) diagnostico.limites[rotulo.toLowerCase()] = numero;
   }
+  diagnostico.medidas = [...mensagem.matchAll(/\b(\d[\d,]*)\s*(tokens?|bytes?|characters?)\b/gi)].slice(0, 8).map(([, quantidade, unidade]) => ({ quantidade: Number(quantidade.replace(/,/g, "")), unidade: unidade.toLowerCase() }));
+  diagnostico.contexto = /context (?:length|window)|maximum context/i.test(mensagem);
   return diagnostico;
 }
 
@@ -549,11 +552,11 @@ function sanitizarListasDoDossie(estrutura) {
   estrutura.declaracoesExigidas = normalizarListaDoDossie(estrutura.declaracoesExigidas, 200);
   estrutura.documentosCredenciamento = normalizarListaDoDossie(estrutura.documentosCredenciamento, 200);
   estrutura.requisitosProposta = normalizarListaDoDossie(estrutura.requisitosProposta, 200);
-  estrutura.documentosConsultados = normalizarListaDoDossie(estrutura.documentosConsultados, 12);
-  estrutura.pendenciasParaConferencia = normalizarListaDoDossie(estrutura.pendenciasParaConferencia, 12);
-  estrutura.questionamentosSugeridos = normalizarListaDoDossie(estrutura.questionamentosSugeridos, 10);
-  estrutura.possiveisQuestionamentos = normalizarListaDoDossie(estrutura.possiveisQuestionamentos, 10);
-  estrutura.outrasInformacoesRelevantes = normalizarListaDoDossie(estrutura.outrasInformacoesRelevantes, 15);
+  estrutura.documentosConsultados = normalizarListaDoDossie(estrutura.documentosConsultados, Infinity);
+  estrutura.pendenciasParaConferencia = normalizarListaDoDossie(estrutura.pendenciasParaConferencia, Infinity);
+  estrutura.questionamentosSugeridos = normalizarListaDoDossie(estrutura.questionamentosSugeridos, Infinity);
+  estrutura.possiveisQuestionamentos = normalizarListaDoDossie(estrutura.possiveisQuestionamentos, Infinity);
+  estrutura.outrasInformacoesRelevantes = normalizarListaDoDossie(estrutura.outrasInformacoesRelevantes, Infinity);
   return estrutura;
 }
 
@@ -765,9 +768,23 @@ exports.handler = async (event) => {
   let storeResumos = null;
   try {
     const { getStore } = require("@netlify/blobs");
-    storeResumos = getStore("resumos-editais");
+    storeResumos = getStore({ name: "resumos-editais", consistency: "strong" });
   } catch (e) {
     storeResumos = null; // sem cache disponível — segue funcionando normalmente, só mais devagar
+  }
+
+  const chaveProgresso = `progresso:v${VERSAO_RESUMO}:${edital.numeroControlePNCP}`;
+  let analiseEmAndamento = null;
+  if (modo === "resumo" && edital.numeroControlePNCP && storeResumos) {
+    try { analiseEmAndamento = await storeResumos.get(chaveProgresso, { type: "json", consistency: "strong" }); } catch (_) { /* Tentará a fonte oficial. */ }
+    if (analiseEmAndamento && analiseEmAndamento.expiraEm > Date.now()) {
+      textoEdital = analiseEmAndamento.texto;
+      coberturaLeitura = analiseEmAndamento.coberturaLeitura;
+      fonteLida = true;
+      if (!body.retomarAnalise && analiseEmAndamento.resultados.length < analiseEmAndamento.blocos.length && analiseEmAndamento.proximaEtapaEm > Date.now()) {
+        return { statusCode: 202, headers, body: JSON.stringify(respostaProgresso(analiseEmAndamento)) };
+      }
+    }
   }
 
   if (modo === "resumo" && edital.numeroControlePNCP) {
@@ -842,7 +859,8 @@ exports.handler = async (event) => {
   // resumo genérico baseado nos mesmos campos que já estão na tela.
   // O orçamento do robô é controlado pelo próprio job (quantidade máxima por execução).
   // Não mistura esse processamento de base com a cota diária individual dos clientes.
-  const limite = ehRoboInterno ? { ok: true } : await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
+  const usarEtapas = modo === "resumo" && textoEdital?.length > 45000 && Boolean(storeResumos && edital.numeroControlePNCP && process.env.GROQ_API_KEY);
+  const limite = ehRoboInterno || usarEtapas ? { ok: true } : await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
   if (!limite.ok && modo === "resumo") {
     const contingencia = respostaDeContingencia(edital, "indisponivel", limite.erro);
     contingencia.headers = headers;
@@ -881,7 +899,7 @@ exports.handler = async (event) => {
   if (fonteLida) {
     // Reserva espaço para instruções, ficha e resposta na janela do modelo.
     // O limite é de caracteres, conservador para texto de editais em português.
-    const contextoResumo = prepararContextoResumo(textoEdital);
+    const contextoResumo = prepararContextoResumo(textoEdital, usarEtapas ? Infinity : 260000);
     if (contextoResumo.parcial) coberturaLeitura = { ...coberturaLeitura, parcial: true, contextoParcial: true };
     const mensagensEstrutura = [
       { role: "system", content: `${REGRAS_BASE}\nVocê recebeu texto real extraído de documentos oficiais (edital, termo de referência e anexos). Produza um DOSSIÊ OPERACIONAL. As listas devem ser um checklist resumido e executável: um documento/ação por item, preservando condições, alternativas, datas, valores e responsabilidades. Para CADA item das quatro listas documentais, cite todos os IDs do catálogo que ele resume, no formato [R0001,R0002]. Agrupe exigências equivalentes dos documentos, sem perder condições; não invente IDs nem use referências genéricas de página como cobertura. Não repita cláusulas extensas literalmente. Leia o material inteiro e extraia os fatos ponto a ponto: datas, entrega, habilitação, declarações, legislação, julgamento, pagamento, garantias, penalidades/multas, anexos, riscos e prazos.\n\nRegra de evidência: só inclua um fato se ele estiver no texto fornecido. Se um campo não aparecer, escreva "Não informado". Use "pendenciasParaConferencia" para o que precisa de conferência; não invente cláusulas comuns de licitação. Em "questionamentosSugeridos", inclua apenas perguntas que tenham motivo explícito no texto (ambiguidade, contradição ou ausência relevante).\n\nDevolva SOMENTE um JSON válido (sem markdown, sem comentários, sem texto antes ou depois) no formato exato:\n${SCHEMA_ESTRUTURA}` },
@@ -890,7 +908,27 @@ exports.handler = async (event) => {
     // Uma única chamada com orçamento de tempo compatível com a Function. Antes eram
     // duas tentativas de 28 s e, em caso de lentidão, o servidor morria antes de chegar
     // ao fallback. A ficha oficial abaixo é preferível a um modal vazio.
-    const r = apiKey ? await chamarSinteseEdital(apiKey, mensagensEstrutura) : { ok: false };
+    let r;
+    if (usarEtapas) {
+      try {
+        const etapas = await executarEtapa({ store: storeResumos, chave: chaveProgresso,
+          inicial: { texto: textoEdital, coberturaLeitura }, retomar: body.retomarAnalise === true,
+          executar: async (bloco) => {
+            const cota = ehRoboInterno ? { ok: true } : await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
+            if (!cota.ok) return { erro: cota.erro, quota: cota.status };
+            const prefixo = mensagensEstrutura[1].content.split("FONTE INTEGRAL EXTRAÍDA:\n")[0];
+            const mensagens = [mensagensEstrutura[0], { role: "user", content: `${prefixo}\nETAPA PARCIAL DA LEITURA: analise somente as páginas abaixo. IDs do índice cuja cláusula não aparece aqui devem ser omitidos nesta etapa. Cite documento, página e cláusula em cada campo preenchido. Não interprete ausência nesta etapa como dispensa.\n${bloco}` }];
+            const parcial = await chamarSinteseEdital(apiKey, mensagens);
+            const estrutura = parcial.ok ? extrairJson(parcial.texto) : null;
+            return { ...parcial, estrutura };
+          } });
+        if (etapas.pendente) return { statusCode: 202, headers, body: JSON.stringify(etapas.pendente) };
+        if (etapas.falhou) return { statusCode: etapas.status || 502, headers, body: JSON.stringify({ erro: etapas.erro, podeRetomar: true }) };
+        r = { ok: true, texto: JSON.stringify(etapas.estrutura) };
+      } catch (_) {
+        return { statusCode: 503, headers, body: JSON.stringify({ erro: "Não foi possível salvar ou retomar esta etapa. Tente novamente; as etapas já salvas serão preservadas." }) };
+      }
+    } else r = apiKey ? await chamarSinteseEdital(apiKey, mensagensEstrutura) : { ok: false };
     if (r.ok) {
       const estrutura = extrairJson(r.texto);
       if (estrutura) {

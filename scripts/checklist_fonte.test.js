@@ -54,3 +54,41 @@ test("cobertura desconhecida ou análise degradada não promete leitura integral
   assert.match(ambiente.avisoCoberturaLeitura({ fonteLida: true, modoDegradado: true, coberturaLeitura: { parcial: false } }), /Leitura parcial/);
   assert.doesNotMatch(ambiente.avisoCoberturaLeitura({ fonteLida: true, coberturaLeitura: { parcial: false, documentosLidos: ["Edital"] } }), /Leitura parcial/);
 });
+
+test("exportação anterior não habilita nem altera o checklist do novo modal pendente", async () => {
+  const { ambiente, avisos } = contexto();
+  let concluir;
+  Object.assign(ambiente, {
+    iaGeracaoModal: 1, iaResumoPendente: false,
+    aguardarSupabaseAutenticado: async () => {},
+    window: { __sbClient: { auth: { getSession: async () => ({ data: { session: { access_token: "teste" } } }) } } },
+    fetch: () => new Promise((resolve) => { concluir = resolve; }),
+  });
+  const botao = { disabled: false, textContent: "Gerar Checklist (.docx)" };
+  const exportacao = ambiente.baixarChecklistDocx({}, { fonteLida: true, documentosHabilitacao: ["CNPJ"] }, botao);
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+  assert.equal(botao.textContent, "Gerando checklist...");
+  ambiente.iaGeracaoModal = 2;
+  ambiente.iaResumoPendente = true;
+  botao.disabled = true;
+  botao.textContent = "Gerar Checklist (.docx)";
+  concluir({ ok: false, json: async () => ({ erro: "Falha do edital anterior" }) });
+  await exportacao;
+  assert.equal(botao.disabled, true);
+  assert.equal(botao.textContent, "Gerar Checklist (.docx)");
+  assert.deepEqual(avisos, []);
+  assert.match(extrair("abrirModalIA"), /modal-ia-checklist-doc"\)\.innerHTML = .*Gerar Checklist/);
+});
+
+test("erro de exportação no modal atual restaura o botão e comunica a falha", async () => {
+  const { ambiente, avisos } = contexto();
+  Object.assign(ambiente, {
+    iaGeracaoModal: 1, iaResumoPendente: false,
+    aguardarSupabaseAutenticado: async () => { throw new Error("Sessão expirada"); },
+  });
+  const botao = { disabled: false, textContent: "Gerar Checklist (.docx)" };
+  await ambiente.baixarChecklistDocx({}, { fonteLida: true, documentosHabilitacao: ["CNPJ"] }, botao);
+  assert.equal(botao.disabled, false);
+  assert.equal(botao.textContent, "Gerar Checklist (.docx)");
+  assert.deepEqual(avisos, ["Sessão expirada"]);
+});

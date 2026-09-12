@@ -2564,7 +2564,11 @@
   let iaEstruturaAtual = null;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
-  const VERSAO_CACHE_LOCAL_RESUMO = 12;
+  let iaGeracaoModal = 0;
+  let iaTemporizadorResumo = null;
+  let iaRequisicaoAtual = null;
+  let iaResumoPendente = false;
+  const VERSAO_CACHE_LOCAL_RESUMO = 13;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2577,7 +2581,7 @@
     if (!chave) return null;
     try {
       const registro = JSON.parse(localStorage.getItem(chave) || "null");
-      if (!registro || registro.modoDegradado || !registro.salvoEm || Date.now() - registro.salvoEm > VALIDADE_CACHE_LOCAL_RESUMO_MS) {
+      if (!registro || registro.modoDegradado || registro.emProcessamento || !registro.salvoEm || Date.now() - registro.salvoEm > VALIDADE_CACHE_LOCAL_RESUMO_MS) {
         localStorage.removeItem(chave);
         return null;
       }
@@ -2589,7 +2593,7 @@
 
   function salvarCacheLocalResumo(edital, dados) {
     const chave = chaveCacheLocalResumo(edital);
-    if (!chave || !dados || dados.modoDegradado || (!dados.estrutura && !dados.resposta)) return;
+    if (!chave || !dados || dados.emProcessamento || dados.modoDegradado || (!dados.estrutura && !dados.resposta)) return;
     try {
       // O texto integral do PDF pode ser grande; a cópia local guarda somente o
       // resultado que a pessoa vê, enquanto o servidor preserva o texto completo.
@@ -3000,39 +3004,95 @@
     }
   }
 
+  function bloquearAcoesResumo(bloquear) {
+    iaResumoPendente = bloquear;
+    ["modal-ia-checklist-email", "modal-ia-checklist-doc", "modal-ia-imprimir", "modal-ia-pergunta", "modal-ia-enviar"].forEach((id) => {
+      document.getElementById(id).disabled = bloquear;
+    });
+  }
+
+  function cancelarConsultaResumo() {
+    iaGeracaoModal += 1;
+    clearTimeout(iaTemporizadorResumo);
+    iaTemporizadorResumo = null;
+    if (iaRequisicaoAtual) iaRequisicaoAtual.abort();
+    iaRequisicaoAtual = null;
+    iaCarregando = false;
+  }
+
+  function fecharModalIA() {
+    cancelarConsultaResumo();
+    iaEditalAtual = null;
+    document.getElementById("modal-ia-fundo").classList.remove("aberto");
+  }
+
+  function oferecerNovaAnalise(mensagem) {
+    const aviso = escreverMensagemIA(mensagem, "msg-erro");
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.textContent = "Tentar novamente";
+    botao.addEventListener("click", () => {
+      aviso.remove();
+      void chamarIA("resumo", null, { retomarAnalise: true });
+    });
+    aviso.appendChild(botao);
+  }
+
   async function chamarIA(modo, pergunta, opcoes = {}) {
-    if (iaCarregando) return;
+    if (iaCarregando || !iaEditalAtual || (modo === "pergunta" && iaResumoPendente)) return;
+    const geracao = iaGeracaoModal;
+    const edital = iaEditalAtual;
+    const controlador = new AbortController();
+    iaRequisicaoAtual = controlador;
     iaCarregando = true;
+    if (modo === "resumo") bloquearAcoesResumo(true);
     const mensagemEspera = modo === "resumo" ? "Lendo o edital e gerando o resumo... (pode levar alguns segundos)" : "Pensando...";
     const carregando = escreverMensagemIA(mensagemEspera, "msg-carregando");
     try {
       const token = await obterTokenSessao();
+      if (geracao !== iaGeracaoModal) return;
       const resp = await fetch("/.netlify/functions/ia-edital", {
+        signal: controlador.signal,
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ modo, edital: iaEditalAtual, pergunta, historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
+        body: JSON.stringify({ modo, edital, pergunta, retomarAnalise: Boolean(opcoes.retomarAnalise), historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
       });
       let dados;
       try {
         dados = await resp.json();
+        if (geracao !== iaGeracaoModal) return;
       } catch (erroResposta) {
+        if (geracao !== iaGeracaoModal) return;
         carregando.remove();
         if (modo === "resumo") {
-          exibirResumoDeContingencia("A análise automática demorou mais do que o esperado. Exibimos a ficha com os dados oficiais disponíveis; tente novamente em instantes para a leitura completa do edital.");
+          oferecerNovaAnalise("Não foi possível concluir a análise agora. Tente novamente para retomar a leitura dos documentos.");
           return;
         }
         throw erroResposta;
       }
+      if (modo === "resumo" && resp.status === 202 && dados.emProcessamento) {
+        const progresso = dados.progresso || {};
+        const total = Math.max(1, Number(progresso.total) || 1);
+        const etapa = Math.min(total, Math.max(1, (Number(progresso.concluidas) || 0) + 1));
+        carregando.textContent = `Analisando documentos: etapa ${etapa} de ${total}. Você pode fechar e retomar o resumo depois.`;
+        iaTemporizadorResumo = setTimeout(() => {
+          iaTemporizadorResumo = null;
+          if (geracao !== iaGeracaoModal) return;
+          carregando.remove();
+          void chamarIA("resumo", null);
+        }, Math.max(1, Number(progresso.aguardarSegundos) || 2) * 1000);
+        return;
+      }
       carregando.remove();
       if (!resp.ok || dados.erro) {
         if (modo === "resumo") {
-          exibirResumoDeContingencia(dados.erro || "A análise automática está indisponível agora. Exibimos a ficha com os dados oficiais disponíveis.");
+          oferecerNovaAnalise(dados.erro || "Não foi possível concluir a análise dos documentos. Tente novamente para retomar.");
           return;
         }
         escreverMensagemIA(dados.erro || "Não deu pra gerar a resposta agora.", "msg-erro");
         return;
       }
-      if (modo === "resumo" && !dados.modoDegradado) salvarCacheLocalResumo(iaEditalAtual, dados);
+      if (modo === "resumo" && !dados.modoDegradado) salvarCacheLocalResumo(edital, dados);
       if (dados.textoEdital) iaTextoEdital = dados.textoEdital;
       const mensagemFonteNaoLida = (motivo) => {
         if (motivo === "escaneado") {
@@ -3056,17 +3116,22 @@
           escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
         }
       }
+      if (modo === "resumo") bloquearAcoesResumo(false);
       iaHistorico.push({ role: "user", content: pergunta || "(resumo inicial)" });
       iaHistorico.push({ role: "assistant", content: dados.resposta });
     } catch (e) {
+      if (geracao !== iaGeracaoModal) return;
       carregando.remove();
       if (modo === "resumo") {
-        exibirResumoDeContingencia("Não foi possível concluir a análise automática agora. Exibimos a ficha com os dados oficiais disponíveis; tente novamente em instantes.");
+        oferecerNovaAnalise("Não foi possível concluir a análise agora. Tente novamente para retomar a leitura dos documentos.");
       } else {
         escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
       }
     } finally {
-      iaCarregando = false;
+      if (geracao === iaGeracaoModal) {
+        iaCarregando = false;
+        iaRequisicaoAtual = null;
+      }
     }
   }
 
@@ -3549,6 +3614,7 @@
       escreverMensagemIA("O checklist ainda não tem requisitos extraídos do edital. Abra ou atualize o Resumo do Edital e aguarde a leitura dos documentos antes de exportar.", "msg-erro");
       return;
     }
+    const geracao = iaGeracaoModal;
     const textoOriginal = botao.textContent;
     botao.disabled = true;
     botao.textContent = "Gerando checklist...";
@@ -3575,10 +3641,12 @@
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (erro) {
-      escreverMensagemIA(erro.message || "Não foi possível gerar o checklist agora.", "msg-erro");
+      if (geracao === iaGeracaoModal) escreverMensagemIA(erro.message || "Não foi possível gerar o checklist agora.", "msg-erro");
     } finally {
-      botao.disabled = false;
-      botao.textContent = textoOriginal;
+      if (geracao === iaGeracaoModal) {
+        botao.disabled = iaResumoPendente;
+        botao.textContent = textoOriginal;
+      }
     }
   }
 
@@ -3668,6 +3736,9 @@
   }
 
   function abrirModalIA(edital) {
+    cancelarConsultaResumo();
+    bloquearAcoesResumo(true);
+    document.getElementById("modal-ia-checklist-doc").innerHTML = "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist (.docx)";
     iaEditalAtual = edital;
     iaHistorico = [];
     iaTextoEdital = null;
@@ -3692,6 +3763,7 @@
 
     document.getElementById("modal-ia-baixar").onclick = () => baixarEditalDireto(edital, document.getElementById("modal-ia-baixar"));
     document.getElementById("modal-ia-checklist-email").onclick = () => {
+      if (iaResumoPendente) return;
       const corpo = montarResumoParaCliente(edital, iaEstruturaAtual);
       document.getElementById("modal-enviar-resumo-destino").value = "";
       document.getElementById("modal-enviar-resumo-nome").value = "";
@@ -3703,9 +3775,11 @@
       document.getElementById("modal-enviar-resumo-fundo").classList.add("aberto");
     };
     document.getElementById("modal-ia-checklist-doc").onclick = () => {
+      if (iaResumoPendente) return;
       void baixarChecklistDocx(edital, iaEstruturaAtual, document.getElementById("modal-ia-checklist-doc"));
     };
     document.getElementById("modal-ia-imprimir").onclick = () => {
+      if (iaResumoPendente) return;
       const janela = window.open("", "_blank");
       if (!janela) return;
       janela.document.write(montarHtmlImpressaoResumo(edital, iaEstruturaAtual));
@@ -3734,6 +3808,7 @@
           return;
         }
         renderizarEstruturaIA(resumoLocal.estrutura);
+        bloquearAcoesResumo(false);
         iaHistorico.push({ role: "user", content: "(resumo inicial)" });
         iaHistorico.push({ role: "assistant", content: resumoLocal.resposta || "Resumo recuperado." });
         escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");
@@ -3744,11 +3819,9 @@
     })();
   }
 
-  document.getElementById("modal-ia-fechar").addEventListener("click", () => {
-    document.getElementById("modal-ia-fundo").classList.remove("aberto");
-  });
+  document.getElementById("modal-ia-fechar").addEventListener("click", fecharModalIA);
   document.getElementById("modal-ia-fundo").addEventListener("click", (ev) => {
-    if (ev.target.id === "modal-ia-fundo") document.getElementById("modal-ia-fundo").classList.remove("aberto");
+    if (ev.target.id === "modal-ia-fundo") fecharModalIA();
   });
   document.getElementById("modal-enviar-resumo-fechar").addEventListener("click", () => {
     document.getElementById("modal-enviar-resumo-fundo").classList.remove("aberto");
@@ -3828,6 +3901,7 @@
   });
   document.getElementById("modal-ia-form").addEventListener("submit", (ev) => {
     ev.preventDefault();
+    if (iaResumoPendente || iaCarregando) return;
     const campo = document.getElementById("modal-ia-pergunta");
     const pergunta = campo.value.trim();
     if (!pergunta) return;

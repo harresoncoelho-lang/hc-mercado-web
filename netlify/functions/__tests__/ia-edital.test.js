@@ -112,7 +112,7 @@ test("diagnóstico de 413 conserva somente código permitido e limites numérico
   try {
     const resultado = await carregarComModelo(null).__test.chamarGroq("SECRET_KEY", [{ role: "user", content: "DOCUMENTO_PRIVADO" }]);
     assert.equal(resultado.ok, false);
-    assert.deepEqual(resultado.diagnostico, { status: 413, codigo: "rate_limit_exceeded", limites: { limit: 8000, requested: 59598, used: 42 } });
+    assert.deepEqual(resultado.diagnostico, { status: 413, codigo: "rate_limit_exceeded", limites: { limit: 8000, requested: 59598, used: 42 }, medidas: [], contexto: false });
     assert.ok(!JSON.stringify([resultado, logs]).match(/SECRET|DOCUMENTO_PRIVADO/));
   } finally { global.fetch = fetchOriginal; console.warn = warnOriginal; }
 });
