@@ -71,7 +71,7 @@ test("síntese longa usa o modelo direto sem probe de ferramentas", async () => 
     assert.equal(chamadas.length, 1);
     assert.equal(chamadas[0].messages[0].content, fonte);
     for (const chamada of chamadas) {
-      assert.equal(chamada.model, "openai/gpt-oss-20b");
+      assert.equal(chamada.model, "openai/gpt-oss-120b");
       assert.equal(chamada.compound_custom, undefined);
       assert.equal(chamada.tool_choice, undefined);
       assert.equal(chamada.max_tokens, 2200);
@@ -192,4 +192,33 @@ test("campos canônicos rejeitam sigla como UASG e estimativa zero sem evidênci
   aplicarCamposOperacionaisDoTexto(comValor, "Edital oficial", { uasg: "654321", valor: 2500 });
   assert.equal(comValor.identificacao.uasg, "654321");
   assert.equal(comValor.detalhes.valorEstimado, "2500");
+});
+
+test("duração da disputa e empate ME/EPP não preenchem intervalo ou margem", () => {
+  const { aplicarCamposOperacionaisDoTexto } = carregarComModelo(null).__test;
+  const estrutura = { sessaoPublica: { intervaloMinimo: "4 minutos" }, detalhes: { margemPreferencia: "5%" }, criteriosProposta: { exigenciasPropostaComercial: "Marca e modelo obrigatórios" }, requisitosProposta: ["Proposta inicial: marca e modelo facultativos.", "Proposta reformulada: informar marca e modelo, se houver."] };
+  aplicarCamposOperacionaisDoTexto(estrutura, "9.5.1. A duração da etapa de lances será de 4 minutos. 10.1. Empate ME/EPP até 5%, se a melhor oferta não for ME/EPP; apresentar preço inferior em 5 minutos.");
+  assert.equal(estrutura.sessaoPublica.intervaloMinimo, "Não informado");
+  assert.equal(estrutura.detalhes.margemPreferencia, "Não informado");
+  assert.match(estrutura.criteriosProposta.exigenciasPropostaComercial, /facultativos/);
+  assert.match(estrutura.criteriosProposta.exigenciasPropostaComercial, /se houver/);
+  assert.doesNotMatch(estrutura.criteriosProposta.exigenciasPropostaComercial, /obrigatórios/);
+});
+
+test("intervalo monetário e margem expressamente definidos mantêm evidência", () => {
+  const { aplicarCamposOperacionaisDoTexto } = carregarComModelo(null).__test;
+  const estrutura = {};
+  aplicarCamposOperacionaisDoTexto(estrutura, "Intervalo mínimo de diferença entre lances: R$ 10,00. Margem de preferência: 8% para produtos nacionais.");
+  assert.match(estrutura.sessaoPublica.intervaloMinimo, /R\$ 10,00/);
+  assert.match(estrutura.detalhes.margemPreferencia, /8%/);
+});
+
+test("margem e intervalo conservam condições após medida sem absorver cláusula seguinte", () => {
+  const { aplicarCamposOperacionaisDoTexto } = carregarComModelo(null).__test;
+  const estrutura = {};
+  aplicarCamposOperacionaisDoTexto(estrutura, "8.1. A margem de preferência será de 8% exclusivamente para produtos\nnacionais, mediante comprovação da origem. 8.2. O intervalo mínimo entre lances será de R$ 10,00,\naplicável somente ao lote integral. 8.3. A entrega ocorrerá no almoxarifado.");
+  assert.match(estrutura.detalhes.margemPreferencia, /8% exclusivamente para produtos nacionais, mediante comprovação da origem/);
+  assert.doesNotMatch(estrutura.detalhes.margemPreferencia, /intervalo/);
+  assert.match(estrutura.sessaoPublica.intervaloMinimo, /R\$ 10,00, aplicável somente ao lote integral/);
+  assert.doesNotMatch(estrutura.sessaoPublica.intervaloMinimo, /almoxarifado/);
 });
