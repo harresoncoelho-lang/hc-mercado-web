@@ -59,7 +59,7 @@ test("exportação anterior não habilita nem altera o checklist do novo modal p
   const { ambiente, avisos } = contexto();
   let concluir;
   Object.assign(ambiente, {
-    iaGeracaoModal: 1, iaResumoPendente: false,
+    iaGeracaoModal: 1, iaResumoPendente: false, document: { getElementById: () => null },
     aguardarSupabaseAutenticado: async () => {},
     window: { __sbClient: { auth: { getSession: async () => ({ data: { session: { access_token: "teste" } } }) } } },
     fetch: () => new Promise((resolve) => { concluir = resolve; }),
@@ -83,7 +83,7 @@ test("exportação anterior não habilita nem altera o checklist do novo modal p
 test("erro de exportação no modal atual restaura o botão e comunica a falha", async () => {
   const { ambiente, avisos } = contexto();
   Object.assign(ambiente, {
-    iaGeracaoModal: 1, iaResumoPendente: false,
+    iaGeracaoModal: 1, iaResumoPendente: false, document: { getElementById: () => null },
     aguardarSupabaseAutenticado: async () => { throw new Error("Sessão expirada"); },
   });
   const botao = { disabled: false, textContent: "Gerar Checklist (.docx)" };

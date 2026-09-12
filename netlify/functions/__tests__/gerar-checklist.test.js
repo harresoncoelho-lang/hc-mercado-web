@@ -26,7 +26,7 @@ test("gera um DOCX real com a estrutura operacional do checklist", () => {
   assert.equal(arquivo.subarray(0, 2).toString(), "PK");
   const zip = new AdmZip(arquivo);
   const documento = zip.readAsText("word/document.xml");
-  assert.match(documento, /Checklist de Licitação/);
+  assert.match(documento, /Resumo do Edital/);
   assert.match(documento, /Declaração de habilitação/);
   assert.match(documento, /Certidão negativa de débitos federais/);
 });

@@ -60,9 +60,9 @@ test("exportações do edital usam DOCX real e a marca visual oficial", () => {
   const fs = require("node:fs");
   const path = require("node:path");
   const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
-  assert.match(html, /Gerar Checklist \(\.docx\)/);
+  assert.match(html, /Gerar Checklist \.docx/);
   assert.match(html, /\/.netlify\/functions\/gerar-checklist/);
-  assert.match(html, /logo\.png/);
+  assert.match(html, /<strong>LicitaPlena<\/strong>/);
   assert.doesNotMatch(html.slice(html.indexOf("function montarHtmlImpressaoResumo"), html.indexOf("function montarResumoParaCliente")), /marca-sinal/);
 });
 
@@ -72,9 +72,11 @@ test("texto preparado para e-mail preserva requisitos e cobertura da leitura", (
   const vm = require("node:vm");
   const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
   const trecho = (inicio, fim) => html.slice(html.indexOf(inicio), html.indexOf(fim, html.indexOf(inicio)));
-  const contexto = vm.createContext({ formatarPrazoPropostas: () => "", linkPncp: () => "" });
+  const contexto = vm.createContext({ ResumoModelo: require("../resumo-modelo"), document: { getElementById: () => null }, formatarPrazoPropostas: () => "", linkPncp: () => "" });
   vm.runInContext([
+
     trecho("function textoIA(", "// A API de itens"),
+    trecho("function formatarDataHoraIA(", "function adicionarSecaoTextoIA("),
     trecho("function avisoCoberturaLeitura(", "function podeGerarChecklist("),
     trecho("function montarResumoParaCliente(", "function abrirModalIA("),
   ].join("\n"), contexto);
@@ -84,8 +86,8 @@ test("texto preparado para e-mail preserva requisitos e cobertura da leitura", (
     requisitosProposta: ["Proposta assinada com validade de 90 dias [Edital, item 5.2]"],
     coberturaLeitura: { parcial: true, documentosLidos: ["Edital"], documentosNaoLidos: ["Anexo II"], motivos: ["Documento escaneado"] },
   });
-  assert.match(texto, /Credenciamento e participação:\n• Procuração do representante \[Edital, item 3\.1\]/);
-  assert.match(texto, /Preparação e envio da proposta:\n• Proposta assinada com validade de 90 dias \[Edital, item 5\.2\]/);
+  assert.match(texto, /Credenciamento e participação: *\n• Procuração do representante \[Edital, item 3\.1\]/);
+  assert.match(texto, /Preparação e envio da proposta: *\n• Proposta assinada com validade de 90 dias \[Edital, item 5\.2\]/);
   assert.match(texto, /Leitura parcial/);
   assert.match(texto, /Documentos não lidos: Anexo II/);
   assert.match(texto, /Documento escaneado/);

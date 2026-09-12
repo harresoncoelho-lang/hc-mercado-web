@@ -2,8 +2,8 @@
 // Uso: node scripts/preparar_dossies_editais.js
 // Env obrigatórias: DOSSIES_EDITAIS_CHAVE.
 // Env opcionais: LICITAPLENA_URL (https://licitaplena.com.br), MAX_DOSSIES_POR_EXECUCAO (12),
-// DIAS_PUBLICACAO_DOSSIE (3), CONCORRENCIA_DOSSIES (2), SUPABASE_SERVICE_ROLE_KEY,
-// VERSAO_DOSSIE (15) e REPROCESSAR_PARCIAL_APOS_HORAS (24).
+// DIAS_PUBLICACAO_DOSSIE (3), SUPABASE_SERVICE_ROLE_KEY,
+// VERSAO_DOSSIE (16) e REPROCESSAR_PARCIAL_APOS_HORAS (24).
 //
 // O cliente nunca deve precisar iniciar leitura de PDF/IA no clique. Este job chama a
 // rota interna, que aproveita o cache persistente e só lê os documentos ainda ausentes.
@@ -14,8 +14,8 @@ const path = require("path");
 const URL_SITE = (process.env.LICITAPLENA_URL || "https://licitaplena.com.br").replace(/\/$/, "");
 const LIMITE = Math.max(1, Number(process.env.MAX_DOSSIES_POR_EXECUCAO || 12));
 const DIAS = Math.max(1, Number(process.env.DIAS_PUBLICACAO_DOSSIE || 3));
-const CONCORRENCIA = Math.max(1, Number(process.env.CONCORRENCIA_DOSSIES || 2));
-const VERSAO_DOSSIE = Math.max(1, Number(process.env.VERSAO_DOSSIE || 15));
+const CONCORRENCIA = 1; // Uma etapa por vez respeita o orçamento compartilhado do provedor.
+const VERSAO_DOSSIE = Math.max(1, Number(process.env.VERSAO_DOSSIE || 16));
 const REPROCESSAR_PARCIAL_APOS_MS = Math.max(1, Number(process.env.REPROCESSAR_PARCIAL_APOS_HORAS || 24)) * 60 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 
@@ -127,12 +127,20 @@ async function main() {
   const candidatos = selecionarCandidatos(recentes, dossies);
 
   console.log(`[dossiês] ${recentes.length} edital(is) recente(s), ${candidatos.length} pendente(s); limite ${LIMITE}, concorrência ${CONCORRENCIA}.`);
-  let indice = 0, gerados = 0, reaproveitados = 0, pendentes = 0, falhas = 0;
+  let indice = 0, gerados = 0, reaproveitados = 0, pendentes = 0, falhas = 0, chamadas = 0;
   await Promise.all(Array.from({ length: Math.min(CONCORRENCIA, candidatos.length) }, async () => {
-    while (indice < candidatos.length) {
+    while (indice < candidatos.length && chamadas < 20) {
       const atual = candidatos[indice++];
       try {
-        const resultado = await prepararUm(atual);
+        chamadas++;
+        let resultado = await prepararUm(atual);
+        // O job existente completa os lotes sem depender de cliques no navegador.
+        // O teto encerra esta execução preservando o progresso para o próximo cron.
+        while (resultado === "pendente" && chamadas < 20) {
+          await new Promise((resolve) => setTimeout(resolve, 65000));
+          chamadas++;
+          resultado = await prepararUm(atual);
+        }
         if (resultado === "reaproveitado") reaproveitados += 1;
         else if (resultado === "pendente") pendentes += 1;
         else gerados += 1;

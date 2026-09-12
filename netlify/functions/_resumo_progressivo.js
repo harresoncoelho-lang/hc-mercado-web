@@ -121,7 +121,7 @@ function respostaProgresso(estado, agora = Date.now()) {
   }, resposta: `Análise dos documentos: ${estado.resultados.length} de ${estado.blocos.length} etapas concluídas.`, estrutura: null, fonteLida: true, erro: null };
 }
 
-async function executarEtapa({ store, chave, inicial, executar, usuario, autorizar, dividir = dividirFonte, retomar = false, agora = Date.now() }) {
+async function executarEtapa({ store, chave, inicial, executar, usuario, autorizar, dividir = dividirFonte, permitirDivisao = true, retomar = false, agora = Date.now() }) {
   const lerVencedor = async () => {
     const vencedor = (await store.getWithMetadata(chave, { type: "json", consistency: "strong" }))?.data;
     if (!vencedor) throw new Error("Estado da análise indisponível.");
@@ -138,7 +138,7 @@ async function executarEtapa({ store, chave, inicial, executar, usuario, autoriz
   if (!registro?.data) throw new Error("Não foi possível persistir a análise para retomada.");
   const estado = registro.data;
   if (estado.resultados.length === estado.blocos.length) return { estrutura: conciliarEstruturas(estado.resultados), estado };
-  const precisaReduzir = () => estado.diagnostico?.status === 413 || estado.diagnostico?.finalizacao === "length";
+  const precisaReduzir = () => permitirDivisao && (estado.diagnostico?.status === 413 || estado.diagnostico?.finalizacao === "length");
   if (retomar && estado.falhas >= 3 && !precisaReduzir()) {
     estado.falhas = 0;
     const retomada = await store.setJSON(chave, estado, { onlyIfMatch: registro.etag });
