@@ -51,6 +51,10 @@ async function exigirUsuarioLogado(event) {
       headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
     });
     if (!resp.ok) {
+      if (resp.status !== 401 && resp.status !== 403) {
+        console.warn(`auth: validação indisponível HTTP ${resp.status}`);
+        return { ok: false, status: 503, erro: "A validação da sessão está temporariamente indisponível. Tente novamente em instantes." };
+      }
       return { ok: false, status: 401, erro: "Sessão expirada ou inválida — faça login de novo." };
     }
     const user = await resp.json();
@@ -59,7 +63,7 @@ async function exigirUsuarioLogado(event) {
     }
     return { ok: true, userId: user.id, email: user.email };
   } catch (e) {
-    return { ok: false, status: 401, erro: "Não foi possível validar sua sessão agora. Tenta de novo em instantes." };
+    return { ok: false, status: 503, erro: "Não foi possível validar sua sessão agora. Tenta de novo em instantes." };
   }
 }
 

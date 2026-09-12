@@ -92,8 +92,41 @@ test('sessão ausente e401 interrompem consultas automáticas e mostram erro', a
   a.contexto.window = { __sbClient: { auth: { getSession: async () => ({ data: { session: null } }) } } };
   vm.runInContext(trecho('  async function obterTokenSessao()', '  function bloquearAcoesResumo('), a.contexto);
   a.abrir('A'); await a.contexto.chamarIA('resumo', null);
-  assert.equal(a.requisicoes.length, 1);
+  assert.equal(a.requisicoes.length, 0);
   assert.equal(a.timers.size, 0);
   assert.equal(a.estado().iaCarregando, false);
   assert.match(a.mensagens.at(-1).textContent, /Sessão expirada/);
+});
+
+test('401 renova uma única vez com token novo e preserva corpo da etapa', async () => {
+  const invalida = () => ({ ok: false, status: 401, json: async () => ({ erro: 'Sessão inválida' }) });
+  for (const respostaFinal of [final, invalida]) {
+    const a = ambiente([invalida, respostaFinal]); let renovacoes = 0;
+    a.contexto.window = { __sbClient: { auth: { refreshSession: async () => { renovacoes++; return { data: { session: { access_token: 'token-novo' } } }; } } } };
+    a.abrir('A'); await a.contexto.chamarIA('resumo', null);
+    assert.equal(renovacoes, 1); assert.equal(a.requisicoes.length, 2);
+    assert.equal(a.requisicoes[1].headers.Authorization, 'Bearer token-novo');
+    assert.equal(a.requisicoes[0].body, a.requisicoes[1].body);
+    assert.equal(a.timers.size, 0);
+  }
+});
+
+test('503 não renova credencial e erro getSession não envia Bearer vazio', async () => {
+  const a = ambiente([() => ({ ok: false, status: 503, json: async () => ({ erro: 'Validação indisponível' }) })]);
+  a.contexto.window = { __sbClient: { auth: { refreshSession: async () => { throw new Error('Não renovar'); } } } };
+  a.abrir('A'); await a.contexto.chamarIA('resumo', null);
+  assert.equal(a.requisicoes.length, 1); assert.equal(a.timers.size, 0);
+  a.contexto.window.__sbClient.auth.getSession = async () => ({ error: new Error('Falha de sessão'), data: { session: { access_token: 'token-antigo' } } });
+  vm.runInContext(trecho('  async function obterTokenSessao()', '  function bloquearAcoesResumo('), a.contexto);
+  await a.contexto.chamarIA('resumo', null);
+  assert.equal(a.requisicoes.length, 1); assert.match(a.mensagens.at(-1).textContent, /validar sua sessão/);
+});
+
+test('fechar modal durante renovação impede repetir a requisição antiga', async () => {
+  let resolver;
+  const a = ambiente([() => ({ ok: false, status: 401 })]);
+  a.contexto.window = { __sbClient: { auth: { refreshSession: () => new Promise((r) => { resolver = r; }) } } };
+  a.abrir('A'); const requisicao = a.contexto.chamarIA('resumo', null); await drenar();
+  a.contexto.fecharModalIA(); resolver({ data: { session: { access_token: 'novo' } } }); await requisicao;
+  assert.equal(a.requisicoes.length, 1); assert.equal(a.requisicoes[0].signal.aborted, true);
 });

@@ -2997,10 +2997,12 @@
   // que agora exigem login (ia-edital, sancoes, despesas-fornecedor — ver netlify/functions/_auth.js).
   async function obterTokenSessao() {
     try {
-      const { data } = await window.__sbClient.auth.getSession();
-      return data?.session?.access_token || "";
+      const { data, error } = await window.__sbClient.auth.getSession();
+      if (error) throw new Error("SESSAO_INDISPONIVEL");
+      if (!data?.session?.access_token) throw new Error("SESSAO_AUSENTE");
+      return data.session.access_token;
     } catch (e) {
-      return "";
+      throw new Error(e.message === "SESSAO_AUSENTE" ? "SESSAO_AUSENTE" : "SESSAO_INDISPONIVEL");
     }
   }
 
@@ -3051,12 +3053,23 @@
     try {
       const token = await obterTokenSessao();
       if (geracao !== iaGeracaoModal) return;
-      const resp = await fetch("/.netlify/functions/ia-edital", {
+      const enviar = (credencial) => fetch("/.netlify/functions/ia-edital", {
         signal: controlador.signal,
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${credencial}` },
         body: JSON.stringify({ modo, edital, pergunta, retomarAnalise: Boolean(opcoes.retomarAnalise), historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
       });
+      let resp = await enviar(token);
+      if (geracao !== iaGeracaoModal || controlador.signal.aborted) return;
+      // Uma única renovação natural cobre expiração durante a leitura longa.
+      // Indisponibilidade 503 não significa credencial inválida.
+      if (modo === "resumo" && resp.status === 401) {
+        const renovacao = await window.__sbClient.auth.refreshSession();
+        if (geracao !== iaGeracaoModal || controlador.signal.aborted) return;
+        if (renovacao.error) throw new Error("SESSAO_INDISPONIVEL");
+        if (!renovacao.data?.session?.access_token) throw new Error("SESSAO_AUSENTE");
+        resp = await enviar(renovacao.data.session.access_token);
+      }
       let dados;
       try {
         dados = await resp.json();
@@ -3123,7 +3136,7 @@
       if (geracao !== iaGeracaoModal) return;
       carregando.remove();
       if (modo === "resumo") {
-        oferecerNovaAnalise("Não foi possível concluir a análise agora. Tente novamente para retomar a leitura dos documentos.");
+        oferecerNovaAnalise(e.message === "SESSAO_AUSENTE" ? "Sessão expirada. Faça login novamente para retomar a análise." : e.message === "SESSAO_INDISPONIVEL" ? "Não foi possível validar sua sessão agora. Tente novamente em instantes." : "Não foi possível concluir a análise agora. Tente novamente para retomar a leitura dos documentos.");
       } else {
         escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
       }
