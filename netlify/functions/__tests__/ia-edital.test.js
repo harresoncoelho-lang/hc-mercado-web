@@ -63,7 +63,7 @@ test("síntese longa usa o modelo direto sem probe de ferramentas", async () => 
   const fonte = "Fonte oficial extensa. ".repeat(200);
   global.fetch = async (_url, opcoes) => {
     const corpo = JSON.parse(opcoes.body); chamadas.push(corpo);
-    return { ok: true, json: async () => ({ choices: [{ message: { content: chamadas.length === 1 ? '{"ok":true}' : '{"resumoGeral":"Síntese"}' } }] }) };
+    return { ok: true, json: async () => ({ choices: [{ message: { content: '{"requisitos":[],"fatos":[{"campo":"resumoGeral","valor":"Síntese","referencia":"Fonte oficial"}]}' } }] }) };
   };
   try {
     const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: fonte }]);
@@ -75,6 +75,8 @@ test("síntese longa usa o modelo direto sem probe de ferramentas", async () => 
       assert.equal(chamada.compound_custom, undefined);
       assert.equal(chamada.tool_choice, undefined);
       assert.equal(chamada.max_tokens, 2200);
+      assert.equal(chamada.response_format.type, "json_schema");
+      assert.equal(chamada.response_format.json_schema.strict, true);
       assert.equal(chamada.reasoning_effort, "low");
     }
   } finally { global.fetch = fetchOriginal; }
@@ -221,4 +223,26 @@ test("margem e intervalo conservam condições após medida sem absorver cláusu
   assert.doesNotMatch(estrutura.detalhes.margemPreferencia, /intervalo/);
   assert.match(estrutura.sessaoPublica.intervaloMinimo, /R\$ 10,00, aplicável somente ao lote integral/);
   assert.doesNotMatch(estrutura.sessaoPublica.intervaloMinimo, /almoxarifado/);
+});
+
+test("contrato operacional rejeita IDs-only vazios e IDs de outra categoria", () => {
+  const { converterEtapaOperacional } = carregarComModelo(null).__test;
+  const fonte = "[EXIGÊNCIA R0043 documentosCredenciamento]\n4.5. Para cadastro provisório, apresentar documentação até 2 dias úteis antes do certame.";
+  assert.equal(converterEtapaOperacional({ requisitos: [], fatos: [] }, fonte), null);
+  assert.equal(converterEtapaOperacional({ requisitos: ["R0043"], fatos: [] }, fonte), null);
+  const item = { acao: "Apresentar", documento: "documentação para cadastro provisório", condicoes: "Para licitantes não cadastrados", prazo: "até 2 dias úteis antes do certame", ids: ["R0043"], categoria: "documentosCredenciamento" };
+  for (const alteracao of [{ acao: "R0043" }, { documento: "R0043" }, { acao: "Sim" }, { acao: "Edital página 3" }, { ids: ["R0001"] }, { categoria: "documentosHabilitacao" }]) assert.equal(converterEtapaOperacional({ requisitos: [{ ...item, ...alteracao }], fatos: [] }, fonte), null);
+  const estrutura = converterEtapaOperacional({ requisitos: [item], fatos: [{ campo: "sessaoPublica.horario", valor: "09:30", referencia: "Edital, página 1, cláusula 2.3" }] }, fonte);
+  assert.match(estrutura.documentosCredenciamento[0], /Apresentar.*documentação.*não cadastrados.*2 dias úteis.*R0043/);
+  assert.match(estrutura.sessaoPublica.horario, /09:30/);
+});
+
+test("token budget conta schema estrito além das mensagens", () => {
+  const { tokensEntradaResumo, montarCorpoGroq, SCHEMA_ETAPA } = carregarComModelo(null).__test;
+  const { Tiktoken } = require("js-tiktoken/lite");
+  const tokenizer = new Tiktoken(require("js-tiktoken/ranks/o200k_base"));
+  const mensagens = [{ role: "user", content: "Órgão e condições" }];
+  const corpo = montarCorpoGroq("openai/gpt-oss-120b", mensagens, { maxTokens: 2200, schema: SCHEMA_ETAPA, reasoningEffort: "low" });
+  assert.equal(tokensEntradaResumo(mensagens), 256 + tokenizer.encode(JSON.stringify(corpo), [], []).length);
+  assert.ok(tokensEntradaResumo(mensagens) > 256 + tokenizer.encode(JSON.stringify(mensagens), [], []).length);
 });

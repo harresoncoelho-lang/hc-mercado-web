@@ -43,7 +43,9 @@ test("endpoint moderno usa SDK Blobs real para persistir etapa, retomar e conclu
     }
     if (url.includes("api.groq.com")) {
       const corpo = JSON.parse(opcoes.body); chamadasIA.push(corpo);
-      return responder({ choices: [{ message: { content: '{"resumoGeral":"Documentos analisados","documentosHabilitacao":["Apresentar documentos [R0001]"]}' } }] });
+      const ids = new Map([...corpo.messages.at(-1).content.matchAll(/(R\d{4}) (documentosHabilitacao|documentosCredenciamento|requisitosProposta|declaracoesExigidas)/g)].map((item) => [item[1], item[2]]));
+      const requisitos = [...ids].map(([id, categoria]) => ({ acao: "Apresentar", documento: "Documentos exigidos", condicoes: "", prazo: "", ids: [id], categoria }));
+      return responder({ choices: [{ message: { content: JSON.stringify({ requisitos, fatos: [{ campo: "resumoGeral", valor: "Documentos analisados", referencia: "Edital oficial" }] }) } }] });
     }
     if (url.includes("/api/consulta/")) return responder({ objetoCompra: "Objeto oficial" });
     if (url.endsWith("/arquivos")) return responder([{ sequencialDocumento: 1, titulo: "Edital" }]);
