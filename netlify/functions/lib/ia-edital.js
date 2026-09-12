@@ -386,6 +386,20 @@ const SCHEMA_ESTRUTURA = `{
   "resumoGeral": "resumo corrido e DETALHADO (8 a 14 frases), cobrindo objeto completo, órgão, valor, modalidade, datas/prazos, principais exigências de habilitação, forma de disputa e critério de julgamento — não é pra ser curto, é pra ser uma análise completa da oportunidade, como um analista de licitações faria pra um cliente"
 }`;
 
+function mensagemSeguraDoProvedor(mensagem) {
+  // Somente vocabulário técnico e números curtos sobrevivem. Identificadores,
+  // texto de documentos e credenciais desconhecidas também ficam redigidos.
+  const permitidas = new Set("a an and api at be been body by bytes can characters completion context current decrease exceeded exceeds for from greater has in input is it length limit limits max maximum message messages minimum model must of on only organization output per please prompt rate reduce request requested requests response retry size than the this to token tokens too total try used using was with your large smaller available remaining allowed capacity tpm itpm otpm error internal server unsupported invalid".split(" "));
+  return mensagem
+    .replace(/https?:\/\/[^\s<>]+|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:gsk_|sk-|org_|org-)[\w-]+/gi, "redigido")
+    .replace(/[\p{L}\p{N}_/+.-]+/gu, (trecho) => {
+      const palavra = trecho.replace(/[.,]+$/, "");
+      return permitidas.has(palavra.toLowerCase()) || /^\d{1,9}(?:[.,]\d{1,3})?$/.test(palavra) ? trecho : "[redigido]";
+    })
+    .replace(/(?:\[redigido\][\s,;:]*){2,}/g, "[redigido] ")
+    .slice(0, 800);
+}
+
 function diagnosticarLimiteProvedor(resp, corpoErro) {
   let erro = {};
   try { erro = JSON.parse(corpoErro)?.error || {}; } catch (_) { /* resposta não JSON */ }
@@ -395,8 +409,7 @@ function diagnosticarLimiteProvedor(resp, corpoErro) {
     const valor = resp.headers?.get?.(cabecalho);
     if (valor && /^[\d.]+$/.test(valor) && Number.isFinite(Number(valor))) diagnostico.limites[cabecalho] = Number(valor);
   }
-  // A mensagem pode conter identificadores privados. Extraímos somente números
-  // rotulados pelo provedor; nunca registramos a mensagem nem o corpo integral.
+  // Nunca registra a mensagem original nem o corpo integral do provedor.
   const mensagem = typeof erro.message === "string" ? erro.message : "";
   for (const [, rotulo, valor] of mensagem.matchAll(/\b(Limit|Requested|Used)\s*:?\s*(\d[\d,]*)\b/gi)) {
     const numero = Number(valor.replace(/,/g, ""));
@@ -404,6 +417,13 @@ function diagnosticarLimiteProvedor(resp, corpoErro) {
   }
   diagnostico.medidas = [...mensagem.matchAll(/\b(\d[\d,]*)\s*(tokens?|bytes?|characters?)\b/gi)].slice(0, 8).map(([, quantidade, unidade]) => ({ quantidade: Number(quantidade.replace(/,/g, "")), unidade: unidade.toLowerCase() }));
   diagnostico.contexto = /context (?:length|window)|maximum context/i.test(mensagem);
+  if (resp.status === 413) {
+    diagnostico.mensagem = mensagemSeguraDoProvedor(mensagem);
+    if (["tokens", "requests", "input_tokens", "output_tokens", "invalid_request_error", "rate_limit_error"].includes(erro.type)) diagnostico.tipo = erro.type;
+    for (const campo of ["input_tokens", "output_tokens", "requested_tokens", "max_tokens", "limit", "requested", "max", "input", "output"]) {
+      if (typeof erro[campo] === "number" && Number.isFinite(erro[campo])) diagnostico.limites[campo] = erro[campo];
+    }
+  }
   return diagnostico;
 }
 
@@ -444,7 +464,7 @@ async function chamarGroq(apiKey, mensagens, opts) {
         const diagnostico = diagnosticarLimiteProvedor(resp, corpoErro);
         console.warn("ia-edital: limites do provedor", JSON.stringify(diagnostico));
         return { ok: false, diagnostico, erro: resp.status === 413
-          ? "O provedor de IA recusou o tamanho desta solicitação. A síntese não foi concluída; as cláusulas extraídas permanecem disponíveis."
+          ? "O provedor de IA recusou o tamanho desta solicitação. A síntese não foi concluída. Tente novamente mais tarde."
           : "O robô de IA atingiu o limite de uso disponível agora. Tente novamente mais tarde; os dados básicos da licitação continuam acessíveis." };
       }
       const modeloIndisponivel = resp.status === 404 && /model_not_found|does not exist|not available/i.test(corpoErro);

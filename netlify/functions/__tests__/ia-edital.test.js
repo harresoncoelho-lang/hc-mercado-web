@@ -112,9 +112,31 @@ test("diagnóstico de 413 conserva somente código permitido e limites numérico
   try {
     const resultado = await carregarComModelo(null).__test.chamarGroq("SECRET_KEY", [{ role: "user", content: "DOCUMENTO_PRIVADO" }]);
     assert.equal(resultado.ok, false);
-    assert.deepEqual(resultado.diagnostico, { status: 413, codigo: "rate_limit_exceeded", limites: { limit: 8000, requested: 59598, used: 42 }, medidas: [], contexto: false });
+    const { mensagem, ...diagnostico } = resultado.diagnostico;
+    assert.deepEqual(diagnostico, { status: 413, codigo: "rate_limit_exceeded", limites: { limit: 8000, requested: 59598, used: 42 }, medidas: [], contexto: false });
+    assert.match(mensagem, /Limit 8000/);
     assert.ok(!JSON.stringify([resultado, logs]).match(/SECRET|DOCUMENTO_PRIVADO/));
   } finally { global.fetch = fetchOriginal; console.warn = warnOriginal; }
+});
+
+test("diagnóstico 413 redige segredos e conserva somente mensagem técnica limitada e campos numéricos", async () => {
+  const originalFetch = global.fetch, originalWarn = console.warn;
+  const logs = [];
+  console.warn = (...valores) => logs.push(valores);
+  global.fetch = async () => ({ ok: false, status: 413, headers: { get: () => null }, text: async () => JSON.stringify({ error: {
+    code: "request_too_large", type: "tokens", input_tokens: 12000, output_tokens: 6000, max_tokens: 10000, requested: "segredo-campo",
+    message: "Request too large for organization org_privada. Input tokens exceeded maximum 10000. https://privado.invalid/?token=abc usuario@privado.invalid gsk_segredo123 Bearer senha-secreta DocumentoPrivado " + "request ".repeat(300),
+  } }) });
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarGroq("chave-teste", [{ role: "user", content: "dados" }]);
+    assert.ok(resultado.diagnostico.mensagem.length <= 800);
+    assert.match(resultado.diagnostico.mensagem, /Input tokens exceeded maximum 10000/);
+    assert.equal(resultado.diagnostico.limites.input_tokens, 12000);
+    assert.equal(resultado.diagnostico.tipo, "tokens");
+    assert.equal(resultado.diagnostico.limites.max_tokens, 10000);
+    assert.equal(resultado.diagnostico.limites.requested, undefined);
+    assert.doesNotMatch(JSON.stringify([resultado, logs]), /org_privada|privado\.invalid|gsk_segredo|senha-secreta|DocumentoPrivado|segredo-campo/);
+  } finally { global.fetch = originalFetch; console.warn = originalWarn; }
 });
 
 test("não deixa um rótulo operacional engolir o texto seguinte do portal", () => {
