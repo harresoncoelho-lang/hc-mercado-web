@@ -33,6 +33,72 @@ function clausulasDaFonte(texto) {
   return clausulas;
 }
 
+function paginasDaFonte(texto) {
+  const paginas = [];
+  const semPaginas = new Set(texto.split(/(?=^--- .+ ---$)/m).filter((parte) => !/^\[Página \d+\]$/m.test(parte)).map((parte) => parte.match(/^--- (.+) ---$/m)?.[1]));
+  let documento = "Documento oficial", atual, minuta = false;
+  for (const linha of texto.split(/\r?\n/)) {
+    const limpa = linha.trim();
+    const doc = limpa.match(/^--- (.+) ---$/);
+    if (doc) { documento = doc[1]; atual = null; minuta = false; continue; }
+    const pg = limpa.match(/^\[Página (\d+)\]$/);
+    if (pg) { atual = { documento, pagina: pg[1], minuta, texto: "" }; paginas.push(atual); continue; }
+    if (/^ANEXO\s+[IVX\d]+\b/i.test(limpa)) minuta = /MINUTA\s+(?:DE\s+)?CONTRATO/i.test(limpa);
+    else if (/^MINUTA\s+(?:DE\s+)?CONTRATO/i.test(limpa)) minuta = true;
+    if (semPaginas.has(documento)) {
+      const numero = limpa.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])?\s+\D/)?.[1];
+      if (numero) { atual = { documento, pagina: "", numero, minuta, texto: "" }; paginas.push(atual); }
+      else if (/^(?:ANEXO\s+[IVX\d]+\b|MINUTA\s+(?:DE\s+)?CONTRATO)/i.test(limpa)) atual = null;
+    }
+    if (atual) { atual.minuta = minuta; atual.texto += ` ${limpa}`; }
+  }
+  return paginas;
+}
+
+function localizarReferencia(referencia, paginas) {
+  const pg = referencia.match(/(?:p[aá]ginas?|p[aá]g\.?|p\.)\s*(\d+)\b/i)?.[1];
+  const numero = referencia.match(/(?:cl[aá]usula|item)\s+(\d+(?:\.\d+)*)/i)?.[1];
+  if (!pg && !numero) return null;
+  const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const ref = normalizar(referencia);
+  const local = (pagina) => pg ? pagina.pagina === pg : !pagina.pagina && pagina.numero === numero;
+  const exatos = paginas.filter((pagina) => local(pagina) && ref.includes(normalizar(pagina.documento)));
+  const candidatos = exatos.length ? exatos : paginas.filter((pagina) => local(pagina) && (
+    (/edital/i.test(pagina.documento) && /edital/i.test(referencia)) ||
+    (/termo.?de.?refer[eê]ncia|^TR\d/i.test(pagina.documento) && /termo.?de.?refer[eê]ncia|\bTR\b/i.test(referencia))
+  ));
+  return candidatos.length === 1 ? candidatos[0] : null;
+}
+
+function validarFatosDaFonte(estrutura, texto) {
+  const paginas = paginasDaFonte(texto);
+  const conceitos = { "detalhes.exigeAmostra": /amostra/i, "detalhes.exigeVisitaTecnica": /visita|vistoria/i,
+    "detalhes.garantia": /garantia|cau[cç][aã]o|seguro.?garantia/i, "detalhes.regimeExecucao": /regime|empreitada|pre[cç]o (?:global|unit[aá]rio)/i };
+  const narrativas = [];
+  for (const [chave, valor] of Object.entries(estrutura)) {
+    if (Array.isArray(valor)) continue;
+    const objeto = valor && typeof valor === "object" ? valor : estrutura;
+    const campos = objeto === estrutura ? [chave] : Object.keys(objeto);
+    for (const campo of campos) {
+      if (typeof objeto[campo] !== "string") continue;
+      const caminho = objeto === estrutura ? campo : `${chave}.${campo}`;
+      const partes = objeto[campo].split(/\n(?=Referência \d+:)/).map((parte) => parte.replace(/^Referência \d+:\s*/, ""));
+      const validas = partes.filter((parte) => {
+        if (/_{3,}|\.{4,}/.test(parte)) return false;
+        const referencia = parte.match(/\[([^\]]+)\]\s*$/)?.[1];
+        if (!referencia) return !conceitos[caminho];
+        const pagina = localizarReferencia(referencia, paginas);
+        if (!pagina) return false;
+        if (pagina.minuta) { narrativas.push(`Minuta contratual: ${parte}`); return false; }
+        return !conceitos[caminho] || (conceitos[caminho].test(parte.replace(/\[[^\]]+\]/g, "")) && conceitos[caminho].test(pagina.texto));
+      });
+      objeto[campo] = validas.join("\n") || "Não informado";
+    }
+  }
+  if (narrativas.length) estrutura.outrasInformacoesRelevantes = [...new Set([...(estrutura.outrasInformacoesRelevantes || []), ...narrativas])];
+  return estrutura;
+}
+
 function aplicarPrazosDaFonte(estrutura, texto) {
   const clausulas = clausulasDaFonte(texto);
   const formatar = (item) => `${item.texto} [${item.documento}${item.pagina ? `, página ${item.pagina}` : ""}]`;
@@ -337,4 +403,4 @@ function selecionarContexto(texto, limite = 22000, pergunta = "") {
   return prepararContextoResumo(texto, limite).texto;
 }
 
-module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte };
+module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte, paginasDaFonte, localizarReferencia, validarFatosDaFonte };

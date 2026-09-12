@@ -227,7 +227,7 @@ test("margem e intervalo conservam condições após medida sem absorver cláusu
 
 test("contrato operacional rejeita IDs-only vazios e IDs de outra categoria", () => {
   const { converterEtapaOperacional } = carregarComModelo(null).__test;
-  const fonte = "[EXIGÊNCIA R0043 documentosCredenciamento]\n4.5. Para cadastro provisório, apresentar documentação até 2 dias úteis antes do certame.";
+  const fonte = "--- Edital ---\n[Página 1]\n2.3. Início da sessão às 09:30.\n[EXIGÊNCIA R0043 documentosCredenciamento]\n4.5. Para cadastro provisório, apresentar documentação até 2 dias úteis antes do certame.";
   assert.equal(converterEtapaOperacional({ requisitos: [], fatos: [] }, fonte), null);
   assert.equal(converterEtapaOperacional({ requisitos: ["R0043"], fatos: [] }, fonte), null);
   const item = { acao: "Apresentar", documento: "documentação para cadastro provisório", condicoes: "Para licitantes não cadastrados", prazo: "até 2 dias úteis antes do certame", ids: ["R0043"], categoria: "documentosCredenciamento" };
@@ -245,6 +245,43 @@ test("token budget conta schema estrito além das mensagens", () => {
   const corpo = montarCorpoGroq("openai/gpt-oss-120b", mensagens, { maxTokens: 2200, schema: SCHEMA_ETAPA, reasoningEffort: "low" });
   assert.equal(tokensEntradaResumo(mensagens), 256 + tokenizer.encode(JSON.stringify(corpo), [], []).length);
   assert.ok(tokensEntradaResumo(mensagens) > 256 + tokenizer.encode(JSON.stringify(mensagens), [], []).length);
+});
+
+test("minuta usa schema narrativo contado e não aceita campo escalar fora do contrato", () => {
+  const t = carregarComModelo(null).__test;
+  const fonte = "--- Edital ---\n[Página 32]\nANEXO I - MINUTA DE CONTRATO\n3.1. Valor R$ ______.\n6.2. Reajuste pelo IPCA após um ano.";
+  const mensagens = t.mensagensDaEtapa(t.INSTRUCOES_MINUTA, "", "", fonte);
+  assert.equal(t.schemaDaEtapa(mensagens), t.SCHEMA_MINUTA);
+  const { Tiktoken } = require("js-tiktoken/lite");
+  const tokenizer = new Tiktoken(require("js-tiktoken/ranks/o200k_base"));
+  const corpo = t.montarCorpoGroq("openai/gpt-oss-120b", mensagens, { maxTokens: 2200, schema: t.SCHEMA_MINUTA, reasoningEffort: "low" });
+  assert.equal(t.tokensEntradaResumo(mensagens), 256 + tokenizer.encode(JSON.stringify(corpo), [], []).length);
+  assert.equal(t.converterEtapaOperacional({ requisitos: [], fatos: [{ campo: "detalhes.exigeAmostra", valor: "Bens sem cantos cortantes", referencia: "Edital p.32" }] }, fonte, t.SCHEMA_MINUTA), null);
+  const dados = { requisitos: [], fatos: [
+    { campo: "outrasInformacoesRelevantes", valor: "Contrato R$ ______", referencia: "Edital p.32" },
+    { campo: "outrasInformacoesRelevantes", valor: "Reajuste pelo IPCA após um ano", referencia: "Edital p.32, cláusula 6.2" },
+    { campo: "outrasInformacoesRelevantes", valor: "Dado sem fonte", referencia: "Outro documento p.32" },
+  ] };
+  assert.deepEqual(t.converterEtapaOperacional(dados, fonte, t.SCHEMA_MINUTA).outrasInformacoesRelevantes, ["Reajuste pelo IPCA após um ano [Edital p.32, cláusula 6.2]"]);
+});
+
+test("DOCX sem paginação conserva fato por documento e cláusula única", () => {
+  const { converterEtapaOperacional } = carregarComModelo(null).__test;
+  const { validarFatosDaFonte, paginasDaFonte, localizarReferencia } = require("../_edital_operacional");
+  const fonte = "--- Edital.docx ---\n1. DAS AMOSTRAS\n1.1 Não será exigida amostra nesta licitação.";
+  const dados = { requisitos: [], fatos: [{ campo: "detalhes.exigeAmostra", valor: "Não será exigida amostra nesta licitação.", referencia: "Edital.docx, cláusula 1.1" }] };
+  const estrutura = converterEtapaOperacional(dados, fonte);
+  validarFatosDaFonte(estrutura, fonte);
+  assert.match(estrutura.detalhes.exigeAmostra, /Não será exigida amostra/);
+  assert.ok(paginasDaFonte(fonte).every((parte) => parte.pagina === ""));
+  assert.equal(localizarReferencia("Edital.docx, página 1", paginasDaFonte(fonte)), null);
+  const ambiguo = fonte + "\n1.1 Apresentar amostra quando convocado.";
+  assert.equal(localizarReferencia("Edital.docx, cláusula 1.1", paginasDaFonte(ambiguo)), null);
+  const pdf = "--- Edital.pdf ---\n[Página 1]\n1.1 Apresentar amostra.";
+  assert.equal(localizarReferencia("Edital.pdf, cláusula 1.1", paginasDaFonte(pdf)), null);
+  assert.ok(localizarReferencia("Edital.pdf, página 1", paginasDaFonte(pdf)));
+  const minuta = paginasDaFonte("--- Edital.docx ---\nANEXO I - MINUTA DE CONTRATO\n1.1 Reajuste anual.\nANEXO II - DECLARAÇÃO\n2.1 Declaro conhecer o objeto.");
+  assert.deepEqual(minuta.map((parte) => parte.minuta), [true, false]);
 });
 
 test("400 de schema preserva evidência privada sem vazar saída ou segredo nos logs", async () => {

@@ -2,6 +2,34 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto } = require("../_edital_operacional");
 
+test("faixa de minuta termina no próximo anexo/documento e referência ambígua não autoriza fato", () => {
+  const { paginasDaFonte, localizarReferencia, validarFatosDaFonte } = require("../_edital_operacional");
+  const fonte = `--- Edital (#1) ---
+[Página 1]
+1. Amostra e visita técnica dispensadas.
+[Página 2]
+ANEXO I - MINUTA DE CONTRATO
+1. O contrato prevê reajuste anual pelo IPCA.
+[Página 3]
+2. Os bens não terão cantos cortantes.
+[Página 4]
+ANEXO II - DECLARAÇÃO
+Declaro conhecer o objeto.
+--- Edital (#2) ---
+[Página 1]
+1. Apresentar amostra do produto.`;
+  const paginas = paginasDaFonte(fonte);
+  assert.deepEqual(paginas.map((x) => x.minuta), [false, true, true, false, false]);
+  assert.equal(localizarReferencia("Edital p.1", paginas), null);
+  assert.equal(localizarReferencia("Documento inexistente p.2", paginas), null);
+  assert.equal(localizarReferencia("Edital (#2), página 1", paginas).documento, "Edital (#2)");
+  const final = validarFatosDaFonte({ detalhes: { exigeAmostra: "Bens sem cantos cortantes [Edital (#1), página 3]", exigeVisitaTecnica: "Sem acidente [Edital (#1), página 1]", valorEstimado: "R$ ____ [Edital (#1), página 2]" }, analiseCritica: { previsaoReajuste: "Reajuste anual pelo IPCA [Edital (#1), página 2]" } }, fonte);
+  assert.equal(final.detalhes.exigeAmostra, "Não informado");
+  assert.equal(final.detalhes.exigeVisitaTecnica, "Não informado");
+  assert.equal(final.detalhes.valorEstimado, "Não informado");
+  assert.ok(final.outrasInformacoesRelevantes.some((x) => /Reajuste anual pelo IPCA/.test(x)));
+});
+
 test("PE406 separa esclarecimentos e entrega contratual de análise e entrega de fichas", () => {
   const { aplicarPrazosDaFonte, catalogarRequisitos } = require("../_edital_operacional");
   const fonte = `--- Edital (#2) ---
