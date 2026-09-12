@@ -2,6 +2,36 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto } = require("../_edital_operacional");
 
+test("narrativa contratual corrige página pela cláusula única e recupera condições reais", () => {
+  const { validarFatosDaFonte } = require("../_edital_operacional");
+  const fonte = `--- Edital (#2) ---
+[Página 32]
+ANEXO I - MINUTA DE CONTRATO
+[Página 33]
+CLÁUSULA SEGUNDA: VIGÊNCIA
+2.1. O prazo de vigência é fixado no Termo de Referência, com início e encerramento a preencher.
+[Página 34]
+CLÁUSULA QUINTA: DO PAGAMENTO
+5.1. As condições são discriminadas no Termo de Referência.
+PARÁGRAFO PRIMEIRO: Havendo atraso nos pagamentos, desde que a CONTRATADA não tenha concorrido, de alguma forma, incidirão correção monetária e juros moratórios.
+CLÁUSULA SEXTA: DO REAJUSTE
+6.3. Após o interregno de um ano, os preços serão reajustados pelo IPCA, exclusivamente para as obrigações iniciadas e concluídas após a ocorrência da anualidade.`;
+  const estrutura = { outrasInformacoesRelevantes: [
+    "Vigência fixada no TR, com datas a preencher [Edital #2, página 32, Cláusula Segunda]",
+    "Em caso de atraso incidem correção e juros [Edital #2, página 34, Cláusula Quinta]",
+    "Reajuste pelo IPCA para obrigações iniciadas após a anualidade [Edital #2, página 34, Cláusula Sexta]",
+  ] };
+  validarFatosDaFonte(estrutura, fonte);
+  assert.match(estrutura.outrasInformacoesRelevantes[0], /página 33, Cláusula SEGUNDA/);
+  assert.match(estrutura.outrasInformacoesRelevantes[1], /desde que a CONTRATADA não tenha concorrido/);
+  assert.match(estrutura.outrasInformacoesRelevantes[2], /iniciadas e concluídas/);
+  const ambigua = { outrasInformacoesRelevantes: ["Condição inventada [Edital #2, página 32, Cláusula Segunda]"] };
+  validarFatosDaFonte(ambigua, fonte + "\n[Página 40]\nCLÁUSULA SEGUNDA: VIGÊNCIA\n2.1. Outra vigência definida expressamente.");
+  assert.equal(ambigua.outrasInformacoesRelevantes.length, 2);
+  assert.ok(ambigua.outrasInformacoesRelevantes.every((item) => !item.includes("inventada")));
+  assert.match(ambigua.outrasInformacoesRelevantes[1], /página 40/);
+});
+
 test("faixa de minuta termina no próximo anexo/documento e referência ambígua não autoriza fato", () => {
   const { paginasDaFonte, localizarReferencia, validarFatosDaFonte } = require("../_edital_operacional");
   const fonte = `--- Edital (#1) ---

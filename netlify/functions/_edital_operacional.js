@@ -55,19 +55,61 @@ function paginasDaFonte(texto) {
   return paginas;
 }
 
+function fontesDoDocumento(referencia, fontes) {
+  const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const ref = normalizar(referencia);
+  const exatos = fontes.filter((pagina) => ref.includes(normalizar(pagina.documento)));
+  return exatos.length ? exatos : fontes.filter((pagina) => (
+    (/edital/i.test(pagina.documento) && /edital/i.test(referencia)) ||
+    (/termo.?de.?refer[eê]ncia|^TR\d/i.test(pagina.documento) && /termo.?de.?refer[eê]ncia|\bTR\b/i.test(referencia))
+  ));
+}
+
 function localizarReferencia(referencia, paginas) {
   const pg = referencia.match(/(?:p[aá]ginas?|p[aá]g\.?|p\.)\s*(\d+)\b/i)?.[1];
   const numero = referencia.match(/(?:cl[aá]usula|item)\s+(\d+(?:\.\d+)*)/i)?.[1];
   if (!pg && !numero) return null;
-  const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const ref = normalizar(referencia);
   const local = (pagina) => pg ? pagina.pagina === pg : !pagina.pagina && pagina.numero === numero;
-  const exatos = paginas.filter((pagina) => local(pagina) && ref.includes(normalizar(pagina.documento)));
-  const candidatos = exatos.length ? exatos : paginas.filter((pagina) => local(pagina) && (
-    (/edital/i.test(pagina.documento) && /edital/i.test(referencia)) ||
-    (/termo.?de.?refer[eê]ncia|^TR\d/i.test(pagina.documento) && /termo.?de.?refer[eê]ncia|\bTR\b/i.test(referencia))
-  ));
+  const candidatos = fontesDoDocumento(referencia, paginas.filter(local));
   return candidatos.length === 1 ? candidatos[0] : null;
+}
+
+function validarNarrativasContratuais(estrutura, texto) {
+  if (!Array.isArray(estrutura.outrasInformacoesRelevantes)) return estrutura;
+  const paginas = paginasDaFonte(texto);
+  const secoes = [];
+  let documento = "Documento oficial", pagina = "", atual;
+  for (const linha of limparLinhas(texto)) {
+    const doc = linha.match(/^--- (.+) ---$/);
+    if (doc) { documento = doc[1]; pagina = ""; atual = null; continue; }
+    const pg = linha.match(/^\[Página (\d+)\]$/);
+    if (pg) { pagina = pg[1]; continue; }
+    if (/^ANEXO\s+[IVX\d]+\b/i.test(linha)) { atual = null; continue; }
+    const titulo = linha.match(/^CLÁUSULA\s+([^:–-]+)\s*[:–-]/i)?.[1].trim();
+    if (titulo) { atual = { documento, pagina, titulo, texto: linha }; secoes.push(atual); }
+    else if (atual && linha) atual.texto += ` ${linha}`;
+  }
+  const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const formatar = (secao) => `Minuta contratual — ${secao.texto} [${secao.documento}${secao.pagina ? `, página ${secao.pagina}` : ""}, Cláusula ${secao.titulo}]`;
+  estrutura.outrasInformacoesRelevantes = [...new Set(estrutura.outrasInformacoesRelevantes.flatMap((item) => {
+    if (typeof item !== "string") return [];
+    const referencia = item.match(/\[([^\]]+)\]\s*$/)?.[1];
+    if (!referencia) return [item];
+    const titulo = referencia.match(/cl[aá]usula\s+([\p{L}]+(?:\s+[\p{L}]+)*)/iu)?.[1];
+    const numero = referencia.match(/(?:cl[aá]usula|item)\s+(\d+(?:\.\d+)*)/i)?.[1];
+    if (!titulo && !numero) return [item];
+    if (!titulo && !localizarReferencia(referencia, paginas)?.minuta) return [item];
+    const documentos = fontesDoDocumento(referencia, secoes);
+    if (!documentos.length) return [];
+    const candidatas = documentos.filter((secao) => titulo ? normalizar(secao.titulo) === normalizar(titulo) : new RegExp(`(?:^|\\s)${numero.replace(/\./g, "\\.")}\\.?\\s`).test(secao.texto));
+    if (candidatas.length !== 1 || new Set(documentos.map((secao) => secao.documento)).size !== 1) return candidatas.map(formatar);
+    const secao = candidatas[0];
+    const resumo = item.replace(/\s*\[[^\]]+\]\s*$/, "");
+    return preservarCondicoesQuantificadas([secao], resumo)
+      ? [`${resumo} [${secao.documento}${secao.pagina ? `, página ${secao.pagina}` : ""}, Cláusula ${secao.titulo}]`]
+      : [formatar(secao)];
+  }))];
+  return estrutura;
 }
 
 function validarFatosDaFonte(estrutura, texto) {
@@ -96,6 +138,7 @@ function validarFatosDaFonte(estrutura, texto) {
     }
   }
   if (narrativas.length) estrutura.outrasInformacoesRelevantes = [...new Set([...(estrutura.outrasInformacoesRelevantes || []), ...narrativas])];
+  validarNarrativasContratuais(estrutura, texto);
   return estrutura;
 }
 
@@ -289,7 +332,7 @@ function preservarCondicoesQuantificadas(fontes, resumo) {
     // condicional (ou a cláusula inteira quando oferece alternativas).
     const literal = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
     const corpo = literal(fonte.texto.replace(/\[[^\]]+\]/g, "").replace(/^\d+(?:\.\d+)*\.\s*/, ""));
-    const condicao = corpo.match(/\b(?:se|salvo|exceto|caso|quando|desde que|em se tratando|na hipotese|somente|apenas)\b[\s\S]*/)?.[0];
+    const condicao = corpo.match(/\b(?:se|salvo|exceto|caso|quando|desde que|em se tratando|na hipotese|somente|apenas|exclusivamente)\b[\s\S]*/)?.[0];
     const alternativa = /\b(?:ou|alternativamente)\b/.test(corpo);
     const exigenciaLiteral = alternativa ? corpo : condicao;
     if (exigenciaLiteral && !literal(resumo).includes(exigenciaLiteral.replace(/[.;\s]+$/, ""))) return false;
