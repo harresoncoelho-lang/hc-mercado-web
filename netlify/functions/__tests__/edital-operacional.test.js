@@ -206,3 +206,21 @@ test("resposta Sim não substitui certidão de falência referenciada", () => {
     assert.match(estrutura.documentosHabilitacao.join(" "), /certidão negativa de falência/);
   }
 });
+
+test("IDs inline seguem conteúdo documento página condições e equivalentes sem alterar fonte", () => {
+  const { marcarRequisitosNaFonte, catalogarRequisitos } = require("../_edital_operacional");
+  const texto = "--- Edital ---\n[Página 1]\n5. PROPOSTA\n5.1. Apresentar proposta comercial.\n5.1.1. Se houver modelo, identificá-lo na proposta.\n[Página 2]\n5.2. Declaração de veracidade dos documentos.\n--- Termo de referência ---\n[Página 1]\n8. PROPOSTA\n8.2. Apresentar proposta comercial.\n8.3. Apresentar amostra do produto.\nANEXO I DECLARAÇÃO\nDeclaro ciência das exigências para participação.\n";
+  const catalogo = catalogarRequisitos(texto);
+  const marcado = marcarRequisitosNaFonte(texto);
+  assert.equal(marcado.replace(/^\[EXIGÊNCIA [^\]]+\]\n/gm, ""), texto);
+  for (const requisito of catalogo) assert.ok(marcado.includes(requisito.id), requisito.id);
+  const proposta = catalogo.find((item) => item.texto.startsWith("5.1."));
+  assert.ok(proposta);
+  assert.ok(marcado.includes(`[EXIGÊNCIA ${proposta.id} requisitosProposta]\n5.1.`));
+  assert.ok(marcado.includes(`[EXIGÊNCIA ${proposta.id} requisitosProposta]\n5.1.1.`));
+  assert.ok(marcado.includes(`[EXIGÊNCIA ${proposta.id} requisitosProposta]\n8.2.`));
+  const declaracao = catalogo.find((item) => item.texto.startsWith("5.2."));
+  assert.equal(declaracao.categoria, "declaracoesExigidas");
+  assert.ok(marcado.includes(`[EXIGÊNCIA ${declaracao.id} declaracoesExigidas]\n5.2.`));
+  assert.match(marcado, /\[EXIGÊNCIA R\d{4} declaracoesExigidas\]\nANEXO I DECLARAÇÃO/);
+});

@@ -34,7 +34,7 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
 const MAX_CARACTERES_TEXTO = 600000;
-const { complementarRequisitos, selecionarContexto, prepararContextoResumo } = require("../_edital_operacional");
+const { complementarRequisitos, selecionarContexto, prepararContextoResumo, marcarRequisitosNaFonte } = require("../_edital_operacional");
 const { executarEtapa, respostaProgresso, dividirFonte } = require("../_resumo_progressivo");
 const MAX_BYTES_REQUISICAO_RESUMO = 48000;
 // A Function tem uma janela de execução menor que a soma de vários downloads de
@@ -454,7 +454,7 @@ function mensagensDaEtapa(sistema, ficha, indice, bloco) {
   }
   const linhas = indice.split("\n").filter((linha) => !/^\[R\d+\]/.test(linha) || (linha.match(/\[[^\]]+\]/g) || []).some((ref) => referencias.has(ref)));
   const indiceLocal = linhas.map((linha) => linha.replace(/\[[^\]]+\]/g, (ref) => /^\[R\d+\]$/.test(ref) || referencias.has(ref) ? ref : "")).join("\n");
-  return [{ role: "system", content: sistema }, { role: "user", content: `Dados já conhecidos:\n${ficha}\n\n${indiceLocal}\nETAPA PARCIAL DA LEITURA: analise somente as páginas abaixo. Cite os IDs do índice somente quando a exigência aparece neste bloco; não interprete ausência nesta etapa como dispensa. Cite documento, página e cláusula em cada campo preenchido.\n${bloco}` }];
+  return [{ role: "system", content: sistema }, { role: "user", content: `Dados já conhecidos:\n${ficha}\n\n${indiceLocal}\nETAPA PARCIAL DA LEITURA: analise somente as páginas abaixo. As marcações EXIGÊNCIA identificam as cláusulas logo abaixo. Resuma o conteúdo dessas cláusulas; cite seus IDs somente quando a exigência aparece neste bloco; não interprete ausência nesta etapa como dispensa. Cite documento, página e cláusula em cada campo preenchido.\n${bloco}` }];
 }
 
 async function chamarGroq(apiKey, mensagens, opts) {
@@ -843,7 +843,7 @@ exports.handler = async (event) => {
     storeResumos = null; // sem cache disponível — segue funcionando normalmente, só mais devagar
   }
 
-  const chaveProgresso = `progresso:v${VERSAO_RESUMO}:direto120b1:${edital.numeroControlePNCP}`;
+  const chaveProgresso = `progresso:v${VERSAO_RESUMO}:inline120b1:${edital.numeroControlePNCP}`;
   let analiseEmAndamento = null;
   if (modo === "resumo" && edital.numeroControlePNCP && storeResumos) {
     try { analiseEmAndamento = await storeResumos.get(chaveProgresso, { type: "json", consistency: "strong" }); } catch (_) { /* Tentará a fonte oficial. */ }
@@ -983,12 +983,11 @@ exports.handler = async (event) => {
     let r;
     if (usarEtapas) {
       try {
-        const indice = contextoResumo.texto.split("FONTE INTEGRAL EXTRAÍDA:\n")[0];
-        const mensagensBloco = (bloco) => mensagensDaEtapa(INSTRUCOES_ETAPA, ficha, indice, bloco);
+        const mensagensBloco = (bloco) => mensagensDaEtapa(INSTRUCOES_ETAPA, ficha, "", bloco);
         const cabeRequisicao = (bloco) => cabeResumo(mensagensBloco(bloco));
         const etapas = await executarEtapa({ store: storeResumos, chave: chaveProgresso,
           inicial: { texto: textoEdital, coberturaLeitura }, retomar: body.retomarAnalise === true,
-          dividir: (texto) => dividirFonte(texto, 45000, cabeRequisicao),
+          dividir: (texto) => dividirFonte(marcarRequisitosNaFonte(texto), 45000, cabeRequisicao),
           usuario: ehRoboInterno ? null : sessao.userId,
           autorizar: () => verificarLimiteDiario(sessao.userId, "ia-edital", 40),
           executar: async (bloco) => {

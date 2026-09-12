@@ -118,6 +118,42 @@ function catalogarRequisitos(texto) {
   })));
 }
 
+function marcarRequisitosNaFonte(texto) {
+  const identidade = (valor) => valor.replace(/\[[^\]]+\]/g, "").replace(/^\d+(?:\.\d+)*\.\s*/, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const catalogo = catalogarRequisitos(texto);
+  const porConteudo = new Map();
+  for (const requisito of catalogo) {
+    for (const parte of requisito.texto.split(" Condição: ")) {
+      const chave = identidade(parte);
+      if (!porConteudo.has(chave)) porConteudo.set(chave, []);
+      porConteudo.get(chave).push(`${requisito.id} ${requisito.categoria}`);
+    }
+  }
+  const candidatos = new Map();
+  for (const item of Object.values(extrairRequisitosOperacionais(texto)).flat()) {
+    const marcadores = porConteudo.get(identidade(item));
+    if (!marcadores) continue;
+    const referencia = item.match(/\[([^\]]+)\]$/)?.[1];
+    if (!candidatos.has(referencia)) candidatos.set(referencia, []);
+    candidatos.get(referencia).push({ corpo: item.replace(/\s*\[[^\]]+\]$/, "").replace(/\s+/g, " "), marcadores });
+  }
+  let documento = "Documento oficial", pagina = "";
+  // Insere metadados antes da cláusula, sem reescrever sequer um caractere
+  // da fonte. O mesmo ID acompanha equivalentes e condições em outras páginas.
+  return texto.split(/(?<=\n)/).map((linha) => {
+    const limpa = linha.trim().replace(/\s+/g, " ");
+    const doc = limpa.match(/^--- (.+) ---$/);
+    if (doc) documento = doc[1];
+    const pg = limpa.match(/^\[Página (\d+)\]$/);
+    if (pg) pagina = pg[1];
+    if (!/^\d+(?:\.\d+)*(?:\.|\s*[-–])\s+|^ANEXO\s+[IVX\d]+/i.test(limpa)) return linha;
+    const referencia = `${documento}${pagina ? `, página ${pagina}` : ""}`;
+    const correspondentes = (candidatos.get(referencia) || []).filter((item) => item.corpo.startsWith(limpa));
+    const marcadores = [...new Set(correspondentes.flatMap((item) => item.marcadores))];
+    return marcadores.length ? `[EXIGÊNCIA ${marcadores.join("; ")}]\n${linha}` : linha;
+  }).join("");
+}
+
 function preservarCondicoesQuantificadas(fontes, resumo) {
   const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s*\([^)]*\)/g, "").replace(/\s+/g, " ");
   const destino = normalizar(resumo);
@@ -236,4 +272,4 @@ function selecionarContexto(texto, limite = 22000, pergunta = "") {
   return prepararContextoResumo(texto, limite).texto;
 }
 
-module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo };
+module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte };
