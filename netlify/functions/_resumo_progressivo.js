@@ -60,7 +60,26 @@ function conciliarEstruturas(estruturas) {
   return resultado;
 }
 
-function dividirBlocoRejeitado(bloco) {
+function dividirPaginaDensa(bloco) {
+  if (bloco.length <= 1200) return [];
+  const documento = bloco.match(/^--- .+ ---$/m)?.[0] || "";
+  const pagina = bloco.match(/^\[Página \d+\]$/m)?.[0] || "";
+  const candidatos = [];
+  const semMarcadores = (parte) => parte.replace(/^--- .+ ---$|^\[Página \d+\]$|^\[EXIGÊNCIA .+\]$/gm, "").trim();
+  for (const marco of bloco.matchAll(/^\[EXIGÊNCIA .+\]$|\n[ \t]*\n/gm)) {
+    const corte = marco[0].startsWith("[") ? marco.index : marco.index + marco[0].length;
+    const esquerda = bloco.slice(0, corte), restante = bloco.slice(corte);
+    if (!semMarcadores(esquerda) || !semMarcadores(restante)) continue;
+    const ativa = [...esquerda.matchAll(/^\[EXIGÊNCIA .+\]$/gm)].at(-1)?.[0];
+    const prefixo = [documento, pagina, !restante.trimStart().startsWith("[EXIGÊNCIA ") ? ativa : ""].filter(Boolean).join("\n") + "\n";
+    const direita = prefixo + restante;
+    const maior = Math.max(Buffer.byteLength(esquerda), Buffer.byteLength(direita));
+    if (maior < Buffer.byteLength(bloco)) candidatos.push({ partes: [esquerda, direita], maior });
+  }
+  return candidatos.sort((a, b) => a.maior - b.maior)[0]?.partes || [];
+}
+
+function dividirBlocoRejeitado(bloco, permitirPaginaDensa = false) {
   const tamanho = Buffer.byteLength(bloco, "utf8");
   const candidatos = [];
   for (const marcador of bloco.matchAll(/^(?:--- .+ ---|\[Página \d+\])$/gm)) {
@@ -74,19 +93,21 @@ function dividirBlocoRejeitado(bloco) {
     if (tamanhos.every((bytes) => bytes < tamanho)) candidatos.push({ partes, maior: Math.max(...tamanhos) });
   }
   if (candidatos.length) return candidatos.sort((a, b) => a.maior - b.maior)[0].partes;
-  // Uma página PDF é indivisível. DOCX sem páginas admite redução por parágrafo,
+  // Truncamento comprovado permite dividir uma página em parágrafos íntegros.
+  // Para recusa de entrada, PDF permanece indivisível. DOCX admite redução por parágrafo,
   // mas o mínimo impede centenas de tentativas quando o próprio prompt é recusado.
-  if (/^\[Página \d+\]$/m.test(bloco) || bloco.length <= 4000) return [];
+  if (/^\[Página \d+\]$/m.test(bloco)) return permitirPaginaDensa ? dividirPaginaDensa(bloco) : [];
+  if (bloco.length <= 4000) return [];
   const documento = bloco.match(/^--- .+ ---$/m)?.[0];
   return dividirSemPaginas(bloco, Math.ceil(bloco.length / 2)).map((parte, i) => i && documento ? `${documento}\n${parte}` : parte);
 }
 
 function reduzirEtapaRecusada(estado) {
   const indice = estado.resultados.length;
-  const partes = dividirBlocoRejeitado(estado.blocos[indice]);
+  const partes = dividirBlocoRejeitado(estado.blocos[indice], estado.diagnostico?.finalizacao === "length");
   if (partes.length < 2) {
     estado.falhas = 3;
-    estado.ultimoErro = "O provedor recusou até a menor parte segura do documento. A análise foi interrompida; os resultados já salvos foram preservados.";
+    estado.ultimoErro = "O provedor não concluiu nem a menor parte segura do documento. A análise foi interrompida; os resultados já salvos foram preservados.";
     return;
   }
   estado.blocos.splice(indice, 1, ...partes);
@@ -117,7 +138,8 @@ async function executarEtapa({ store, chave, inicial, executar, usuario, autoriz
   if (!registro?.data) throw new Error("Não foi possível persistir a análise para retomada.");
   const estado = registro.data;
   if (estado.resultados.length === estado.blocos.length) return { estrutura: conciliarEstruturas(estado.resultados), estado };
-  if (retomar && estado.falhas >= 3 && estado.diagnostico?.status !== 413) {
+  const precisaReduzir = () => estado.diagnostico?.status === 413 || estado.diagnostico?.finalizacao === "length";
+  if (retomar && estado.falhas >= 3 && !precisaReduzir()) {
     estado.falhas = 0;
     const retomada = await store.setJSON(chave, estado, { onlyIfMatch: registro.etag });
     if (!retomada.modified) return lerVencedor();
@@ -133,8 +155,8 @@ async function executarEtapa({ store, chave, inicial, executar, usuario, autoriz
   let reserva = await store.setJSON(chave, estado, { onlyIfMatch: registro.etag });
   if (!reserva.modified) return lerVencedor();
   if (!reserva.etag) throw new Error("Reserva sem identificador de versão.");
-  if (estado.diagnostico?.status === 413 && estado.falhas > 0) {
-    // Retoma também os jobs da versão anterior sem reenviar o payload recusado.
+  if (precisaReduzir() && estado.falhas > 0) {
+    // Retoma também jobs já interrompidos sem reenviar o payload recusado/truncado.
     reduzirEtapaRecusada(estado);
     const ajuste = await store.setJSON(chave, estado, { onlyIfMatch: reserva.etag });
     if (!ajuste.modified) return lerVencedor();
@@ -168,7 +190,7 @@ async function executarEtapa({ store, chave, inicial, executar, usuario, autoriz
     // Evidência temporária somente no job privado da leitura canônica. Não integra
     // respostaProgresso nem o JSON público; desaparece quando a etapa é concluída.
     if (resposta.diagnostico?.parsing && typeof resposta.texto === "string") estado.ultimaRespostaNaoEstruturada = resposta.texto.slice(0, 32000);
-    if (resposta.diagnostico?.status === 413) reduzirEtapaRecusada(estado);
+    if (precisaReduzir()) reduzirEtapaRecusada(estado);
   }
   const espera = Math.max(65, Number(resposta.diagnostico?.limites?.["retry-after"]) || 0);
   estado.proximaEtapaEm = Date.now() + espera * 1000;

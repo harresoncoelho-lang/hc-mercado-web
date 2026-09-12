@@ -253,3 +253,27 @@ test("orçamento inclui instruções ficha catálogo e acentos sem perder págin
   for (const bloco of blocos) assert.ok(tokensEntradaResumo(mensagens(bloco)) <= 5000);
   for (const pagina of paginas) assert.equal(blocos.filter((bloco) => bloco.includes(pagina)).length, 1);
 });
+
+test("retomada após length divide páginas antes da IA e preserva resultados salvos", async () => {
+  const store = memoria();
+  const paginas = Array.from({ length: 3 }, (_, i) => `[Página ${i + 4}]\n${"Exigência documental e condições. ".repeat(100)}\n`);
+  const bloco = "--- Edital ---\n" + paginas.join("");
+  await store.setJSON("pncp", { texto: bloco, blocos: ["concluído", bloco], resultados: [{ resumoGeral: "Salvo" }], falhas: 3, diagnostico: { status: 200, finalizacao: "length", completion_tokens: 2200 }, proximaEtapaEm: 0, expiraEm: Date.now() + 86400000 });
+  let chamadas = 0;
+  const resultado = await executarEtapa({ store, chave: "pncp", inicial: {}, retomar: true, executar: async () => { chamadas++; return {}; } });
+  assert.equal(chamadas, 0); assert.equal(resultado.estado.falhas, 0);
+  assert.equal(resultado.estado.blocos.length, 3); assert.equal(resultado.estado.resultados[0].resumoGeral, "Salvo");
+  for (const pagina of paginas) assert.ok(resultado.estado.blocos.some((parte) => parte.includes(pagina)));
+});
+
+test("página única densa divide parágrafos íntegros e conserva ID ativo e texto", () => {
+  const texto = "--- Edital ---\n[Página 4]\n[EXIGÊNCIA R0001 documentosHabilitacao]\n" + "Apresentar documentação jurídica. ".repeat(50) + "\n\n" + "Se houver filial, apresentar sua documentação. ".repeat(50) + "\n";
+  assert.deepEqual(dividirBlocoRejeitado(texto), [], "413 mantém regra original de página indivisível");
+  const partes = dividirBlocoRejeitado(texto, true);
+  assert.equal(partes.length, 2);
+  assert.ok(partes.every((parte) => parte.includes("[Página 4]") && parte.includes("[EXIGÊNCIA R0001 documentosHabilitacao]")));
+  const limpar = (valor) => valor.replace(/^--- .+ ---\n|^\[Página \d+\]\n|^\[EXIGÊNCIA .+\]\n/gm, "");
+  assert.equal(limpar(partes.join("")), limpar(texto));
+  assert.ok(partes.every((parte) => Buffer.byteLength(parte) < Buffer.byteLength(texto)));
+  assert.deepEqual(dividirBlocoRejeitado("--- Edital ---\n[Página 4]\nParágrafo curto indivisível.", true), []);
+});
