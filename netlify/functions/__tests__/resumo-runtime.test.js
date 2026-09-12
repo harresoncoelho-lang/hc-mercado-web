@@ -79,6 +79,7 @@ test("endpoint moderno usa SDK Blobs real para persistir etapa, retomar e conclu
     assert.equal(blobs.get(chave).dado.resultados.length, progresso.progresso.total);
     assert.ok(rotasBlob.filter((rota) => rota.metodo === "get").every((rota) => rota.url.startsWith("https://blobs-forte-teste.invalid/")));
     assert.ok(chamadasIA.slice(1).every((chamada) => !chamada.messages.some((mensagem) => mensagem.content.includes(texto))));
+    assert.ok(chamadasIA.every((chamada) => Buffer.byteLength(JSON.stringify(chamada), "utf8") <= 48000));
     if (process.env.QA_FONTE_REAL) console.log(JSON.stringify({ fonteRealCaracteres: texto.length, blocos: progresso.progresso.total, etapasConcluidas: blobs.get(chave).dado.resultados.length, respostaFinal: final.status }));
   } finally {
     global.fetch = originalFetch;

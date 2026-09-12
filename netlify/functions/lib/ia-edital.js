@@ -32,7 +32,8 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
 const MAX_CARACTERES_TEXTO = 600000;
 const { complementarRequisitos, selecionarContexto, prepararContextoResumo } = require("../_edital_operacional");
-const { executarEtapa, respostaProgresso } = require("../_resumo_progressivo");
+const { executarEtapa, respostaProgresso, dividirFonte } = require("../_resumo_progressivo");
+const MAX_BYTES_REQUISICAO_RESUMO = 48000;
 // A Function tem uma janela de execução menor que a soma de vários downloads de
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
@@ -389,7 +390,7 @@ const SCHEMA_ESTRUTURA = `{
 function mensagemSeguraDoProvedor(mensagem) {
   // Somente vocabulário técnico e números curtos sobrevivem. Identificadores,
   // texto de documentos e credenciais desconhecidas também ficam redigidos.
-  const permitidas = new Set("a an and api at be been body by bytes can characters completion context current decrease exceeded exceeds for from greater has in input is it length limit limits max maximum message messages minimum model must of on only organization output per please prompt rate reduce request requested requests response retry size than the this to token tokens too total try used using was with your large smaller available remaining allowed capacity tpm itpm otpm error internal server unsupported invalid".split(" "));
+  const permitidas = new Set("a an and api at be been body by bytes can characters completion context current decrease entity exceeded exceeds for from greater has in input is it length limit limits max maximum message messages minimum model must of on only organization output per please prompt rate reduce request requested requests response retry size than the this to token tokens too total try used using was with your large smaller available remaining allowed capacity tpm itpm otpm error internal server unsupported invalid".split(" "));
   return mensagem
     .replace(/https?:\/\/[^\s<>]+|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:gsk_|sk-|org_|org-)[\w-]+/gi, "redigido")
     .replace(/[\p{L}\p{N}_/+.-]+/gu, (trecho) => {
@@ -427,20 +428,40 @@ function diagnosticarLimiteProvedor(resp, corpoErro) {
   return diagnostico;
 }
 
+function montarCorpoGroq(modelo, mensagens, opts) {
+  const body = { model: modelo, max_tokens: opts?.maxTokens || 500, messages: mensagens };
+  if (opts?.json) body.response_format = { type: "json_object" };
+  if (opts?.reasoningEffort) body.reasoning_effort = opts.reasoningEffort;
+  if (modelo === "groq/compound-mini") {
+    delete body.reasoning_effort;
+    body.compound_custom = { tools: { enabled_tools: [] } };
+    body.tool_choice = "none";
+  }
+  return body;
+}
+
+function mensagensDaEtapa(sistema, ficha, indice, bloco) {
+  const referencias = new Set();
+  let documento = "";
+  for (const linha of bloco.split("\n")) {
+    const doc = linha.match(/^--- (.+) ---$/);
+    if (doc) { documento = doc[1]; referencias.add(`[${documento}]`); }
+    const pagina = linha.match(/^\[Página (\d+)\]$/);
+    if (pagina) referencias.add(`[${documento}, página ${pagina[1]}]`);
+  }
+  const linhas = indice.split("\n").filter((linha) => !/^\[R\d+\]/.test(linha) || (linha.match(/\[[^\]]+\]/g) || []).some((ref) => referencias.has(ref)));
+  const indiceLocal = linhas.map((linha) => linha.replace(/\[[^\]]+\]/g, (ref) => /^\[R\d+\]$/.test(ref) || referencias.has(ref) ? ref : "")).join("\n");
+  return [{ role: "system", content: sistema }, { role: "user", content: `Dados já conhecidos:\n${ficha}\n\n${indiceLocal}\nETAPA PARCIAL DA LEITURA: analise somente as páginas abaixo. Cite os IDs do índice somente quando a exigência aparece neste bloco; não interprete ausência nesta etapa como dispensa. Cite documento, página e cláusula em cada campo preenchido.\n${bloco}` }];
+}
+
 async function chamarGroq(apiKey, mensagens, opts) {
   const modelos = opts?.modelo ? [opts.modelo] : [...new Set([MODELO, MODELO_PADRAO])];
   for (let indice = 0; indice < modelos.length; indice += 1) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), (opts && opts.timeoutMs) || 20000);
     try {
-      const body = { model: modelos[indice], max_tokens: (opts && opts.maxTokens) || 500, messages: mensagens };
-      if (opts && opts.json) body.response_format = { type: "json_object" };
-      if (opts && opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort;
-      if (modelos[indice] === "groq/compound-mini") {
-        delete body.reasoning_effort;
-        body.compound_custom = { tools: { enabled_tools: [] } };
-        body.tool_choice = "none";
-      }
+      const body = montarCorpoGroq(modelos[indice], mensagens, opts);
+      if (modelos[indice] === "groq/compound-mini" && Buffer.byteLength(JSON.stringify(body), "utf8") > MAX_BYTES_REQUISICAO_RESUMO) return { ok: false, erro: "A solicitação excedeu o orçamento de transporte da análise. Nenhum conteúdo foi enviado ao provedor." };
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         signal: ctrl.signal,
@@ -500,7 +521,7 @@ async function chamarSinteseEdital(apiKey, mensagens) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { chamarGroq, chamarSinteseEdital, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -795,7 +816,7 @@ exports.handler = async (event) => {
     storeResumos = null; // sem cache disponível — segue funcionando normalmente, só mais devagar
   }
 
-  const chaveProgresso = `progresso:v${VERSAO_RESUMO}:${edital.numeroControlePNCP}`;
+  const chaveProgresso = `progresso:v${VERSAO_RESUMO}:bytes1:${edital.numeroControlePNCP}`;
   let analiseEmAndamento = null;
   if (modo === "resumo" && edital.numeroControlePNCP && storeResumos) {
     try { analiseEmAndamento = await storeResumos.get(chaveProgresso, { type: "json", consistency: "strong" }); } catch (_) { /* Tentará a fonte oficial. */ }
@@ -935,14 +956,16 @@ exports.handler = async (event) => {
     let r;
     if (usarEtapas) {
       try {
+        const indice = contextoResumo.texto.split("FONTE INTEGRAL EXTRAÍDA:\n")[0];
+        const mensagensBloco = (bloco) => mensagensDaEtapa(mensagensEstrutura[0].content, ficha, indice, bloco);
+        const cabeRequisicao = (bloco) => Buffer.byteLength(JSON.stringify(montarCorpoGroq("groq/compound-mini", mensagensBloco(bloco), { maxTokens: 6000, json: true })), "utf8") <= MAX_BYTES_REQUISICAO_RESUMO;
         const etapas = await executarEtapa({ store: storeResumos, chave: chaveProgresso,
           inicial: { texto: textoEdital, coberturaLeitura }, retomar: body.retomarAnalise === true,
+          dividir: (texto) => dividirFonte(texto, 45000, cabeRequisicao),
           executar: async (bloco) => {
             const cota = ehRoboInterno ? { ok: true } : await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
             if (!cota.ok) return { erro: cota.erro, quota: cota.status };
-            const prefixo = mensagensEstrutura[1].content.split("FONTE INTEGRAL EXTRAÍDA:\n")[0];
-            const mensagens = [mensagensEstrutura[0], { role: "user", content: `${prefixo}\nETAPA PARCIAL DA LEITURA: analise somente as páginas abaixo. IDs do índice cuja cláusula não aparece aqui devem ser omitidos nesta etapa. Cite documento, página e cláusula em cada campo preenchido. Não interprete ausência nesta etapa como dispensa.\n${bloco}` }];
-            const parcial = await chamarSinteseEdital(apiKey, mensagens);
+            const parcial = await chamarSinteseEdital(apiKey, mensagensBloco(bloco));
             const estrutura = parcial.ok ? extrairJson(parcial.texto) : null;
             return { ...parcial, estrutura };
           } });

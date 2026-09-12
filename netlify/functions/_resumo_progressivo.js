@@ -1,33 +1,41 @@
 const INTERVALO_ETAPAS_MS = 65000;
 
-function dividirSemPaginas(documento, limite) {
+function dividirSemPaginas(documento, limite, cabe = () => true) {
   const partes = [];
   let restante = documento;
-  while (restante.length > limite) {
+  while (restante.length > limite || !cabe(restante)) {
+    let inicio = 1, fim = Math.min(limite, restante.length), tamanho = 0;
+    while (inicio <= fim) {
+      const meio = Math.floor((inicio + fim) / 2);
+      if (cabe(restante.slice(0, meio))) { tamanho = meio; inicio = meio + 1; }
+      else fim = meio - 1;
+    }
+    if (!tamanho) throw new Error("As instruções excedem o orçamento da análise por etapa.");
     // DOCX não tem páginas estáveis: prioriza parágrafos, depois espaços para
     // um parágrafo excepcionalmente extenso. Não descarta nenhum caractere.
-    let corte = restante.lastIndexOf("\n", limite - 1) + 1;
-    if (corte < limite / 2) corte = restante.lastIndexOf(" ", limite - 1) + 1;
-    if (corte < limite / 2) corte = limite;
+    let corte = restante.lastIndexOf("\n", tamanho - 1) + 1;
+    if (corte < tamanho / 2) corte = restante.lastIndexOf(" ", tamanho - 1) + 1;
+    if (corte < tamanho / 2) corte = tamanho;
     partes.push(restante.slice(0, corte)); restante = restante.slice(corte);
   }
   if (restante) partes.push(restante);
   return partes;
 }
 
-function dividirFonte(texto, limite = 45000) {
+function dividirFonte(texto, limite = 45000, cabeRequisicao = () => true) {
+  const cabe = (valor) => valor.length <= limite && cabeRequisicao(valor);
   const blocos = [];
   let documento = "", bloco = "", ultimaPagina = "";
   const partes = texto.split(/(?=^--- .+ ---$)/m).flatMap((fonte) => /^\[Página \d+\]$/m.test(fonte)
     ? fonte.split(/(?=^--- .+ ---$|^\[Página \d+\]$)/m)
-    : dividirSemPaginas(fonte, limite - (fonte.match(/^--- .+ ---$/m)?.[0].length || 0) - 1));
+    : dividirSemPaginas(fonte, limite - (fonte.match(/^--- .+ ---$/m)?.[0].length || 0) - 1, (parte) => cabe(`${fonte.match(/^--- .+ ---$/m)?.[0] || ""}\n${parte}`)));
   for (const parte of partes) {
     const marcador = parte.match(/^--- .+ ---$/m)?.[0];
     if (marcador) documento = marcador;
-    if (parte.length > limite) throw new Error("Uma página excede o limite de análise por etapa. É necessário dividir o documento na origem.");
-    if (bloco && bloco.length + parte.length > limite) {
+    if (!cabe(`${documento}\n${parte}`)) throw new Error("Uma página excede o limite de análise por etapa. É necessário dividir o documento na origem.");
+    if (bloco && !cabe(bloco + parte)) {
       blocos.push(bloco); bloco = documento ? `${documento}\n` : "";
-      if (bloco.length + ultimaPagina.length + parte.length <= limite) bloco += ultimaPagina;
+      if (cabe(bloco + ultimaPagina + parte)) bloco += ultimaPagina;
     }
     bloco += parte;
     if (/^\[Página \d+\]/.test(parte)) ultimaPagina = parte;
@@ -62,7 +70,7 @@ function respostaProgresso(estado, agora = Date.now()) {
   }, resposta: `Análise dos documentos: ${estado.resultados.length} de ${estado.blocos.length} etapas concluídas.`, estrutura: null, fonteLida: true, erro: null };
 }
 
-async function executarEtapa({ store, chave, inicial, executar, retomar = false, agora = Date.now() }) {
+async function executarEtapa({ store, chave, inicial, executar, dividir = dividirFonte, retomar = false, agora = Date.now() }) {
   const lerVencedor = async () => {
     const vencedor = (await store.getWithMetadata(chave, { type: "json", consistency: "strong" }))?.data;
     if (!vencedor) throw new Error("Estado da análise indisponível.");
@@ -72,7 +80,7 @@ async function executarEtapa({ store, chave, inicial, executar, retomar = false,
   };
   let registro = await store.getWithMetadata(chave, { type: "json", consistency: "strong" });
   if (!registro || registro.data.expiraEm <= agora) {
-    const estado = { ...inicial, blocos: dividirFonte(inicial.texto), resultados: [], falhas: 0, proximaEtapaEm: 0, expiraEm: agora + 86400000 };
+    const estado = { ...inicial, blocos: dividir(inicial.texto), resultados: [], falhas: 0, proximaEtapaEm: 0, expiraEm: agora + 86400000 };
     await store.setJSON(chave, estado, registro ? { onlyIfMatch: registro.etag } : { onlyIfNew: true });
     registro = await store.getWithMetadata(chave, { type: "json", consistency: "strong" });
   }

@@ -15,6 +15,32 @@ function memoria() {
 
 const fonte = `--- Edital ---\n[Página 1]\n${"Prazo e documentos. ".repeat(1800)}\n[Página 2]\n${"Condições da habilitação. ".repeat(1200)}\n[Página 3]\nEntrega em 30 dias. Pagamento em 30 dias.`;
 
+test("etapas limitam JSON UTF-8 completo preservando páginas e IDs globais do catálogo", () => {
+  const { montarCorpoGroq, mensagensDaEtapa } = require("../lib/ia-edital").__test;
+  const paginas = Array.from({ length: 12 }, (_, i) => `[Página ${i + 1}]\n${i + 1}. Exigência documental. ${"Ação e habilitação: condições, órgão, preços. ".repeat(150)}\n`);
+  const texto = `--- Edital ---\n${paginas.join("")}`;
+  const indice = paginas.map((_, i) => `[R${String(i + 1).padStart(4, "0")}] documentosHabilitacao: [Edital, página ${i + 1}], cláusulas ${i + 1}`).join("\n");
+  const mensagens = (bloco) => mensagensDaEtapa("Instruções completas. ".repeat(300), "Ficha com órgão e objeto", indice, bloco);
+  const bytes = (bloco) => Buffer.byteLength(JSON.stringify(montarCorpoGroq("groq/compound-mini", mensagens(bloco), { maxTokens: 6000, json: true })), "utf8");
+  const blocos = dividirFonte(texto, 45000, (bloco) => bytes(bloco) <= 48000);
+  assert.ok(blocos.length > 1);
+  assert.ok(blocos.every((bloco) => bytes(bloco) <= 48000));
+  for (const pagina of paginas) assert.ok(blocos.some((bloco) => bloco.includes(pagina)));
+  const ultimo = mensagens(blocos.at(-1))[1].content;
+  assert.match(ultimo, /R0012/);
+  assert.doesNotMatch(ultimo, /R0001/);
+  assert.ok(texto.endsWith(paginas.at(-1)));
+});
+
+test("DOCX com caracteres multibyte conserva conteúdo sob orçamento do JSON", () => {
+  const corpo = "Cláusula: ação, órgão e habilitação.\n".repeat(4000);
+  const rotulo = "--- Edital.docx ---\n";
+  const bytes = (bloco) => Buffer.byteLength(JSON.stringify({ instructions: "Regras. ".repeat(1000), content: bloco }), "utf8");
+  const blocos = dividirFonte(rotulo + corpo, 45000, (bloco) => bytes(bloco) <= 48000);
+  assert.ok(blocos.every((bloco) => bytes(bloco) <= 48000));
+  assert.equal(blocos.map((bloco) => bloco.replace(rotulo, "")).join(""), corpo);
+});
+
 test("blocos conservam todas as páginas completas e sua referência documental", () => {
   const blocos = dividirFonte(fonte);
   assert.equal(blocos.length, 2);
