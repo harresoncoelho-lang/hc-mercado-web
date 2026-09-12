@@ -74,7 +74,7 @@ test("síntese longa usa o modelo direto sem probe de ferramentas", async () => 
       assert.equal(chamada.model, "openai/gpt-oss-120b");
       assert.equal(chamada.compound_custom, undefined);
       assert.equal(chamada.tool_choice, undefined);
-      assert.equal(chamada.max_tokens, 2200);
+      assert.equal(chamada.max_tokens, 4000);
       assert.equal(chamada.response_format.type, "json_schema");
       assert.equal(chamada.response_format.json_schema.strict, true);
       assert.equal(chamada.reasoning_effort, "low");
@@ -261,4 +261,23 @@ test("400 de schema preserva evidência privada sem vazar saída ou segredo nos 
     assert.doesNotMatch(logs.join(" "), /gsk_segredo|user@example.com|texto público parcial/);
     assert.doesNotMatch(resultado.erro, /gsk_segredo|user@example.com|texto público parcial/);
   } finally { global.fetch = fetchAnterior; console.warn = warnAnterior; }
+});
+
+test("saída dinâmica aproveita folga e mantém request completo mais saída abaixo de 7200", () => {
+  const { orcamentoResumo, tokensEntradaResumo, cabeResumo } = carregarComModelo(null).__test;
+  const mensagens = (repeticoes) => [{ role: "user", content: "Exigências de habilitação e condições. ".repeat(repeticoes) }];
+  assert.equal(orcamentoResumo(mensagens(1)).saida, 4000);
+  let reduzida = false, recusada = false;
+  for (const repeticoes of [1, 100, 200, 300, 400, 500, 1000]) {
+    const pedido = mensagens(repeticoes), orcamento = orcamentoResumo(pedido);
+    assert.equal(orcamento.entrada, tokensEntradaResumo(pedido, orcamento.saida));
+    assert.ok(orcamento.saida <= 4000);
+    if (cabeResumo(pedido, orcamento)) {
+      assert.ok(orcamento.entrada <= 5000);
+      assert.ok(orcamento.entrada + orcamento.saida <= 7200);
+      assert.ok(orcamento.saida >= 2200);
+      if (orcamento.saida < 4000) reduzida = true;
+    } else recusada = true;
+  }
+  assert.equal(reduzida, true); assert.equal(recusada, true);
 });

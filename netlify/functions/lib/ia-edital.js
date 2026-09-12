@@ -520,16 +520,28 @@ async function chamarGroq(apiKey, mensagens, opts) {
   return { ok: false, erro: "Não há um modelo de IA disponível para gerar o resumo agora." };
 }
 
-// Margem para marcadores Harmony/JSON: 5k de entrada + 2,2k de saída nos 8k TPM.
+// Entrada até 5k; a saída aproveita a folga até 7,2k somados, nos 8k TPM.
 const { Tiktoken } = require("js-tiktoken/lite");
 const ranksResumo = require("js-tiktoken/ranks/o200k_base");
 let tokenizadorResumo;
-function tokensEntradaResumo(mensagens) {
+function tokensEntradaResumo(mensagens, maxTokens = 2200) {
   tokenizadorResumo ||= new Tiktoken(ranksResumo);
-  return 256 + tokenizadorResumo.encode(JSON.stringify(montarCorpoGroq(MODELO_RESUMO, mensagens, { maxTokens: 2200, schema: SCHEMA_ETAPA, reasoningEffort: "low" })), [], []).length;
+  return 256 + tokenizadorResumo.encode(JSON.stringify(montarCorpoGroq(MODELO_RESUMO, mensagens, { maxTokens, schema: SCHEMA_ETAPA, reasoningEffort: "low" })), [], []).length;
 }
-function cabeResumo(mensagens) {
-  return tokensEntradaResumo(mensagens) <= 5000 && Buffer.byteLength(JSON.stringify(montarCorpoGroq(MODELO_RESUMO, mensagens, { maxTokens: 2200, schema: SCHEMA_ETAPA, reasoningEffort: "low" })), "utf8") <= MAX_BYTES_REQUISICAO_RESUMO;
+function orcamentoResumo(mensagens) {
+  let saida = 4000;
+  // O número max_tokens também integra o request contado. A saída só diminui
+  // até estabilizar; a verificação final protege qualquer diferença de tokens.
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const entrada = tokensEntradaResumo(mensagens, saida);
+    const ajustada = Math.max(1, Math.min(saida, 7200 - entrada));
+    if (ajustada === saida) return { entrada, saida };
+    saida = ajustada;
+  }
+  return { entrada: tokensEntradaResumo(mensagens, saida), saida };
+}
+function cabeResumo(mensagens, orcamento = orcamentoResumo(mensagens)) {
+  return orcamento.entrada <= 5000 && orcamento.entrada + orcamento.saida <= 7200 && Buffer.byteLength(JSON.stringify(montarCorpoGroq(MODELO_RESUMO, mensagens, { maxTokens: orcamento.saida, schema: SCHEMA_ETAPA, reasoningEffort: "low" })), "utf8") <= MAX_BYTES_REQUISICAO_RESUMO;
 }
 const CATEGORIAS_REQUISITOS = ["documentosHabilitacao", "documentosCredenciamento", "requisitosProposta", "declaracoesExigidas"];
 const formatoPublico = JSON.parse(SCHEMA_ESTRUTURA);
@@ -584,8 +596,9 @@ async function chamarSinteseEdital(apiKey, mensagens) {
   // O Compound tem um limite interno de 8 mil TPM que rejeita até etapas
   // menores quando soma instruções, ficha e catálogo. O modelo direto já
   // suporta JSON e permite controlar o orçamento por etapa.
-  if (!cabeResumo(mensagens)) return { ok: false, diagnostico: { status: 413, tipo: "orcamento_local" }, erro: "A etapa excedeu o orçamento de tokens e será subdividida. Nenhum conteúdo foi enviado ao provedor." };
-  const resposta = await chamarGroq(apiKey, mensagens, { modelo: MODELO_RESUMO, maxTokens: 2200, timeoutMs: 20000, schema: SCHEMA_ETAPA, reasoningEffort: "low" });
+  const orcamento = orcamentoResumo(mensagens);
+  if (!cabeResumo(mensagens, orcamento)) return { ok: false, diagnostico: { status: 413, tipo: "orcamento_local" }, erro: "A etapa excedeu o orçamento de tokens e será subdividida. Nenhum conteúdo foi enviado ao provedor." };
+  const resposta = await chamarGroq(apiKey, mensagens, { modelo: MODELO_RESUMO, maxTokens: orcamento.saida, timeoutMs: 20000, schema: SCHEMA_ETAPA, reasoningEffort: "low" });
   if (!resposta.ok) return resposta;
   const estrutura = converterEtapaOperacional(extrairJson(resposta.texto), mensagens.at(-1).content);
   if (!estrutura) return { ...resposta, ok: false, diagnostico: { ...resposta.diagnostico, parsing: "requisitos_invalidos" }, erro: "A etapa não descreveu os requisitos operacionais completos e não foi aceita. Tente novamente." };
@@ -593,7 +606,7 @@ async function chamarSinteseEdital(apiKey, mensagens) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { SCHEMA_ETAPA, converterEtapaOperacional, tokensEntradaResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { SCHEMA_ETAPA, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
