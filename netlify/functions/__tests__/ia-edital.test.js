@@ -179,3 +179,17 @@ test("síntese rejeita entrada acima do orçamento antes de chamar provedor", as
     assert.equal(resultado.ok, false); assert.equal(chamadas, 0); assert.match(resultado.erro, /orçamento/);
   } finally { global.fetch = anterior; }
 });
+
+test("campos canônicos rejeitam sigla como UASG e estimativa zero sem evidência", () => {
+  const { aplicarCamposOperacionaisDoTexto } = carregarComModelo(null).__test;
+  const estrutura = { identificacao: { uasg: "CSC" }, detalhes: { valorEstimado: "0" } };
+  aplicarCamposOperacionaisDoTexto(estrutura, "Edital do CSC.");
+  assert.equal(estrutura.identificacao.uasg, "Não informado");
+  assert.equal(estrutura.detalhes.valorEstimado, "Não informado");
+  aplicarCamposOperacionaisDoTexto(estrutura, "UASG: 123456", { valor: 2500 });
+  assert.equal(estrutura.identificacao.uasg, "123456");
+  const comValor = { detalhes: { valorEstimado: "0" } };
+  aplicarCamposOperacionaisDoTexto(comValor, "Edital oficial", { uasg: "654321", valor: 2500 });
+  assert.equal(comValor.identificacao.uasg, "654321");
+  assert.equal(comValor.detalhes.valorEstimado, "2500");
+});

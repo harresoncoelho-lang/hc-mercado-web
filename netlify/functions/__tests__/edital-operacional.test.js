@@ -170,3 +170,39 @@ test("leitura agrega edital e TR e sinaliza página com imagem em documento parc
     else delete require.cache[caminhoPdf];
   }
 });
+
+test("referências isoladas não cobrem credenciamento portal nem horário de Brasília", () => {
+  const { catalogarRequisitos } = require("../_edital_operacional");
+  const texto = "--- Edital (#2) ---\n[Página 1]\n2. LOCAL E DATA DO RECEBIMENTO DAS PROPOSTAS\n2.1. A inserção das propostas deverá ser feita no Portal e-compras.am.\n2.6. Será sempre considerado o horário de Brasília para todas as indicações de tempo.\n[Página 3]\n4. DO CREDENCIAMENTO\n4.3. O pré-cadastro e emissão do CRC serão realizados pelo sistema e-compras.am.\n";
+  const catalogo = catalogarRequisitos(texto);
+  assert.ok(catalogo.length >= 3);
+  const estrutura = {};
+  for (const fonte of catalogo) (estrutura[fonte.categoria] ||= []).push(`[${fonte.id}] Edital (#2), página ${fonte.texto.includes('4.3.') ? 3 : 1}, cláusulas ${fonte.texto.match(/^\d+(?:\.\d+)+/)?.[0]}`);
+  complementarRequisitos(estrutura, texto);
+  assert.equal(estrutura.coberturaSintese.requisitosSintetizados, 0);
+  assert.match(estrutura.requisitosProposta.join(' '), /horário de Brasília/);
+  assert.match(estrutura.documentosCredenciamento.join(' '), /emissão do CRC/);
+});
+
+test("sigla documental legítima continua aceita como síntese curta", () => {
+  const { catalogarRequisitos } = require("../_edital_operacional");
+  const texto = "--- Edital ---\n[Página 1]\n7. HABILITAÇÃO\n7.1. Apresentar CNDT.\n";
+  const fonte = catalogarRequisitos(texto).find((item) => item.categoria === "documentosHabilitacao");
+  assert.ok(fonte);
+  const estrutura = { documentosHabilitacao: [`CNDT [${fonte.id}]`] };
+  complementarRequisitos(estrutura, texto);
+  assert.equal(estrutura.coberturaSintese.requisitosSintetizados, 1);
+});
+
+test("resposta Sim não substitui certidão de falência referenciada", () => {
+  const { catalogarRequisitos } = require("../_edital_operacional");
+  const texto = "--- Edital ---\n[Página 1]\n7. HABILITAÇÃO\n7.1. Apresentar certidão negativa de falência.\n";
+  const fonte = catalogarRequisitos(texto).find((item) => item.categoria === "documentosHabilitacao");
+  assert.ok(fonte);
+  for (const resposta of ["Sim", "ok", "Não"]) {
+    const estrutura = { documentosHabilitacao: [`${resposta} [${fonte.id}]`] };
+    complementarRequisitos(estrutura, texto);
+    assert.equal(estrutura.coberturaSintese.requisitosSintetizados, 0);
+    assert.match(estrutura.documentosHabilitacao.join(" "), /certidão negativa de falência/);
+  }
+});

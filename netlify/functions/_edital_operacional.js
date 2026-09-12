@@ -157,7 +157,18 @@ function complementarRequisitos(estrutura, texto) {
         return `${documentos}${clausulas.length ? `, cláusulas ${clausulas.join(", ")}` : ""}`;
       });
       const resumo = item.replace(/\[?R\d{4}(?:\s*[,;]\s*R\d{4})*\]?/g, "").trim();
-      if (resumo.length < 15 || !preservarCondicoesQuantificadas(citadas, resumo)) continue;
+      let conteudo = resumo.replace(/\[[^\]]+\]/g, "");
+      for (const fonte of citadas) {
+        for (const referencia of fonte.texto.match(/\[[^\]]+\]/g) || []) {
+          const documento = referencia.slice(1, -1).replace(/, página \d+$/, "");
+          conteudo = conteudo.split(documento).join("");
+        }
+      }
+      conteudo = conteudo.replace(/(?:páginas?|cláusulas?)\s*[\d.,\s]+/gi, "").replace(/[\s\d.,;:()—-]/g, "");
+      // IDs e referências localizam a prova, mas não substituem a exigência.
+      // Siglas documentais curtas (CNDT, FGTS) continuam sendo conteúdo útil.
+      const siglaDocumental = /^(?:CNDT|FGTS|CPF|CNPJ|CRC)$/i.test(conteudo) && citadas.every((fonte) => new RegExp(`\\b${conteudo}\\b`, "i").test(fonte.texto));
+      if ((conteudo.length < 15 && !siglaDocumental) || !preservarCondicoesQuantificadas(citadas, resumo)) continue;
       sinteticos.push(`${resumo} — ${referencias.join("; ")}`);
       for (const id of ids) cobertos.add(id);
     }
