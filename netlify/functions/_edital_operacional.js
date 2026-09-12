@@ -16,6 +16,44 @@ function categoriaSecao(titulo) {
   return null;
 }
 
+function clausulasDaFonte(texto) {
+  const clausulas = [];
+  let documento = "Documento oficial", pagina = "", atual;
+  for (const linha of limparLinhas(texto)) {
+    const doc = linha.match(/^--- (.+) ---$/);
+    if (doc) { documento = doc[1]; pagina = ""; atual = null; continue; }
+    const pg = linha.match(/^\[Página (\d+)\]$/);
+    if (pg) { pagina = pg[1]; continue; }
+    const numero = linha.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])?\s+\D/);
+    if (numero) {
+      atual = { numero: numero[1], documento, pagina, texto: linha };
+      clausulas.push(atual);
+    } else if (atual && linha) atual.texto += ` ${linha}`;
+  }
+  return clausulas;
+}
+
+function aplicarPrazosDaFonte(estrutura, texto) {
+  const clausulas = clausulasDaFonte(texto);
+  const formatar = (item) => `${item.texto} [${item.documento}${item.pagina ? `, página ${item.pagina}` : ""}]`;
+  const juntar = (itens) => [...new Set(itens.map(formatar))].join("\n") || "Não informado";
+  const esclarecimentos = clausulas.filter((item) => /solicitar esclarecimentos|pedidos? de esclarecimento/i.test(item.texto) &&
+    /\b(?:at[eé]|anteced[eê]ncia|antes)\b.*\b(?:dias?|abertura|sess[aã]o)|\b\d+\s*\([^)]*\)\s*dias?\b/i.test(item.texto) &&
+    !/responder[aá]|resposta aos pedidos|desconsiderar[aá]/i.test(item.texto));
+  estrutura.prazos = { ...estrutura.prazos, limiteEsclarecimentos: juntar(esclarecimentos) };
+  // A entrega contratual tem objeto material/serviço explícito. Fichas, amostras
+  // e propostas são etapas do certame, mesmo quando usam a palavra "entrega".
+  const entregas = clausulas.filter((item) => /prazo de entrega (?:do objeto|dos materiais|dos bens|dos produtos)|(?:bens|materiais|produtos) (?:dever[aã]o ser|ser[aã]o) entregues|a entrega (?:do objeto|dos materiais|dos bens|dos produtos) (?:ser[aá]|dar-se-[aá])|execu[cç][aã]o dos servi[cç]os (?:ser[aá]|dever[aá])/i.test(item.texto) &&
+    !/fichas? t[eé]cnicas?|amostras?|propostas?|infra[cç][oõ]es|retardamento/i.test(item.texto));
+  const contexto = clausulas.filter((item) => entregas.some((origem) => item.documento === origem.documento &&
+    (item === origem || item.numero.startsWith(`${origem.numero}.`))));
+  const prazo = entregas.filter((item) => /prazo|\bdias?\b|\bmeses\b|assinatura|ordem de/i.test(item.texto));
+  const local = contexto.filter((item) => /local de entrega|endere[cç]o|(?:Rua|Avenida|Av\.)\s/i.test(item.texto));
+  estrutura.entregaExecucao = { prazo: juntar(prazo), local: juntar(local), condicoes: juntar(contexto) };
+  estrutura.detalhes = { ...estrutura.detalhes, prazoEntrega: juntar(prazo) };
+  return estrutura;
+}
+
 function extrairRequisitosOperacionais(texto, identidadeLegada = false) {
   const resultado = { documentosHabilitacao: [], documentosCredenciamento: [], requisitosProposta: [], declaracoesExigidas: [] };
   let documento = "Documento oficial", pagina = "", categoria = null, raiz = "", bloco = null;
@@ -206,6 +244,7 @@ function complementarRequisitos(estrutura, texto) {
       const ids = [...new Set(item.match(/\bR\d{4}\b/g) || [])];
       if (!ids.length || ids.some((id) => !fontes.some((fonte) => fonte.id === id))) continue;
       const citadas = fontes.filter((fonte) => ids.includes(fonte.id));
+      if (/^divulgar\s+(?:o\s+)?resultado/i.test(item) && citadas.some((fonte) => /sess[aã]o[\s\S]*para divulgar o resultado/i.test(fonte.texto))) continue;
       const referencias = citadas.map((fonte) => {
         const clausulas = [...fonte.texto.matchAll(/(?:^|Condição: )(\d+(?:\.\d+)+)\./g)].map((m) => m[1]);
         const documentos = [...new Set(fonte.texto.match(/\[[^\]]+\]/g) || [])].join("; ");
@@ -298,4 +337,4 @@ function selecionarContexto(texto, limite = 22000, pergunta = "") {
   return prepararContextoResumo(texto, limite).texto;
 }
 
-module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte };
+module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte };

@@ -2,6 +2,60 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto } = require("../_edital_operacional");
 
+test("PE406 separa esclarecimentos e entrega contratual de análise e entrega de fichas", () => {
+  const { aplicarPrazosDaFonte, catalogarRequisitos } = require("../_edital_operacional");
+  const fonte = `--- Edital (#2) ---
+[Página 16]
+11. DA PROPOSTA E ANÁLISE DAS FICHAS TÉCNICAS
+11.2. A entrega de fichas técnicas ocorrerá até 28/09/2026, no CSC, Rua Belo Horizonte, 1420, das 8 às 14h.
+11.2.4. A análise das fichas técnicas ocorrerá no dia 30/09/2026 às 10:30 horas de Brasília.
+[Página 18]
+11.2.21. A reabertura da sessão do pregão ocorrerá no dia 02/10/2026 ÀS 12:30 horas de Brasília (DF), para divulgar o resultado da análise das fichas técnicas.
+[Página 22]
+12. DOS ESCLARECIMENTOS
+12.1. Qualquer pessoa poderá até 3 (três) dias úteis inteiros antes da data de abertura do certame por meio de arquivo único, impugnar os termos do edital ou solicitar esclarecimentos sobre os seus termos.
+12.4. O CSC responderá os pedidos de esclarecimentos, limitado ao último dia útil anterior à data de abertura do certame.
+--- Termo de Referência ---
+[Página 8]
+9. CRONOGRAMA DE CONTRATAÇÃO/ENTREGA:
+PRAZO DA CONTRATAÇÃO: O prazo da contratação será de 30 (trinta) dias contados da data da assinatura do contrato.
+PRAZO DE ENTREGA: A entrega do objeto será em até 30 (trinta) dias a contar da data da assinatura do contrato.
+LOCAL DE ENTREGA: A entrega dos materiais dar-se-á na Av. Carlos Drummond de Andrade, nº 1460, Bairro Japiim – Bloco G – térreo Sala – 04 (GEMAP) entre 09:00h às 12:00h e de 14:00h as 16:00h.
+23. QUALIFICAÇÃO TÉCNICA
+23.1. Apresentar atestado que comprove a boa execução dos serviços em condições compatíveis de quantidades e prazos.`;
+  const est = aplicarPrazosDaFonte({ prazos: { limiteEsclarecimentos: "30/09/2026 às 10:30" }, entregaExecucao: { local: "CSC" } }, fonte);
+  assert.match(est.prazos.limiteEsclarecimentos, /3 \(três\) dias úteis inteiros antes.*\[Edital \(#2\), página 22\]/);
+  assert.doesNotMatch(est.prazos.limiteEsclarecimentos, /30\/09|responderá/);
+  assert.match(est.entregaExecucao.prazo, /30 \(trinta\) dias a contar da data da assinatura/);
+  assert.match(est.entregaExecucao.local, /Carlos Drummond.*Sala – 04.*09:00h.*16:00h/);
+  assert.doesNotMatch(JSON.stringify(est.entregaExecucao), /fichas|CSC|atestado/);
+  const ref = catalogarRequisitos(fonte).find((x) => x.texto.includes("11.2.21."));
+  const final = complementarRequisitos({ requisitosProposta: [`Divulgar resultado da análise das fichas técnicas no dia 02/10/2026 às 12:30 [${ref.id}]`] }, fonte);
+  assert.ok(!final.requisitosProposta.some((x) => /^Divulgar resultado/.test(x)));
+  assert.ok(final.requisitosProposta.some((x) => x.includes("11.2.21.")));
+});
+
+test("DE81 preserva marco da entrega e condições dos subitens sem inventar esclarecimentos", () => {
+  const { aplicarPrazosDaFonte } = require("../_edital_operacional");
+  const fonte = `--- TR788000_000092_2026.pdf ---
+[Página 8]
+6. MODELO DE EXECUÇÃO DO CONTRATO
+6.4. O prazo de entrega dos bens é de 30 (trinta) dias, contados a partir da data de recebimento da Nota de
+Empenho ou Ordem de Compra, em remessa única.
+6.4.1 Caso não seja possível a entrega na data assinalada, a empresa deverá comunicar as razões respectivas
+com pelo menos 10 (dez) dias de antecedência para que qualquer pleito de prorrogação de prazo seja
+analisado, ressalvadas situações de caso fortuito e força maior.
+6.4.2 Os bens deverão ser entregues no seguinte endereço:
+Rua Bernardo Ramos, S/N - Centro, Manaus - AM, 69005-310 - Comando do 9° Distrito Naval
+6.5. Não será necessária transferência de conhecimento.`;
+  const est = aplicarPrazosDaFonte({ prazos: { limiteEsclarecimentos: "amanhã" } }, fonte);
+  assert.equal(est.prazos.limiteEsclarecimentos, "Não informado");
+  assert.match(est.entregaExecucao.prazo, /recebimento da Nota de Empenho ou Ordem de Compra, em remessa única/);
+  assert.match(est.entregaExecucao.local, /Rua Bernardo Ramos/);
+  assert.match(est.entregaExecucao.condicoes, /10 \(dez\) dias.*ressalvadas situações de caso fortuito e força maior/);
+  assert.doesNotMatch(est.entregaExecucao.condicoes, /6\.5\./);
+});
+
 test("continuações de habilitação preservam regularização, alcance do CRC e percentual do TR", () => {
   const fonte = `--- Edital (#2) ---
 [Página 7]
