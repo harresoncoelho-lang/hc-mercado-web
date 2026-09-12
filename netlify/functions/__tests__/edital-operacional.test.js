@@ -224,3 +224,14 @@ test("IDs inline seguem conteúdo documento página condições e equivalentes s
   assert.ok(marcado.includes(`[EXIGÊNCIA ${declaracao.id} declaracoesExigidas]\n5.2.`));
   assert.match(marcado, /\[EXIGÊNCIA R\d{4} declaracoesExigidas\]\nANEXO I DECLARAÇÃO/);
 });
+
+test("CRC não desaparece quando síntese atribui chave e senha ao ID do cadastro", () => {
+  const { catalogarRequisitos } = require("../_edital_operacional");
+  const texto = "--- Edital (#2) ---\n[Página 3]\n4. DO CREDENCIAMENTO\n4.3. O pré-cadastro de fornecedores, emissão, renovação e alteração do Certificado de Registro Cadastral – CRC, no CCF/AM, serão realizados por meio do sistema e-compras.am.\n";
+  const fonte = catalogarRequisitos(texto).find((item) => item.categoria === "documentosCredenciamento");
+  assert.ok(fonte);
+  const estrutura = { documentosCredenciamento: [`Obter chave de identificação e senha de uso exclusivo para participação no e-compras.am [${fonte.id}]`] };
+  complementarRequisitos(estrutura, texto);
+  assert.equal(estrutura.coberturaSintese.requisitosSintetizados, 0);
+  assert.match(estrutura.documentosCredenciamento.join(" "), /emissão, renovação e alteração.*CRC/);
+});

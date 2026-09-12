@@ -159,7 +159,7 @@ function preservarCondicoesQuantificadas(fontes, resumo) {
   const destino = normalizar(resumo);
   for (const fonte of fontes) {
     const origem = normalizar(fonte.texto.replace(/\[[^\]]+\]/g, ""));
-    const limites = origem.match(/\b\d{2}\/\d{2}\/\d{4}\b|\b\d+(?:[.,]\d+)?\s*%|\b\d+\s+(?:dias?|horas?|meses|anos?|exercicios?)\b|\b(?:fgts|cndt|inss|cnpj|mei|matriz|filial)\b/g) || [];
+    const limites = origem.match(/\b\d{2}\/\d{2}\/\d{4}\b|\b\d+(?:[.,]\d+)?\s*%|\b\d+\s+(?:dias?|horas?|meses|anos?|exercicios?)\b|\b(?:fgts|cndt|inss|cnpj|crc|mei|matriz|filial)\b/g) || [];
     if (limites.some((limite) => !destino.includes(limite))) return false;
     // Uma referência correta não prova que a IA conservou a aplicabilidade.
     // Sem equivalência semântica verificável, conservamos literalmente a oração
