@@ -476,8 +476,14 @@ async function chamarGroq(apiKey, mensagens, opts) {
           return { ok: false, erro: "O provedor retornou uso de ferramentas não permitido nesta análise. A síntese foi rejeitada." };
         }
         const texto = ((dados.choices || [])[0] && dados.choices[0].message && dados.choices[0].message.content || "").trim();
+        const finalizacoes = ["stop", "length", "tool_calls", "content_filter", "function_call"];
+        const diagnostico = { status: resp.status, finalizacao: finalizacoes.includes(dados.choices?.[0]?.finish_reason) ? dados.choices[0].finish_reason : "nao_informada", caracteres: texto.length };
+        for (const campo of ["prompt_tokens", "completion_tokens", "total_tokens"]) {
+          if (Number.isSafeInteger(dados.usage?.[campo])) diagnostico[campo] = dados.usage[campo];
+        }
+        if (typeof mensagem?.reasoning === "string") diagnostico.caracteresRaciocinio = mensagem.reasoning.length;
         if (dados.choices?.[0]?.finish_reason === "length") console.warn("ia-edital: geração truncada pelo limite de tokens");
-        return { ok: dados.choices?.[0]?.finish_reason !== "length", texto, modelo: modelos[indice], erro: dados.choices?.[0]?.finish_reason === "length" ? "A resposta excedeu o limite de geração." : null };
+        return { ok: dados.choices?.[0]?.finish_reason !== "length", texto, diagnostico, modelo: modelos[indice], erro: dados.choices?.[0]?.finish_reason === "length" ? "A resposta excedeu o limite de geração." : null };
       }
       const corpoErro = await resp.text();
       console.warn(`ia-edital: provedor respondeu HTTP ${resp.status}`);
@@ -967,6 +973,11 @@ exports.handler = async (event) => {
             if (!cota.ok) return { erro: cota.erro, quota: cota.status };
             const parcial = await chamarSinteseEdital(apiKey, mensagensBloco(bloco));
             const estrutura = parcial.ok ? extrairJson(parcial.texto) : null;
+            if (parcial.ok && !estrutura) {
+              parcial.diagnostico = { ...parcial.diagnostico, parsing: parcial.texto?.trim() ? "json_invalido" : "conteudo_vazio" };
+              parcial.erro = "A análise retornou um formato incompleto e não pôde ser aproveitada. Tente novamente.";
+              console.warn("ia-edital: síntese sem estrutura", JSON.stringify(parcial.diagnostico));
+            }
             return { ...parcial, estrutura };
           } });
         if (etapas.pendente) return { statusCode: 202, headers, body: JSON.stringify(etapas.pendente) };

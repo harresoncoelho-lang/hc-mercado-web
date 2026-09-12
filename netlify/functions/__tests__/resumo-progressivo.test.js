@@ -210,3 +210,14 @@ test("subdivisão DOCX preserva texto integral e para em tamanho mínimo", () =>
   assert.equal(partes.map((parte) => parte.replace(rotulo, "")).join(""), corpo);
   assert.deepEqual(dividirBlocoRejeitado(rotulo + "Condição curta."), []);
 });
+
+test("evidência de formato inválido fica só no job limitado e some após sucesso", async () => {
+  const store = memoria();
+  const textoModelo = "EVIDENCIA_PRIVADA ".repeat(3000);
+  const args = { store, chave: "pncp", inicial: { texto: fonte } };
+  const falha = await executarEtapa({ ...args, executar: async () => ({ texto: textoModelo, erro: "Formato incompleto", diagnostico: { status: 200, parsing: "json_invalido" } }) });
+  assert.equal((await store.getWithMetadata()).data.ultimaRespostaNaoEstruturada.length, 32000);
+  assert.doesNotMatch(JSON.stringify(falha.pendente), /EVIDENCIA_PRIVADA/);
+  await executarEtapa({ ...args, agora: Date.now() + 66000, executar: async () => ({ estrutura: { resumoGeral: "Análise válida" } }) });
+  assert.equal((await store.getWithMetadata()).data.ultimaRespostaNaoEstruturada, undefined);
+});

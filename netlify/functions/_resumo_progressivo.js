@@ -150,11 +150,14 @@ async function executarEtapa({ store, chave, inicial, executar, dividir = dividi
     await store.setJSON(chave, estado, { onlyIfMatch: reserva.etag });
     return { falhou: true, erro: resposta.erro, status: resposta.quota, estado };
   }
-  if (resposta.estrutura) { estado.resultados.push(resposta.estrutura); estado.falhas = 0; }
+  if (resposta.estrutura) { estado.resultados.push(resposta.estrutura); estado.falhas = 0; delete estado.ultimaRespostaNaoEstruturada; }
   else {
     estado.falhas++;
     estado.ultimoErro = resposta.erro || "A síntese desta etapa não foi concluída.";
     estado.diagnostico = resposta.diagnostico || null;
+    // Evidência temporária somente no job privado da leitura canônica. Não integra
+    // respostaProgresso nem o JSON público; desaparece quando a etapa é concluída.
+    if (resposta.diagnostico?.parsing && typeof resposta.texto === "string") estado.ultimaRespostaNaoEstruturada = resposta.texto.slice(0, 32000);
     if (resposta.diagnostico?.status === 413) reduzirEtapaRecusada(estado);
   }
   const espera = Math.max(65, Number(resposta.diagnostico?.limites?.["retry-after"]) || 0);

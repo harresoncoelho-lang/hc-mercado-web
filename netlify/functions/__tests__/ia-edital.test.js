@@ -145,6 +145,18 @@ test("não deixa um rótulo operacional engolir o texto seguinte do portal", () 
   assert.equal(__test.valorRotuladoDoTexto(texto, "Critério de Julgamento"), "Menor preço por item");
 });
 
+test("metadados de resposta sem JSON não incluem conteúdo nem identificadores", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: "stop", message: { content: "CONTEUDO_RESERVADO", reasoning: "RACIOCINIO_RESERVADO" } }], usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120, outro: "SEGREDO" } }) });
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarGroq("chave-teste", [{ role: "user", content: "Fonte" }]);
+    assert.equal(resultado.diagnostico.finalizacao, "stop");
+    assert.equal(resultado.diagnostico.caracteres, 18);
+    assert.equal(resultado.diagnostico.total_tokens, 120);
+    assert.doesNotMatch(JSON.stringify(resultado.diagnostico), /CONTEUDO_RESERVADO|RACIOCINIO_RESERVADO|SEGREDO/);
+  } finally { global.fetch = originalFetch; }
+});
+
 test("remove combinações artificiais de certidões antes de exibir o dossiê", () => {
   const { __test } = carregarComModelo(null);
   const lista = __test.normalizarListaDoDossie([

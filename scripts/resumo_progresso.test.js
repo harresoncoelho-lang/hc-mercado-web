@@ -72,3 +72,28 @@ test('cache local rejeita resultados em processamento e degradados', () => {
   for (const dados of [{emProcessamento:true,resposta:'Parcial'}, {modoDegradado:true,resposta:'Ficha'}]) a.contexto.salvarCacheLocalResumo({id:'A'},dados);
   assert.equal(a.cache.size, 0);
 });
+
+test('cada etapa consulta a sessão atual e usa o token renovado sem capturar o anterior', async () => {
+  const a = ambiente([pendente, final]);
+  const sessoes = [{ access_token: 'token-anterior' }, { access_token: 'token-renovado' }];
+  let consultas = 0;
+  a.contexto.window = { __sbClient: { auth: { getSession: async () => ({ data: { session: sessoes[consultas++] } }) } } };
+  vm.runInContext(trecho('  async function obterTokenSessao()', '  function bloquearAcoesResumo('), a.contexto);
+  a.abrir('A');
+  await a.contexto.chamarIA('resumo', null);
+  const timer = [...a.timers.values()][0]; timer.fn(); await drenar();
+  assert.equal(consultas, 2);
+  assert.equal(a.requisicoes[0].headers.Authorization, 'Bearer token-anterior');
+  assert.equal(a.requisicoes[1].headers.Authorization, 'Bearer token-renovado');
+});
+
+test('sessão ausente e401 interrompem consultas automáticas e mostram erro', async () => {
+  const a = ambiente([() => ({ ok: false, status: 401, json: async () => ({ erro: 'Sessão expirada. Faça login novamente.' }) })]);
+  a.contexto.window = { __sbClient: { auth: { getSession: async () => ({ data: { session: null } }) } } };
+  vm.runInContext(trecho('  async function obterTokenSessao()', '  function bloquearAcoesResumo('), a.contexto);
+  a.abrir('A'); await a.contexto.chamarIA('resumo', null);
+  assert.equal(a.requisicoes.length, 1);
+  assert.equal(a.timers.size, 0);
+  assert.equal(a.estado().iaCarregando, false);
+  assert.match(a.mensagens.at(-1).textContent, /Sessão expirada/);
+});
