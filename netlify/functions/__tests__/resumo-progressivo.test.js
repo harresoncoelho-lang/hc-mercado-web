@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { dividirFonte, conciliarEstruturas, executarEtapa } = require("../_resumo_progressivo");
+const { dividirFonte, dividirBlocoRejeitado, conciliarEstruturas, executarEtapa } = require("../_resumo_progressivo");
 
 function memoria() {
   let estado = null, versao = 0;
@@ -162,4 +162,51 @@ test("robô conta HTTP202 como pendente, sem anunciar dossiê gerado", async () 
     if (antigaChave === undefined) delete process.env.DOSSIES_EDITAIS_CHAVE;
     else process.env.DOSSIES_EDITAIS_CHAVE = antigaChave;
   }
+});
+
+test("413 subdivide só a etapa recusada e preserva ordem, páginas e resultados anteriores", async () => {
+  const store = memoria();
+  const paginas = Array.from({ length: 4 }, (_, i) => `[Página ${i + 1}]\n${i + 1}. Exigência ${"condição e ação. ".repeat(300)}\n`);
+  const rejeitado = `--- Edital ---\n${paginas.join("")}`;
+  await store.setJSON("pncp", { texto: rejeitado, blocos: ["Etapa concluída", rejeitado, "Última etapa"], resultados: [{ resumoGeral: "Preservado" }], falhas: 0, proximaEtapaEm: 0, expiraEm: Date.now() + 86400000 });
+  let chamadas = 0;
+  const retorno = await executarEtapa({ store, chave: "pncp", inicial: {}, executar: async () => { chamadas++; return { diagnostico: { status: 413 }, erro: "Request Entity Too Large" }; } });
+  assert.equal(chamadas, 1);
+  assert.equal(retorno.pendente.progresso.concluidas, 1);
+  const estado = (await store.getWithMetadata()).data;
+  assert.equal(estado.falhas, 0);
+  assert.deepEqual(estado.resultados, [{ resumoGeral: "Preservado" }]);
+  assert.equal(estado.blocos[0], "Etapa concluída");
+  assert.equal(estado.blocos.at(-1), "Última etapa");
+  const novos = estado.blocos.slice(1, -1);
+  assert.equal(novos.length, 2);
+  for (const pagina of paginas) assert.ok(novos.some((parte) => parte.includes(pagina)));
+  assert.ok(novos.every((parte) => Buffer.byteLength(parte) < Buffer.byteLength(rejeitado)));
+  await executarEtapa({ store, chave: "pncp", inicial: {}, executar: async () => { chamadas++; return {}; } });
+  assert.equal(chamadas, 1, "cooldown permanece ativo");
+});
+
+test("retomada de 413 antigo reduz antes de chamar provedor e página única encerra sem retry idêntico", async () => {
+  const store = memoria();
+  const bloco = "--- Edital ---\n[Página 1]\nDocumento A.\n[Página 2]\nDocumento B.";
+  await store.setJSON("pncp", { texto: bloco, blocos: [bloco], resultados: [], diagnostico: { status: 413 }, falhas: 1, proximaEtapaEm: 0, expiraEm: Date.now() + 86400000 });
+  let chamadas = 0;
+  const args = { store, chave: "pncp", inicial: {}, executar: async () => { chamadas++; return { diagnostico: { status: 413 }, erro: "Recusado" }; } };
+  const divisao = await executarEtapa(args);
+  assert.equal(chamadas, 0);
+  assert.equal(divisao.pendente.progresso.total, 2);
+  const parada = await executarEtapa({ ...args, agora: Date.now() + 66000 });
+  assert.equal(parada.falhou, true);
+  assert.equal(chamadas, 1);
+  const nova = await executarEtapa({ ...args, retomar: true, agora: Date.now() + 132000 });
+  assert.equal(nova.falhou, true);
+  assert.equal(chamadas, 1);
+});
+
+test("subdivisão DOCX preserva texto integral e para em tamanho mínimo", () => {
+  const rotulo = "--- Anexo.docx ---\n", corpo = "Condição de habilitação e proposta.\n".repeat(350);
+  const partes = dividirBlocoRejeitado(rotulo + corpo);
+  assert.ok(partes.length >= 2);
+  assert.equal(partes.map((parte) => parte.replace(rotulo, "")).join(""), corpo);
+  assert.deepEqual(dividirBlocoRejeitado(rotulo + "Condição curta."), []);
 });

@@ -63,6 +63,39 @@ function conciliarEstruturas(estruturas) {
   return resultado;
 }
 
+function dividirBlocoRejeitado(bloco) {
+  const tamanho = Buffer.byteLength(bloco, "utf8");
+  const candidatos = [];
+  for (const marcador of bloco.matchAll(/^(?:--- .+ ---|\[Página \d+\])$/gm)) {
+    if (!marcador.index) continue;
+    const esquerda = bloco.slice(0, marcador.index);
+    const direita = bloco.slice(marcador.index);
+    if (!esquerda.replace(/^--- .+ ---$|^\[Página \d+\]$/gm, "").trim()) continue;
+    const documento = [...esquerda.matchAll(/^--- .+ ---$/gm)].at(-1)?.[0];
+    const partes = [esquerda, direita.startsWith("--- ") || !documento ? direita : `${documento}\n${direita}`];
+    const tamanhos = partes.map((parte) => Buffer.byteLength(parte, "utf8"));
+    if (tamanhos.every((bytes) => bytes < tamanho)) candidatos.push({ partes, maior: Math.max(...tamanhos) });
+  }
+  if (candidatos.length) return candidatos.sort((a, b) => a.maior - b.maior)[0].partes;
+  // Uma página PDF é indivisível. DOCX sem páginas admite redução por parágrafo,
+  // mas o mínimo impede centenas de tentativas quando o próprio prompt é recusado.
+  if (/^\[Página \d+\]$/m.test(bloco) || bloco.length <= 4000) return [];
+  const documento = bloco.match(/^--- .+ ---$/m)?.[0];
+  return dividirSemPaginas(bloco, Math.ceil(bloco.length / 2)).map((parte, i) => i && documento ? `${documento}\n${parte}` : parte);
+}
+
+function reduzirEtapaRecusada(estado) {
+  const indice = estado.resultados.length;
+  const partes = dividirBlocoRejeitado(estado.blocos[indice]);
+  if (partes.length < 2) {
+    estado.falhas = 3;
+    estado.ultimoErro = "O provedor recusou até a menor parte segura do documento. A análise foi interrompida; os resultados já salvos foram preservados.";
+    return;
+  }
+  estado.blocos.splice(indice, 1, ...partes);
+  estado.falhas = 0;
+}
+
 function respostaProgresso(estado, agora = Date.now()) {
   return { emProcessamento: true, progresso: {
     concluidas: estado.resultados.length, total: estado.blocos.length,
@@ -87,14 +120,14 @@ async function executarEtapa({ store, chave, inicial, executar, dividir = dividi
   if (!registro?.data) throw new Error("Não foi possível persistir a análise para retomada.");
   const estado = registro.data;
   if (estado.resultados.length === estado.blocos.length) return { estrutura: conciliarEstruturas(estado.resultados), estado };
-  if (retomar && estado.falhas >= 3) {
+  if (retomar && estado.falhas >= 3 && estado.diagnostico?.status !== 413) {
     estado.falhas = 0;
     const retomada = await store.setJSON(chave, estado, { onlyIfMatch: registro.etag });
     if (!retomada.modified) return lerVencedor();
     if (!retomada.etag) throw new Error("Retomada sem identificador de versão.");
     registro = { data: estado, etag: retomada.etag };
   }
-  if (estado.falhas >= 3) return { falhou: true, erro: "Esta etapa falhou três vezes. Tente novamente mais tarde.", estado };
+  if (estado.falhas >= 3 && !retomar) return { falhou: true, erro: estado.ultimoErro || "Esta etapa falhou três vezes. Tente novamente mais tarde.", estado };
   if (estado.proximaEtapaEm > agora) return { pendente: respostaProgresso(estado, agora), estado };
   // Reserva a etapa antes da chamada externa. CAS impede dois navegadores de
   // consumir simultaneamente a mesma etapa; a reserva expira após uma interrupção.
@@ -103,6 +136,13 @@ async function executarEtapa({ store, chave, inicial, executar, dividir = dividi
   const reserva = await store.setJSON(chave, estado, { onlyIfMatch: registro.etag });
   if (!reserva.modified) return lerVencedor();
   if (!reserva.etag) throw new Error("Reserva sem identificador de versão.");
+  if (estado.diagnostico?.status === 413 && estado.falhas > 0) {
+    // Retoma também os jobs da versão anterior sem reenviar o payload recusado.
+    reduzirEtapaRecusada(estado);
+    const ajuste = await store.setJSON(chave, estado, { onlyIfMatch: reserva.etag });
+    if (!ajuste.modified) return lerVencedor();
+    return estado.falhas >= 3 ? { falhou: true, erro: estado.ultimoErro, estado } : { pendente: respostaProgresso(estado), estado };
+  }
   const resposta = await executar(estado.blocos[estado.resultados.length], estado.resultados.length);
   if (resposta.quota) {
     // A cota é individual; não bloqueia o estado compartilhado do edital.
@@ -115,6 +155,7 @@ async function executarEtapa({ store, chave, inicial, executar, dividir = dividi
     estado.falhas++;
     estado.ultimoErro = resposta.erro || "A síntese desta etapa não foi concluída.";
     estado.diagnostico = resposta.diagnostico || null;
+    if (resposta.diagnostico?.status === 413) reduzirEtapaRecusada(estado);
   }
   const espera = Math.max(65, Number(resposta.diagnostico?.limites?.["retry-after"]) || 0);
   estado.proximaEtapaEm = Date.now() + espera * 1000;
@@ -125,4 +166,4 @@ async function executarEtapa({ store, chave, inicial, executar, dividir = dividi
   return { pendente: respostaProgresso(estado), estado };
 }
 
-module.exports = { dividirFonte, conciliarEstruturas, respostaProgresso, executarEtapa };
+module.exports = { dividirFonte, dividirBlocoRejeitado, conciliarEstruturas, respostaProgresso, executarEtapa };
