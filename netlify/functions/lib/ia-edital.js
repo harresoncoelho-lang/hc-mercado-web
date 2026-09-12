@@ -393,7 +393,7 @@ const SCHEMA_ESTRUTURA = `{
 function mensagemSeguraDoProvedor(mensagem) {
   // Somente vocabulário técnico e números curtos sobrevivem. Identificadores,
   // texto de documentos e credenciais desconhecidas também ficam redigidos.
-  const permitidas = new Set("a an and api at be been body by bytes can characters completion context current decrease entity exceeded exceeds for from greater has in input is it length limit limits max maximum message messages minimum model must of on only organization output per please prompt rate reduce request requested requests response retry size than the this to token tokens too total try used using was with your large smaller available remaining allowed capacity tpm itpm otpm error internal server unsupported invalid".split(" "));
+  const permitidas = new Set("a an and api at be been body by bytes can characters completion context current decrease entity exceeded exceeds for from greater has in input is it length limit limits max maximum message messages minimum model must of on only organization output per please prompt rate reduce request requested requests response retry size than the this to token tokens too total try used using was with your large smaller available remaining allowed capacity tpm itpm otpm error internal server unsupported invalid json schema validation validate failed generation generate generated format match matching strict".split(" "));
   return mensagem
     .replace(/https?:\/\/[^\s<>]+|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\b(?:gsk_|sk-|org_|org-)[\w-]+/gi, "redigido")
     .replace(/[\p{L}\p{N}_/+.-]+/gu, (trecho) => {
@@ -407,7 +407,7 @@ function mensagemSeguraDoProvedor(mensagem) {
 function diagnosticarLimiteProvedor(resp, corpoErro) {
   let erro = {};
   try { erro = JSON.parse(corpoErro)?.error || {}; } catch (_) { /* resposta não JSON */ }
-  const codigos = ["rate_limit_exceeded", "request_too_large", "context_length_exceeded", "tokens_limit_exceeded"];
+  const codigos = ["rate_limit_exceeded", "request_too_large", "context_length_exceeded", "tokens_limit_exceeded", "json_validate_failed", "generation_failed", "invalid_json_schema"];
   const diagnostico = { status: resp.status, codigo: codigos.includes(erro.code) ? erro.code : "nao_identificado", limites: {} };
   for (const cabecalho of ["x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens", "retry-after"]) {
     const valor = resp.headers?.get?.(cabecalho);
@@ -421,7 +421,7 @@ function diagnosticarLimiteProvedor(resp, corpoErro) {
   }
   diagnostico.medidas = [...mensagem.matchAll(/\b(\d[\d,]*)\s*(tokens?|bytes?|characters?)\b/gi)].slice(0, 8).map(([, quantidade, unidade]) => ({ quantidade: Number(quantidade.replace(/,/g, "")), unidade: unidade.toLowerCase() }));
   diagnostico.contexto = /context (?:length|window)|maximum context/i.test(mensagem);
-  if (resp.status === 413) {
+  if (resp.status === 413 || resp.status === 400) {
     diagnostico.mensagem = mensagemSeguraDoProvedor(mensagem);
     if (["tokens", "requests", "input_tokens", "output_tokens", "invalid_request_error", "rate_limit_error"].includes(erro.type)) diagnostico.tipo = erro.type;
     for (const campo of ["input_tokens", "output_tokens", "requested_tokens", "max_tokens", "limit", "requested", "max", "input", "output"]) {
@@ -491,6 +491,15 @@ async function chamarGroq(apiKey, mensagens, opts) {
       }
       const corpoErro = await resp.text();
       console.warn(`ia-edital: provedor respondeu HTTP ${resp.status}`);
+      if (resp.status === 400 && opts?.schema) {
+        const diagnostico = { ...diagnosticarLimiteProvedor(resp, corpoErro), parsing: "erro_schema_provedor" };
+        console.warn("ia-edital: erro do contrato estruturado", JSON.stringify(diagnostico));
+        let erro = {};
+        try { erro = JSON.parse(corpoErro)?.error || {}; } catch (_) { /* Sem conteúdo estruturado para inspeção. */ }
+        // Evidência apenas no job privado; não integra erro público nem logs.
+        const texto = JSON.stringify(Object.fromEntries(["message", "code", "type", "failed_generation"].filter((campo) => typeof erro[campo] === "string").map((campo) => [campo, erro[campo]]))).slice(0, 32000);
+        return { ok: false, diagnostico, texto, erro: "O provedor não concluiu a resposta estruturada desta etapa. Tente novamente mais tarde." };
+      }
       if (resp.status === 429 || resp.status === 413) {
         const diagnostico = diagnosticarLimiteProvedor(resp, corpoErro);
         console.warn("ia-edital: limites do provedor", JSON.stringify(diagnostico));

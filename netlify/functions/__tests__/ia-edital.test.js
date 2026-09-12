@@ -246,3 +246,19 @@ test("token budget conta schema estrito além das mensagens", () => {
   assert.equal(tokensEntradaResumo(mensagens), 256 + tokenizer.encode(JSON.stringify(corpo), [], []).length);
   assert.ok(tokensEntradaResumo(mensagens) > 256 + tokenizer.encode(JSON.stringify(mensagens), [], []).length);
 });
+
+test("400 de schema preserva evidência privada sem vazar saída ou segredo nos logs", async () => {
+  const fetchAnterior = global.fetch, warnAnterior = console.warn; const logs = [];
+  global.fetch = async () => ({ ok: false, status: 400, text: async () => JSON.stringify({ error: { code: "json_validate_failed", type: "invalid_request_error", message: "Failed to generate JSON. gsk_segredo user@example.com", failed_generation: "texto público parcial do edital".repeat(2000) } }) });
+  console.warn = (...partes) => logs.push(partes.join(" "));
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Fonte oficial" }]);
+    assert.equal(resultado.ok, false); assert.equal(resultado.diagnostico.status, 400);
+    assert.equal(resultado.diagnostico.codigo, "json_validate_failed");
+    assert.equal(resultado.diagnostico.parsing, "erro_schema_provedor");
+    assert.match(resultado.texto, /texto público parcial/);
+    assert.equal(resultado.texto.length, 32000);
+    assert.doesNotMatch(logs.join(" "), /gsk_segredo|user@example.com|texto público parcial/);
+    assert.doesNotMatch(resultado.erro, /gsk_segredo|user@example.com|texto público parcial/);
+  } finally { global.fetch = fetchAnterior; console.warn = warnAnterior; }
+});
