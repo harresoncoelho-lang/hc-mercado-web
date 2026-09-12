@@ -57,10 +57,10 @@ test("consulta o cache antes de consumir a cota de IA", () => {
   assert.ok(fonte.indexOf('storeResumos.get(edital.numeroControlePNCP') < fonte.indexOf('verificarLimiteDiario(sessao.userId, "ia-edital", 40)'));
 });
 
-test("síntese longa valida interface sem ferramentas antes de encaminhar a fonte integral", async () => {
+test("síntese longa usa o modelo direto sem probe de ferramentas", async () => {
   const fetchOriginal = global.fetch;
   const chamadas = [];
-  const fonte = "Fonte oficial extensa. ".repeat(2000);
+  const fonte = "Fonte oficial extensa. ".repeat(200);
   global.fetch = async (_url, opcoes) => {
     const corpo = JSON.parse(opcoes.body); chamadas.push(corpo);
     return { ok: true, json: async () => ({ choices: [{ message: { content: chamadas.length === 1 ? '{"ok":true}' : '{"resumoGeral":"Síntese"}' } }] }) };
@@ -68,14 +68,14 @@ test("síntese longa valida interface sem ferramentas antes de encaminhar a font
   try {
     const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: fonte }]);
     assert.equal(resultado.ok, true);
-    assert.equal(chamadas.length, 2);
-    assert.ok(!chamadas[0].messages[0].content.includes(fonte));
-    assert.equal(chamadas[1].messages[0].content, fonte);
+    assert.equal(chamadas.length, 1);
+    assert.equal(chamadas[0].messages[0].content, fonte);
     for (const chamada of chamadas) {
-      assert.equal(chamada.model, "groq/compound-mini");
-      assert.deepEqual(chamada.compound_custom, { tools: { enabled_tools: [] } });
-      assert.equal(chamada.tool_choice, "none");
-      assert.equal(chamada.reasoning_effort, undefined);
+      assert.equal(chamada.model, "openai/gpt-oss-20b");
+      assert.equal(chamada.compound_custom, undefined);
+      assert.equal(chamada.tool_choice, undefined);
+      assert.equal(chamada.max_tokens, 2200);
+      assert.equal(chamada.reasoning_effort, "low");
     }
   } finally { global.fetch = fetchOriginal; }
 });
@@ -85,7 +85,7 @@ test("não envia fonte se o provedor rejeitar a desativação de ferramentas", a
   let chamadas = 0;
   global.fetch = async () => { chamadas++; return { ok: false, status: 400, text: async () => '{"error":{"message":"unsupported parameter"}}' }; };
   try {
-    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Fonte. ".repeat(2000) }]);
+    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Fonte. ".repeat(200) }]);
     assert.equal(resultado.ok, false);
     assert.equal(chamadas, 1);
   } finally { global.fetch = fetchOriginal; }
@@ -95,7 +95,7 @@ test("rejeita resposta do sistema longo que informe ferramentas executadas", asy
   const fetchOriginal = global.fetch;
   global.fetch = async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: '{"ok":true}', executed_tools: [{ type: "web_search" }] } }] }) });
   try {
-    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Fonte. ".repeat(2000) }]);
+    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Fonte. ".repeat(200) }]);
     assert.equal(resultado.ok, false);
     assert.match(resultado.erro, /ferramentas/);
   } finally { global.fetch = fetchOriginal; }
@@ -169,4 +169,13 @@ test("remove combinações artificiais de certidões antes de exibir o dossiê",
     "Certidão negativa de débitos federais",
     "Certidão negativa de débitos trabalhistas",
   ]);
+});
+
+test("síntese rejeita entrada acima do orçamento antes de chamar provedor", async () => {
+  const anterior = global.fetch; let chamadas = 0;
+  global.fetch = async () => { chamadas++; throw new Error("Não deve chamar"); };
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Habilitação e condições. ".repeat(10000) }]);
+    assert.equal(resultado.ok, false); assert.equal(chamadas, 0); assert.match(resultado.erro, /orçamento/);
+  } finally { global.fetch = anterior; }
 });

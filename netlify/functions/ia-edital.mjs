@@ -5,6 +5,8 @@ import "@netlify/blobs";
 import "pdf-parse";
 import "adm-zip";
 import "mammoth";
+import "js-tiktoken/lite";
+import "js-tiktoken/ranks/o200k_base";
 import resumo from "./lib/ia-edital.js";
 
 // O runtime moderno fornece o contexto Blobs completo, incluindo o endpoint

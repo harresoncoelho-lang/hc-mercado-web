@@ -221,3 +221,35 @@ test("evidência de formato inválido fica só no job limitado e some após suce
   await executarEtapa({ ...args, agora: Date.now() + 66000, executar: async () => ({ estrutura: { resumoGeral: "Análise válida" } }) });
   assert.equal((await store.getWithMetadata()).data.ultimaRespostaNaoEstruturada, undefined);
 });
+
+test("vinte etapas e retry consomem uma cota por usuário no job", async () => {
+  const store = memoria(); let cotas = 0, tentativas = 0;
+  const opcoes = { store, chave: "cota", inicial: { texto: "fonte" }, usuario: "usuario-a",
+    dividir: () => Array(20).fill("página"), autorizar: async () => { cotas++; return { ok: true }; },
+    executar: async () => ++tentativas === 1 ? { erro: "Falha temporária" } : ({ estrutura: { resumoGeral: "fato" } }) };
+  let resultado;
+  for (let i = 0; i < 21; i++) resultado = await executarEtapa({ ...opcoes, agora: Date.now() + (i + 1) * 70000 });
+  assert.equal(cotas, 1); assert.equal(resultado.estado.resultados.length, 20);
+  assert.ok(resultado.estrutura);
+});
+
+test("quota negada não bloqueia outro usuário nem o robô", async () => {
+  const store = memoria(); let chamadas = 0;
+  const opcoes = { store, chave: "cota", inicial: { texto: "fonte" }, dividir: () => ["a", "b"],
+    executar: async () => { chamadas++; return { estrutura: { resumoGeral: "fato" } }; } };
+  const negado = await executarEtapa({ ...opcoes, usuario: "sem-cota", autorizar: async () => ({ ok: false, status: 429, erro: "cota" }) });
+  assert.equal(negado.status, 429); assert.equal(negado.estado.falhas, 0); assert.equal(chamadas, 0);
+  const robo = await executarEtapa({ ...opcoes, autorizar: async () => { throw new Error("Robô não consome cota"); } });
+  assert.equal(robo.estado.resultados.length, 1); assert.equal(chamadas, 1);
+});
+
+test("orçamento inclui instruções ficha catálogo e acentos sem perder páginas", () => {
+  const { tokensEntradaResumo, cabeResumo, mensagensDaEtapa, INSTRUCOES_ETAPA } = require("../lib/ia-edital").__test;
+  const paginas = Array.from({ length: 20 }, (_, i) => `[Página ${i + 1}]\n${"Habilitação e condições: órgão público. ".repeat(100)}\n`);
+  const texto = "--- Edital ---\n" + paginas.join("");
+  const mensagens = (bloco) => mensagensDaEtapa(INSTRUCOES_ETAPA, "Ficha oficial", "Catálogo", bloco);
+  const blocos = dividirFonte(texto, 45000, (bloco) => cabeResumo(mensagens(bloco)));
+  assert.ok(blocos.length > 1);
+  for (const bloco of blocos) assert.ok(tokensEntradaResumo(mensagens(bloco)) <= 5000);
+  for (const pagina of paginas) assert.equal(blocos.filter((bloco) => bloco.includes(pagina)).length, 1);
+});

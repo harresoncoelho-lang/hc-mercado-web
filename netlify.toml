@@ -46,3 +46,7 @@
   for = "/.netlify/functions/convenios-publico"
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
+
+# O pacote exporta ranks diferentes para import/require; o handler usa CommonJS.
+[functions."ia-edital"]
+  included_files = ["node_modules/js-tiktoken/dist/ranks/o200k_base.cjs"]

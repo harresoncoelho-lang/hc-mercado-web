@@ -25,7 +25,7 @@ function dividirSemPaginas(documento, limite, cabe = () => true) {
 function dividirFonte(texto, limite = 45000, cabeRequisicao = () => true) {
   const cabe = (valor) => valor.length <= limite && cabeRequisicao(valor);
   const blocos = [];
-  let documento = "", bloco = "", ultimaPagina = "";
+  let documento = "", bloco = "";
   const partes = texto.split(/(?=^--- .+ ---$)/m).flatMap((fonte) => /^\[Página \d+\]$/m.test(fonte)
     ? fonte.split(/(?=^--- .+ ---$|^\[Página \d+\]$)/m)
     : dividirSemPaginas(fonte, limite - (fonte.match(/^--- .+ ---$/m)?.[0].length || 0) - 1, (parte) => cabe(`${fonte.match(/^--- .+ ---$/m)?.[0] || ""}\n${parte}`)));
@@ -35,11 +35,8 @@ function dividirFonte(texto, limite = 45000, cabeRequisicao = () => true) {
     if (!cabe(`${documento}\n${parte}`)) throw new Error("Uma página excede o limite de análise por etapa. É necessário dividir o documento na origem.");
     if (bloco && !cabe(bloco + parte)) {
       blocos.push(bloco); bloco = documento ? `${documento}\n` : "";
-      if (cabe(bloco + ultimaPagina + parte)) bloco += ultimaPagina;
     }
     bloco += parte;
-    if (/^\[Página \d+\]/.test(parte)) ultimaPagina = parte;
-    if (marcador) ultimaPagina = "";
   }
   if (bloco) blocos.push(bloco);
   return blocos;
@@ -103,7 +100,7 @@ function respostaProgresso(estado, agora = Date.now()) {
   }, resposta: `Análise dos documentos: ${estado.resultados.length} de ${estado.blocos.length} etapas concluídas.`, estrutura: null, fonteLida: true, erro: null };
 }
 
-async function executarEtapa({ store, chave, inicial, executar, dividir = dividirFonte, retomar = false, agora = Date.now() }) {
+async function executarEtapa({ store, chave, inicial, executar, usuario, autorizar, dividir = dividirFonte, retomar = false, agora = Date.now() }) {
   const lerVencedor = async () => {
     const vencedor = (await store.getWithMetadata(chave, { type: "json", consistency: "strong" }))?.data;
     if (!vencedor) throw new Error("Estado da análise indisponível.");
@@ -133,7 +130,7 @@ async function executarEtapa({ store, chave, inicial, executar, dividir = dividi
   // consumir simultaneamente a mesma etapa; a reserva expira após uma interrupção.
   const disponibilidadeAnterior = estado.proximaEtapaEm;
   estado.proximaEtapaEm = agora + INTERVALO_ETAPAS_MS;
-  const reserva = await store.setJSON(chave, estado, { onlyIfMatch: registro.etag });
+  let reserva = await store.setJSON(chave, estado, { onlyIfMatch: registro.etag });
   if (!reserva.modified) return lerVencedor();
   if (!reserva.etag) throw new Error("Reserva sem identificador de versão.");
   if (estado.diagnostico?.status === 413 && estado.falhas > 0) {
@@ -142,6 +139,19 @@ async function executarEtapa({ store, chave, inicial, executar, dividir = dividi
     const ajuste = await store.setJSON(chave, estado, { onlyIfMatch: reserva.etag });
     if (!ajuste.modified) return lerVencedor();
     return estado.falhas >= 3 ? { falhou: true, erro: estado.ultimoErro, estado } : { pendente: respostaProgresso(estado), estado };
+  }
+  if (usuario && !(estado.usuariosComCota || []).includes(usuario)) {
+    const cota = await autorizar();
+    if (!cota.ok) {
+      estado.proximaEtapaEm = disponibilidadeAnterior;
+      await store.setJSON(chave, estado, { onlyIfMatch: reserva.etag });
+      return { falhou: true, erro: cota.erro, status: cota.status, estado };
+    }
+    // Persiste a cobrança antes da IA: retry e etapas seguintes usam a mesma cota.
+    estado.usuariosComCota = [...(estado.usuariosComCota || []), usuario];
+    reserva = await store.setJSON(chave, estado, { onlyIfMatch: reserva.etag });
+    if (!reserva.modified) return lerVencedor();
+    if (!reserva.etag) throw new Error("Cota sem identificador de versão.");
   }
   const resposta = await executar(estado.blocos[estado.resultados.length], estado.resultados.length);
   if (resposta.quota) {
