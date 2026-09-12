@@ -1,3 +1,4 @@
+// Handler compartilhado pelo endpoint moderno ia-edital.mjs e pelos testes.
 // Netlify Function: Resumo do Edital + Pergunte ao Edital (Fase 1 do roadmap de novas
 // ferramentas, inspirado no ConLicitação).
 //
@@ -30,8 +31,8 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
 const MAX_CARACTERES_TEXTO = 600000;
-const { complementarRequisitos, selecionarContexto, prepararContextoResumo } = require("./_edital_operacional");
-const { executarEtapa, respostaProgresso } = require("./_resumo_progressivo");
+const { complementarRequisitos, selecionarContexto, prepararContextoResumo } = require("../_edital_operacional");
+const { executarEtapa, respostaProgresso } = require("../_resumo_progressivo");
 // A Function tem uma janela de execução menor que a soma de vários downloads de
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
@@ -43,7 +44,7 @@ const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 const VERSAO_RESUMO = 13;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
-const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
 // navegador. Manda em todo fetch pro PNCP por segurança.
@@ -718,7 +719,7 @@ async function salvarContingenciaNoCache(store, edital, corpo) {
 
 exports.handler = async (event) => {
   const headers = cabecalhosPadrao(event);
-  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
+  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: JSON.stringify({ erro: "Use POST." }) };
 
   // O coletor agendado usa a mesma análise que o cliente, mas não possui uma sessão
@@ -770,6 +771,7 @@ exports.handler = async (event) => {
     const { getStore } = require("@netlify/blobs");
     storeResumos = getStore({ name: "resumos-editais", consistency: "strong" });
   } catch (e) {
+    console.warn("ia-edital: armazenamento não inicializado", e?.name === "MissingBlobsEnvironmentError" ? "ambiente_blobs_ausente" : "erro_inicializacao");
     storeResumos = null; // sem cache disponível — segue funcionando normalmente, só mais devagar
   }
 
@@ -859,7 +861,9 @@ exports.handler = async (event) => {
   // resumo genérico baseado nos mesmos campos que já estão na tela.
   // O orçamento do robô é controlado pelo próprio job (quantidade máxima por execução).
   // Não mistura esse processamento de base com a cota diária individual dos clientes.
-  const usarEtapas = modo === "resumo" && textoEdital?.length > 45000 && Boolean(storeResumos && edital.numeroControlePNCP && process.env.GROQ_API_KEY);
+  const precisaEtapas = modo === "resumo" && textoEdital?.length > 45000 && Boolean(edital.numeroControlePNCP && process.env.GROQ_API_KEY);
+  if (precisaEtapas && !storeResumos) return { statusCode: 503, headers, body: JSON.stringify({ erro: "O armazenamento das etapas não está disponível. A análise longa não foi iniciada; tente novamente mais tarde." }) };
+  const usarEtapas = precisaEtapas && Boolean(storeResumos);
   const limite = ehRoboInterno || usarEtapas ? { ok: true } : await verificarLimiteDiario(sessao.userId, "ia-edital", 40);
   if (!limite.ok && modo === "resumo") {
     const contingencia = respostaDeContingencia(edital, "indisponivel", limite.erro);

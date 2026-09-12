@@ -124,7 +124,7 @@ a) Licitantes Cadastrados: a proposta de preço reformulada na forma do item 6 d
 });
 
 test("horário de abertura não é substituído pelo limite de envio das propostas", () => {
-  const { aplicarCamposOperacionaisDoTexto } = require("../ia-edital").__test;
+  const { aplicarCamposOperacionaisDoTexto } = require("../lib/ia-edital").__test;
   const estrutura = { sessaoPublica: { horario: "09:15" } };
   aplicarCamposOperacionaisDoTexto(estrutura, "2.2. Limite para recebimento das propostas: dia 22/09/2026 às 09:15 horas.\n2.3. Início da sessão: dia 22/09/2026 às 09:30 horas.");
   assert.equal(estrutura.sessaoPublica.horario, "09:30");
@@ -156,7 +156,7 @@ test("leitura agrega edital e TR e sinaliza página com imagem em documento parc
     return { ok: true, arrayBuffer: async () => Buffer.from(`%PDF-${url.endsWith("/1") ? "1" : "2"}`) };
   };
   try {
-    const { buscarTextoEdital } = require("../ia-edital").__test;
+    const { buscarTextoEdital } = require("../lib/ia-edital").__test;
     const fonte = await buscarTextoEdital("12345678000199-1-000406/2026");
     assert.equal(chamadas.length, 3);
     assert.equal(fonte.coberturaLeitura.documentosLidos.length, 2);

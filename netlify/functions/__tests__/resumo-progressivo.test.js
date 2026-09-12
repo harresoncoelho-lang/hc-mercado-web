@@ -113,7 +113,7 @@ test("conclusão atrasada não sobrescreve nova reserva vencedora", async () => 
 });
 
 test("sanitização final conserva exigência do quinto bloco além dos limites antigos", () => {
-  const { sanitizarListasDoDossie } = require("../ia-edital").__test;
+  const { sanitizarListasDoDossie } = require("../lib/ia-edital").__test;
   const estruturas = Array.from({ length: 5 }, (_, bloco) => ({
     outrasInformacoesRelevantes: Array.from({ length: 4 }, (_, item) => `Exigência ${bloco * 4 + item}: documento obrigatório [TR, página ${bloco + 1}]`),
     pendenciasParaConferencia: Array.from({ length: 3 }, (_, item) => `Conferir condição ${bloco * 3 + item}`),

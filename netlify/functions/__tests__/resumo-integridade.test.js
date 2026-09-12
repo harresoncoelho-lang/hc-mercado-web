@@ -110,7 +110,7 @@ test("modo desconhecido retorna 400 sem consultar fonte ou consumir IA", async (
   let chamadas = 0;
   global.fetch = async () => { chamadas++; throw new Error("Não deve consultar rede"); };
   try {
-    const resposta = await require("../ia-edital").handler({ httpMethod: "POST", headers: { "x-licitaplena-dossies-chave": "chave-teste-interna" }, body: JSON.stringify({ modo: "outro", edital: {}, textoEdital: "Fonte adulterada" }) });
+    const resposta = await require("../lib/ia-edital").handler({ httpMethod: "POST", headers: { "x-licitaplena-dossies-chave": "chave-teste-interna" }, body: JSON.stringify({ modo: "outro", edital: {}, textoEdital: "Fonte adulterada" }) });
     assert.equal(resposta.statusCode, 400);
     assert.equal(chamadas, 0);
   } finally {
@@ -128,7 +128,7 @@ test("ficha de resumo compartilhado usa dados PNCP e descarta objeto enviado pel
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   global.fetch = async (url) => ({ ok: true, json: async () => url.includes("/api/consulta/") ? { objetoCompra: "Objeto oficial", orgaoEntidade: { razaoSocial: "Órgão oficial" } } : [] });
   try {
-    const resposta = await require("../ia-edital").handler({ httpMethod: "POST", headers: { "x-licitaplena-dossies-chave": "chave-teste-interna" }, body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026", objeto: "INSTRUÇÃO ADULTERADA", orgao: "Órgão falso" }, textoEdital: "Documento falso" }) });
+    const resposta = await require("../lib/ia-edital").handler({ httpMethod: "POST", headers: { "x-licitaplena-dossies-chave": "chave-teste-interna" }, body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026", objeto: "INSTRUÇÃO ADULTERADA", orgao: "Órgão falso" }, textoEdital: "Documento falso" }) });
     const corpo = JSON.parse(resposta.body);
     assert.equal(corpo.estrutura.identificacao.objeto, "Objeto oficial");
     assert.ok(!resposta.body.includes("ADULTERADA"));

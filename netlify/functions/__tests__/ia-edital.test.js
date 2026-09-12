@@ -2,12 +2,12 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 function carregarComModelo(modelo) {
-  const caminho = require.resolve("../ia-edital");
+  const caminho = require.resolve("../lib/ia-edital");
   const anterior = process.env.GROQ_MODEL;
   if (modelo) process.env.GROQ_MODEL = modelo;
   else delete process.env.GROQ_MODEL;
   delete require.cache[caminho];
-  const modulo = require("../ia-edital");
+  const modulo = require("../lib/ia-edital");
   if (anterior === undefined) delete process.env.GROQ_MODEL;
   else process.env.GROQ_MODEL = anterior;
   return modulo;
@@ -53,7 +53,7 @@ test("ia-edital troca automaticamente um modelo aposentado pelo modelo suportado
 
 test("consulta o cache antes de consumir a cota de IA", () => {
   const fs = require("node:fs");
-  const fonte = fs.readFileSync(require.resolve("../ia-edital"), "utf8");
+  const fonte = fs.readFileSync(require.resolve("../lib/ia-edital"), "utf8");
   assert.ok(fonte.indexOf('storeResumos.get(edital.numeroControlePNCP') < fonte.indexOf('verificarLimiteDiario(sessao.userId, "ia-edital", 40)'));
 });
 
