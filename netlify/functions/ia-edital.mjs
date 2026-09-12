@@ -1,4 +1,10 @@
 import { withLambda } from "@netlify/aws-lambda-compat";
+// Imports explícitos mantêm no pacote as dependências usadas pelos requires
+// opcionais do handler CommonJS, que o rastreador não encontra após a conversão.
+import "@netlify/blobs";
+import "pdf-parse";
+import "adm-zip";
+import "mammoth";
 import resumo from "./lib/ia-edital.js";
 
 // O runtime moderno fornece o contexto Blobs completo, incluindo o endpoint
