@@ -4,6 +4,9 @@
 const AdmZip = require("adm-zip");
 const { cabecalhosPadrao, exigirUsuarioLogado } = require("./_auth");
 
+
+const ResumoModelo = require("../../resumo-modelo");
+
 function responder(event, statusCode, corpo, extra = {}) {
   return { statusCode, headers: { ...cabecalhosPadrao(event), ...extra }, body: corpo };
 }
@@ -28,9 +31,6 @@ function util(valor) {
   return resultado && !/^(?:n[ãa]o (informado|localizado)|nenhum(?:a)?\b)/i.test(resultado) ? resultado : "";
 }
 
-function formatarDataHora(valor) {
-  return texto(valor).replace(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2})(?::\d{2})?)?$/, (_, ano, mes, dia, hora) => `${dia}/${mes}/${ano}${hora ? ` às ${hora}` : ""}`);
-}
 
 function podeGerarChecklist(resumo) {
   return resumo.fonteLida === true && ["documentosCredenciamento", "requisitosProposta", "documentosHabilitacao", "declaracoesExigidas"]
@@ -58,7 +58,7 @@ function paragrafo(conteudo, { negrito = false, tamanho = 21, cor = "17243A", an
 }
 
 function tituloSecao(titulo) {
-  return `<w:p><w:pPr><w:spacing w:before="240" w:after="90"/><w:shd w:val="clear" w:fill="EEF3F8"/><w:pBdr><w:left w:val="single" w:sz="18" w:space="8" w:color="1F75DF"/></w:pBdr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:b/><w:color w:val="193A63"/><w:sz w:val="22"/></w:rPr><w:t>${xml(titulo)}</w:t></w:r></w:p>`;
+  return `<w:p><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="90"/><w:shd w:val="clear" w:fill="EEF3F8"/><w:pBdr><w:left w:val="single" w:sz="18" w:space="8" w:color="1F75DF"/></w:pBdr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:b/><w:color w:val="193A63"/><w:sz w:val="22"/></w:rPr><w:t>${xml(titulo)}</w:t></w:r></w:p>`;
 }
 
 function linhaChecklist(textoLinha) {
@@ -76,25 +76,36 @@ function tabelaDados(linhas) {
 }
 
 function conteudoDocumento(edital, resumo) {
+  resumo = {
+    ...resumo,
+    identificacao: {
+      ...resumo.identificacao,
+      numero: util(resumo.identificacao?.numero) || util(edital?.numero) || util(edital?.numeroControlePNCP),
+      modalidade: util(resumo.identificacao?.modalidade) || util(edital?.modalidade),
+    },
+    orgao: { ...resumo.orgao, nome: util(resumo.orgao?.nome) || util(edital?.orgao) },
+    dadosOficiais: {
+      ...resumo.dadosOficiais,
+      publicacao: util(resumo.dadosOficiais?.publicacao) || util(edital?.publicacao),
+      inicioRecebimento: util(resumo.dadosOficiais?.inicioRecebimento) || util(edital?.inicioRecebimento),
+      prazoFinal: util(resumo.dadosOficiais?.prazoFinal) || util(edital?.encerramento),
+    },
+  };
   const identificacao = resumo.identificacao || {};
-  const sessao = resumo.sessaoPublica || {};
-  const detalhes = resumo.detalhes || {};
-  const orgao = resumo.orgao || {};
   const numero = util(identificacao.numero) || util(edital.numero) || util(edital.numeroControlePNCP) || "Não informado";
   const rotuloNumero = /^\d{14}-\d-\d+\/\d{4}$/.test(numero) ? "Controle PNCP" : "Número da licitação";
   const objeto = util(identificacao.objeto) || util(edital.objeto) || "Não informado";
-  const documentos = Array.isArray(resumo.documentosHabilitacao) ? resumo.documentosHabilitacao.map(util).filter(Boolean) : [];
-  const credenciamento = Array.isArray(resumo.documentosCredenciamento) ? resumo.documentosCredenciamento.map(util).filter(Boolean) : [];
-  const proposta = Array.isArray(resumo.requisitosProposta) ? resumo.requisitosProposta.map(util).filter(Boolean) : [];
-  const declaracoes = Array.isArray(resumo.declaracoesExigidas) ? resumo.declaracoesExigidas.map(util).filter(Boolean) : [];
-  const pendencias = Array.isArray(resumo.pendenciasParaConferencia) ? resumo.pendenciasParaConferencia.map(util).filter(Boolean) : [];
   const dataEmissao = new Date().toLocaleDateString("pt-BR");
   const cabecalho = `<w:tbl><w:tblPr><w:tblW w:w="9120" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="single" w:sz="18" w:color="1F75DF"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="6500"/><w:gridCol w:w="2620"/></w:tblGrid><w:tr><w:tc>${paragrafo("LicitaPlena", { negrito: true, tamanho: 34, cor: "102D56", depois: 120 })}</w:tc><w:tc>${paragrafo("Checklist operacional", { tamanho: 17, cor: "637085", depois: 20, alinhamento: "right" })}${paragrafo(`Emitido em ${dataEmissao}`, { tamanho: 16, cor: "637085", depois: 120, alinhamento: "right" })}</w:tc></w:tr></w:tbl>`;
   const destaque = `<w:tbl><w:tblPr><w:tblW w:w="9120" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="DCE5EF"/><w:left w:val="single" w:sz="4" w:color="DCE5EF"/><w:bottom w:val="single" w:sz="4" w:color="DCE5EF"/><w:right w:val="single" w:sz="4" w:color="DCE5EF"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:shd w:val="clear" w:fill="F3F7FC"/></w:tblPr><w:tblGrid><w:gridCol w:w="9120"/></w:tblGrid><w:tr><w:tc>${paragrafo("Objeto", { negrito: true, tamanho: 17, cor: "637085", antes: 110, depois: 30 })}${paragrafo(objeto, { negrito: true, tamanho: 24, cor: "132F56", depois: 110 })}</w:tc></w:tr></w:tbl>`;
-  const dadosBasicos = tabelaDados([[rotuloNumero, numero], ["Órgão", orgao.nome || edital.orgao], ["Modalidade", identificacao.modalidade || edital.modalidade], ["Data e horário da sessão", [util(sessao.data), util(sessao.horario)].filter(Boolean).join(" às ")], ["Prazo final de propostas", formatarDataHora(edital.encerramento || resumo.prazos?.limiteEnvioPropostas)], ["Critério de julgamento", detalhes.criterioJulgamento], ["Regime de execução", detalhes.regimeExecucao || edital.regimeExecucao]]);
-  const condicoes = tabelaDados([["Prazo de entrega", detalhes.prazoEntrega], ["Condições da entrega", resumo.entregaExecucao?.condicoes], ["Subcontratação", resumo.analiseCritica?.permiteSubcontratacao], ["Validade da proposta", resumo.criteriosProposta?.validadeProposta], ["Condições de pagamento", resumo.condicoesPagamento], ["Garantia de proposta", resumo.garantias?.proposta], ["Garantia contratual", resumo.garantias?.contrato], ["Legislação e base legal", resumo.legislacao]]);
-  const listaComFallback = (titulo, itens, fallback) => `${tituloSecao(titulo)}${itens.length ? itens.map(linhaChecklist).join("") : paragrafo(fallback, { tamanho: 19, cor: "637085" })}`;
-  return `${cabecalho}${paragrafo("Checklist de Licitação", { negrito: true, tamanho: 36, cor: "102D56", antes: 280, depois: 45 })}${paragrafo(`${rotuloNumero}: ${numero}`, { tamanho: 20, cor: "637085", depois: 180 })}${destaque}${tituloSecao("Cobertura da leitura")}${paragrafo(coberturaDocumento(resumo), { tamanho: 20, cor: "637085" })}${tituloSecao("Identificação e prazos")}${dadosBasicos}${listaComFallback("Credenciamento e participação", credenciamento, "Nenhum requisito de credenciamento foi identificado no material lido; isso não confirma dispensa.")}${listaComFallback("Preparação e envio da proposta", proposta, "Nenhum requisito de proposta foi identificado no material lido; confira o edital.")}${listaComFallback("Documentos de habilitação", documentos, "Nenhum documento específico foi identificado no material analisado. Confira o edital oficial.")}${condicoes ? tituloSecao("Condições comerciais e operacionais") + condicoes : ""}${listaComFallback("Declarações e formulários", declaracoes, "Nenhuma declaração específica foi identificada no material analisado.")}${listaComFallback("Pontos para conferir antes da proposta", pendencias, "Revise o edital, os anexos e o termo de referência antes de apresentar a proposta.")}${util(resumo.anexosDeclaracoes) ? tituloSecao("Anexos e modelos citados") + paragrafo(util(resumo.anexosDeclaracoes)) : ""}${(Array.isArray(resumo.outrasInformacoesRelevantes) && resumo.outrasInformacoesRelevantes.length ? tituloSecao("Informações operacionais complementares") + resumo.outrasInformacoesRelevantes.map(item => paragrafo(util(item))).join("") : "") + tituloSecao("Síntese do edital")}${paragrafo(util(resumo.resumoGeral) || "O resumo completo não está disponível. Consulte o edital e seus anexos oficiais.", { tamanho: 20, depois: 180 })}${paragrafo("Documento gerado pelo LicitaPlena como apoio operacional. Confirme sempre o edital e os anexos oficiais antes de decidir.", { tamanho: 16, cor: "637085", antes: 180, depois: 0 })}`;
+  const modelo = ResumoModelo.montar(resumo, edital, resumo.consideracoes);
+  const secoes = modelo.secoes.map(secao => {
+    const campos = secao.campos.map(campo => Array.isArray(campo.valor)
+      ? paragrafo(campo.rotulo, { negrito: true }) + campo.valor.map(linhaChecklist).join("")
+      : tabelaDados([[campo.rotulo, campo.valor]])).join("");
+    return tituloSecao(secao.titulo) + (campos || paragrafo("Não informado", { cor: "637085" }));
+  }).join("");
+  return `${cabecalho}${paragrafo("Resumo do Edital", {negrito:true,tamanho:36,antes:240})}${paragrafo(`${rotuloNumero}: ${numero}`)}${destaque}${paragrafo(coberturaDocumento(resumo), {cor:"637085",tamanho:18})}${secoes}${paragrafo("Resumo elaborado pelo LicitaPlena com base nos documentos disponíveis. Confira as referências e pendências indicadas.", {tamanho:16,cor:"637085"})}`;
 }
 
 function montarDocx(edital, resumo) {

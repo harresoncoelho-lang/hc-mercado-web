@@ -69,7 +69,7 @@ test("organiza o e-mail por seções quando recebe o resumo estruturado", () => 
   assert.match(html, /Itens da oportunidade \(1\)/);
   assert.match(html, /Papel A4/);
   assert.match(html, /Pregão Eletrônico/);
-  assert.match(html, /Dados oficiais da publicação/);
+  assert.match(html, /Publicado em/);
   assert.match(html, /08\/09\/2026 às 10:36/);
   assert.doesNotMatch(html, />Resumo simples</);
 });

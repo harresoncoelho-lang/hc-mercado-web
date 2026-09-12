@@ -14,13 +14,13 @@ test("adaptador preserva preflight 204 sem corpo e cabeçalhos CORS", async () =
   assert.match(resposta.headers.get("access-control-allow-methods"), /POST/);
 });
 
-test("endpoint entrega dossiê documental imediato sem IA mesmo com armazenamento indisponível", async () => {
+test("endpoint entrega ficha sem armazenamento e inicia síntese retomável com armazenamento", async () => {
   const originalFetch = global.fetch;
   const variaveis = ["GROQ_API_KEY", "DOSSIES_EDITAIS_CHAVE", "NETLIFY_BLOBS_CONTEXT", "SUPABASE_SERVICE_ROLE_KEY"];
   const anteriores = Object.fromEntries(variaveis.map((chave) => [chave, process.env[chave]]));
   const caminhoPdf = require.resolve("pdf-parse"), pdfOriginal = require.cache[caminhoPdf];
   const texto = process.env.QA_FONTE_REAL ? JSON.parse(fs.readFileSync(process.env.QA_FONTE_REAL, "utf8")).texto
-    : Array.from({ length: 8 }, (_, i) => `[Página ${i + 1}]\n7. HABILITAÇÃO\n7.1. ${"Apresentar os documentos com condições expressas. ".repeat(180)}\n`).join("");
+    : Array.from({ length: 8 }, (_, i) => `[Página ${i + 1}]\n7. HABILITAÇÃO\n7.1. Apresentar certidão de regularidade fiscal em 3 dias se solicitado.\n`).join("");
   require.cache[caminhoPdf] = { exports: async () => ({ text: texto, numpages: 8 }) };
   process.env.GROQ_API_KEY = "chave-teste";
   process.env.DOSSIES_EDITAIS_CHAVE = "robo-teste";
@@ -58,23 +58,27 @@ test("endpoint entrega dossiê documental imediato sem IA mesmo com armazenament
     const modulo = await import(pathToFileURL(require.resolve("../ia-edital.mjs")).href);
     const solicitar = () => modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", {
       method: "POST", headers: { "content-type": "application/json", authorization: "Bearer usuario-teste" },
-      body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026" } }),
+      body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026", objeto: "OBJETO ADULTERADO", orgao: "ORGAO ADULTERADO" } }),
     }), { requestId: "qa-runtime" });
     const primeira = await solicitar();
     assert.equal(primeira.status, 200);
     const dossie = await primeira.json();
-    assert.ok(dossie.estrutura.documentosHabilitacao.length);
+    assert.equal(dossie.modoDegradado, true);
+    assert.equal(dossie.estrutura.documentosHabilitacao.length, 0);
     assert.equal(dossie.metodoResumo, "documentos");
+    assert.doesNotMatch(JSON.stringify(dossie.estrutura), /ADULTERADO/);
+    const ttl = Date.parse(dossie.expiraEm) - Date.parse(dossie.geradoEm);
+    assert.ok(ttl >= 15 * 60 * 1000 && ttl <= 15 * 60 * 1000 + 100, `TTL inesperado: ${ttl}`);
     assert.equal(chamadasIA.length, 0);
     process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ siteID: "site-teste", token: "token-escopo-blobs", edgeURL: "https://blobs-teste.invalid/", uncachedEdgeURL: "https://blobs-forte-teste.invalid/" })).toString("base64");
     usarFonteSalva = true;
     const comFonteSalva = await solicitar();
-    assert.equal(comFonteSalva.status, 200);
+    assert.equal(comFonteSalva.status, 202);
     const salva = await comFonteSalva.json();
-    assert.equal(salva.estrutura.coberturaLeitura.parcial, true);
+    assert.equal(salva.emProcessamento, true);
     assert.doesNotMatch(JSON.stringify(salva.estrutura), /INVENTADO/);
-    assert.ok([...blobs.values()].some(item => item.dado.versao === 15));
-    assert.equal(chamadasIA.length, 0);
+    assert.ok([...blobs.values()].some(item => item.dado.hashFonte));
+    assert.equal(chamadasIA.length, 1);
     assert.ok(rotasBlob.filter(rota => rota.metodo === "get").every(rota => rota.url.startsWith("https://blobs-forte-teste.invalid/")));
   } finally {
     global.fetch = originalFetch;
