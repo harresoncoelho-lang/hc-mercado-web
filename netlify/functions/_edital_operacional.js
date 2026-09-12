@@ -16,7 +16,7 @@ function categoriaSecao(titulo) {
   return null;
 }
 
-function extrairRequisitosOperacionais(texto) {
+function extrairRequisitosOperacionais(texto, identidadeLegada = false) {
   const resultado = { documentosHabilitacao: [], documentosCredenciamento: [], requisitosProposta: [], declaracoesExigidas: [] };
   let documento = "Documento oficial", pagina = "", categoria = null, raiz = "", bloco = null;
   const guardar = () => {
@@ -25,6 +25,7 @@ function extrairRequisitosOperacionais(texto) {
     if (!bloco.categoria && /dever[aá]|dever[aã]o|exigid|apresenta[cç][aã]o|obrigat/i.test(conteudo)) {
       if (/declara[cç][aã]o|declara[cç][oõ]es/i.test(conteudo)) bloco.categoria = "declaracoesExigidas";
       else if (/ficha t[eé]cnica|cat[aá]logo|amostra|proposta reformulada|documentos de habilita[cç][aã]o/i.test(conteudo)) bloco.categoria = "requisitosProposta";
+      else if (!identidadeLegada && /dilig[eê]ncia/i.test(conteudo) && /dever[aá] ser atendida/i.test(conteudo)) bloco.categoria = "requisitosProposta";
     }
     if (!bloco.categoria) return;
     if (conteudo.length < 6) return;
@@ -37,7 +38,7 @@ function extrairRequisitosOperacionais(texto) {
     if (doc) { guardar(); bloco = null; documento = doc[1]; categoria = null; raiz = ""; continue; }
     const pg = linha.match(/^\[Página (\d+)\]$/);
     if (pg) { pagina = pg[1]; continue; }
-    const tituloSemNumero = linha.length < 100 && /^(Habilita[cç][aã]o|Qualifica[cç][aã]o|Regularidade fiscal|Credenciamento|Documentos de habilita[cç][aã]o|Declara[cç][oõ]es exigidas)/i.test(linha) && !/[.;]$/.test(linha);
+    const tituloSemNumero = identidadeLegada ? linha.length < 100 && /^(Habilita[cç][aã]o|Qualifica[cç][aã]o|Regularidade fiscal|Credenciamento|Documentos de habilita[cç][aã]o|Declara[cç][oõ]es exigidas)/i.test(linha) && !/[.;]$/.test(linha) : /^(?:Habilita[cç][aã]o(?:\s+(?:Jur[ií]dica|T[eé]cnica|Econ[oô]mico\s*[-–]?\s*Financeira))?|Qualifica[cç][aã]o(?:\s+(?:T[eé]cnica|Econ[oô]mico\s*[-–]?\s*Financeira))?|Regularidade fiscal(?:,\s*social)?(?:\s+e\s+trabalhista)?|Credenciamento|Documentos de habilita[cç][aã]o|Declara[cç][oõ]es exigidas)\s*:?$/i.test(linha);
     if (tituloSemNumero && categoriaSecao(linha)) {
       guardar(); bloco = null; categoria = categoriaSecao(linha); raiz = ""; continue;
     }
@@ -112,10 +113,28 @@ function selecionarAcoesChecklist(requisitos) {
 
 function catalogarRequisitos(texto) {
   const requisitos = selecionarAcoesChecklist(extrairRequisitosOperacionais(texto));
-  let sequencia = 0;
-  return Object.entries(requisitos).flatMap(([categoria, itens]) => itens.map((textoItem) => ({
-    id: `R${String(++sequencia).padStart(4, "0")}`, categoria, texto: textoItem,
-  })));
+  // Jobs já anotados usam a numeração anterior. O parser legado fornece somente
+  // identidades: seu conteúdo truncado nunca volta ao checklist. IDs removidos
+  // ficam reservados; uma origem ambígua recebe um ID novo, sem herdar sínteses.
+  const legado = Object.values(selecionarAcoesChecklist(extrairRequisitosOperacionais(texto, true))).flat();
+  const origem = (item) => JSON.stringify([
+    item.match(/\[[^\]]+\]/)?.[0] || "",
+    item.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])\s/)?.[1] || item,
+  ]);
+  const anteriores = new Map();
+  legado.forEach((item, indice) => {
+    const chave = origem(item);
+    anteriores.set(chave, anteriores.has(chave) ? null : indice + 1);
+  });
+  const atuais = Object.entries(requisitos).flatMap(([categoria, itens]) => itens.map((textoItem) => ({ categoria, texto: textoItem })));
+  const contagens = new Map();
+  for (const item of atuais) contagens.set(origem(item.texto), (contagens.get(origem(item.texto)) || 0) + 1);
+  let sequencia = legado.length;
+  return atuais.map((item) => {
+    const chave = origem(item.texto);
+    const numero = contagens.get(chave) === 1 && anteriores.get(chave) || ++sequencia;
+    return { id: `R${String(numero).padStart(4, "0")}`, ...item };
+  });
 }
 
 function marcarRequisitosNaFonte(texto) {
@@ -213,6 +232,13 @@ function complementarRequisitos(estrutura, texto) {
     else estrutura[chave] = [];
   }
   estrutura.coberturaSintese = { requisitosIdentificados: catalogo.length, requisitosSintetizados: sintetizados, requisitosComplementados: catalogo.length - sintetizados };
+  const quantitativos = catalogo.filter((item) => item.categoria === "documentosHabilitacao" && /forneceu|fornecido/i.test(item.texto))
+    .flatMap((item) => [...item.texto.matchAll(/(\d+(?:[.,]\d+)?)\s*%\s+das\s+quantidades/gi)].map((m) => ({ percentual: m[1], fonte: item.texto })));
+  if (new Set(quantitativos.map((item) => item.percentual)).size > 1) {
+    const referencias = quantitativos.map((item) => `${item.percentual}% — ${item.fonte.match(/\[[^\]]+\]/)?.[0] || "fonte extraída"}, cláusula ${item.fonte.match(/^\d+(?:\.\d+)*/)?.[0] || "sem número"}`);
+    estrutura.pendenciasParaConferencia = [...(estrutura.pendenciasParaConferencia || []),
+      `Possível divergência nos quantitativos de fornecimento anterior para habilitação: ${referencias.join("; ")}. Conferir o alcance das cláusulas e esclarecer com o órgão antes de adotar um percentual. Ambos os requisitos foram preservados.`];
+  }
   const faltantes = Object.keys(requisitos).filter((chave) => !requisitos[chave].length);
   if (faltantes.length) {
     estrutura.pendenciasParaConferencia = [...(estrutura.pendenciasParaConferencia || []),

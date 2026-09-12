@@ -2,6 +2,67 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto } = require("../_edital_operacional");
 
+test("continuações de habilitação preservam regularização, alcance do CRC e percentual do TR", () => {
+  const fonte = `--- Edital (#2) ---
+[Página 7]
+7. DA HABILITAÇÃO
+7.1. b) as CADASTRADAS terão sua habilitação verificada pelo pregoeiro, em relação à
+habilitação jurídica, à regularidade fiscal, social e trabalhista, devendo apresentar, quando
+[Página 8]
+convocadas, os documentos de habilitação econômica e técnica e o CRC.
+[Página 9]
+7.1.2.8. Em sendo o licitante detentor do menor preço qualificado como Microempresa(s)
+e/ou Empresa(s) de Pequeno Porte este deverá apresentar a documentação exigida para
+efeito de comprovação de regularidade social e se houver alguma restrição quanto à
+regularidade fiscal e trabalhista, será obrigatória a sua regularização e apresentação das
+referidas certidões para a assinatura contratual.
+[Página 11]
+7.1.4.1.1. O documento deverá certificar que o licitante já forneceu pelo menos 10% das quantidades e prazos descritos na proposta.
+7.1.5.2. O Certificado de Registro Cadastral – CRC, emitido pelo CSC, que deverá ser
+apresentado pelo licitante, substitui as seguintes documentações: habilitação jurídica,
+regularidade fiscal, social e trabalhista, exceto a habilitação econômico-financeira e a
+habilitação técnica. A aceitação do CRC ficará sujeita à confirmação de sua validade.
+--- Termo de Referência (#3) ---
+[Página 23]
+23. DA QUALIFICAÇÃO TÉCNICA
+23.2. Com a finalidade de tornar objetivo o julgamento da documentação de
+qualificação técnica, considera(m)-se compatível(eis) o(s) documento(s) que
+expressamente certifique(m) que o proponente já forneceu pelo menos 50% das
+quantidades estimadas neste Termo de Referência.`;
+  const final = complementarRequisitos({}, fonte);
+  const itens = final.documentosHabilitacao.join("\n");
+  assert.match(itens, /quando convocadas, os documentos/);
+  assert.match(itens, /restrição quanto à regularidade fiscal e trabalhista.*assinatura contratual/);
+  assert.match(itens, /habilitação jurídica, regularidade fiscal, social e trabalhista, exceto/);
+  assert.match(itens, /10% das quantidades e prazos/);
+  assert.match(itens, /50% das quantidades estimadas/);
+  assert.match(final.pendenciasParaConferencia.join("\n"), /Possível divergência.*10%.*Edital.*50%.*Termo de Referência/);
+});
+
+test("registro legado conserva IDs por origem e não transfere IDs removidos ou ambíguos", () => {
+  const { catalogarRequisitos } = require("../_edital_operacional");
+  const fonte = `--- Documento A ---
+[Página 1]
+7. DA HABILITAÇÃO
+7.1. Apresentar certidão com alcance de
+regularidade fiscal e trabalhista, para assinatura
+11.1. Apresentar comprovante sem categoria operacional.
+--- Documento B ---
+[Página 1]
+7. DA HABILITAÇÃO
+7.1. Apresentar certidão de falência.
+7.2. Apresentar atestado de capacidade técnica.`;
+  const catalogo = catalogarRequisitos(fonte);
+  assert.equal(catalogo.find((x) => x.texto.includes("Documento A")).id, "R0001");
+  assert.equal(catalogo.find((x) => x.texto.includes("falência")).id, "R0003");
+  assert.equal(catalogo.find((x) => x.texto.includes("atestado")).id, "R0004");
+  assert.ok(!catalogo.some((x) => x.id === "R0002"));
+  const final = complementarRequisitos({ documentosHabilitacao: ["Apresentar documento inventado [R0002]"] }, fonte);
+  assert.ok(!final.documentosHabilitacao.some((x) => x.includes("inventado")));
+  const ambiguo = catalogarRequisitos(`--- Documento A ---\n[Página 1]\n7. HABILITAÇÃO\n7.1. Apresentar certidão fiscal.\n7.1. Apresentar certidão trabalhista.`);
+  assert.deepEqual(ambiguo.map((x) => x.id), ["R0003", "R0004"]);
+});
+
 // Recortes do PE 406/2026 CSC/IDAM, com as cláusulas operacionais após a antiga
 // janela de 22 mil caracteres. As referências legais ficam no meio das linhas.
 const edital = `--- Edital PE 406/2026 ---
