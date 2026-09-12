@@ -3,7 +3,7 @@
 // Env obrigatórias: DOSSIES_EDITAIS_CHAVE.
 // Env opcionais: LICITAPLENA_URL (https://licitaplena.com.br), MAX_DOSSIES_POR_EXECUCAO (12),
 // DIAS_PUBLICACAO_DOSSIE (3), CONCORRENCIA_DOSSIES (2), SUPABASE_SERVICE_ROLE_KEY,
-// VERSAO_DOSSIE (11) e REPROCESSAR_PARCIAL_APOS_HORAS (24).
+// VERSAO_DOSSIE (12) e REPROCESSAR_PARCIAL_APOS_HORAS (24).
 //
 // O cliente nunca deve precisar iniciar leitura de PDF/IA no clique. Este job chama a
 // rota interna, que aproveita o cache persistente e só lê os documentos ainda ausentes.
@@ -15,7 +15,7 @@ const URL_SITE = (process.env.LICITAPLENA_URL || "https://licitaplena.com.br").r
 const LIMITE = Math.max(1, Number(process.env.MAX_DOSSIES_POR_EXECUCAO || 12));
 const DIAS = Math.max(1, Number(process.env.DIAS_PUBLICACAO_DOSSIE || 3));
 const CONCORRENCIA = Math.max(1, Number(process.env.CONCORRENCIA_DOSSIES || 2));
-const VERSAO_DOSSIE = Math.max(1, Number(process.env.VERSAO_DOSSIE || 11));
+const VERSAO_DOSSIE = Math.max(1, Number(process.env.VERSAO_DOSSIE || 12));
 const REPROCESSAR_PARCIAL_APOS_MS = Math.max(1, Number(process.env.REPROCESSAR_PARCIAL_APOS_HORAS || 24)) * 60 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 

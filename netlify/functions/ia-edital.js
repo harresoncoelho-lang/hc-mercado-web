@@ -39,7 +39,7 @@ const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
-const VERSAO_RESUMO = 11;
+const VERSAO_RESUMO = 12;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
@@ -404,7 +404,7 @@ function diagnosticarLimiteProvedor(resp, corpoErro) {
 }
 
 async function chamarGroq(apiKey, mensagens, opts) {
-  const modelos = [...new Set([MODELO, MODELO_PADRAO])];
+  const modelos = opts?.modelo ? [opts.modelo] : [...new Set([MODELO, MODELO_PADRAO])];
   for (let indice = 0; indice < modelos.length; indice += 1) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), (opts && opts.timeoutMs) || 20000);
@@ -412,6 +412,11 @@ async function chamarGroq(apiKey, mensagens, opts) {
       const body = { model: modelos[indice], max_tokens: (opts && opts.maxTokens) || 500, messages: mensagens };
       if (opts && opts.json) body.response_format = { type: "json_object" };
       if (opts && opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort;
+      if (modelos[indice] === "groq/compound-mini") {
+        delete body.reasoning_effort;
+        body.compound_custom = { tools: { enabled_tools: [] } };
+        body.tool_choice = "none";
+      }
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         signal: ctrl.signal,
@@ -420,6 +425,11 @@ async function chamarGroq(apiKey, mensagens, opts) {
       });
       if (resp.ok) {
         const dados = await resp.json();
+        const mensagem = dados.choices?.[0]?.message;
+        if (mensagem?.executed_tools?.length || mensagem?.tool_calls?.length || dados.executed_tools?.length || dados.choices?.[0]?.finish_reason === "tool_calls") {
+          console.warn("ia-edital: resposta com ferramentas rejeitada");
+          return { ok: false, erro: "O provedor retornou uso de ferramentas não permitido nesta análise. A síntese foi rejeitada." };
+        }
         const texto = ((dados.choices || [])[0] && dados.choices[0].message && dados.choices[0].message.content || "").trim();
         if (dados.choices?.[0]?.finish_reason === "length") console.warn("ia-edital: geração truncada pelo limite de tokens");
         return { ok: dados.choices?.[0]?.finish_reason !== "length", texto, modelo: modelos[indice], erro: dados.choices?.[0]?.finish_reason === "length" ? "A resposta excedeu o limite de geração." : null };
@@ -446,8 +456,27 @@ async function chamarGroq(apiKey, mensagens, opts) {
   return { ok: false, erro: "Não há um modelo de IA disponível para gerar o resumo agora." };
 }
 
+let capacidadeResumoLongo = null;
+async function chamarSinteseEdital(apiKey, mensagens) {
+  const opcoes = { maxTokens: 6000, timeoutMs: 20000, json: true, reasoningEffort: "low" };
+  if (mensagens.reduce((total, mensagem) => total + mensagem.content.length, 0) <= 1500) return chamarGroq(apiKey, mensagens, opcoes);
+  // A conta recusa textos longos no 20B (8 mil TPM). Verificamos a interface do
+  // sistema de contexto longo com uma mensagem inofensiva antes de enviar a fonte.
+  // Não removemos as restrições de ferramentas se o provedor as rejeitar.
+  const modelo = "groq/compound-mini";
+  if (!capacidadeResumoLongo) capacidadeResumoLongo = chamarGroq(apiKey, [
+    { role: "user", content: 'Responda somente o JSON {"ok":true}, sem usar ferramentas.' },
+  ], { modelo, maxTokens: 500, timeoutMs: 5000, json: true });
+  const verificacao = await capacidadeResumoLongo;
+  if (!verificacao.ok || extrairJson(verificacao.texto)?.ok !== true) {
+    capacidadeResumoLongo = null;
+    return { ok: false, diagnostico: verificacao.diagnostico, erro: verificacao.erro || "O provedor não confirmou a interface segura para a síntese longa." };
+  }
+  return chamarGroq(apiKey, mensagens, { ...opcoes, modelo });
+}
+
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { chamarGroq, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { chamarGroq, chamarSinteseEdital, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -861,7 +890,7 @@ exports.handler = async (event) => {
     // Uma única chamada com orçamento de tempo compatível com a Function. Antes eram
     // duas tentativas de 28 s e, em caso de lentidão, o servidor morria antes de chegar
     // ao fallback. A ficha oficial abaixo é preferível a um modal vazio.
-    const r = apiKey ? await chamarGroq(apiKey, mensagensEstrutura, { maxTokens: 6000, timeoutMs: 20000, json: true, reasoningEffort: "low" }) : { ok: false };
+    const r = apiKey ? await chamarSinteseEdital(apiKey, mensagensEstrutura) : { ok: false };
     if (r.ok) {
       const estrutura = extrairJson(r.texto);
       if (estrutura) {

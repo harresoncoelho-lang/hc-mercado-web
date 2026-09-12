@@ -57,6 +57,50 @@ test("consulta o cache antes de consumir a cota de IA", () => {
   assert.ok(fonte.indexOf('storeResumos.get(edital.numeroControlePNCP') < fonte.indexOf('verificarLimiteDiario(sessao.userId, "ia-edital", 40)'));
 });
 
+test("síntese longa valida interface sem ferramentas antes de encaminhar a fonte integral", async () => {
+  const fetchOriginal = global.fetch;
+  const chamadas = [];
+  const fonte = "Fonte oficial extensa. ".repeat(2000);
+  global.fetch = async (_url, opcoes) => {
+    const corpo = JSON.parse(opcoes.body); chamadas.push(corpo);
+    return { ok: true, json: async () => ({ choices: [{ message: { content: chamadas.length === 1 ? '{"ok":true}' : '{"resumoGeral":"Síntese"}' } }] }) };
+  };
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: fonte }]);
+    assert.equal(resultado.ok, true);
+    assert.equal(chamadas.length, 2);
+    assert.ok(!chamadas[0].messages[0].content.includes(fonte));
+    assert.equal(chamadas[1].messages[0].content, fonte);
+    for (const chamada of chamadas) {
+      assert.equal(chamada.model, "groq/compound-mini");
+      assert.deepEqual(chamada.compound_custom, { tools: { enabled_tools: [] } });
+      assert.equal(chamada.tool_choice, "none");
+      assert.equal(chamada.reasoning_effort, undefined);
+    }
+  } finally { global.fetch = fetchOriginal; }
+});
+
+test("não envia fonte se o provedor rejeitar a desativação de ferramentas", async () => {
+  const fetchOriginal = global.fetch;
+  let chamadas = 0;
+  global.fetch = async () => { chamadas++; return { ok: false, status: 400, text: async () => '{"error":{"message":"unsupported parameter"}}' }; };
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Fonte. ".repeat(2000) }]);
+    assert.equal(resultado.ok, false);
+    assert.equal(chamadas, 1);
+  } finally { global.fetch = fetchOriginal; }
+});
+
+test("rejeita resposta do sistema longo que informe ferramentas executadas", async () => {
+  const fetchOriginal = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ choices: [{ message: { content: '{"ok":true}', executed_tools: [{ type: "web_search" }] } }] }) });
+  try {
+    const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: "Fonte. ".repeat(2000) }]);
+    assert.equal(resultado.ok, false);
+    assert.match(resultado.erro, /ferramentas/);
+  } finally { global.fetch = fetchOriginal; }
+});
+
 test("diagnóstico de 413 conserva somente código permitido e limites numéricos", async () => {
   const fetchOriginal = global.fetch;
   const warnOriginal = console.warn;

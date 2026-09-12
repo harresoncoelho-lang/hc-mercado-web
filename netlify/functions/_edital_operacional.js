@@ -175,9 +175,18 @@ function complementarRequisitos(estrutura, texto) {
 }
 
 function prepararContextoResumo(texto, limite = 260000) {
-  const catalogo = catalogarRequisitos(texto).map((fonte) => `[${fonte.id}] ${fonte.categoria}: ${fonte.texto}`);
+  const fontes = catalogarRequisitos(texto);
+  const catalogo = fontes.map((fonte) => `[${fonte.id}] ${fonte.categoria}: ${fonte.texto}`);
   const cabecalho = "CATÁLOGO DE REQUISITOS: cite os IDs entre colchetes nas listas de síntese; preserve condições, alternativas e prazos.\n";
-  const integral = `${cabecalho}${catalogo.join("\n")}\nFONTE INTEGRAL EXTRAÍDA:\n${texto}`;
+  // O índice aponta para as cláusulas da fonte abaixo, sem reenviar cada uma
+  // duas vezes. Requisitos sem número conservam seu texto para identificação.
+  const indice = fontes.map((fonte) => {
+    const clausulas = [...fonte.texto.matchAll(/(?:^|Condição: )(\d+(?:\.\d+)+)\./g)].map((m) => m[1]);
+    const documentos = [...new Set(fonte.texto.match(/\[[^\]]+\]/g) || [])];
+    const referencia = clausulas.length ? `${documentos.join("; ")}, cláusulas ${clausulas.join(", ")}` : fonte.texto;
+    return `[${fonte.id}] ${fonte.categoria}: ${referencia}`;
+  });
+  const integral = `${cabecalho}ÍNDICE: leia o conteúdo de cada cláusula na fonte integral; as referências não substituem a leitura.\n${indice.join("\n")}\nFONTE INTEGRAL EXTRAÍDA:\n${texto}`;
   if (integral.length <= limite) return { texto: integral, parcial: false };
 
   const partes = ["CONTEXTO PARCIAL: nem todas as seções da fonte couberam. Não deduza ausência de exigências; registre esta limitação nas pendências.", cabecalho];
