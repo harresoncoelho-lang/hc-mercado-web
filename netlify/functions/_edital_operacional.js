@@ -18,19 +18,84 @@ function categoriaSecao(titulo) {
 
 function clausulasDaFonte(texto) {
   const clausulas = [];
-  let documento = "Documento oficial", pagina = "", atual;
+  let documento = "Documento oficial", pagina = "", atual, secao = "";
   for (const linha of limparLinhas(texto)) {
     const doc = linha.match(/^--- (.+) ---$/);
-    if (doc) { documento = doc[1]; pagina = ""; atual = null; continue; }
+    if (doc) { documento = doc[1]; pagina = ""; atual = null; secao = ""; continue; }
     const pg = linha.match(/^\[Página (\d+)\]$/);
     if (pg) { pagina = pg[1]; continue; }
     const numero = linha.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])?\s+\D/);
     if (numero) {
-      atual = { numero: numero[1], documento, pagina, texto: linha };
+      if (!numero[1].includes(".")) secao = linha;
+      atual = { numero: numero[1], documento, pagina, secao, texto: linha };
       clausulas.push(atual);
     } else if (atual && linha) atual.texto += ` ${linha}`;
   }
   return clausulas;
+}
+
+function completarDossieDaFonte(estrutura, texto) {
+  estrutura.pendenciasParaConferencia ||= [];
+  const clausulas = clausulasDaFonte(texto);
+  const formatar = (item) => `${item.texto} [${item.documento}${item.pagina ? `, página ${item.pagina}` : ""}]`;
+  const juntar = (itens) => [...new Set(itens.map(formatar))].join("\n") || "Não informado";
+  const categorias = ["documentosCredenciamento", "requisitosProposta", "documentosHabilitacao", "declaracoesExigidas"];
+  // A condição do caput acompanha o subitem, sem transformá-la em exigência
+  // universal. As cláusulas e suas referências continuam literais.
+  for (const categoria of categorias) estrutura[categoria] = (estrutura[categoria] || []).map((item) => {
+    const numero = item.match(/^(\d+(?:\.\d+)+)\./)?.[1];
+    const pai = numero?.split(".").slice(0, -1).join(".");
+    const documento = item.match(/\[([^,\]]+)/)?.[1];
+    const fontes = clausulas.filter((clausula) => clausula.numero === pai && clausula.documento === documento && /\b(?:se|caso|quando|vencedor|vencedora)\b/i.test(clausula.texto));
+    return fontes.length === 1 && !item.includes(fontes[0].texto) ? `${item} Condição de aplicação: ${formatar(fontes[0])}` : item;
+  });
+  const temas = /participa[cç][aã]o|cons[oó]rcio|subcontrata|recursos|impugna[cç]|esclarecimento|adjudica|homologa|contrata[cç][aã]o|recebimento|entrega|garantia|pagamento|ficha t[eé]cnica|fichas t[eé]cnicas|parentesco|obriga[cç][oõ]es da contratada/i;
+  const existentes = categorias.flatMap((categoria) => estrutura[categoria] || []);
+  const complementos = clausulas.filter((item) => temas.test(item.secao) || temas.test(item.texto))
+    .filter((item) => !existentes.some((existente) => existente.includes(item.texto)));
+  estrutura.outrasInformacoesRelevantes = complementos.map(formatar);
+  const modelos = paginasDaFonte(texto).filter((pagina) => /parentesco/i.test(pagina.texto) && /estado civil|nacionalidade|graus de parentesco|portador|quadro\s+societ[aá]rio|consangu[ií]neo|afinidade/i.test(pagina.texto));
+  if (modelos.length) estrutura.anexosDeclaracoes = modelos.map((pagina) => `Modelo/referência de parentesco: ${pagina.texto.trim()} [${pagina.documento}${pagina.pagina ? `, página ${pagina.pagina}` : ""}]`).join("\n");
+  const pagamentos = clausulas.filter((item) => /pagamento/i.test(item.secao) || /pagamento ser[aá] efetuado/i.test(item.texto));
+  estrutura.condicoesPagamento = juntar(pagamentos);
+  const reposicao = clausulas.filter((item) => /substitui|substitu[iíçc]/i.test(item.texto) && /defeit|avari|inadequad|n[aã]o corresponder/i.test(item.texto));
+  if (reposicao.length) estrutura.entregaExecucao.condicoes = [estrutura.entregaExecucao.condicoes, juntar(reposicao)].filter((valor) => valor && valor !== "Não informado").join("\n");
+  const garantia = clausulas.filter((item) => !/garantia contratual (?:dos? bens|do produto)|fabricante/i.test(item.texto) && /garantia (?:contratual|da contrata[cç][aã]o)|garantia de execu[cç][aã]o/i.test(item.texto));
+  estrutura.garantias = { ...estrutura.garantias, contrato: juntar(garantia) };
+  const subcontratacao = clausulas.filter((item) => /subcontrata/i.test(item.secao));
+  estrutura.analiseCritica = { ...estrutura.analiseCritica, permiteSubcontratacao: juntar(subcontratacao.map(reduzirJustificativa).filter(Boolean)) };
+  const prazosIncompletos = clausulas.filter((item) => /XX\s*\/\s*XX|_{2,}\s*\//i.test(item.texto) && /prazo|dia|ficha/i.test(item.texto));
+  if (prazosIncompletos.length) estrutura.pendenciasParaConferencia.push(`Há prazo sem preenchimento em documento oficial; não o utilize como data válida. Confronte com o calendário do edital: ${juntar(prazosIncompletos)}`);
+  const remissoes = clausulas.filter((item) => /declara[cç][aã]o/i.test(item.texto) && /microempresa|pequeno porte|ME\s*\/\s*EPP/i.test(item.texto));
+  for (const item of remissoes) {
+    const alvo = item.texto.match(/subitem\s+(\d+(?:\.\d+)+)/i)?.[1];
+    const destino = clausulas.find((clausula) => clausula.documento === item.documento && clausula.numero === alvo);
+    if (destino && /integridade/i.test(destino.texto) && !/microempresa|pequeno porte/i.test(destino.texto)) estrutura.pendenciasParaConferencia.push(`Remissão divergente: ${formatar(item)} O subitem citado trata de integridade: ${formatar(destino)}. Solicite esclarecimento ao órgão.`);
+  }
+  const camposExibidos = [estrutura.condicoesPagamento, estrutura.entregaExecucao.condicoes, estrutura.garantias.contrato, estrutura.analiseCritica.permiteSubcontratacao, estrutura.anexosDeclaracoes].filter(Boolean);
+  const unicos = new Map();
+  for (const item of complementos.map(reduzirJustificativa).filter(Boolean)) {
+    if (camposExibidos.some((campo) => campo.includes(item.texto))) continue;
+    const chave = item.texto.replace(/^\d+(?:\.\d+)*\.\s*/, "").replace(/\s+/g, " ").trim();
+    const anterior = unicos.get(chave);
+    const referencia = `[${item.documento}${item.pagina ? `, página ${item.pagina}` : ""}, cláusula ${item.numero}]`;
+    unicos.set(chave, anterior ? `${anterior} ${referencia}` : formatar(item));
+  }
+  estrutura.outrasInformacoesRelevantes = [...unicos.values()];
+  return estrutura;
+}
+
+function reduzirJustificativa(item) {
+  // Seções jurídicas explicativas não são tarefas do licitante. Conservamos a
+  // decisão específica deste certame, com a sentença inteira e suas condições.
+  if (/^\d+\s+de\s+\w+\s+de\s+\d{4}|^\d+\.\s*AUTORIZADO POR:/i.test(item.texto)) return null;
+  if (/justificativa|fundamenta[cç][aã]o da contrata[cç][aã]o/i.test(item.secao)) return null;
+  if (/cons[oó]rcio|subcontrata[cç][aã]o/i.test(item.secao) && /doutrinador|ac[oó]rd[aã]o|de acordo com o art|sobre o tema/i.test(item.texto)) {
+    const sentencas = item.texto.split(/(?<=[.!?])\s+(?=[A-ZÀ-Ý])/u);
+    const decisao = sentencas.filter((sentenca) => /(?:presente|esse|este) (?:procedimento|certame|licita[cç][aã]o)|fica vedad[oa]/i.test(sentenca));
+    if (decisao.length) return { ...item, texto: `${item.numero}. ${decisao.join(" ")}` };
+  }
+  return item;
 }
 
 function paginasDaFonte(texto) {
@@ -446,4 +511,4 @@ function selecionarContexto(texto, limite = 22000, pergunta = "") {
   return prepararContextoResumo(texto, limite).texto;
 }
 
-module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte, paginasDaFonte, localizarReferencia, validarFatosDaFonte };
+module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte, paginasDaFonte, localizarReferencia, validarFatosDaFonte, completarDossieDaFonte };

@@ -34,8 +34,8 @@ const PNCP_ARQUIVO_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 // pagamento e anexos normalmente ficam no meio/fim do documento. O limite abaixo dá
 // contexto suficiente para uma análise operacional sem estourar o tempo da Function.
 const MAX_CARACTERES_TEXTO = 600000;
-const { complementarRequisitos, selecionarContexto, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte, paginasDaFonte, localizarReferencia, validarFatosDaFonte } = require("../_edital_operacional");
-const { executarEtapa, respostaProgresso, dividirFonte } = require("../_resumo_progressivo");
+const { complementarRequisitos, selecionarContexto, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte, paginasDaFonte, localizarReferencia, validarFatosDaFonte, completarDossieDaFonte } = require("../_edital_operacional");
+const { executarEtapa, dividirFonte } = require("../_resumo_progressivo");
 const MAX_BYTES_REQUISICAO_RESUMO = 48000;
 // A Function tem uma janela de execução menor que a soma de vários downloads de
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
@@ -45,7 +45,7 @@ const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
-const VERSAO_RESUMO = 14;
+const VERSAO_RESUMO = 15;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
@@ -618,7 +618,7 @@ async function chamarSinteseEdital(apiKey, mensagens) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -785,6 +785,20 @@ function aplicarCamposOperacionaisDoTexto(estrutura, textoEdital, edital = {}) {
 
 // O resumo não pode desaparecer quando o provedor de IA estiver temporariamente limitado.
 // Esta ficha vem somente de dados já recebidos do PNCP, sem inferir cláusulas do edital.
+function montarDossieDaFonte(edital, texto, coberturaLeitura) {
+  const estrutura = montarEstruturaBasica(edital);
+  estrutura.pendenciasParaConferencia = [];
+  complementarRequisitos(estrutura, texto);
+  aplicarCamposOperacionaisDoTexto(estrutura, texto, edital);
+  completarDossieDaFonte(estrutura, texto);
+  estrutura.fonteLida = true;
+  estrutura.coberturaLeitura = coberturaLeitura;
+  estrutura.identificacao.numero = texto.match(/\bPE\s+\d+\/\d{4}\b/)?.[0] || estrutura.identificacao.numero;
+  estrutura.detalhes.valorEstimado = Number(edital.valor) > 0 ? String(edital.valor) : "Não informado";
+  estrutura.resumoGeral = `${edital.objeto || "Objeto não informado"}. Órgão: ${edital.orgao || "Não informado"}. Modalidade: ${edital.modalidade || "Não informado"}. Prazo de propostas: ${estrutura.prazos.limiteEnvioPropostas}. Critério de julgamento: ${estrutura.detalhes.criterioJulgamento || "Não informado"}. Consulte abaixo os documentos de credenciamento, proposta, habilitação e declarações, com suas condições e referências, além dos prazos e obrigações da contratação.`;
+  return estrutura;
+}
+
 function montarEstruturaBasica(edital, motivoFonteNaoLida) {
   const naoInformado = "Não informado";
   const local = [edital.municipio, edital.uf].filter(Boolean).join(" / ") || naoInformado;
@@ -933,14 +947,11 @@ exports.handler = async (event) => {
   const chaveProgresso = `progresso:v${VERSAO_RESUMO}:schema120b1:${edital.numeroControlePNCP}`;
   let analiseEmAndamento = null;
   if (modo === "resumo" && edital.numeroControlePNCP && storeResumos) {
-    try { analiseEmAndamento = await storeResumos.get(chaveProgresso, { type: "json", consistency: "strong" }); } catch (_) { /* Tentará a fonte oficial. */ }
+    try { analiseEmAndamento = await storeResumos.get(`progresso:v14:schema120b1:${edital.numeroControlePNCP}`, { type: "json", consistency: "strong" }); } catch (_) { /* Tentará a fonte oficial. */ }
     if (analiseEmAndamento && analiseEmAndamento.expiraEm > Date.now()) {
       textoEdital = analiseEmAndamento.texto;
       coberturaLeitura = analiseEmAndamento.coberturaLeitura;
       fonteLida = true;
-      if (!body.retomarAnalise && analiseEmAndamento.resultados.length < analiseEmAndamento.blocos.length && analiseEmAndamento.proximaEtapaEm > Date.now()) {
-        return { statusCode: 202, headers, body: JSON.stringify(respostaProgresso(analiseEmAndamento)) };
-      }
     }
   }
 
@@ -1009,6 +1020,18 @@ exports.handler = async (event) => {
     contingencia.headers = headers;
     contingencia.body = JSON.stringify(contingencia.body);
     return contingencia;
+  }
+
+  // O checklist depende da fonte oficial, não da conclusão de etapas de IA.
+  // Resultados parciais antigos não entram no dossiê; só reaproveitamos o texto.
+  if (modo === "resumo" && fonteLida) {
+    const estrutura = montarDossieDaFonte(edital, textoEdital, coberturaLeitura);
+    const dossie = { estrutura, resposta: estrutura.resumoGeral, textoEdital, fonteLida: true, modoDegradado: false, metodoResumo: "documentos", versao: VERSAO_RESUMO, geradoEm: new Date().toISOString() };
+    if (storeResumos && edital.numeroControlePNCP) {
+      try { await storeResumos.setJSON(edital.numeroControlePNCP, dossie); } catch (_) { /* A entrega independe da disponibilidade do cache. */ }
+    }
+    await salvarDossiePersistido(edital.numeroControlePNCP, dossie);
+    return { statusCode: 200, headers, body: JSON.stringify({ ...dossie, erro: null }) };
   }
 
   // Só usa a cota de IA quando de fato há uma análise a executar. Antes desta

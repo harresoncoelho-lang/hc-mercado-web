@@ -2568,7 +2568,7 @@
   let iaTemporizadorResumo = null;
   let iaRequisicaoAtual = null;
   let iaResumoPendente = false;
-  const VERSAO_CACHE_LOCAL_RESUMO = 14;
+  const VERSAO_CACHE_LOCAL_RESUMO = 15;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -5397,7 +5397,7 @@
           </div>
           <div class="boletim-rodape">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn-ia-edital" type="button" title="Resumo e perguntas sobre este edital, com IA"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumir com IA</button>
+              <button class="btn-ia-edital" type="button" title="Resumo documental e perguntas sobre este edital"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumir edital</button>
               ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Ver Itens</button>` : ""}
               ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações"><svg class='icone-ph'><use href='#ph-folder'></use></svg> Acompanhamento</button>` : ""}
               ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital</button>` : ""}

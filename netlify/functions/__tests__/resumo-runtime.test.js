@@ -14,7 +14,7 @@ test("adaptador preserva preflight 204 sem corpo e cabeçalhos CORS", async () =
   assert.match(resposta.headers.get("access-control-allow-methods"), /POST/);
 });
 
-test("endpoint moderno usa SDK Blobs real para persistir etapa, retomar e concluir sem reenviar fonte inteira", async () => {
+test("endpoint entrega dossiê documental imediato sem IA mesmo com armazenamento indisponível", async () => {
   const originalFetch = global.fetch;
   const variaveis = ["GROQ_API_KEY", "DOSSIES_EDITAIS_CHAVE", "NETLIFY_BLOBS_CONTEXT", "SUPABASE_SERVICE_ROLE_KEY"];
   const anteriores = Object.fromEntries(variaveis.map((chave) => [chave, process.env[chave]]));
@@ -27,13 +27,14 @@ test("endpoint moderno usa SDK Blobs real para persistir etapa, retomar e conclu
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.NETLIFY_BLOBS_CONTEXT;
   const blobs = new Map(), chamadasIA = [], rotasBlob = [];
-  let versao = 0;
+  let versao = 0, usarFonteSalva = false;
   const responder = (corpo, status = 200, headers = {}) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status, headers });
   global.fetch = async (url, opcoes = {}) => {
     if (/^https:\/\/blobs-(?:forte-)?teste\.invalid/.test(url)) {
       rotasBlob.push({ url, metodo: opcoes.method });
       const caminho = new globalThis.URL(url).pathname;
       const registro = blobs.get(caminho);
+      if (usarFonteSalva && decodeURIComponent(caminho).includes("progresso:v14:schema120b1:")) return responder({ texto, coberturaLeitura: { parcial: true }, expiraEm: Date.now() + 60000, resultados: [{ detalhes: { valorEstimado: "INVENTADO" } }], proximaEtapaEm: Date.now() + 60000 });
       if (opcoes.method === "put") {
         if ((opcoes.headers["if-none-match"] && registro) || (opcoes.headers["if-match"] && opcoes.headers["if-match"] !== registro?.etag)) return responder("", 412);
         const etag = String(++versao); blobs.set(caminho, { dado: JSON.parse(opcoes.body), etag });
@@ -41,6 +42,8 @@ test("endpoint moderno usa SDK Blobs real para persistir etapa, retomar e conclu
       }
       return registro ? responder(registro.dado, 200, { etag: registro.etag }) : responder("", 404);
     }
+    if (url.includes("/auth/v1/user")) return responder({ id: "usuario-teste" });
+    if (url.includes("incrementar_uso")) throw new Error("Resumo documental não deve cobrar quota IA");
     if (url.includes("api.groq.com")) {
       const corpo = JSON.parse(opcoes.body); chamadasIA.push(corpo);
       const ids = new Map([...corpo.messages.at(-1).content.matchAll(/(R\d{4}) (documentosHabilitacao|documentosCredenciamento|requisitosProposta|declaracoesExigidas)/g)].map((item) => [item[1], item[2]]));
@@ -54,38 +57,25 @@ test("endpoint moderno usa SDK Blobs real para persistir etapa, retomar e conclu
   try {
     const modulo = await import(pathToFileURL(require.resolve("../ia-edital.mjs")).href);
     const solicitar = () => modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", {
-      method: "POST", headers: { "content-type": "application/json", "x-licitaplena-dossies-chave": "robo-teste" },
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer usuario-teste" },
       body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026" } }),
     }), { requestId: "qa-runtime" });
-    // Ausência de contexto nunca deve desviar para chamada de documento integral.
-    assert.equal((await solicitar()).status, 503);
+    const primeira = await solicitar();
+    assert.equal(primeira.status, 200);
+    const dossie = await primeira.json();
+    assert.ok(dossie.estrutura.documentosHabilitacao.length);
+    assert.equal(dossie.metodoResumo, "documentos");
     assert.equal(chamadasIA.length, 0);
     process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ siteID: "site-teste", token: "token-escopo-blobs", edgeURL: "https://blobs-teste.invalid/", uncachedEdgeURL: "https://blobs-forte-teste.invalid/" })).toString("base64");
-    const primeira = await solicitar();
-    assert.equal(primeira.status, 202);
-    const progresso = await primeira.json();
-    assert.equal(progresso.progresso.concluidas, 1);
-    assert.ok(progresso.progresso.total > 1);
-    const chave = [...blobs.keys()].find((item) => item.includes("progresso"));
-    assert.ok(chave);
-    const chamadasAntes = chamadasIA.length;
-    assert.equal((await solicitar()).status, 202);
-    assert.equal(chamadasIA.length, chamadasAntes);
-    let final;
-    for (let i = 1; i < progresso.progresso.total; i++) {
-      blobs.get(chave).dado.proximaEtapaEm = 0;
-      final = await solicitar();
-    }
-    assert.equal(final.status, 200);
-    assert.ok((await final.json()).estrutura);
-    assert.equal(blobs.get(chave).dado.resultados.length, progresso.progresso.total);
-    assert.ok(rotasBlob.filter((rota) => rota.metodo === "get").every((rota) => rota.url.startsWith("https://blobs-forte-teste.invalid/")));
-    assert.ok(chamadasIA.slice(1).every((chamada) => !chamada.messages.some((mensagem) => mensagem.content.includes(texto))));
-    assert.ok(chamadasIA.every((chamada) => Buffer.byteLength(JSON.stringify(chamada), "utf8") <= 48000));
-    assert.ok(chamadasIA.every((chamada) => require("../lib/ia-edital").__test.tokensEntradaResumo(chamada.messages, chamada.max_tokens) <= 5000));
-    assert.ok(chamadasIA.every((chamada) => require("../lib/ia-edital").__test.tokensEntradaResumo(chamada.messages, chamada.max_tokens) + chamada.max_tokens <= 7200));
-    assert.ok(chamadasIA.every((chamada) => chamada.model === "openai/gpt-oss-120b" && chamada.max_tokens >= 2200 && chamada.max_tokens <= 4000));
-    if (process.env.QA_FONTE_REAL) console.log(JSON.stringify({ fonteRealCaracteres: texto.length, blocos: progresso.progresso.total, etapasConcluidas: blobs.get(chave).dado.resultados.length, respostaFinal: final.status }));
+    usarFonteSalva = true;
+    const comFonteSalva = await solicitar();
+    assert.equal(comFonteSalva.status, 200);
+    const salva = await comFonteSalva.json();
+    assert.equal(salva.estrutura.coberturaLeitura.parcial, true);
+    assert.doesNotMatch(JSON.stringify(salva.estrutura), /INVENTADO/);
+    assert.ok([...blobs.values()].some(item => item.dado.versao === 15));
+    assert.equal(chamadasIA.length, 0);
+    assert.ok(rotasBlob.filter(rota => rota.metodo === "get").every(rota => rota.url.startsWith("https://blobs-forte-teste.invalid/")));
   } finally {
     global.fetch = originalFetch;
     if (pdfOriginal) require.cache[caminhoPdf] = pdfOriginal; else delete require.cache[caminhoPdf];
