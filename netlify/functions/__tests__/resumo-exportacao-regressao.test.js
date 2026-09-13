@@ -20,7 +20,36 @@ test("modelo geral atende DE81 sem transplantar exigências estaduais de PE406",
   const texto = JSON.stringify(ficha);
   for (const fato of ["SICAF", "60 dias", "último exercício", "3 dias", "nota de empenho OU ordem de compra", "12 meses", "Não é exigida garantia contratual", "10 dias úteis após a liquidação"]) assert.ok(texto.includes(fato), fato);
   assert.doesNotMatch(texto, /CCF|certidão municipal/i);
-  assert.deepEqual(ficha.secoes.map(s => s.titulo), require("./fixtures/pe406-modelo-aprovado.json").secoes.map(s => s.titulo));
+  assert.deepEqual(ficha.secoes.map(s => s.titulo), ["Identificação da Licitação", "Informações da Sessão Pública", "Órgão Responsável", "Detalhes da Licitação", "Seguro Garantia", "Informações sobre entrega e execução", "Prazos importantes", "Critérios da Proposta e Julgamento", "Resumo dos Itens", "Documentos de habilitação exigidos", "Atestado de capacidade técnica", "Legislação", "Anexos e declarações", "Outras informações relevantes", "Condições de pagamento", "Penalidades e multas", "Análise crítica", "Análise e Considerações do Licitante"]);
+});
+
+test("valor monetário é legível sem alterar zero, valores brasileiros ou condições textuais", () => {
+  for (const [entrada, esperado] of [[2246.13, "R$ 2.246,13"], ["2246.13", "R$ 2.246,13"], [0, "R$ 0,00"], ["2.246,13", "2.246,13"], ["R$ 2.246,13", "R$ 2.246,13"], ["Valor sigiloso", "Valor sigiloso"]]) {
+    const ficha = modelo.montar({ detalhes: { valorEstimado: entrada } });
+    assert.equal(ficha.cards[0][1].replace(/\u00a0/g, " "), esperado);
+    const detalhe = ficha.secoes.find(s => s.titulo === "Detalhes da Licitação").campos.find(c => c.rotulo === "Valor estimado");
+    assert.equal(detalhe.valor.replace(/\u00a0/g, " "), esperado);
+  }
+});
+
+test("número oficial substitui controle PNCP sem sobrescrever número extraído nem deduzir ano", () => {
+  const controle = "01171012000141-1-000005/2026";
+  const edital = { numeroControlePNCP: controle, numeroCompra: "406", anoCompra: 2026, modalidade: "Pregão" };
+  assert.equal(modelo.montar({ identificacao: { numero: controle } }, edital).numero, "406/2026");
+  assert.equal(modelo.montar({ identificacao: { numero: "PE 406/2026 — CSC" } }, edital).numero, "PE 406/2026 — CSC");
+  assert.equal(modelo.montar({}, { numeroCompra: "406", numeroControlePNCP: controle }).numero, controle);
+  const ficha = modelo.montar({ identificacao: { modalidade: "Pregão" }, dadosOficiais: { modalidade: "Pregão" } }, edital);
+  assert.equal(ficha.secoes[0].campos.filter(c => c.rotulo === "Modalidade").length, 1);
+});
+
+test("cabeçalho DOCX usa número oficial e mantém controle PNCP quando for a única identificação", () => {
+  const controle = "01171012000141-1-000005/2026";
+  const resumo = { fonteLida: true, identificacao: { numero: controle }, documentosHabilitacao: ["Certidão fiscal"] };
+  const comNumero = new AdmZip(checklist.montarDocx({ numeroControlePNCP: controle, numeroCompra: "406", anoCompra: 2026 }, resumo)).readAsText("word/document.xml");
+  assert.match(comNumero, /Número da licitação: 406\/2026/);
+  assert.doesNotMatch(comNumero, /Controle PNCP:/);
+  const somenteControle = new AdmZip(checklist.montarDocx({ numeroControlePNCP: controle }, resumo)).readAsText("word/document.xml");
+  assert.ok(somenteControle.includes(`Controle PNCP: ${controle}`));
 });
 
 test("exportações preservam exigências que alteram preparo da proposta e execução", () => {

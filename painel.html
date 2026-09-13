@@ -892,6 +892,8 @@
   #modal-ia-fundo .modal-ia-cartao-topo dd { color:#252525; font-size:16px; font-weight:600; }
   #modal-ia-fundo .secao-ia { margin:0 0 10px; padding:0; border:1px solid #e3e3e3; border-radius:4px; overflow:hidden; }
   #modal-ia-fundo .secao-ia-titulo { list-style:none; display:flex; align-items:center; padding:13px 16px; margin:0; background:#f3f3f3; color:#252525; cursor:pointer; font-size:14px; font-weight:600; }
+  #modal-ia-fundo .resumo-penalidades > .secao-ia-titulo { background:#fceaea; }
+  #modal-ia-fundo .resumo-critica > .secao-ia-titulo { background:#fff6d9; }
   #modal-ia-fundo .secao-ia-titulo::-webkit-details-marker { display:none; }
   #modal-ia-fundo .secao-ia-titulo::after { content:'⌄'; margin-left:auto; color:#777; }
   #modal-ia-fundo details[open] > .secao-ia-titulo::after { transform:rotate(180deg); }
@@ -2236,7 +2238,7 @@
     <div class="modal-ia-conversa" id="modal-ia-conversa"></div>
 
     <details class="secao-ia" open>
-      <summary class="secao-ia-titulo">Considerações</summary>
+      <summary class="secao-ia-titulo">Análise e Considerações do Licitante</summary>
       <textarea class="modal-ia-consideracoes" id="modal-ia-consideracoes" placeholder="Escreva aqui suas considerações sobre esta oportunidade..."></textarea>
     </details>
 
@@ -2904,7 +2906,7 @@
     const modelo = ResumoModelo.montar(est, iaEditalAtual || {});
     for (const def of modelo.secoes.slice(0, 17)) {
       const secao = document.createElement("details");
-      secao.className = "secao-ia";
+      secao.className = "secao-ia" + (def.titulo === "Penalidades e multas" ? " resumo-penalidades" : def.titulo === "Análise crítica" ? " resumo-critica" : "");
       secao.open = true;
       const titulo = document.createElement("summary");
       titulo.className = "secao-ia-titulo";

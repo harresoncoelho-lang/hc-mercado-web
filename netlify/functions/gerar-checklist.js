@@ -92,13 +92,13 @@ function conteudoDocumento(edital, resumo) {
     },
   };
   const identificacao = resumo.identificacao || {};
-  const numero = util(identificacao.numero) || util(edital.numero) || util(edital.numeroControlePNCP) || "Não informado";
+  const modelo = ResumoModelo.montar(resumo, edital, resumo.consideracoes);
+  const numero = modelo.numero || "Não informado";
   const rotuloNumero = /^\d{14}-\d-\d+\/\d{4}$/.test(numero) ? "Controle PNCP" : "Número da licitação";
   const objeto = util(identificacao.objeto) || util(edital.objeto) || "Não informado";
   const dataEmissao = new Date().toLocaleDateString("pt-BR");
   const cabecalho = `<w:tbl><w:tblPr><w:tblW w:w="9120" w:type="dxa"/><w:tblBorders><w:top w:val="nil"/><w:left w:val="nil"/><w:bottom w:val="single" w:sz="18" w:color="1F75DF"/><w:right w:val="nil"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="6500"/><w:gridCol w:w="2620"/></w:tblGrid><w:tr><w:tc>${paragrafo("LicitaPlena", { negrito: true, tamanho: 34, cor: "102D56", depois: 120 })}</w:tc><w:tc>${paragrafo("Checklist operacional", { tamanho: 17, cor: "637085", depois: 20, alinhamento: "right" })}${paragrafo(`Emitido em ${dataEmissao}`, { tamanho: 16, cor: "637085", depois: 120, alinhamento: "right" })}</w:tc></w:tr></w:tbl>`;
   const destaque = `<w:tbl><w:tblPr><w:tblW w:w="9120" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:color="DCE5EF"/><w:left w:val="single" w:sz="4" w:color="DCE5EF"/><w:bottom w:val="single" w:sz="4" w:color="DCE5EF"/><w:right w:val="single" w:sz="4" w:color="DCE5EF"/><w:insideH w:val="nil"/><w:insideV w:val="nil"/></w:tblBorders><w:shd w:val="clear" w:fill="F3F7FC"/></w:tblPr><w:tblGrid><w:gridCol w:w="9120"/></w:tblGrid><w:tr><w:tc>${paragrafo("Objeto", { negrito: true, tamanho: 17, cor: "637085", antes: 110, depois: 30 })}${paragrafo(objeto, { negrito: true, tamanho: 24, cor: "132F56", depois: 110 })}</w:tc></w:tr></w:tbl>`;
-  const modelo = ResumoModelo.montar(resumo, edital, resumo.consideracoes);
   const secoes = modelo.secoes.map(secao => {
     const campos = secao.campos.map(campo => Array.isArray(campo.valor)
       ? paragrafo(campo.rotulo, { negrito: true }) + campo.valor.map(linhaChecklist).join("")

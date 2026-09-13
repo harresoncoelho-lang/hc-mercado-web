@@ -26,14 +26,25 @@ const CAMPOS = {
   function data(valor) {
     return util(valor).replace(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?$/, (_, a, m, d, h) => `${d}/${m}/${a}${h ? ` às ${h}` : ""}`);
   }
+  function moeda(valor) {
+    const t = util(valor);
+    if (!t || !/^\d+(?:\.\d+)?$/.test(t)) return t;
+    const numero = Number(t);
+    return Number.isFinite(numero) ? new Intl.NumberFormat("pt-BR", {style:"currency", currency:"BRL"}).format(numero) : t;
+  }
+  function numeroLicitacao(resumo, edital) {
+    const numero = util(resumo.identificacao?.numero);
+    const oficial = util(edital.numeroCompra) && util(edital.anoCompra) ? `${edital.numeroCompra}/${edital.anoCompra}` : util(edital.numero);
+    return numero && !/^\d{14}-\d-\d+\/\d{4}$/.test(numero) ? numero : oficial || numero || util(edital.numeroControlePNCP);
+  }
   function montar(resumo = {}, edital = {}, consideracoes = "") {
     const est = {
       ...resumo,
-      identificacao: { ...resumo.identificacao, numero: util(resumo.identificacao?.numero) || util(edital.numero) || util(edital.numeroControlePNCP), objeto: util(resumo.identificacao?.objeto) || util(edital.objeto), modalidade: util(resumo.identificacao?.modalidade) || util(edital.modalidade) },
+      identificacao: { ...resumo.identificacao, numero: numeroLicitacao(resumo, edital), objeto: util(resumo.identificacao?.objeto) || util(edital.objeto), modalidade: util(resumo.identificacao?.modalidade) || util(edital.modalidade) },
       orgao: { ...resumo.orgao, nome: util(resumo.orgao?.nome) || util(edital.orgao) },
       dadosOficiais: { ...resumo.dadosOficiais, publicacao: util(resumo.dadosOficiais?.publicacao) || util(edital.publicacao), inicioRecebimento: util(resumo.dadosOficiais?.inicioRecebimento) || util(edital.inicioRecebimento), prazoFinal: util(resumo.dadosOficiais?.prazoFinal) || util(edital.encerramento) },
     };
-    const campos = chave => Object.entries(CAMPOS[chave]?.campos || {}).map(([k, rotulo]) => ({rotulo, valor: data(est[chave]?.[k])})).filter(c => c.valor);
+    const campos = chave => Object.entries(CAMPOS[chave]?.campos || {}).map(([k, rotulo]) => ({rotulo, valor: k === "valorEstimado" ? moeda(est[chave]?.[k]) : data(est[chave]?.[k])})).filter(c => c.valor);
     const livre = (rotulo, valor) => util(valor) ? [{rotulo, valor: util(valor)}] : [];
     const lista = (rotulo, valores) => {
       const itens = Array.isArray(valores) ? valores.map(util).filter(Boolean) : [];
@@ -47,16 +58,16 @@ const CAMPOS = {
     }
     const itens = Array.isArray(est.itensPncp) ? est.itensPncp : [];
     const secoes = [
-      ["Identificação da licitação", [...livre("Objeto", est.identificacao.objeto), ...campos("identificacao"), ...campos("dadosOficiais")]],
-      ["Sessão pública", campos("sessaoPublica")],
-      ["Órgão responsável", campos("orgao")],
-      ["Detalhes da licitação", campos("detalhes")],
-      ["Seguro e garantias", campos("garantias")],
-      ["Entrega e execução", campos("entregaExecucao")],
+      ["Identificação da Licitação", [...livre("Objeto", est.identificacao.objeto), ...campos("identificacao"), ...campos("dadosOficiais").filter(c => c.rotulo !== "Modalidade" || c.valor !== est.identificacao.modalidade)]],
+      ["Informações da Sessão Pública", campos("sessaoPublica")],
+      ["Órgão Responsável", campos("orgao")],
+      ["Detalhes da Licitação", campos("detalhes")],
+      ["Seguro Garantia", campos("garantias")],
+      ["Informações sobre entrega e execução", campos("entregaExecucao")],
       ["Prazos importantes", campos("prazos")],
-      ["Critérios da proposta", [...campos("criteriosProposta"), ...lista("Preparação e envio da proposta", est.requisitosProposta)]],
-      ["Resumo dos itens", [...campos("itens"), ...lista(`Itens da oportunidade (${itens.length})`, itens.map((item, i) => `${item.numeroItem || i + 1}. ${texto(item.descricao).replace(/<[^>]*>/g, " ")} — ${[item.quantidade, item.unidade].filter(v => v != null && v !== "").join(" ")}`))]],
-      ["Documentos de habilitação", [...lista("Credenciamento e participação", est.documentosCredenciamento), ...[...documentos].flatMap(([categoria, valores]) => lista(categoria, valores))]],
+      ["Critérios da Proposta e Julgamento", [...campos("criteriosProposta"), ...lista("Preparação e envio da proposta", est.requisitosProposta)]],
+      ["Resumo dos Itens", [...campos("itens"), ...lista(`Itens da oportunidade (${itens.length})`, itens.map((item, i) => `${item.numeroItem || i + 1}. ${texto(item.descricao).replace(/<[^>]*>/g, " ")} — ${[item.quantidade, item.unidade].filter(v => v != null && v !== "").join(" ")}`))]],
+      ["Documentos de habilitação exigidos", [...lista("Credenciamento e participação", est.documentosCredenciamento), ...[...documentos].flatMap(([categoria, valores]) => lista(categoria, valores))]],
       ["Atestado de capacidade técnica", livre("Exigência", est.atestadoCapacidadeTecnica)],
       ["Legislação", livre("Base legal", est.legislacao)],
       ["Anexos e declarações", [...lista("Declarações e formulários", est.declaracoesExigidas), ...livre("Anexos e modelos citados", est.anexosDeclaracoes)]],
@@ -64,10 +75,10 @@ const CAMPOS = {
       ["Condições de pagamento", livre("Pagamento", est.condicoesPagamento)],
       ["Penalidades e multas", [...livre("Penalidades", est.penalidades), ...livre("Multas", est.multas)]],
       ["Análise crítica", [...campos("analiseCritica"), ...lista("Pendências para conferência", est.pendenciasParaConferencia), ...lista("Possíveis questionamentos", est.possiveisQuestionamentos), ...lista("Perguntas sugeridas ao órgão", est.questionamentosSugeridos)]],
-      ["Considerações", livre("Considerações do licitante", consideracoes)],
+      ["Análise e Considerações do Licitante", livre("Considerações do licitante", consideracoes)],
     ].map(([titulo, valores]) => ({titulo, campos: valores}));
     return { numero: est.identificacao.numero, objeto: est.identificacao.objeto,
-      cards: [["Valor estimado", util(est.detalhes?.valorEstimado) || util(edital.valor) || "Não informado"], ["Modalidade", est.identificacao.modalidade || "Não informado"], ["Data da sessão", data(est.sessaoPublica?.data) || "Não informado"]], secoes };
+      cards: [["Valor estimado", moeda(util(est.detalhes?.valorEstimado) || util(edital.valor)) || "Não informado"], ["Modalidade", est.identificacao.modalidade || "Não informado"], ["Data da sessão", data(est.sessaoPublica?.data) || "Não informado"]], secoes };
   }
   const api = { montar, texto, util };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
