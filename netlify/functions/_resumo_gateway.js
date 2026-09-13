@@ -4,12 +4,12 @@ const { Tiktoken } = require("js-tiktoken/lite");
 const ranks = require("js-tiktoken/ranks/o200k_base");
 const contrato = require("./_resumo_gateway_contrato");
 const VERSAO = 17;
-const DURACAO_JOB = 8 * 60 * 1000;
+const DURACAO_JOB = 13 * 60 * 1000;
 const ERRO_PUBLICO = "Não foi possível concluir o resumo. Nenhum checklist foi apresentado como concluído.";
 let tokenizador;
 
 function requisicaoGateway(fonte, ficha) {
-  return { model: "gpt-5.1", reasoning: { effort: "medium" }, max_output_tokens: 12000,
+  return { model: "gpt-5.1", reasoning: { effort: "medium" }, max_output_tokens: 24000,
     input: [{ role: "developer", content: contrato.prompt }, { role: "user", content: `DADOS OFICIAIS: ${JSON.stringify(ficha)}\nFONTE OFICIAL INTEGRAL:\n${fonte}` }],
     text: { format: { type: "json_schema", name: "resumo_edital", strict: true, schema: contrato.schema } } };
 }
@@ -90,7 +90,8 @@ async function executarResumo({ store, chave, usuario, cliente, agora = Date.now
   try {
     const requisicao = requisicaoGateway(estado.fonte, estado.ficha);
     if (tokensRequisicao(requisicao) > 200000) throw new Error("limite_contexto");
-    const sdk = cliente || new (require("openai"))({ timeout: 180000, maxRetries: 0 });
+    const sdk = cliente || new (require("openai"))({ timeout: 360000, maxRetries: 0 });
+    const inicioModelo = Date.now();
     let resposta;
     for (let tentativa = 0; tentativa < 2; tentativa++) {
       estado.tentativas++;
@@ -100,6 +101,18 @@ async function executarResumo({ store, chave, usuario, cliente, agora = Date.now
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
+    // A resposta incompleta também consumiu tokens. Preserva a evidência no job
+    // privado antes da guarda; nunca entrega esse texto como resumo concluído.
+    estado.respostaModeloPrivada = { status: resposta.status || null,
+      responseId: /^resp_[a-zA-Z0-9_-]+$/.test(resposta.id || "") ? resposta.id : null,
+      incomplete_details: resposta.incomplete_details || null,
+      usage: resposta.usage || null, output_text: resposta.output_text || "",
+      elapsedMs: Date.now() - inicioModelo };
+    estado.usoPrivado = resposta.usage;
+    const entrada = resposta.usage?.input_tokens || 0;
+    const cache = resposta.usage?.input_tokens_details?.cached_tokens || 0;
+    const saidaTokens = resposta.usage?.output_tokens || 0;
+    estado.custoEstimadoCreditos = ((entrada - cache) * 1.25 + cache * 0.125 + saidaTokens * 10) / 1000000 * 180;
     if (resposta.status !== "completed") throw new Error("resposta_incompleta");
     const saida = JSON.parse(resposta.output_text);
     if (!estruturaValida(saida)) throw new Error("schema_invalido");
@@ -109,10 +122,6 @@ async function executarResumo({ store, chave, usuario, cliente, agora = Date.now
     estado.status = "concluido";
     estado.resultado = resultado;
     estado.usoPrivado = resposta.usage;
-    const entrada = resposta.usage?.input_tokens || 0;
-    const cache = resposta.usage?.input_tokens_details?.cached_tokens || 0;
-    const saidaTokens = resposta.usage?.output_tokens || 0;
-    estado.custoEstimadoCreditos = ((entrada - cache) * 1.25 + cache * 0.125 + saidaTokens * 10) / 1000000 * 180;
     const conclusao = await store.setJSON(chave, estado, { onlyIfMatch: reserva.etag });
     if (conclusao.modified) await store.setJSON(estado.ficha.numeroControlePNCP, resultado);
   } catch (erro) {

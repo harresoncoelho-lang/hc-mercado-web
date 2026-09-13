@@ -101,9 +101,10 @@ test("worker sem bearer não lê corpo nem acessa provedor", async () => {
   assert.equal(leitura, 0);
 });
 
-test("job acima de oito minutos não chama provedor e termina com mensagem genérica", async () => {
+test("reserva cobre duas tentativas de seis minutos e expira após treze minutos", async () => {
   const x = await preparar(); let chamadas = 0;
-  const agora = Date.now() + 8 * 60 * 1000 + 1;
+  assert.equal((await gateway.solicitarResumo({ ...x.parametros, agora: Date.now() + 12 * 60 * 1000 })).statusCode, 202);
+  const agora = Date.now() + 13 * 60 * 1000 + 1;
   await gateway.executarResumo({ store: x.store, chave: x.chave, usuario: "dono", agora, cliente: { responses: { create: async () => { chamadas++; } } } });
   assert.equal(chamadas, 0);
   assert.equal((await gateway.solicitarResumo({ ...x.parametros, agora })).statusCode, 503);
@@ -113,7 +114,7 @@ test("retomada explícita cobra nova cota somente para dono de job interrompido"
   for (const status of ["falhou", "processando"]) {
     const x = await preparar();
     const registro = await x.store.getWithMetadata(x.chave);
-    await x.store.setJSON(x.chave, { ...registro.data, status, criadoEm: Date.now() - 9 * 60000 });
+    await x.store.setJSON(x.chave, { ...registro.data, status, criadoEm: Date.now() - 14 * 60000 });
     assert.equal((await gateway.solicitarResumo(x.parametros)).statusCode, 503);
     assert.equal((await gateway.solicitarResumo({ ...x.parametros, usuario: "outro", retomar: true })).statusCode, 503);
     assert.deepEqual(x.eventos, ["cota", "disparo"]);
@@ -143,4 +144,35 @@ test("cota recusada expirada não bloqueia outro usuário autorizado", async () 
   const resposta = await gateway.solicitarResumo({ ...parametros, usuario: "autorizado", agora: parametros.agora + 1, autorizar: async () => ({ ok: true }) });
   assert.equal(resposta.statusCode, 202);
   assert.equal(x.eventos.filter(e => e === "disparo").length, 2);
+});
+
+test("resposta incompleta guarda limite e uso privadamente sem publicar resumo ou cache", async () => {
+  const x = await preparar();
+  const resposta = { id: "resp_teste123", status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, usage: { input_tokens: 9000, output_tokens: 12000, output_tokens_details: { reasoning_tokens: 11000 } }, output_text: "SAIDA PARCIAL PRIVADA", output: [{ type: "reasoning", summary: [] }] };
+  await gateway.executarResumo({ store: x.store, chave: x.chave, usuario: "dono", cliente: { responses: { create: async () => resposta } } });
+  const estado = (await x.store.getWithMetadata(x.chave)).data;
+  assert.equal(estado.status, "falhou");
+  assert.equal(estado.respostaModeloPrivada.status, "incomplete");
+  assert.deepEqual(estado.respostaModeloPrivada.incomplete_details, resposta.incomplete_details);
+  assert.deepEqual(estado.usoPrivado, resposta.usage);
+  assert.equal(estado.respostaModeloPrivada.responseId, "resp_teste123");
+  assert.ok(estado.custoEstimadoCreditos > 0);
+  assert.match(JSON.stringify(estado.respostaModeloPrivada), /SAIDA PARCIAL PRIVADA/);
+  assert.equal(estado.resultado, undefined);
+  assert.equal(await x.store.getWithMetadata(x.parametros.ficha.numeroControlePNCP), null);
+  const publico = await gateway.solicitarResumo(x.parametros);
+  assert.equal(publico.statusCode, 503);
+  assert.equal(publico.body.estrutura, null);
+  assert.doesNotMatch(JSON.stringify(publico), /SAIDA PARCIAL|reasoning_tokens|max_output_tokens|respostaModeloPrivada|12000|resp_teste123|custoEstimado/);
+  const outro = await preparar();
+  await gateway.executarResumo({ store: outro.store, chave: outro.chave, usuario: "dono", cliente: { responses: { create: async () => ({ ...resposta, id: "id inválido / segredo" }) } } });
+  assert.equal((await outro.store.getWithMetadata(outro.chave)).data.respostaModeloPrivada.responseId, null);
+});
+
+test("orçamento de saída acomoda raciocínio sem mudar modelo ou alvo de concisão", () => {
+  const request = gateway.requisicaoGateway("Fonte", {});
+  assert.equal(request.max_output_tokens, 24000);
+  assert.equal(request.model, "gpt-5.1");
+  assert.equal(request.reasoning.effort, "medium");
+  assert.match(request.input[0].content, /conciso/);
 });
