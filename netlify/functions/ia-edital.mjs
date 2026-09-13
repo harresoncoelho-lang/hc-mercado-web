@@ -2,6 +2,7 @@ import { withLambda } from "@netlify/aws-lambda-compat";
 // Imports explícitos mantêm no pacote as dependências usadas pelos requires
 // opcionais do handler CommonJS, que o rastreador não encontra após a conversão.
 import "@netlify/blobs";
+import "./_resumo_gateway.js";
 import "pdf-parse";
 import "adm-zip";
 import "mammoth";

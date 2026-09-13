@@ -108,6 +108,9 @@ test("resumo local expira após 24 horas e mantém a cópia recente", () => {
   vm.runInContext(html.slice(inicio, fim), contexto);
   const edital = { numeroControlePNCP: "01171012000141-1-000005/2026" };
   const chave = contexto.chaveCacheLocalResumo(edital);
+  registros.set(`lp-resumo-edital-v16:${edital.numeroControlePNCP}`, JSON.stringify({ salvoEm: Date.now(), estrutura: { resumoGeral: "Cache antigo recente" } }));
+  assert.match(chave, /^lp-resumo-edital-v17:/);
+  assert.equal(contexto.lerCacheLocalResumo(edital), null);
   registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 25 * 60 * 60 * 1000, estrutura: { resumoGeral: "Antigo" } }));
   assert.equal(contexto.lerCacheLocalResumo(edital), null);
   assert.equal(registros.has(chave), false);

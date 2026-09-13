@@ -45,9 +45,8 @@ const TIMEOUT_LISTA_PNCP_MS = 4000;
 const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
-const VERSAO_RESUMO = 16;
-const VERSAO_VALIDACAO_CATALOGO = 2;
-const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
+const VERSAO_RESUMO = 17;
+const VERSAO_VALIDACAO_CATALOGO = 17;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
 
@@ -821,7 +820,7 @@ async function recuperarFichaOficial(numeroControlePNCP, store) {
 const INSTRUCOES_CATALOGO = "Produza um resumo digital de edital com frases curtas, claras e práticas, sem transcrever cláusulas. Resuma cada requisito sem omitir condições, exceções, alternativas, negações, datas, percentuais, prazos ou documentos. Não acrescente exigências. Retorne somente JSON {\"requisitos\":[{\"id\":\"R0001\",\"resumo\":\"texto útil\",\"campos\":{}}]}, exatamente um resultado por ID. Preserve a numeração de cláusulas citadas. Para cada caminho em destinos, preencha campos[caminho] com a informação específica daquele campo: prazo somente prazo; local somente endereço; condições somente condições. Não repita o parágrafo inteiro em cada campo. Para itens sem destinos, campos deve ser vazio. Não copie referências entre colchetes: o servidor as acrescentará. Não retorne apenas IDs. Não use conhecimento externo.";
 
 function mensagensCatalogo(lote) {
-  return [{ role: "system", content: `${INSTRUCOES_CATALOGO} Para itens da categoria documentosHabilitacao, inclua categoriaHabilitacao com exatamente uma destas opções: Jurídica; Fiscal, social e trabalhista; Econômico-financeira; Técnica; Complementares. Classifique pelo conteúdo real, sem transformar alternativas de tipo societário em obrigações cumulativas.` }, { role: "user", content: JSON.stringify(lote) }];
+  return [{ role: "system", content: `${INSTRUCOES_CATALOGO} Se houver apenas um destino, deixe campos vazio: o servidor aplicará o próprio resumo validado nesse destino, sem repetição. Para itens da categoria documentosHabilitacao, inclua categoriaHabilitacao com exatamente uma destas opções: Jurídica; Fiscal, social e trabalhista; Econômico-financeira; Técnica; Complementares. Classifique pelo conteúdo real, sem transformar alternativas de tipo societário em obrigações cumulativas.` }, { role: "user", content: JSON.stringify(lote) }];
 }
 
 function orcamentoCatalogo(lote) {
@@ -902,6 +901,12 @@ function validarCamposResumidos(original, campos) {
   });
 }
 
+function preencherDestinoUnico(original, item) {
+  const vazio = item?.campos === undefined || item.campos && typeof item.campos === "object" && !Array.isArray(item.campos) && !Object.keys(item.campos).length;
+  if (original.destinos?.length !== 1 || !vazio || !validarResumoRequisito(original.texto, item?.resumo)) return item;
+  return { ...item, campos: { [original.destinos[0]]: item.resumo } };
+}
+
 async function sintetizarLoteCatalogo(apiKey, bloco) {
   const lote = JSON.parse(bloco), orcamento = orcamentoCatalogo(lote);
   if (orcamento.entrada > 4000 || orcamento.saida < 1) return { erro: "Lote acima do orçamento seguro de síntese." };
@@ -925,7 +930,7 @@ async function sintetizarLoteCatalogo(apiKey, bloco) {
   if (desconhecidos.length) estrutura.validacaoCatalogoPrivada.push(JSON.stringify({ guarda: "ids_desconhecidos_ignorados", ids: desconhecidos }));
   for (const original of lote) {
     const candidatos = itens.filter((item) => item?.id === original.id);
-    const item = candidatos.length === 1 ? candidatos[0] : null;
+    const item = preencherDestinoUnico(original, candidatos.length === 1 ? candidatos[0] : null);
     const resumo = item?.resumo;
     const categoriaValida = original.categoria !== "documentosHabilitacao" || ["Jurídica", "Fiscal, social e trabalhista", "Econômico-financeira", "Técnica", "Complementares"].includes(item?.categoriaHabilitacao);
     const guarda = !item ? "id_ausente_ou_duplicado" : !validarResumoRequisito(original.texto, resumo) ? "conteudo_numeros_condicoes_aplicabilidade" : !validarCamposResumidos(original, item.campos) ? "campos" : !categoriaValida ? "categoria_habilitacao" : null;
@@ -944,12 +949,31 @@ async function sintetizarLoteCatalogo(apiKey, bloco) {
   return { estrutura };
 }
 
+function reaplicarDestinosUnicos(estado) {
+  return (estado.resultados || []).map((resultado, indice) => {
+    const lote = JSON.parse(estado.blocos[indice]);
+    const camposResumidos = { ...resultado.camposResumidos };
+    const validacaoCatalogoPrivada = (resultado.validacaoCatalogoPrivada || []).map((registro) => {
+      const diagnostico = JSON.parse(registro);
+      if (diagnostico.guarda !== "campos" || diagnostico.reprocessadoSemIA) return registro;
+      const original = lote.find((item) => item.id === diagnostico.id);
+      if (!original || original.texto !== diagnostico.evidencia?.fonte) return registro;
+      const candidato = preencherDestinoUnico(original, diagnostico.evidencia.candidato);
+      if (candidato === diagnostico.evidencia.candidato || !validarCamposResumidos(original, candidato?.campos)) return registro;
+      const referencias = (original.texto.match(/\[[^\]]+\]/g) || []).join(" ");
+      camposResumidos[original.destinos[0]] = `${candidato.resumo.replace(/\[[^\]]+\]/g, "").trim()} ${referencias}`;
+      return JSON.stringify({ ...diagnostico, reprocessadoSemIA: true });
+    });
+    return { ...resultado, camposResumidos, validacaoCatalogoPrivada };
+  });
+}
+
 async function atualizarValidacaoCatalogo(store, chave) {
   const registro = await store.getWithMetadata(chave, { type: "json", consistency: "strong" });
   const estado = registro?.data;
   if (!estado || estado.versaoValidacao === VERSAO_VALIDACAO_CATALOGO) return;
   const falhaValidacao = estado.falhas >= 3 && estado.diagnostico?.parsing === "validacao_catalogo";
-  const atualizado = { ...estado, versaoValidacao: VERSAO_VALIDACAO_CATALOGO };
+  const atualizado = { ...estado, versaoValidacao: VERSAO_VALIDACAO_CATALOGO, resultados: reaplicarDestinosUnicos(estado) };
   if (falhaValidacao) {
     atualizado.validacaoAnterior = { diagnostico: estado.diagnostico, texto: estado.ultimaRespostaNaoEstruturada, falhas: estado.falhas };
     atualizado.falhas = 0;
@@ -959,7 +983,7 @@ async function atualizarValidacaoCatalogo(store, chave) {
   await store.setJSON(chave, atualizado, { onlyIfMatch: registro.etag });
 }
 
-Object.assign(exports.__test, { fichaIdentificada, recuperarFichaOficial, mensagensCatalogo, orcamentoCatalogo, dividirCatalogo, catalogoDaEstrutura, validarResumoRequisito, validarCamposResumidos, preservarAplicabilidade, sintetizarLoteCatalogo, atualizarValidacaoCatalogo });
+Object.assign(exports.__test, { fichaIdentificada, recuperarFichaOficial, mensagensCatalogo, orcamentoCatalogo, dividirCatalogo, catalogoDaEstrutura, validarResumoRequisito, validarCamposResumidos, preservarAplicabilidade, preencherDestinoUnico, reaplicarDestinosUnicos, sintetizarLoteCatalogo, atualizarValidacaoCatalogo });
 
 function montarEstruturaBasica(edital, motivoFonteNaoLida) {
   const naoInformado = "Não informado";
@@ -1017,35 +1041,6 @@ function respostaDeContingencia(edital, motivoFonteNaoLida, aviso) {
       erro: null,
     },
   };
-}
-
-// Uma falha temporária ao baixar o arquivo não pode fazer cada abertura repetir toda a
-// cadeia PNCP + IA. Guardamos a ficha oficial por pouco tempo: a reabertura é imediata e
-// sem nova cota, mas o sistema volta a tentar a leitura completa automaticamente depois.
-async function salvarContingenciaNoCache(store, edital, corpo) {
-  if (!edital.numeroControlePNCP) return;
-  try {
-    const contingencia = {
-      estrutura: corpo.estrutura,
-      resposta: corpo.resposta,
-      textoEdital: corpo.textoEdital || null,
-      fonteLida: false,
-      motivoFonteNaoLida: corpo.motivoFonteNaoLida || "indisponivel",
-      modoDegradado: true,
-      aviso: corpo.aviso || "A análise detalhada será tentada novamente em alguns minutos.",
-      expiraEm: new Date(Date.now() + DURACAO_CACHE_CONTINGENCIA_MS).toISOString(),
-      versao: VERSAO_RESUMO,
-      geradoEm: new Date().toISOString(),
-    };
-    if (store) await store.setJSON(edital.numeroControlePNCP, contingencia);
-    // A cópia durável não é usada para prolongar a contingência no clique: expira em
-    // quinze minutos como o Blob. Ela registra, porém, que este edital já foi tentado
-    // para o robô priorizar os dossiês inéditos e só reabrir esta tentativa depois da
-    // janela de reprocessamento agendada.
-    await salvarDossiePersistido(edital.numeroControlePNCP, contingencia);
-  } catch (e) {
-    // Cache é uma otimização; a resposta atual não pode depender dele.
-  }
 }
 
 exports.handler = async (event) => {
@@ -1184,67 +1179,22 @@ exports.handler = async (event) => {
     fonteLida = true;
   }
 
-  // Sem texto de fonte primária, não há base para a IA completar ou "interpretar"
-  // exigências. Entregamos a ficha oficial estruturada imediatamente — sem gastar cota
-  // com uma frase genérica e sem deixar espaço em branco no modal.
-  if (modo === "resumo" && !fonteLida) {
-    const contingencia = respostaDeContingencia(edital, motivoFonteNaoLida || "indisponivel", "O documento oficial não pôde ser lido automaticamente agora. A ficha abaixo mostra os dados públicos oficiais já coletados, sem inferir requisitos do edital.");
-    await salvarContingenciaNoCache(storeResumos, edital, contingencia.body);
-    contingencia.headers = headers;
-    contingencia.body = JSON.stringify(contingencia.body);
-    return contingencia;
-  }
+  if (modo === "resumo" && !fonteLida) return { statusCode: 422, headers, body: JSON.stringify({ erro: "O documento oficial não pôde ser lido. O resumo e o checklist não foram gerados.", estrutura: null, fonteLida: false, motivoFonteNaoLida, emProcessamento: false }) };
 
-  // O checklist depende da fonte oficial, não da conclusão de etapas de IA.
-  // Resultados parciais antigos não entram no dossiê; só reaproveitamos o texto.
+  // A preparação em lote conserva apenas a fonte, sem disparar IA paga.
   if (modo === "resumo" && fonteLida) {
-    const estrutura = montarDossieDaFonte(edital, textoEdital, coberturaLeitura);
-    let metodoResumo = "documentos", aviso = "A síntese não foi concluída. A ficha mostra somente os dados oficiais disponíveis; o resumo e o checklist completos ainda não estão disponíveis.";
-    if (process.env.GROQ_API_KEY && storeResumos) {
-      try {
-        const catalogo = catalogoDaEstrutura(estrutura, textoEdital);
-        const hashFonte = require("crypto").createHash("sha256").update(textoEdital).digest("hex");
-        const chaveCatalogo = `sintese-catalogo:v${VERSAO_RESUMO}:${edital.numeroControlePNCP}:${hashFonte}`;
-        await atualizarValidacaoCatalogo(storeResumos, chaveCatalogo);
-        const etapas = await executarEtapa({ store: storeResumos, chave: chaveCatalogo,
-          inicial: { texto: JSON.stringify(catalogo), textoFonte: textoEdital, coberturaLeitura, hashFonte, versaoValidacao: VERSAO_VALIDACAO_CATALOGO },
-          dividir: (texto) => dividirCatalogo(JSON.parse(texto)), permitirDivisao: false,
-          usuario: ehRoboInterno ? null : sessao.userId,
-          autorizar: () => verificarLimiteDiario(sessao.userId, "ia-edital", 40),
-          executar: (bloco) => sintetizarLoteCatalogo(process.env.GROQ_API_KEY, bloco) });
-        if (etapas.pendente) return { statusCode: 202, headers, body: JSON.stringify({ ...etapas.pendente, metodoResumo: "sintese_em_andamento" }) };
-        if (etapas.status) return { statusCode: etapas.status, headers, body: JSON.stringify({ erro: etapas.erro }) };
-        if (etapas.estrutura) {
-          const sintetizada = etapas.estrutura;
-          for (const categoria of CATEGORIAS_REQUISITOS) if (sintetizada[categoria]) estrutura[categoria] = sintetizada[categoria];
-          estrutura.documentosHabilitacao = estrutura.documentosHabilitacao.map((texto) => ({ texto, categoria: sintetizada.classificacoesHabilitacao?.[texto.match(/\[(R\d+)\]/)?.[1]] || "Complementares" }));
-          for (const [caminho, valor] of Object.entries(sintetizada.camposResumidos || {})) {
-            const partes = caminho.split("."), campo = partes.pop();
-            const destino = partes.reduce((objeto, chave) => objeto?.[chave], estrutura);
-            if (destino && Object.hasOwn(destino, campo)) destino[campo] = valor;
-          }
-          const repetidos = new Set();
-          for (const item of catalogo) {
-            const outros = (item.destinos || []).filter((caminho) => caminho.startsWith("outrasInformacoesRelevantes."));
-            const representado = item.categoria !== "campos" || (item.destinos || []).some((caminho) => !caminho.startsWith("outrasInformacoesRelevantes."));
-            for (const caminho of outros.slice(representado ? 0 : 1)) repetidos.add(Number(caminho.split(".")[1]));
-          }
-          estrutura.outrasInformacoesRelevantes = estrutura.outrasInformacoesRelevantes.filter((_, indice) => !repetidos.has(indice));
-          estrutura.criteriosProposta.exigenciasPropostaComercial = "Consulte a lista de requisitos da proposta abaixo.";
-          metodoResumo = "sintese_catalogo"; aviso = null;
-        } else aviso = `${aviso} ${etapas.erro || "O processamento foi interrompido após três tentativas."}`;
-      } catch (_) { aviso = `${aviso} Não foi possível concluir o processamento seguro dos lotes.`; }
+    if (ehRoboInterno) return { statusCode: 200, headers, body: JSON.stringify({ fontePreparada: true, fonteLida: true, estrutura: null, metodoResumo: "fonte_preparada", versao: VERSAO_RESUMO }) };
+    if (!storeResumos) return { statusCode: 503, headers, body: JSON.stringify({ erro: "O armazenamento do resumo está indisponível. A geração não foi iniciada.", estrutura: null }) };
+    try {
+      const { solicitarResumo } = require("../_resumo_gateway");
+      const resultado = await solicitarResumo({ store: storeResumos, fonte: textoEdital, ficha: edital, cobertura: coberturaLeitura,
+        retomar: body.retomarAnalise === true,
+        usuario: sessao.userId, authorization: cabecalhosRecebidos.authorization || cabecalhosRecebidos.Authorization || "",
+        autorizar: () => verificarLimiteDiario(sessao.userId, "ia-edital", 40) });
+      return { statusCode: resultado.statusCode, headers, body: JSON.stringify(resultado.body) };
+    } catch (_) {
+      return { statusCode: 503, headers, body: JSON.stringify({ erro: "Não foi possível iniciar o resumo com segurança. Tente novamente mais tarde.", estrutura: null, emProcessamento: false }) };
     }
-    const metadadosIndisponiveis = !fichaIdentificada(edital);
-    if (metadadosIndisponiveis) estrutura.pendenciasParaConferencia.unshift("A identificação oficial da contratação está temporariamente indisponível. O sistema tentará recuperá-la novamente; não foram usados dados alteráveis do navegador.");
-    const estruturaPublica = metodoResumo === "sintese_catalogo" ? estrutura : montarEstruturaBasica(edital);
-    const dossie = { estrutura: estruturaPublica, resposta: metodoResumo === "sintese_catalogo" ? estrutura.resumoGeral : aviso, textoEdital, fonteLida: true, modoDegradado: metodoResumo !== "sintese_catalogo", metodoResumo, metadadosIndisponiveis, aviso, versao: VERSAO_RESUMO, geradoEm: new Date().toISOString(), expiraEm: new Date(Date.now() + (metadadosIndisponiveis || aviso ? DURACAO_CACHE_CONTINGENCIA_MS : 86400000)).toISOString() };
-    dossie.versaoValidacao = VERSAO_VALIDACAO_CATALOGO;
-    if (storeResumos && edital.numeroControlePNCP) {
-      try { await storeResumos.setJSON(edital.numeroControlePNCP, dossie); } catch (_) { /* A entrega independe da disponibilidade do cache. */ }
-    }
-    await salvarDossiePersistido(edital.numeroControlePNCP, dossie);
-    return { statusCode: 200, headers, body: JSON.stringify({ ...dossie, erro: null }) };
   }
 
   // Só usa a cota de IA quando de fato há uma análise a executar. Antes desta

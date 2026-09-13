@@ -75,6 +75,22 @@ test("campos não aceitam destinos estranhos nem números inventados", () => {
   assert.equal(validarCamposResumidos({ texto: "Não será permitida a subcontratação do objeto", destinos: ["analiseCritica.permiteSubcontratacao"] }, { "analiseCritica.permiteSubcontratacao": "Permitida a subcontratação" }), false);
 });
 
+test("resumo válido preenche destino oficial ausente sem aproveitar caminho inventado pelo modelo", async () => {
+  const originalFetch = global.fetch;
+  const fonte = "Não há necessidade de avaliação prévia do local";
+  const resumo = "Não é necessária avaliação prévia do local";
+  const lote = [{ id: "S0077", categoria: "campos", texto: fonte, destinos: ["detalhes.exigeVisitaTecnica"] }];
+  try {
+    for (const campos of [{}, { "detalhes.campoInventado": "Informação sem fonte" }]) {
+      global.fetch = async () => new globalThis.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ requisitos: [{ id: "S0077", resumo, campos }] }) } }] }), { status: 200 });
+      const resultado = await sintetizarLoteCatalogo("teste", JSON.stringify(lote));
+      assert.equal(resultado.estrutura.camposResumidos["detalhes.exigeVisitaTecnica"].trim(), Object.keys(campos).length ? fonte : resumo);
+      assert.equal(resultado.estrutura.camposResumidos["detalhes.campoInventado"], undefined);
+      if (!Object.keys(campos).length) assert.deepEqual(resultado.estrutura.validacaoCatalogoPrivada, []);
+    }
+  } finally { global.fetch = originalFetch; }
+});
+
 test("resposta ausente ou ID desconhecido preserva requisito oficial sem aproveitar conteúdo inventado", async () => {
   const originalFetch = global.fetch;
   const lote = [{ id: "R0001", categoria: "requisitosProposta", texto: "Apresentar proposta válida por 90 dias." }];
@@ -112,7 +128,7 @@ test("revisão CAS reabre validação uma única vez e preserva resultados, cota
     await store.setJSON("job", anterior);
     await atualizarValidacaoCatalogo(store, "job");
     const primeira = await store.getWithMetadata();
-    assert.equal(primeira.data.versaoValidacao, 2);
+    assert.equal(primeira.data.versaoValidacao, 17);
     assert.deepEqual(primeira.data.resultados, anterior.resultados);
     assert.deepEqual(primeira.data.usuariosComCota, anterior.usuariosComCota);
     assert.equal(primeira.data.falhas, parsing === "validacao_catalogo" ? 0 : 3);

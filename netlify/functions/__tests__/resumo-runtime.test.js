@@ -14,7 +14,7 @@ test("adaptador preserva preflight 204 sem corpo e cabeçalhos CORS", async () =
   assert.match(resposta.headers.get("access-control-allow-methods"), /POST/);
 });
 
-test("endpoint entrega ficha sem armazenamento e inicia síntese retomável com armazenamento", async () => {
+test("endpoint requer armazenamento e despacha Gateway sem usar dados adulterados ou Groq", async () => {
   const originalFetch = global.fetch;
   const variaveis = ["GROQ_API_KEY", "DOSSIES_EDITAIS_CHAVE", "NETLIFY_BLOBS_CONTEXT", "SUPABASE_SERVICE_ROLE_KEY"];
   const anteriores = Object.fromEntries(variaveis.map((chave) => [chave, process.env[chave]]));
@@ -26,7 +26,7 @@ test("endpoint entrega ficha sem armazenamento e inicia síntese retomável com 
   process.env.DOSSIES_EDITAIS_CHAVE = "robo-teste";
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   delete process.env.NETLIFY_BLOBS_CONTEXT;
-  const blobs = new Map(), chamadasIA = [], rotasBlob = [];
+  const blobs = new Map(), chamadasIA = [], rotasBlob = [], despachos = [];
   let versao = 0, usarFonteSalva = false;
   const responder = (corpo, status = 200, headers = {}) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status, headers });
   global.fetch = async (url, opcoes = {}) => {
@@ -43,6 +43,7 @@ test("endpoint entrega ficha sem armazenamento e inicia síntese retomável com 
       return registro ? responder(registro.dado, 200, { etag: registro.etag }) : responder("", 404);
     }
     if (url.includes("/auth/v1/user")) return responder({ id: "usuario-teste" });
+    if (url.endsWith("/.netlify/functions/ia-resumo-background")) { despachos.push(JSON.parse(opcoes.body)); return responder("", 202); }
     if (url.includes("incrementar_uso")) throw new Error("Resumo documental não deve cobrar quota IA");
     if (url.includes("api.groq.com")) {
       const corpo = JSON.parse(opcoes.body); chamadasIA.push(corpo);
@@ -61,26 +62,27 @@ test("endpoint entrega ficha sem armazenamento e inicia síntese retomável com 
       body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026", objeto: "OBJETO ADULTERADO", orgao: "ORGAO ADULTERADO" } }),
     }), { requestId: "qa-runtime" });
     const primeira = await solicitar();
-    assert.equal(primeira.status, 200);
+    assert.equal(primeira.status, 503);
     const dossie = await primeira.json();
-    assert.equal(dossie.modoDegradado, true);
-    assert.equal(dossie.estrutura.documentosHabilitacao.length, 0);
-    assert.equal(dossie.metodoResumo, "documentos");
+    assert.equal(dossie.estrutura, null);
     assert.doesNotMatch(JSON.stringify(dossie.estrutura), /ADULTERADO/);
-    const ttl = Date.parse(dossie.expiraEm) - Date.parse(dossie.geradoEm);
-    assert.ok(ttl >= 15 * 60 * 1000 && ttl <= 15 * 60 * 1000 + 100, `TTL inesperado: ${ttl}`);
     assert.equal(chamadasIA.length, 0);
     process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ siteID: "site-teste", token: "token-escopo-blobs", edgeURL: "https://blobs-teste.invalid/", uncachedEdgeURL: "https://blobs-forte-teste.invalid/" })).toString("base64");
     usarFonteSalva = true;
     const comFonteSalva = await solicitar();
-    assert.equal(comFonteSalva.status, 200);
+    assert.equal(comFonteSalva.status, 202);
     const salva = await comFonteSalva.json();
-    assert.equal(salva.metodoResumo, "sintese_catalogo");
-    assert.ok(salva.estrutura.documentosHabilitacao.length);
+    assert.equal(salva.metodoResumo, "sintese_em_andamento");
+    assert.equal(salva.estrutura, null);
     assert.doesNotMatch(JSON.stringify(salva), /validacaoCatalogoPrivada|idsEsperados|candidato/);
     assert.doesNotMatch(JSON.stringify(salva.estrutura), /INVENTADO/);
     assert.ok([...blobs.values()].some(item => item.dado.hashFonte));
-    assert.equal(chamadasIA.length, 1);
+    assert.equal(chamadasIA.length, 0);
+    assert.equal(despachos.length, 1);
+    assert.doesNotMatch(JSON.stringify([...blobs.values()]), /ADULTERADO/);
+    const robo = await modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", { method: "POST", headers: { "content-type": "application/json", "x-licitaplena-dossies-chave": "robo-teste" }, body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026" } }) }), { requestId: "qa-robo" });
+    assert.equal((await robo.json()).fontePreparada, true);
+    assert.equal(despachos.length, 1);
     assert.ok(rotasBlob.filter(rota => rota.metodo === "get").every(rota => rota.url.startsWith("https://blobs-forte-teste.invalid/")));
   } finally {
     global.fetch = originalFetch;

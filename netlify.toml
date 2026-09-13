@@ -50,3 +50,6 @@
 # O pacote exporta ranks diferentes para import/require; o handler usa CommonJS.
 [functions."ia-edital"]
   included_files = ["node_modules/js-tiktoken/dist/ranks/o200k_base.cjs"]
+
+[functions."ia-resumo-background"]
+  included_files = ["node_modules/js-tiktoken/dist/ranks/o200k_base.cjs"]
