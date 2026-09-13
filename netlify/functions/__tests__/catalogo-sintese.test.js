@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { validarResumoRequisito, validarCamposResumidos, dividirCatalogo, orcamentoCatalogo, sintetizarLoteCatalogo } = require("../lib/ia-edital").__test;
+const { validarResumoRequisito, validarCamposResumidos, dividirCatalogo, orcamentoCatalogo, sintetizarLoteCatalogo, atualizarValidacaoCatalogo } = require("../lib/ia-edital").__test;
 const { executarEtapa } = require("../_resumo_progressivo");
 
 test("condensação dispensa referências legais e cláusulas, preservando prazo e condição operacional", () => {
@@ -20,8 +20,9 @@ test("evidência de validação permanece no job privado e não aparece no progr
   const original = { id: "R0001", categoria: "documentosHabilitacao", texto: "Apresentar certidão fiscal em 30 dias se solicitado." };
   const valido = { id: "R0001", resumo: original.texto, campos: {}, categoriaHabilitacao: "Fiscal, social e trabalhista" };
   const casos = [
-    { itens: [], guarda: "cobertura_ids" },
-    { itens: [{ ...valido, resumo: "Apresentar certidão fiscal em 10 dias se solicitado." }], guarda: "conteudo_numeros_condicoes" },
+    { itens: [], guarda: "id_ausente_ou_duplicado" },
+    { itens: [valido, valido], guarda: "id_ausente_ou_duplicado" },
+    { itens: [{ ...valido, resumo: "Apresentar certidão fiscal em 10 dias se solicitado." }], guarda: "conteudo_numeros_condicoes_aplicabilidade" },
     { itens: [{ ...valido, campos: { desconhecido: "texto estranho" } }], guarda: "campos" },
     { itens: [{ ...valido, categoriaHabilitacao: "INVENTADA" }], guarda: "categoria_habilitacao" },
   ];
@@ -29,13 +30,14 @@ test("evidência de validação permanece no job privado e não aparece no progr
     for (const caso of casos) {
       global.fetch = async () => new globalThis.Response(JSON.stringify({ usage: { total_tokens: 123 }, choices: [{ message: { content: JSON.stringify({ requisitos: caso.itens }) } }] }), { status: 200 });
       const rejeicao = await sintetizarLoteCatalogo("teste-sem-custo", JSON.stringify([original]));
-      assert.equal(rejeicao.diagnostico.parsing, "validacao_catalogo");
-      assert.equal(rejeicao.diagnostico.guarda, caso.guarda);
+      const evidencia = JSON.parse(rejeicao.estrutura.validacaoCatalogoPrivada[0]);
+      assert.equal(evidencia.parsing, "validacao_catalogo");
+      assert.equal(evidencia.guarda, caso.guarda);
+      assert.ok(rejeicao.estrutura.documentosHabilitacao[0].includes(original.texto));
       const store = memoria();
-      const etapa = await executarEtapa({ store, chave: "job", inicial: { texto: "fonte" }, dividir: () => ["lote"], permitirDivisao: false, executar: async () => rejeicao });
+      const etapa = await executarEtapa({ store, chave: "job", inicial: { texto: "fonte" }, dividir: () => ["lote", "outro"], permitirDivisao: false, executar: async () => rejeicao });
       const salvo = (await store.getWithMetadata()).data;
-      assert.equal(salvo.ultimaRespostaNaoEstruturada, rejeicao.texto);
-      assert.equal(JSON.parse(salvo.ultimaRespostaNaoEstruturada).guarda, caso.guarda);
+      assert.deepEqual(salvo.resultados[0].validacaoCatalogoPrivada, rejeicao.estrutura.validacaoCatalogoPrivada);
       const publico = JSON.stringify(etapa.pendente);
       assert.doesNotMatch(publico, /certidão fiscal|candidato|numerosFaltantes|numerosNovos|validacao_catalogo|R0001|INVENTADA/);
       assert.equal(etapa.pendente.emProcessamento, true);
@@ -73,15 +75,66 @@ test("campos não aceitam destinos estranhos nem números inventados", () => {
   assert.equal(validarCamposResumidos({ texto: "Não será permitida a subcontratação do objeto", destinos: ["analiseCritica.permiteSubcontratacao"] }, { "analiseCritica.permiteSubcontratacao": "Permitida a subcontratação" }), false);
 });
 
-test("resposta Groq deve cobrir IDs conhecidos com conteúdo útil", async () => {
+test("resposta ausente ou ID desconhecido preserva requisito oficial sem aproveitar conteúdo inventado", async () => {
   const originalFetch = global.fetch;
   const lote = [{ id: "R0001", categoria: "requisitosProposta", texto: "Apresentar proposta válida por 90 dias." }];
   try {
     for (const requisitos of [[], [{ id: "R0001" }], [{ id: "R9999", resumo: "Apresentar proposta válida por 90 dias.", campos: {} }]]) {
       global.fetch = async () => new globalThis.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ requisitos }) } }] }), { status: 200 });
-      assert.ok((await sintetizarLoteCatalogo("chave-ficticia", JSON.stringify(lote))).erro);
+      const resultado = await sintetizarLoteCatalogo("chave-ficticia", JSON.stringify(lote));
+      assert.deepEqual(resultado.estrutura.requisitosProposta, [`${lote[0].texto} [R0001]`]);
+      assert.doesNotMatch(JSON.stringify(resultado.estrutura.requisitosProposta), /R9999/);
     }
   } finally { global.fetch = originalFetch; }
+});
+
+test("falha de aplicabilidade preserva apenas o item estrangeiro e mantém síntese válida do outro", async () => {
+  const originalFetch = global.fetch;
+  const fonte = "Para sociedade estrangeira, apresentar autorização de funcionamento no Brasil conforme IN 77/2020.";
+  const lote = [{ id: "R0019", categoria: "documentosHabilitacao", texto: fonte }, { id: "R0020", categoria: "requisitosProposta", texto: "Apresentar proposta comercial com validade de 90 dias." }];
+  try {
+    const requisitos = [{ id: "R0019", resumo: "Apresentar autorização de funcionamento no Brasil.", campos: {}, categoriaHabilitacao: "Jurídica" }, { id: "R0020", resumo: "Enviar proposta válida por 90 dias.", campos: {} }];
+    global.fetch = async () => new globalThis.Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ requisitos }) } }] }), { status: 200 });
+    const { estrutura } = await sintetizarLoteCatalogo("teste", JSON.stringify(lote));
+    assert.equal(estrutura.documentosHabilitacao[0], `${fonte} [R0019]`);
+    assert.equal(estrutura.classificacoesHabilitacao.R0019, "Jurídica");
+    assert.match(estrutura.requisitosProposta[0], /^Enviar proposta válida por 90 dias\./);
+    assert.equal(validarResumoRequisito(fonte, "Para sociedade estrangeira, apresentar autorização de funcionamento no Brasil."), true);
+  } finally { global.fetch = originalFetch; }
+});
+
+test("revisão CAS reabre validação uma única vez e preserva resultados, cotas e falhas HTTP", async () => {
+  for (const parsing of ["validacao_catalogo", "erro_http"]) {
+    const store = memoria();
+    // Chaves e tipos reproduzem job-diagnostico-84ed547.json; conteúdo e usuário anonimizados.
+    const realAnonimizado = require("./fixtures/job-validacao-anonimizado.json");
+    const anterior = { ...realAnonimizado, diagnostico: { ...realAnonimizado.diagnostico, parsing, status: parsing === "erro_http" ? 429 : 200 } };
+    await store.setJSON("job", anterior);
+    await atualizarValidacaoCatalogo(store, "job");
+    const primeira = await store.getWithMetadata();
+    assert.equal(primeira.data.versaoValidacao, 2);
+    assert.deepEqual(primeira.data.resultados, anterior.resultados);
+    assert.deepEqual(primeira.data.usuariosComCota, anterior.usuariosComCota);
+    assert.equal(primeira.data.falhas, parsing === "validacao_catalogo" ? 0 : 3);
+    if (parsing === "validacao_catalogo") assert.equal(primeira.data.validacaoAnterior.texto, "evidência privada");
+    else assert.deepEqual(primeira.data.diagnostico, anterior.diagnostico);
+    await atualizarValidacaoCatalogo(store, "job");
+    assert.deepEqual(await store.getWithMetadata(), primeira);
+  }
+});
+
+test("migração de validação não libera reserva de job ainda ativo", async () => {
+  const fixture = require("./fixtures/job-validacao-anonimizado.json");
+  const store = memoria();
+  const ativo = { ...fixture, falhas: 1, proximaEtapaEm: Date.now() + 65000 };
+  await store.setJSON("job", ativo);
+  await atualizarValidacaoCatalogo(store, "job");
+  const migrado = (await store.getWithMetadata()).data;
+  assert.equal(migrado.falhas, 1);
+  assert.equal(migrado.proximaEtapaEm, ativo.proximaEtapaEm);
+  assert.deepEqual(migrado.diagnostico, ativo.diagnostico);
+  assert.deepEqual(migrado.usuariosComCota, ativo.usuariosComCota);
+  assert.equal(migrado.validacaoAnterior, undefined);
 });
 
 function memoria() {

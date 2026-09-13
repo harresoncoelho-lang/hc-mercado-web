@@ -73,9 +73,11 @@ test("endpoint entrega ficha sem armazenamento e inicia síntese retomável com 
     process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ siteID: "site-teste", token: "token-escopo-blobs", edgeURL: "https://blobs-teste.invalid/", uncachedEdgeURL: "https://blobs-forte-teste.invalid/" })).toString("base64");
     usarFonteSalva = true;
     const comFonteSalva = await solicitar();
-    assert.equal(comFonteSalva.status, 202);
+    assert.equal(comFonteSalva.status, 200);
     const salva = await comFonteSalva.json();
-    assert.equal(salva.emProcessamento, true);
+    assert.equal(salva.metodoResumo, "sintese_catalogo");
+    assert.ok(salva.estrutura.documentosHabilitacao.length);
+    assert.doesNotMatch(JSON.stringify(salva), /validacaoCatalogoPrivada|idsEsperados|candidato/);
     assert.doesNotMatch(JSON.stringify(salva.estrutura), /INVENTADO/);
     assert.ok([...blobs.values()].some(item => item.dado.hashFonte));
     assert.equal(chamadasIA.length, 1);

@@ -1,0 +1,15 @@
+{
+  "texto": "[]",
+  "textoFonte": "Fonte oficial de teste",
+  "coberturaLeitura": { "parcial": true },
+  "hashFonte": "hash-anonimizado",
+  "blocos": ["lote concluído", "lote pendente"],
+  "resultados": [{ "requisitosProposta": ["Proposta já resumida"] }],
+  "falhas": 3,
+  "proximaEtapaEm": 12345,
+  "expiraEm": 9999999999999,
+  "usuariosComCota": ["usuario-anonimizado"],
+  "ultimoErro": "Síntese rejeitada",
+  "diagnostico": { "status": 200, "finalizacao": "stop", "caracteres": 100, "prompt_tokens": 100, "completion_tokens": 30, "total_tokens": 130, "caracteresRaciocinio": 0, "parsing": "validacao_catalogo", "guarda": "conteudo_numeros_condicoes", "id": "R0001" },
+  "ultimaRespostaNaoEstruturada": "evidência privada"
+}

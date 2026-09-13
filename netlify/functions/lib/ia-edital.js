@@ -46,6 +46,7 @@ const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
 const VERSAO_RESUMO = 16;
+const VERSAO_VALIDACAO_CATALOGO = 2;
 const DURACAO_CACHE_CONTINGENCIA_MS = 15 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
@@ -860,12 +861,12 @@ function catalogoDaEstrutura(estrutura, texto) {
 function numerosOperacionais(texto) {
   // Referências jurídicas permanecem na fonte auditável; não são prazos ou valores.
   const semReferencias = texto.replace(/\[[^\]]+\]/g, "").replace(/^\d+(?:\.\d+)*\.\s*/, "")
-    .replace(/\b(?:art(?:igo)?\.?|lei(?:\s+complementar)?|decreto(?:-lei)?|item|cl[aá]usula)\s*(?:n(?:[.ºo°]\s*){0,2})?\d+(?:[.,/]\d+)*(?:[ºo°])?(?:\s*,?\s*de\s+(?:\d{1,2}\s+de\s+[a-zç]+\s+de\s+)?\d{4})?/gi, "");
+    .replace(/\b(?:art(?:igo)?\.?|lei(?:\s+complementar)?|decreto(?:-lei)?|item|cl[aá]usula|(?:instru[çc][ãa]o\s+normativa|IN)(?:\s+[A-Z][A-Z/-]*)?)\s*(?:n(?:[.ºo°]\s*){0,2})?\d+(?:[.,/]\d+)*(?:[ºo°])?(?:\s*,?\s*de\s+(?:\d{1,2}\s+de\s+[a-zç]+\s+de\s+)?\d{4})?/gi, "");
   return new Set((semReferencias.match(/\d+(?:[.,/:]\d+)*(?:\s*%)?/g) || []).map((numero) => numero.replace(/\s/g, "")));
 }
 
 function preservarCondicoes(origemTexto, destinoTexto) {
-  const normalizar = (texto) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normalizar = (texto) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\bonde\s+se\s+(?=localiz)/g, "onde ");
   const origem = normalizar(origemTexto), destino = normalizar(destinoTexto);
   if (/\bnao\b/.test(origem) !== /\bnao\b/.test(destino)) return false;
   const condicoes = [/\bnao\b/, /\bou\b/, /\b(?:se|caso|quando)\b/, /\b(?:exceto|salvo)\b/];
@@ -875,7 +876,17 @@ function preservarCondicoes(origemTexto, destinoTexto) {
 function validarResumoRequisito(original, resumo) {
   if (typeof resumo !== "string" || resumo.replace(/\[[^\]]*\]|R\d+/g, "").trim().length < 20) return false;
   const numerosFonte = numerosOperacionais(original), numerosResumo = numerosOperacionais(resumo);
-  return [...numerosFonte].every((numero) => numerosResumo.has(numero)) && [...numerosResumo].every((numero) => numerosFonte.has(numero)) && preservarCondicoes(original, resumo);
+  return [...numerosFonte].every((numero) => numerosResumo.has(numero)) && [...numerosResumo].every((numero) => numerosFonte.has(numero)) && preservarCondicoes(original, resumo) && preservarAplicabilidade(original, resumo);
+}
+
+function preservarAplicabilidade(original, resumo) {
+  const normalizar = (texto) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const origem = normalizar(original), destino = normalizar(resumo);
+  if (/\b(?:sociedades?|empresas?)\s+(?:empresarias?\s+)?estrangeiras?\b/.test(origem) && !/estrangeir/.test(destino)) return false;
+  const rotulo = origem.match(/^(?:\d+(?:\.\d+)*\.\s*)?([^:]{3,100}):/)?.[1];
+  if (!rotulo) return true;
+  const tipos = [/estrangeir/, /cooperativ/, /consorci/, /\bmei\b|microempreendedor/, /empresario\s+individual/, /sociedade\s+simples/, /pessoa\s+fisica/];
+  return tipos.every((tipo) => !tipo.test(rotulo) || tipo.test(destino));
 }
 
 function validarCamposResumidos(original, campos) {
@@ -907,27 +918,48 @@ async function sintetizarLoteCatalogo(apiKey, bloco) {
         numerosNovos: [...numerosResumo].filter((numero) => !numerosFonte.has(numero)),
         condicoesPreservadas: preservarCondicoes(original?.texto || "", resumoRecebido) }) };
   };
-  const itens = extrairJson(resposta.texto)?.requisitos;
-  if (!Array.isArray(itens) || itens.length !== lote.length || new Set(itens.map((item) => item?.id)).size !== lote.length) return rejeitar("A síntese não cobriu todos os requisitos do lote.", "cobertura_ids", null, { idsRecebidos: Array.isArray(itens) ? itens.map((item) => item?.id) : null, idsEsperados: lote.map((item) => item.id) });
-  const estrutura = {};
+  const recebidos = extrairJson(resposta.texto)?.requisitos;
+  const itens = Array.isArray(recebidos) ? recebidos : [];
+  const estrutura = { validacaoCatalogoPrivada: [] };
+  const desconhecidos = itens.filter((item) => !lote.some((original) => original.id === item?.id)).map((item) => item?.id);
+  if (desconhecidos.length) estrutura.validacaoCatalogoPrivada.push(JSON.stringify({ guarda: "ids_desconhecidos_ignorados", ids: desconhecidos }));
   for (const original of lote) {
-    const item = itens.find((item) => item?.id === original.id);
+    const candidatos = itens.filter((item) => item?.id === original.id);
+    const item = candidatos.length === 1 ? candidatos[0] : null;
     const resumo = item?.resumo;
-    if (!validarResumoRequisito(original.texto, resumo)) return rejeitar("A síntese não preservou as condições verificáveis de um requisito.", "conteudo_numeros_condicoes", original, item);
-    if (!validarCamposResumidos(original, item.campos)) return rejeitar("A síntese não retornou os campos específicos com referências numéricas válidas.", "campos", original, item);
+    const categoriaValida = original.categoria !== "documentosHabilitacao" || ["Jurídica", "Fiscal, social e trabalhista", "Econômico-financeira", "Técnica", "Complementares"].includes(item?.categoriaHabilitacao);
+    const guarda = !item ? "id_ausente_ou_duplicado" : !validarResumoRequisito(original.texto, resumo) ? "conteudo_numeros_condicoes_aplicabilidade" : !validarCamposResumidos(original, item.campos) ? "campos" : !categoriaValida ? "categoria_habilitacao" : null;
+    if (guarda) {
+      const diagnostico = rejeitar("Foi preservado o requisito oficial deste item.", guarda, original, item);
+      estrutura.validacaoCatalogoPrivada.push(JSON.stringify({ ...diagnostico.diagnostico, evidencia: JSON.parse(diagnostico.texto) }));
+    }
     if (original.categoria === "documentosHabilitacao") {
-      if (!["Jurídica", "Fiscal, social e trabalhista", "Econômico-financeira", "Técnica", "Complementares"].includes(item.categoriaHabilitacao)) return rejeitar("A síntese não classificou os documentos de habilitação.", "categoria_habilitacao", original, item);
-      (estrutura.classificacoesHabilitacao ||= {})[original.id] = item.categoriaHabilitacao;
+      (estrutura.classificacoesHabilitacao ||= {})[original.id] = categoriaValida ? item.categoriaHabilitacao : "Complementares";
     }
     const referencias = (original.texto.match(/\[[^\]]+\]/g) || []).join(" ");
-    const texto = `${resumo.replace(/\[[^\]]+\]/g, "").trim()} [${original.id}] ${referencias}`;
+    const texto = guarda ? `${original.texto} [${original.id}]` : `${resumo.replace(/\[[^\]]+\]/g, "").trim()} [${original.id}] ${referencias}`;
     if (original.categoria !== "campos") (estrutura[original.categoria] ||= []).push(texto);
-    for (const destino of original.destinos || []) (estrutura.camposResumidos ||= {})[destino] = `${item.campos[destino].replace(/\[[^\]]+\]/g, "").trim()} ${referencias}`;
+    for (const destino of original.destinos || []) (estrutura.camposResumidos ||= {})[destino] = guarda ? original.texto : `${item.campos[destino].replace(/\[[^\]]+\]/g, "").trim()} ${referencias}`;
   }
   return { estrutura };
 }
 
-Object.assign(exports.__test, { fichaIdentificada, recuperarFichaOficial, mensagensCatalogo, orcamentoCatalogo, dividirCatalogo, catalogoDaEstrutura, validarResumoRequisito, validarCamposResumidos, sintetizarLoteCatalogo });
+async function atualizarValidacaoCatalogo(store, chave) {
+  const registro = await store.getWithMetadata(chave, { type: "json", consistency: "strong" });
+  const estado = registro?.data;
+  if (!estado || estado.versaoValidacao === VERSAO_VALIDACAO_CATALOGO) return;
+  const falhaValidacao = estado.falhas >= 3 && estado.diagnostico?.parsing === "validacao_catalogo";
+  const atualizado = { ...estado, versaoValidacao: VERSAO_VALIDACAO_CATALOGO };
+  if (falhaValidacao) {
+    atualizado.validacaoAnterior = { diagnostico: estado.diagnostico, texto: estado.ultimaRespostaNaoEstruturada, falhas: estado.falhas };
+    atualizado.falhas = 0;
+    atualizado.proximaEtapaEm = 0;
+    atualizado.diagnostico = null;
+  }
+  await store.setJSON(chave, atualizado, { onlyIfMatch: registro.etag });
+}
+
+Object.assign(exports.__test, { fichaIdentificada, recuperarFichaOficial, mensagensCatalogo, orcamentoCatalogo, dividirCatalogo, catalogoDaEstrutura, validarResumoRequisito, validarCamposResumidos, preservarAplicabilidade, sintetizarLoteCatalogo, atualizarValidacaoCatalogo });
 
 function montarEstruturaBasica(edital, motivoFonteNaoLida) {
   const naoInformado = "Não informado";
@@ -1107,7 +1139,7 @@ exports.handler = async (event) => {
       // impedir que outro navegador recupere o dossiê estruturado. Quando o
       // cliente pede a atualização, reaproveitamos apenas uma estrutura completa;
       // caso contrário, lemos a fonte novamente e substituímos o cache incompleto.
-      const cachePodeResponder = cache && !cache.modoDegradado && !cache.metadadosIndisponiveis && cacheAindaValido && cache.versao === VERSAO_RESUMO &&
+      const cachePodeResponder = cache && !cache.modoDegradado && !cache.metadadosIndisponiveis && cacheAindaValido && cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
         (cache.estrutura || (cache.resposta && !reprocessarEstrutura));
       if (cachePodeResponder) {
         return {
@@ -1172,8 +1204,10 @@ exports.handler = async (event) => {
       try {
         const catalogo = catalogoDaEstrutura(estrutura, textoEdital);
         const hashFonte = require("crypto").createHash("sha256").update(textoEdital).digest("hex");
-        const etapas = await executarEtapa({ store: storeResumos, chave: `sintese-catalogo:v${VERSAO_RESUMO}:${edital.numeroControlePNCP}:${hashFonte}`,
-          inicial: { texto: JSON.stringify(catalogo), textoFonte: textoEdital, coberturaLeitura, hashFonte },
+        const chaveCatalogo = `sintese-catalogo:v${VERSAO_RESUMO}:${edital.numeroControlePNCP}:${hashFonte}`;
+        await atualizarValidacaoCatalogo(storeResumos, chaveCatalogo);
+        const etapas = await executarEtapa({ store: storeResumos, chave: chaveCatalogo,
+          inicial: { texto: JSON.stringify(catalogo), textoFonte: textoEdital, coberturaLeitura, hashFonte, versaoValidacao: VERSAO_VALIDACAO_CATALOGO },
           dividir: (texto) => dividirCatalogo(JSON.parse(texto)), permitirDivisao: false,
           usuario: ehRoboInterno ? null : sessao.userId,
           autorizar: () => verificarLimiteDiario(sessao.userId, "ia-edital", 40),
@@ -1205,6 +1239,7 @@ exports.handler = async (event) => {
     if (metadadosIndisponiveis) estrutura.pendenciasParaConferencia.unshift("A identificação oficial da contratação está temporariamente indisponível. O sistema tentará recuperá-la novamente; não foram usados dados alteráveis do navegador.");
     const estruturaPublica = metodoResumo === "sintese_catalogo" ? estrutura : montarEstruturaBasica(edital);
     const dossie = { estrutura: estruturaPublica, resposta: metodoResumo === "sintese_catalogo" ? estrutura.resumoGeral : aviso, textoEdital, fonteLida: true, modoDegradado: metodoResumo !== "sintese_catalogo", metodoResumo, metadadosIndisponiveis, aviso, versao: VERSAO_RESUMO, geradoEm: new Date().toISOString(), expiraEm: new Date(Date.now() + (metadadosIndisponiveis || aviso ? DURACAO_CACHE_CONTINGENCIA_MS : 86400000)).toISOString() };
+    dossie.versaoValidacao = VERSAO_VALIDACAO_CATALOGO;
     if (storeResumos && edital.numeroControlePNCP) {
       try { await storeResumos.setJSON(edital.numeroControlePNCP, dossie); } catch (_) { /* A entrega independe da disponibilidade do cache. */ }
     }
