@@ -7,6 +7,42 @@ test("condensação dispensa referências legais e cláusulas, preservando prazo
   assert.equal(validarResumoRequisito("7.1. Conforme art. 69 da Lei 14.133/2021, apresentar balanço em 3 dias se solicitado [Edital, página 12].", "Apresentar balanço em 3 dias se solicitado."), true);
 });
 
+test("abreviações jurídicas e ano de referência não obrigam transcrição nem dispensam prazo operacional", () => {
+  for (const referencia of ["Lei n. 5.764, de 1971, art. 107", "Lei n.º 5.764, de 1971, art. 107", "Lei nº 5.764, de 1971, art. 107", "Decreto-Lei n. 5.764, de 1971, art. 107"]) {
+    const fonte = `Conforme ${referencia}, apresentar registro da cooperativa em 3 dias se solicitado.`;
+    assert.equal(validarResumoRequisito(fonte, "Apresentar registro da cooperativa em 3 dias se solicitado."), true, referencia);
+    assert.equal(validarResumoRequisito(fonte, "Apresentar registro da cooperativa se solicitado."), false, referencia);
+  }
+});
+
+test("evidência de validação permanece no job privado e não aparece no progresso público", async () => {
+  const originalFetch = global.fetch;
+  const original = { id: "R0001", categoria: "documentosHabilitacao", texto: "Apresentar certidão fiscal em 30 dias se solicitado." };
+  const valido = { id: "R0001", resumo: original.texto, campos: {}, categoriaHabilitacao: "Fiscal, social e trabalhista" };
+  const casos = [
+    { itens: [], guarda: "cobertura_ids" },
+    { itens: [{ ...valido, resumo: "Apresentar certidão fiscal em 10 dias se solicitado." }], guarda: "conteudo_numeros_condicoes" },
+    { itens: [{ ...valido, campos: { desconhecido: "texto estranho" } }], guarda: "campos" },
+    { itens: [{ ...valido, categoriaHabilitacao: "INVENTADA" }], guarda: "categoria_habilitacao" },
+  ];
+  try {
+    for (const caso of casos) {
+      global.fetch = async () => new globalThis.Response(JSON.stringify({ usage: { total_tokens: 123 }, choices: [{ message: { content: JSON.stringify({ requisitos: caso.itens }) } }] }), { status: 200 });
+      const rejeicao = await sintetizarLoteCatalogo("teste-sem-custo", JSON.stringify([original]));
+      assert.equal(rejeicao.diagnostico.parsing, "validacao_catalogo");
+      assert.equal(rejeicao.diagnostico.guarda, caso.guarda);
+      const store = memoria();
+      const etapa = await executarEtapa({ store, chave: "job", inicial: { texto: "fonte" }, dividir: () => ["lote"], permitirDivisao: false, executar: async () => rejeicao });
+      const salvo = (await store.getWithMetadata()).data;
+      assert.equal(salvo.ultimaRespostaNaoEstruturada, rejeicao.texto);
+      assert.equal(JSON.parse(salvo.ultimaRespostaNaoEstruturada).guarda, caso.guarda);
+      const publico = JSON.stringify(etapa.pendente);
+      assert.doesNotMatch(publico, /certidão fiscal|candidato|numerosFaltantes|numerosNovos|validacao_catalogo|R0001|INVENTADA/);
+      assert.equal(etapa.pendente.emProcessamento, true);
+    }
+  } finally { global.fetch = originalFetch; }
+});
+
 test("síntese rejeita perda de alternativas, exceções e números operacionais", () => {
   for (const [fonte, resumo] of [
     ["Entregar em 30 dias após NE ou ordem de compra.", "Entregar em 30 dias após ordem de compra."],

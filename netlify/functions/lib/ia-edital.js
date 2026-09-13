@@ -860,7 +860,7 @@ function catalogoDaEstrutura(estrutura, texto) {
 function numerosOperacionais(texto) {
   // Referências jurídicas permanecem na fonte auditável; não são prazos ou valores.
   const semReferencias = texto.replace(/\[[^\]]+\]/g, "").replace(/^\d+(?:\.\d+)*\.\s*/, "")
-    .replace(/\b(?:art(?:igo)?\.?|lei(?:\s+complementar)?|decreto|item|cl[aá]usula)\s*(?:n[ºo°.]\s*)?\d+(?:[.,/]\d+)*(?:[ºo°])?/gi, "");
+    .replace(/\b(?:art(?:igo)?\.?|lei(?:\s+complementar)?|decreto(?:-lei)?|item|cl[aá]usula)\s*(?:n(?:[.ºo°]\s*){0,2})?\d+(?:[.,/]\d+)*(?:[ºo°])?(?:\s*,?\s*de\s+(?:\d{1,2}\s+de\s+[a-zç]+\s+de\s+)?\d{4})?/gi, "");
   return new Set((semReferencias.match(/\d+(?:[.,/:]\d+)*(?:\s*%)?/g) || []).map((numero) => numero.replace(/\s/g, "")));
 }
 
@@ -896,16 +896,27 @@ async function sintetizarLoteCatalogo(apiKey, bloco) {
   if (orcamento.entrada > 4000 || orcamento.saida < 1) return { erro: "Lote acima do orçamento seguro de síntese." };
   const resposta = await chamarGroq(apiKey, mensagensCatalogo(lote), { modelo: MODELO_RESUMO, json: true, maxTokens: orcamento.saida, reasoningEffort: "low", timeoutMs: 20000 });
   if (!resposta.ok) return resposta;
+  const rejeitar = (erro, guarda, original, candidato) => {
+    const resumoRecebido = typeof candidato?.resumo === "string" ? candidato.resumo : "";
+    const numerosFonte = numerosOperacionais(original?.texto || ""), numerosResumo = numerosOperacionais(resumoRecebido);
+    // executarEtapa guarda este texto somente no job privado. A resposta pública
+    // continua genérica; preservamos a evidência sem afrouxar a validação.
+    return { erro, diagnostico: { ...resposta.diagnostico, parsing: "validacao_catalogo", guarda, id: original?.id || null },
+      texto: JSON.stringify({ guarda, id: original?.id || null, fonte: original?.texto || null, candidato,
+        numerosFaltantes: [...numerosFonte].filter((numero) => !numerosResumo.has(numero)),
+        numerosNovos: [...numerosResumo].filter((numero) => !numerosFonte.has(numero)),
+        condicoesPreservadas: preservarCondicoes(original?.texto || "", resumoRecebido) }) };
+  };
   const itens = extrairJson(resposta.texto)?.requisitos;
-  if (!Array.isArray(itens) || itens.length !== lote.length || new Set(itens.map((item) => item?.id)).size !== lote.length) return { erro: "A síntese não cobriu todos os requisitos do lote." };
+  if (!Array.isArray(itens) || itens.length !== lote.length || new Set(itens.map((item) => item?.id)).size !== lote.length) return rejeitar("A síntese não cobriu todos os requisitos do lote.", "cobertura_ids", null, { idsRecebidos: Array.isArray(itens) ? itens.map((item) => item?.id) : null, idsEsperados: lote.map((item) => item.id) });
   const estrutura = {};
   for (const original of lote) {
     const item = itens.find((item) => item?.id === original.id);
     const resumo = item?.resumo;
-    if (!validarResumoRequisito(original.texto, resumo)) return { erro: "A síntese não preservou as condições verificáveis de um requisito." };
-    if (!validarCamposResumidos(original, item.campos)) return { erro: "A síntese não retornou os campos específicos com referências numéricas válidas." };
+    if (!validarResumoRequisito(original.texto, resumo)) return rejeitar("A síntese não preservou as condições verificáveis de um requisito.", "conteudo_numeros_condicoes", original, item);
+    if (!validarCamposResumidos(original, item.campos)) return rejeitar("A síntese não retornou os campos específicos com referências numéricas válidas.", "campos", original, item);
     if (original.categoria === "documentosHabilitacao") {
-      if (!["Jurídica", "Fiscal, social e trabalhista", "Econômico-financeira", "Técnica", "Complementares"].includes(item.categoriaHabilitacao)) return { erro: "A síntese não classificou os documentos de habilitação." };
+      if (!["Jurídica", "Fiscal, social e trabalhista", "Econômico-financeira", "Técnica", "Complementares"].includes(item.categoriaHabilitacao)) return rejeitar("A síntese não classificou os documentos de habilitação.", "categoria_habilitacao", original, item);
       (estrutura.classificacoesHabilitacao ||= {})[original.id] = item.categoriaHabilitacao;
     }
     const referencias = (original.texto.match(/\[[^\]]+\]/g) || []).join(" ");
