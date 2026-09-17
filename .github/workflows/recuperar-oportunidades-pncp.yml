@@ -12,7 +12,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   recuperar:
@@ -31,6 +31,7 @@ jobs:
           CONCORRENCIA_UF_OPORTUNIDADES: "2"
           INTERVALO_MS_OPORTUNIDADES: "900"
           MIN_UFS_OK_OPORTUNIDADES: "1"
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/atualizar_dados.js
       - name: Preparar dossiês recém-coletados
         env:
@@ -49,29 +50,3 @@ jobs:
             exit 0
           fi
           node scripts/preparar_dossies_editais.js
-      - name: Publicar recuperação válida
-        run: |
-          git config user.name "hc-licitacoes-bot"
-          git config user.email "actions@github.com"
-          git add data/oportunidades_abertas.json data/boletim/
-          if git diff --cached --quiet; then
-            echo "Nenhuma UF recuperada nesta tentativa."
-            exit 0
-          fi
-          git commit -m "Recuperação automática de UFs pendentes do PNCP - $(date -u +'%Y-%m-%d %H:%M UTC')"
-          # A recuperação roda de hora em hora e pode coincidir com um deploy ou uma
-          # edição manual no main. Não transformar uma coleta válida em falha só por
-          # um push não-fast-forward: reintegra o remoto e tenta novamente, como o
-          # robô principal já faz.
-          for tentativa in 1 2 3; do
-            if git push; then
-              break
-            fi
-            echo "Push rejeitado (tentativa $tentativa) — atualizando com o remoto e tentando de novo."
-            git fetch origin main
-            git rebase origin/main || { git rebase --abort; git merge -X ours origin/main -m "Merge automático da recuperação"; }
-            if [ "$tentativa" = "3" ]; then
-              echo "Não foi possível publicar a recuperação após 3 tentativas."
-              exit 1
-            fi
-          done

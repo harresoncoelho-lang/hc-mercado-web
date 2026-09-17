@@ -129,6 +129,8 @@ jobs:
         run: |
           git config user.name "hc-licitacoes-bot"
           git config user.email "actions@github.com"
+          # oportunidades_abertas.json e boletim/ estão no .gitignore (vivem no Supabase
+          # agora, ver scripts/atualizar_dados.js) — "git add data/" nunca mais os inclui.
           git add data/
           # empresas.json e fornecedores/ são propositalmente PRIVADOS (base de prospecção só
           # da HC, publicada acima no painel interno) — nunca vão pro site público dos clientes.
