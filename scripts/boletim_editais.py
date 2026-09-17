@@ -21,7 +21,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 from email.header import Header
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 PASTA_REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR_DADOS = os.path.join(PASTA_REPO, "data")
@@ -34,7 +34,13 @@ NOME_REMETENTE = "LicitaPlena - Alertas de Editais"
 TODAS_UFS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB",
              "PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"]
 
-# ---- DESTINATARIOS (edite aqui para adicionar/remover clientes) ----
+# ---- DESTINATARIOS (edite aqui so pra casos manuais, fora do fluxo normal do painel) ----
+# Qualquer cliente aprovado no admin (Supabase) ja entra sozinho via carregar_clientes_aprovados(),
+# usando o segmento/estado que ELE configurou em "Minha conta" - nao duplique o e-mail dele aqui
+# tambem, porque um e-mail que aparecer nos dois lugares usa so a entrada fixa (ve montar_lista_
+# destinatarios() abaixo) e ignora silenciosamente o que a pessoa configurou no painel. Foi
+# exatamente isso que causou o Harreson (cadastrado no Supabase so com AM) receber editais de
+# RR: sobrava aqui uma entrada fixa antiga dele com ["AM", "RR"]. Removida.
 # ufs: lista de siglas (ex: ["AM","RR"]) ou None para buscar em todo o Brasil
 # palavras_chave: use radicais de palavra (sem plural/genero fixo) para pegar mais variacoes
 #
@@ -47,26 +53,7 @@ TODAS_UFS = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","P
 #   4) Preencha "telefone" com o numero completo do destinatario, com DDI+DDD, sem
 #      espacos/traco/parenteses (ex: "5592912345678" pra um numero de Manaus/AM).
 # Se "whatsapp" for None, o boletim desse destinatario continua indo so por e-mail.
-DESTINATARIOS = [
-    {
-        "nome": "Harreson",
-        "email": "harreson.coelho@gmail.com",
-        "ufs": ["AM", "RR"],
-        "palavras_chave": [
-            "expediente",
-            "higiene",
-            "limpeza",
-            "aliment",
-            "veiculo",
-            "hospitalar",
-            "engenharia",
-            "fotovoltaic",
-            "eletric",
-            "informatica",
-        ],
-        "whatsapp": None,  # preencha {"telefone": "55...", "apikey": "..."} depois de liberar o CallMeBot
-    },
-]
+DESTINATARIOS = []
 # ---------------------------------------------------------------------
 
 # Alem da lista fixa acima, o boletim tambem manda pra clientes aprovados no painel
@@ -369,18 +356,44 @@ def filtrar_por_palavra_chave(editais, palavras):
 DIAS_PUBLICACAO_BOLETIM = 2
 
 
-def filtrar_por_publicacao_recente(editais, dias=DIAS_PUBLICACAO_BOLETIM):
-    limite = datetime.now() - timedelta(days=dias)
+def filtrar_por_publicacao_recente(editais, dias=DIAS_PUBLICACAO_BOLETIM, agora=None):
+    fuso_brasilia = timezone(timedelta(hours=-3))
+    agora = agora or datetime.now(fuso_brasilia)
+    agora = agora.replace(tzinfo=fuso_brasilia) if agora.tzinfo is None else agora.astimezone(fuso_brasilia)
+    limite = agora - timedelta(days=dias)
+    # Na segunda, recupera também a sexta inteira, que ficava fora das 48 horas.
+    if agora.weekday() == 0:
+        sexta = (agora - timedelta(days=3)).replace(hour=0, minute=0, second=0, microsecond=0)
+        limite = min(limite, sexta)
     resultado = []
     for e in editais:
         data_str = e.get("dataPublicacaoPncp") or e.get("dataInclusao")
         if not data_str:
             continue
         try:
-            data_pub = datetime.fromisoformat(data_str.replace("Z", ""))
+            data_pub = datetime.fromisoformat(data_str.replace("Z", "+00:00"))
+            if data_pub.tzinfo is None:
+                data_pub = data_pub.replace(tzinfo=fuso_brasilia)
         except ValueError:
             continue
         if data_pub >= limite:
+            resultado.append(e)
+    return resultado
+
+
+def filtrar_por_uf_exata(editais, ufs):
+    # Camada de seguranca extra: o parametro "uf" que mandamos pro PNCP ja deveria
+    # restringir a busca, mas essa API publica nem sempre e 100% confiavel nesse filtro.
+    # Antes de mandar pro cliente, reconferimos a UF de cada edital de verdade (nunca
+    # confiar so no que a API disse que filtrou) - evita um cliente de UF restrita
+    # (ex: so AM) receber edital de outro estado por falha silenciosa da fonte.
+    if not ufs:
+        return editais
+    ufs_normalizadas = {str(uf).strip().upper() for uf in ufs}
+    resultado = []
+    for e in editais:
+        uf_edital = ((e.get("unidadeOrgao") or {}).get("ufSigla") or "").strip().upper()
+        if uf_edital in ufs_normalizadas:
             resultado.append(e)
     return resultado
 
@@ -627,7 +640,8 @@ def main():
                     editais.extend(pool.get(uf, []))
 
             editais_recentes = filtrar_por_publicacao_recente(editais)
-            filtrados = filtrar_por_palavra_chave(editais_recentes, d["palavras_chave"])
+            editais_da_uf = filtrar_por_uf_exata(editais_recentes, d["ufs"])
+            filtrados = filtrar_por_palavra_chave(editais_da_uf, d["palavras_chave"])
 
             log(d["nome"] + ": " + str(len(filtrados)) + " editais no filtro.")
 

@@ -99,6 +99,8 @@ jobs:
         run: node scripts/enriquecer_contato_sicaf.js
 
       - name: Publicar dados privados no painel interno (Base de Empresas/SICAF)
+        continue-on-error: true # uma falha aqui (ex: PAINEL_INTERNO_TOKEN expirado) nao pode
+        # abortar o job e impedir o commit dos dados publicos (oportunidades/boletim) la embaixo.
         env:
           PAINEL_INTERNO_TOKEN: ${{ secrets.PAINEL_INTERNO_TOKEN }}
         run: |
