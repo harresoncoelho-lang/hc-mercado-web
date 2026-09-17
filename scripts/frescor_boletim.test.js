@@ -30,7 +30,7 @@ function criarContexto(base, cache = null) {
     normalizarUfs: (ufs) => ufs,
     lerFiltroBoletim: () => ({ ufs: ["AM"], palavrasRaw: "material" }),
     lerCacheResultadoBoletim: () => cache,
-    carregarMeta: async () => (base ? { atualizadoEm: base.atualizadoEm, ultimaTentativaEm: base.ultimaTentativaEm, coberturaPorUf: base.coberturaPorUf } : null),
+    carregarBlobSupabase: async (chave) => (base && chave === "oportunidades_meta" ? { atualizadoEm: base.atualizadoEm, ultimaTentativaEm: base.ultimaTentativaEm, coberturaPorUf: base.coberturaPorUf } : null),
     carregarOportunidadesSupabase: async (estados) => (base ? { registros: base.registros } : null),
     mesclarComCacheRobo: (_lista, registros) => registros,
     renderizarBoletimComCalendario: (registros) => renderizacoes.push(registros),

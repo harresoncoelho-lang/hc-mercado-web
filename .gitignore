@@ -6,8 +6,9 @@ __pycache__/
 # Arquivos de dados grandes do robô — agora vivem no Supabase (tabelas contratos,
 # mercado_atas e oportunidades_abertas), não mais no git. Ver scripts/atualizar_dados.js e
 # supabase/schema_dados_mercado.sql / supabase/schema_oportunidades.sql. Só o metadado
-# pequeno (contratos_meta.json / mercado_meta.json / oportunidades_meta.json) continua
-# versionado.
+# pequeno de contratos/mercado (contratos_meta.json / mercado_meta.json) continua
+# versionado; o das oportunidades vive na tabela dados_robo, chave "oportunidades_meta",
+# porque precisa sobreviver às recuperações de hora em hora, que não comitam nada.
 data/contratos_recentes.json
 data/mercado_segmentos.json
 data/oportunidades_abertas.json

@@ -81,9 +81,9 @@ helpers in `painel.html`.
 
 ### Data flow: three tiers, deliberately separated by cost
 
-1. **Small, versioned JSON in `data/`** (`contratos_meta.json`, `mercado_meta.json`, `oportunidades_meta.json`,
-   etc.) — committed to git, served as static files, cached 5 min / stale-while-revalidate 1h per
-   `netlify.toml`. `painel.html` fetches these directly.
+1. **Small, versioned JSON in `data/`** (`contratos_meta.json`, `mercado_meta.json`, etc.) — committed to
+   git, served as static files, cached 5 min / stale-while-revalidate 1h per `netlify.toml`. `painel.html`
+   fetches these directly.
 2. **Large/growing data in Supabase Postgres** (`contratos`, `mercado_atas`, `oportunidades_abertas` tables —
    see `supabase/schema_dados_mercado.sql` / `supabase/schema_oportunidades.sql`) — queried live from
    `painel.html` using the Supabase client with the public anon key (RLS restricts `SELECT` to `authenticated`
@@ -91,9 +91,12 @@ helpers in `painel.html`.
    (`contratos_recentes.json`, `mercado_segmentos.json`, `oportunidades_abertas.json`, `boletim/*.json` — now
    gitignored) directly to git, because every commit to those files triggered a full Netlify production
    redeploy.
-3. **Small "key → JSON blob" data** (`convenios`, `sistema_s_am`, `editais_vistos` history) lives in a generic
-   `dados_robo` Supabase table (`chave text primary key, dado jsonb`) via `scripts/supabase_dados.js`'s
-   `buscarBlob`/`salvarBlob` — same rationale: avoid git commits (and redeploys) on every robot run.
+3. **Small "key → JSON blob" data** (`convenios`, `sistema_s_am`, `editais_vistos` history,
+   `oportunidades_meta`) lives in a generic `dados_robo` Supabase table (`chave text primary key, dado jsonb`)
+   via `scripts/supabase_dados.js`'s `buscarBlob`/`salvarBlob` — same rationale: avoid git commits (and
+   redeploys) on every robot run. `oportunidades_meta` (the PNCP collector's `coberturaPorUf`/`ufsComFalha`
+   state) is here rather than in tier 1 because the hourly UF-recovery workflow commits nothing, so a
+   git-tracked file would lose every recovery's progress.
 
 When touching the data pipeline, preserve this split: don't casually add a new large file to `data/` (it'll
 get committed daily by the cron robots and redeploy the whole site), and don't add new git-committed blobs for

@@ -10,7 +10,7 @@
 
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const { upsertEmLotes } = require("./supabase_dados");
+const { upsertEmLotes, salvarBlob } = require("./supabase_dados");
 
 async function main() {
   const dirDados = path.join(process.cwd(), "data");
@@ -84,9 +84,13 @@ async function main() {
   const enviadasOportunidades = await upsertEmLotes("oportunidades_abertas", linhasOportunidades, "chave");
   console.log(`OK — ${enviadasOportunidades} linha(s) na tabela "oportunidades_abertas".`);
 
+  // O metadado das oportunidades vai pra tabela dados_robo (mesmo padrão de
+  // convenios/sistema_s_am), não pra um arquivo comitado: o workflow de recuperação de UFs
+  // roda de hora em hora sem comitar nada, e precisa reencontrar o coberturaPorUf da
+  // execução anterior. Ver hidratarOportunidadesDoSupabase em scripts/atualizar_dados.js.
   const { registros: _ro, ...oportunidadesMeta } = oportunidades;
-  await fs.writeFile(path.join(dirDados, "oportunidades_meta.json"), JSON.stringify(oportunidadesMeta), "utf8");
-  console.log("Gravado data/oportunidades_meta.json");
+  await salvarBlob("dados_robo", "oportunidades_meta", oportunidadesMeta);
+  console.log('Gravado o metadado em dados_robo/"oportunidades_meta".');
 
   console.log("\nBackfill concluído. Agora pode remover contratos_recentes.json, mercado_segmentos.json,");
   console.log("oportunidades_abertas.json e boletim/ do git (git rm --cached).");

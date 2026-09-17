@@ -2442,7 +2442,7 @@
 
   // ---- Status das Ferramentas: mostra atualização E cobertura de cada fonte ----
   const FONTES_STATUS = [
-    { arquivo: "data/oportunidades_meta.json", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
+    { supabase: "oportunidades_meta", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
     // Contratos e atas agora moram no Supabase. Consultar o último registro direto
     // dali impede que este painel acuse um metadado estático antigo como se a coleta
     // inteira estivesse parada.
@@ -2483,7 +2483,17 @@
         if (fonte.supabase) {
           const dados = await carregarBlobSupabase(fonte.supabase);
           if (!dados) return { ...fonte, ok: false };
-          return { ...fonte, ok: true, atualizadoEm: dados.atualizadoEm || null };
+          return {
+            ...fonte,
+            ok: true,
+            atualizadoEm: dados.atualizadoEm || null,
+            // O metadado de oportunidades registra UFs com falha. Sem esta leitura, uma
+            // coleta que só preservou cache antigo parecia saudável apenas por ter um horário
+            // recente — exatamente o comportamento que não pode chegar ao cliente. Os outros
+            // blobs (convenios, sistema_s_am) não têm esses campos e caem no vazio abaixo.
+            ufsComFalha: Array.isArray(dados.ufsComFalha) ? dados.ufsComFalha : [],
+            saudeFonte: dados.saudeFonte || null,
+          };
         }
         if (fonte.tabelaSupabase) {
           await aguardarSupabaseAutenticado();
@@ -2496,19 +2506,8 @@
           if (error || !data) return { ...fonte, ok: false };
           return { ...fonte, ok: true, atualizadoEm: data.atualizado_em || null };
         }
-        const resp = await fetch(fonte.arquivo);
-        if (!resp.ok) return { ...fonte, ok: false };
-        const dados = await resp.json();
-        return {
-          ...fonte,
-          ok: true,
-          atualizadoEm: dados.atualizadoEm || null,
-          // O arquivo de oportunidades registra UFs com falha. Sem esta leitura, uma
-          // coleta que só preservou cache antigo parecia saudável apenas por ter um horário
-          // recente — exatamente o comportamento que não pode chegar ao cliente.
-          ufsComFalha: Array.isArray(dados.ufsComFalha) ? dados.ufsComFalha : [],
-          saudeFonte: dados.saudeFonte || null,
-        };
+        // Nenhuma fonte desta lista vem mais de arquivo estático — todas moram no Supabase.
+        return { ...fonte, ok: false };
       } catch (e) {
         return { ...fonte, ok: false };
       }
@@ -4669,28 +4668,6 @@
     return completos.concat(doCacheRestante);
   }
 
-  // Tenta carregar um arquivo de dados já coletados pelo nosso robô diário (GitHub Actions).
-  // Isso evita depender do PNCP ao vivo na hora da busca do usuário. Retorna null se o
-  // arquivo não existir ainda (robô nunca rodou) ou se der qualquer erro — nesse caso quem
-  // chamou deve cair de volta para a busca ao vivo no PNCP.
-  async function carregarCache(caminho) {
-    try {
-      const resp = await fetch(caminho);
-      if (!resp.ok) return null;
-      const dados = await resp.json();
-      if (!dados || !Array.isArray(dados.registros)) return null;
-      return dados;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // Carrega data/mercado_segmentos.json (atas de registro de preço + empresas vencedoras,
-  // já cruzadas pelo robô). Cobre TODOS os segmentos, sem lista fixa — a cobertura de cada
-  // mercado cresce aos poucos conforme o robô processa (ver coletarMercadoSegmentos em
-  // scripts/atualizar_dados.js). Formato diferente do carregarCache() acima (não tem
-  // "registros", tem "atas" e "empresas").
-
   async function carregarMeta(caminho) {
     try {
       const resp = await fetch(caminho);
@@ -4738,31 +4715,62 @@
     // muito no futuro — hoje (set/2026) a base tem ~17 mil linhas.
     // ponytail: teto fixo, subir se a base nacional passar disso com frequência.
     const LIMITE_OPORTUNIDADES_SUPABASE = 20000;
+    // O Postgrest corta a resposta em 1000 linhas por padrão (o mesmo teto documentado em
+    // baixarTodasAsLinhas, scripts/supabase_dados.js). Um .limit() maior no cliente NÃO
+    // levanta esse teto do servidor: a consulta nacional devolveria ~1000 das ~17 mil
+    // linhas em silêncio, sem erro nenhum. Por isso paginamos com .range().
+    const PAGINA_OPORTUNIDADES_SUPABASE = 1000;
+    // Memoização no mesmo formato de cacheConsultasContratos (Map + TTL): esta função é
+    // chamada em 3 telas da mesma sessão e, com a paginação acima, cada chamada nacional
+    // são ~17 idas ao servidor.
+    const cacheOportunidadesSupabase = new Map();
+    const CACHE_OPORTUNIDADES_TTL_MS = 5 * 60 * 1000; // mesmo TTL de CACHE_CONTRATOS_TTL_MS
 
     // Substitui data/oportunidades_abertas.json (nacional) e data/boletim/{UF}.json (por
     // estado) — ambos vinham de arquivos comitados a cada execução do robô, o que disparava
-    // um deploy completo no Netlify por commit. Mesmo contrato de retorno que
-    // carregarCache() tinha ({registros: [...]} ou null em erro), pra não mudar nenhum
-    // consumidor. Sem "estados", devolve a base nacional inteira (mesmo comportamento do
-    // antigo data/oportunidades_abertas.json); com "estados", filtra por UF E pela mesma
-    // janela de recência que data/boletim/{UF}.json usava (publicado nos últimos 3 dias OU
-    // ainda com proposta aberta) — ver gravarBoletinsPorUf, removida de scripts/atualizar_dados.js.
+    // um deploy completo no Netlify por commit. Devolve {registros: [...]}, ou null em erro,
+    // que era o contrato dos arquivos antigos, pra não mudar nenhum consumidor. Sem
+    // "estados", devolve a base nacional inteira (mesmo comportamento do antigo
+    // data/oportunidades_abertas.json); com "estados", filtra por UF E pela mesma janela de
+    // recência que data/boletim/{UF}.json usava (publicado nos últimos 3 dias OU ainda com
+    // proposta aberta) — ver gravarBoletinsPorUf, removida de scripts/atualizar_dados.js.
     async function carregarOportunidadesSupabase(estados = []) {
+      const chaveCache = JSON.stringify({ estados: [...estados].sort() });
+      const entradaCache = cacheOportunidadesSupabase.get(chaveCache);
+      if (entradaCache && (Date.now() - entradaCache.em) < CACHE_OPORTUNIDADES_TTL_MS) {
+        return entradaCache.resultado;
+      }
+      const resultado = await consultarOportunidadesSupabase(estados);
+      cacheOportunidadesSupabase.set(chaveCache, { em: Date.now(), resultado });
+      return resultado;
+    }
+
+    async function consultarOportunidadesSupabase(estados) {
       try {
         await aguardarSupabaseAutenticado();
-        let query = window.__sbClient.from("oportunidades_abertas").select("dado").limit(LIMITE_OPORTUNIDADES_SUPABASE);
-        if (estados.length > 0) {
-          query = query.in("uf", estados);
-          const cortePublicacaoIso = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-          const agoraIso = new Date().toISOString().slice(0, 10);
-          query = query.or(`publicacao.gte.${cortePublicacaoIso},publicacao.is.null,encerramento.gte.${agoraIso}`);
+        const registros = [];
+        for (let inicio = 0; inicio < LIMITE_OPORTUNIDADES_SUPABASE; inicio += PAGINA_OPORTUNIDADES_SUPABASE) {
+          const fim = Math.min(inicio + PAGINA_OPORTUNIDADES_SUPABASE, LIMITE_OPORTUNIDADES_SUPABASE) - 1;
+          // Ordenar pela chave primária é o que deixa a paginação estável: sem ORDER BY o
+          // Postgres não garante a mesma ordem entre páginas, e linhas poderiam repetir ou
+          // sumir de uma .range() pra seguinte.
+          let query = window.__sbClient.from("oportunidades_abertas").select("dado").order("chave").range(inicio, fim);
+          if (estados.length > 0) {
+            query = query.in("uf", estados);
+            const cortePublicacaoIso = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            const agoraIso = new Date().toISOString().slice(0, 10);
+            query = query.or(`publicacao.gte.${cortePublicacaoIso},publicacao.is.null,encerramento.gte.${agoraIso}`);
+          }
+          const { data, error } = await query;
+          if (error) {
+            console.error("[oportunidades_abertas] erro na consulta:", error);
+            return null;
+          }
+          const pagina = data || [];
+          for (const linha of pagina) registros.push(linha.dado);
+          if (pagina.length < fim - inicio + 1) break;
         }
-        const { data, error } = await query;
-        if (error) {
-          console.error("[oportunidades_abertas] erro na consulta:", error);
-          return null;
-        }
-        return { registros: (data || []).map((linha) => linha.dado) };
+        return { registros };
       } catch (e) {
         return null;
       }
@@ -5774,11 +5782,14 @@
 
   async function carregarBaseDoRoboParaBoletim(ufs) {
     const estados = normalizarUfs(ufs);
-    // O robô grava um metadado pequeno (coberturaPorUf, atualizadoEm) versionado no git —
-    // data/oportunidades_meta.json — e os registros completos ficam no Supabase, filtrados
-    // por UF + recência direto na consulta (ver carregarOportunidadesSupabase).
+    // O robô grava um metadado pequeno (coberturaPorUf, atualizadoEm) na tabela dados_robo
+    // do Supabase, chave "oportunidades_meta" (mesmo padrão de convenios/sistema_s_am), e os
+    // registros completos na tabela oportunidades_abertas, filtrados por UF + recência
+    // direto na consulta (ver carregarOportunidadesSupabase). O metadado precisa sobreviver
+    // entre execuções do robô sem passar pelo git: a recuperação de UFs roda de hora em hora
+    // e é o coberturaPorUf dela que decide quais UFs ainda faltam.
     const [meta, oportunidades] = await Promise.all([
-      carregarMeta("data/oportunidades_meta.json"),
+      carregarBlobSupabase("oportunidades_meta"),
       carregarOportunidadesSupabase(estados),
     ]);
     if (estados.length > 0) {
@@ -8688,22 +8699,20 @@
     const estadosPromise = window.__sbClient.rpc("dashboard_estados_distintos");
     const rankingEstadosPromise = window.__sbClient.rpc("dashboard_estados_top", { limite: 10 });
     const rankingSegmentosPromise = window.__sbClient.rpc("dashboard_segmentos_top", { limite: 10 });
-    // "Novas hoje" vem do cache do robô (oportunidades ABERTAS, publicadas hoje) em vez da
-    // tabela contratos (que só guarda contratos JÁ ASSINADOS/homologados) — é a métrica que
-    // corresponde de verdade a "nova licitação" no sentido do Effecti, e além disso é mais
-    // barata (não precisa de outra query no Supabase, reaproveita o arquivo estático).
-    const novasHojePromise = carregarOportunidadesSupabase().then((cache) => {
-      if (!cache || !Array.isArray(cache.registros)) return null;
-      const hojeStr = new Date().toISOString().slice(0, 10);
-      return cache.registros.filter((r) => r.publicacao && String(r.publicacao).slice(0, 10) === hojeStr).length;
-    });
+    // "Novas hoje" vem das oportunidades ABERTAS publicadas hoje, não da tabela contratos
+    // (que só guarda contratos JÁ ASSINADOS/homologados) — é a métrica que corresponde de
+    // verdade a "nova licitação" no sentido do Effecti. Conta no servidor (head: true,
+    // igual ao totalPromise acima) em vez de baixar a base nacional inteira só pra filtrar
+    // uma data no navegador: o payload aqui é zero.
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    const novasHojePromise = window.__sbClient.from("oportunidades_abertas").select("chave", { count: "exact", head: true }).eq("publicacao", hojeIso);
 
-    const [totalResp, estadosResp, rankingEstadosResp, rankingSegmentosResp, novasHoje] = await Promise.all([
+    const [totalResp, estadosResp, rankingEstadosResp, rankingSegmentosResp, novasHojeResp] = await Promise.all([
       totalPromise, estadosPromise, rankingEstadosPromise, rankingSegmentosPromise, novasHojePromise,
     ]);
 
     if (elTotal) elTotal.textContent = (!totalResp.error && typeof totalResp.count === "number") ? totalResp.count.toLocaleString("pt-BR") : "–";
-    if (elNovasHoje) elNovasHoje.textContent = typeof novasHoje === "number" ? novasHoje.toLocaleString("pt-BR") : "–";
+    if (elNovasHoje) elNovasHoje.textContent = (!novasHojeResp.error && typeof novasHojeResp.count === "number") ? novasHojeResp.count.toLocaleString("pt-BR") : "–";
     if (elEstados) elEstados.textContent = (!estadosResp.error && estadosResp.data != null) ? String(estadosResp.data) : "–";
     if (elRankingEstados) {
       elRankingEstados.innerHTML = rankingEstadosResp.error

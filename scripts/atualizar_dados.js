@@ -1069,7 +1069,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 //   3) DEPOIS: separa o resultado em metadado (pequeno, vai pro git) + registros
 //      (vão só pro Supabase via upsert), e apaga do banco o que passou da
 //      retenção.
-const { upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue } = require("./supabase_dados");
+const { upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue, salvarBlob, buscarBlob } = require("./supabase_dados");
 
 async function hidratarContratosDoSupabase(caminhoArquivo, caminhoMeta) {
   const meta = await lerJsonExistente(caminhoMeta);
@@ -1157,20 +1157,26 @@ function chaveOportunidade(r) {
   return r.numeroControlePNCP || `${r.objeto}|${r.orgao}|${r.uf}`;
 }
 
-async function hidratarOportunidadesDoSupabase(caminhoArquivo, caminhoMeta) {
-  const meta = await lerJsonExistente(caminhoMeta);
-  if (!meta) {
-    console.log("[supabase] Sem metadado anterior de oportunidades — tratando como 1ª execução.");
-    return;
-  }
+// O metadado das oportunidades (coberturaPorUf, atualizadoEm, ufsComFalha...) mora na
+// tabela dados_robo, chave "oportunidades_meta" — não num arquivo comitado. É isso que faz
+// o progresso da recuperação de UFs sobreviver de uma execução pra outra: o workflow de
+// recuperação roda de hora em hora e não comita nada, então um metadado local morreria com
+// o job e a execução seguinte reprocessaria as mesmas UFs contra uma fonte sensível a
+// excesso de requisições.
+async function hidratarOportunidadesDoSupabase(caminhoArquivo) {
   try {
+    const meta = await buscarBlob("dados_robo", "oportunidades_meta");
+    if (!meta) {
+      console.log("[supabase] Sem metadado anterior de oportunidades — tratando como 1ª execução.");
+      return;
+    }
     const linhas = await baixarTodasAsLinhas("oportunidades_abertas", "dado");
     const registros = linhas.map((l) => l.dado);
     const fs = await import("node:fs/promises");
     await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
     console.log(`[supabase] Hidratada(s) ${registros.length} oportunidade(s) do Supabase pra continuar o incremental.`);
   } catch (e) {
-    console.log(`[supabase] Falha ao baixar oportunidades existentes (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
+    console.log(`[supabase] Falha ao ler o estado anterior das oportunidades (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
   }
 }
 
@@ -1224,8 +1230,7 @@ async function main() {
   }
 
   const caminhoOportunidades = path.join(dirDados, "oportunidades_abertas.json");
-  const caminhoOportunidadesMeta = path.join(dirDados, "oportunidades_meta.json");
-  await hidratarOportunidadesDoSupabase(caminhoOportunidades, caminhoOportunidadesMeta);
+  await hidratarOportunidadesDoSupabase(caminhoOportunidades);
   const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
   // O arquivo local continua sendo escrito (gitignored, ver .gitignore) porque
   // scripts/preparar_dossies_editais.js roda depois, no mesmo job, e lê esse
@@ -1233,8 +1238,8 @@ async function main() {
   // usam. O que muda é que ele NUNCA mais é comitado (ver Achado #2 do plano).
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   const { registros: _registrosOportunidades, ...oportunidadesMeta } = oportunidades;
-  await fs.writeFile(caminhoOportunidadesMeta, JSON.stringify(oportunidadesMeta), "utf8");
-  console.log("Gravado data/oportunidades_meta.json (metadado leve, vai pro git)");
+  await salvarBlob("dados_robo", "oportunidades_meta", oportunidadesMeta);
+  console.log('[supabase] Metadado de oportunidades gravado em dados_robo/"oportunidades_meta" (não vai pro git)');
   // "semPendencias" (ver coletarOportunidadesAbertas) significa que a recuperação de
   // 3h não tinha UF nenhuma pra atualizar — reenviar as ~17 mil linhas pro Supabase
   // nesse caso seria puro desperdício de escrita, 8x/dia, sem mudança nenhuma.
