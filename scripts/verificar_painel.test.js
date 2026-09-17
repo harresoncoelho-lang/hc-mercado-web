@@ -130,7 +130,7 @@ test("boletim abre pela coleta do robô e só consulta PNCP por atualização ex
   assert.match(bloco, /localStorage\.setItem\(chaveCacheBoletim\(filtro\)/);
   assert.match(bloco, /if \(!atualizarAoVivo\) \{/);
   assert.match(bloco, /resultadosDoRoboParaBoletim\(cacheOportunidades, ufs, palavras\)/);
-  assert.match(bloco, /data\/boletim\/\$\{uf\}\.json/);
+  assert.match(bloco, /carregarOportunidadesSupabase\(estados\)/);
   assert.match(bloco, /bol-atualizar[\s\S]{0,180}atualizarAoVivo: true/);
   assert.doesNotMatch(bloco, /sessionStorage\.(getItem|setItem)\(chaveCacheBoletim/);
 });

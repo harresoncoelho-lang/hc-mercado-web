@@ -2442,7 +2442,7 @@
 
   // ---- Status das Ferramentas: mostra atualização E cobertura de cada fonte ----
   const FONTES_STATUS = [
-    { arquivo: "data/oportunidades_abertas.json", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
+    { arquivo: "data/oportunidades_meta.json", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
     // Contratos e atas agora moram no Supabase. Consultar o último registro direto
     // dali impede que este painel acuse um metadado estático antigo como se a coleta
     // inteira estivesse parada.
@@ -4733,6 +4733,41 @@
       }
     }
 
+    // Teto de segurança pra não pedir a tabela inteira sem fim caso a retenção de
+    // 120 dias (ver RETENCAO_DIAS_OPORTUNIDADES em scripts/atualizar_dados.js) cresça
+    // muito no futuro — hoje (set/2026) a base tem ~17 mil linhas.
+    // ponytail: teto fixo, subir se a base nacional passar disso com frequência.
+    const LIMITE_OPORTUNIDADES_SUPABASE = 20000;
+
+    // Substitui data/oportunidades_abertas.json (nacional) e data/boletim/{UF}.json (por
+    // estado) — ambos vinham de arquivos comitados a cada execução do robô, o que disparava
+    // um deploy completo no Netlify por commit. Mesmo contrato de retorno que
+    // carregarCache() tinha ({registros: [...]} ou null em erro), pra não mudar nenhum
+    // consumidor. Sem "estados", devolve a base nacional inteira (mesmo comportamento do
+    // antigo data/oportunidades_abertas.json); com "estados", filtra por UF E pela mesma
+    // janela de recência que data/boletim/{UF}.json usava (publicado nos últimos 3 dias OU
+    // ainda com proposta aberta) — ver gravarBoletinsPorUf, removida de scripts/atualizar_dados.js.
+    async function carregarOportunidadesSupabase(estados = []) {
+      try {
+        await aguardarSupabaseAutenticado();
+        let query = window.__sbClient.from("oportunidades_abertas").select("dado").limit(LIMITE_OPORTUNIDADES_SUPABASE);
+        if (estados.length > 0) {
+          query = query.in("uf", estados);
+          const cortePublicacaoIso = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const agoraIso = new Date().toISOString().slice(0, 10);
+          query = query.or(`publicacao.gte.${cortePublicacaoIso},publicacao.is.null,encerramento.gte.${agoraIso}`);
+        }
+        const { data, error } = await query;
+        if (error) {
+          console.error("[oportunidades_abertas] erro na consulta:", error);
+          return null;
+        }
+        return { registros: (data || []).map((linha) => linha.dado) };
+      } catch (e) {
+        return null;
+      }
+    }
+
     // Tira os caracteres que a sintaxe .or() do Postgrest usa como separador/reservado,
   // pra não quebrar a consulta quando o usuário digita algo com vírgula/parênteses.
   function sanitizarParaIlike(palavra) {
@@ -5739,20 +5774,25 @@
 
   async function carregarBaseDoRoboParaBoletim(ufs) {
     const estados = normalizarUfs(ufs);
-    // Cada UF tem uma projeção leve criada pelo robô. Isso evita baixar os ~10 MB da
-    // base nacional para abrir um boletim de AM, RR ou qualquer outro filtro específico.
+    // O robô grava um metadado pequeno (coberturaPorUf, atualizadoEm) versionado no git —
+    // data/oportunidades_meta.json — e os registros completos ficam no Supabase, filtrados
+    // por UF + recência direto na consulta (ver carregarOportunidadesSupabase).
+    const [meta, oportunidades] = await Promise.all([
+      carregarMeta("data/oportunidades_meta.json"),
+      carregarOportunidadesSupabase(estados),
+    ]);
     if (estados.length > 0) {
-      const bases = await Promise.all(estados.map((uf) => carregarCache(`data/boletim/${uf}.json`)));
       return {
-        registros: bases.flatMap((base) => (base && Array.isArray(base.registros) ? base.registros : [])),
-        coberturaPorUf: Object.fromEntries(estados.map((uf, i) => [uf, {
-          atualizadoEm: bases[i]?.coberturaPorUf?.[uf]?.atualizadoEm || bases[i]?.atualizadoEm || null,
+        registros: (oportunidades && Array.isArray(oportunidades.registros)) ? oportunidades.registros : [],
+        coberturaPorUf: Object.fromEntries(estados.map((uf) => [uf, {
+          atualizadoEm: meta?.coberturaPorUf?.[uf]?.atualizadoEm || meta?.atualizadoEm || null,
         }])),
       };
     }
     // Sem estado é uma busca nacional propositalmente mais ampla; preserva a cobertura
     // completa para esse caso excepcional, sem penalizar o fluxo normal com UF definida.
-    return carregarCache("data/oportunidades_abertas.json");
+    if (!oportunidades) return null;
+    return { ...oportunidades, atualizadoEm: meta?.atualizadoEm || null, coberturaPorUf: meta?.coberturaPorUf || {} };
   }
 
   function frescorBaseBoletim(base) {
@@ -6017,7 +6057,7 @@
       const falhaConexao = resp.falhaConexao;
       let avisoFonte = "";
 
-      const cache = await carregarCache("data/oportunidades_abertas.json");
+      const cache = await carregarOportunidadesSupabase();
       if (cache && Array.isArray(cache.registros) && cache.registros.length > 0) {
         resultados = mesclarComCacheRobo(resultados, cache.registros, ufs, palavras);
       }
@@ -7196,7 +7236,7 @@
       // Metadados e fontes auxiliares são independentes da consulta de contratos. Iniciar
       // tudo junto reduz o tempo percebido até o relatório sem aumentar chamadas à API.
       const metaContratosPromise = carregarMeta("data/contratos_meta.json");
-      const cacheOpPromise = carregarCache("data/oportunidades_abertas.json");
+      const cacheOpPromise = carregarOportunidadesSupabase();
       const cacheMercadoPromise = carregarMercadoSegmentos(palavras, uf || null);
       const resumoPromise = carregarResumoInteligenciaMercado(palavras, dias, uf);
       resumoPromise.then((resumo) => {
@@ -8652,7 +8692,7 @@
     // tabela contratos (que só guarda contratos JÁ ASSINADOS/homologados) — é a métrica que
     // corresponde de verdade a "nova licitação" no sentido do Effecti, e além disso é mais
     // barata (não precisa de outra query no Supabase, reaproveita o arquivo estático).
-    const novasHojePromise = carregarCache("data/oportunidades_abertas.json").then((cache) => {
+    const novasHojePromise = carregarOportunidadesSupabase().then((cache) => {
       if (!cache || !Array.isArray(cache.registros)) return null;
       const hojeStr = new Date().toISOString().slice(0, 10);
       return cache.registros.filter((r) => r.publicacao && String(r.publicacao).slice(0, 10) === hojeStr).length;
