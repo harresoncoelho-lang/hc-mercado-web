@@ -135,15 +135,6 @@ test("boletim abre pela coleta do robô e só consulta PNCP por atualização ex
   assert.doesNotMatch(bloco, /sessionStorage\.(getItem|setItem)\(chaveCacheBoletim/);
 });
 
-test("robô publica uma projeção leve do boletim para cada UF", () => {
-  const fs = require("node:fs");
-  const path = require("node:path");
-  const codigo = fs.readFileSync(path.join(__dirname, "atualizar_dados.js"), "utf8");
-  assert.match(codigo, /async function gravarBoletinsPorUf/);
-  assert.match(codigo, /path\.join\(dirDados, "boletim"\)/);
-  assert.match(codigo, /path\.join\(diretorio, `\$\{uf\}\.json`\)/);
-});
-
 test("login não dispara restaurações de ferramentas que ainda estão fechadas", () => {
   const fs = require("node:fs");
   const path = require("node:path");

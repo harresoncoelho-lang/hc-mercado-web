@@ -32,7 +32,7 @@ test("recuperação dispensa UFs coletadas no mesmo dia UTC", () => {
 
 test("recuperação mantém UF antiga não concluída como pendente", async () => {
   const inicioColeta = codigo.indexOf("async function coletarOportunidadesAbertas(");
-  const fimColeta = codigo.indexOf("\n// O painel não deve", inicioColeta);
+  const fimColeta = codigo.indexOf("\n// ---------- Mercado", inicioColeta);
   const existentes = { ufsComFalha: [], registros: [], coberturaPorUf: { AM: { atualizadoEm: "2026-09-03T00:00:00Z" } } };
   const chamadas = [];
   const ambiente = vm.createContext({
@@ -49,15 +49,11 @@ test("recuperação mantém UF antiga não concluída como pendente", async () =
   assert.deepEqual(Array.from(resultado.ufsComFalha), ["RR"]);
 });
 
-test("projeção usa frescor da UF e deixa cobertura desconhecida como null", async () => {
-  const inicioProjecao = codigo.indexOf("async function gravarBoletinsPorUf(");
-  const fimProjecao = codigo.indexOf("\n// ---------- Mercado", inicioProjecao);
-  const ambiente = vm.createContext({ UFS: ["AM", "RR"] });
-  vm.runInContext(codigo.slice(inicioProjecao, fimProjecao), ambiente);
-  const gravados = {};
-  await ambiente.gravarBoletinsPorUf({ mkdir: async () => {}, writeFile: async (arquivo, texto) => { gravados[path.basename(arquivo)] = JSON.parse(texto); } }, path, "temporario", {
-    atualizadoEm: "2026-09-06T11:20:12Z", coberturaPorUf: { AM: { atualizadoEm: "2026-09-03T18:38:42Z" } }, registros: [],
-  });
-  assert.equal(gravados["AM.json"].atualizadoEm, "2026-09-03T18:38:42Z");
-  assert.equal(gravados["RR.json"].atualizadoEm, null);
+test("chaveOportunidade usa numeroControlePNCP quando existe, senão objeto+orgao+uf", () => {
+  const inicioChave = codigo.indexOf("function chaveOportunidade(");
+  const fimChave = codigo.indexOf("\n}", inicioChave) + 2;
+  const ambiente = vm.createContext({});
+  vm.runInContext(codigo.slice(inicioChave, fimChave), ambiente);
+  assert.equal(ambiente.chaveOportunidade({ numeroControlePNCP: "123-1-000001/2026", objeto: "x", orgao: "y", uf: "AM" }), "123-1-000001/2026");
+  assert.equal(ambiente.chaveOportunidade({ numeroControlePNCP: null, objeto: "Pregão", orgao: "Prefeitura", uf: "AM" }), "Pregão|Prefeitura|AM");
 });

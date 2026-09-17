@@ -677,35 +677,6 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   };
 }
 
-// O painel não deve baixar e interpretar toda a base nacional (que cresce para vários MB)
-// quando o cliente acompanha somente um ou poucos estados. Estes arquivos são a projeção
-// leve do boletim por UF: mantêm apenas registros publicados há 3 dias ou ainda abertos.
-// A filtragem por palavras-chave continua no navegador, mas a transferência inicial deixa
-// de depender da base nacional completa.
-async function gravarBoletinsPorUf(fs, path, diretorio, oportunidades) {
-  const agora = Date.now();
-  const limitePublicacao = agora - 3 * 24 * 60 * 60 * 1000;
-  const registros = Array.isArray(oportunidades && oportunidades.registros) ? oportunidades.registros : [];
-  await fs.mkdir(diretorio, { recursive: true });
-
-  await Promise.all(UFS.map(async (uf) => {
-    const selecionados = registros.filter((r) => {
-      if (r.uf !== uf) return false;
-      const publicacao = r.publicacao ? new Date(r.publicacao).getTime() : NaN;
-      const encerramento = r.encerramento ? new Date(r.encerramento).getTime() : NaN;
-      return !Number.isFinite(publicacao) || publicacao >= limitePublicacao || (Number.isFinite(encerramento) && encerramento >= agora);
-    });
-    await fs.writeFile(path.join(diretorio, `${uf}.json`), JSON.stringify({
-      atualizadoEm: oportunidades && oportunidades.coberturaPorUf && oportunidades.coberturaPorUf[uf]
-        ? oportunidades.coberturaPorUf[uf].atualizadoEm : null,
-      ultimaTentativaEm: oportunidades && oportunidades.ultimaTentativaEm,
-      uf,
-      totalRegistros: selecionados.length,
-      registros: selecionados,
-    }), "utf8");
-  }));
-}
-
 // ---------- Mercado por segmento: atas de registro de preço + empresas vencedoras ----------
 // Antes só processava atas cujo objeto batesse com uma lista fixa de ~10 segmentos — o
 // problema é que qualquer cliente cujo ramo não estivesse nessa lista via o painel
@@ -1179,6 +1150,55 @@ async function sincronizarMercadoNoSupabase(mercado) {
   }
 }
 
+// Mesma chave de deduplicação que coletarOportunidadesAbertas() já usa em memória
+// (linha "const chave = (r) => ..." dentro dela) — precisa ser idêntica, senão o
+// upsert no Supabase cria linhas duplicadas pro mesmo registro.
+function chaveOportunidade(r) {
+  return r.numeroControlePNCP || `${r.objeto}|${r.orgao}|${r.uf}`;
+}
+
+async function hidratarOportunidadesDoSupabase(caminhoArquivo, caminhoMeta) {
+  const meta = await lerJsonExistente(caminhoMeta);
+  if (!meta) {
+    console.log("[supabase] Sem metadado anterior de oportunidades — tratando como 1ª execução.");
+    return;
+  }
+  try {
+    const linhas = await baixarTodasAsLinhas("oportunidades_abertas", "dado");
+    const registros = linhas.map((l) => l.dado);
+    const fs = await import("node:fs/promises");
+    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
+    console.log(`[supabase] Hidratada(s) ${registros.length} oportunidade(s) do Supabase pra continuar o incremental.`);
+  } catch (e) {
+    console.log(`[supabase] Falha ao baixar oportunidades existentes (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
+  }
+}
+
+async function sincronizarOportunidadesNoSupabase(oportunidades) {
+  const linhas = (oportunidades.registros || []).map((r) => ({
+    chave: chaveOportunidade(r),
+    numero_controle_pncp: r.numeroControlePNCP || null,
+    objeto: r.objeto || "",
+    uf: r.uf || null,
+    publicacao: r.publicacao ? String(r.publicacao).slice(0, 10) : null,
+    encerramento: r.encerramento ? String(r.encerramento).slice(0, 10) : null,
+    dado: r,
+  }));
+  try {
+    const enviadas = await upsertEmLotes("oportunidades_abertas", linhas, "chave");
+    console.log(`[supabase] ${enviadas} oportunidade(s) sincronizada(s) na tabela "oportunidades_abertas".`);
+    // Poda pela mesma retenção que já era aplicada em memória. Só considera "publicacao"
+    // (quase sempre presente nos dados do PNCP) — um registro sem publicacao mas com
+    // encerramento antigo pode sobreviver aqui; mesma limitação que "contratos" já aceita
+    // (removerMaisAntigosQue só compara 1 coluna). Não é regressão: o arquivo antigo também
+    // não tinha uma segunda passada dedicada só pra esse caso raro.
+    const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    await removerMaisAntigosQue("oportunidades_abertas", "publicacao", limiteRetencaoIso);
+  } catch (e) {
+    console.log(`[supabase] Falha ao sincronizar oportunidades (${e && e.message}) — dados continuam só no arquivo local desta execução.`);
+  }
+}
+
 async function main() {
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
@@ -1204,11 +1224,25 @@ async function main() {
   }
 
   const caminhoOportunidades = path.join(dirDados, "oportunidades_abertas.json");
+  const caminhoOportunidadesMeta = path.join(dirDados, "oportunidades_meta.json");
+  await hidratarOportunidadesDoSupabase(caminhoOportunidades, caminhoOportunidadesMeta);
   const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
+  // O arquivo local continua sendo escrito (gitignored, ver .gitignore) porque
+  // scripts/preparar_dossies_editais.js roda depois, no mesmo job, e lê esse
+  // caminho — mesmo padrão que contratos_recentes.json/mercado_segmentos.json já
+  // usam. O que muda é que ele NUNCA mais é comitado (ver Achado #2 do plano).
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
-  console.log("Gravado data/oportunidades_abertas.json");
-  await gravarBoletinsPorUf(fs, path, path.join(dirDados, "boletim"), oportunidades);
-  console.log("Gravados data/boletim/{UF}.json para abertura rápida do painel");
+  const { registros: _registrosOportunidades, ...oportunidadesMeta } = oportunidades;
+  await fs.writeFile(caminhoOportunidadesMeta, JSON.stringify(oportunidadesMeta), "utf8");
+  console.log("Gravado data/oportunidades_meta.json (metadado leve, vai pro git)");
+  // "semPendencias" (ver coletarOportunidadesAbertas) significa que a recuperação de
+  // 3h não tinha UF nenhuma pra atualizar — reenviar as ~17 mil linhas pro Supabase
+  // nesse caso seria puro desperdício de escrita, 8x/dia, sem mudança nenhuma.
+  if (!oportunidades.semPendencias) {
+    await sincronizarOportunidadesNoSupabase(oportunidades);
+  } else {
+    console.log("[supabase] Sem UFs pendentes nesta recuperação — sincronização com o Supabase pulada.");
+  }
 
   // Uma indisponibilidade do PNCP não deve abortar o pipeline inteiro. A função de coleta
   // já preserva a última base íntegra, expõe saudeFonte/ufsComFalha e agora também mantém
