@@ -63,7 +63,33 @@ async function main() {
   await fs.writeFile(path.join(dirDados, "mercado_meta.json"), JSON.stringify(mercadoMeta), "utf8");
   console.log("Gravado data/mercado_meta.json");
 
-  console.log("\nBackfill concluído. Agora pode remover contratos_recentes.json e mercado_segmentos.json do git.");
+  console.log("\n== Migrando oportunidades_abertas.json ==");
+  const oportunidadesPath = path.join(dirDados, "oportunidades_abertas.json");
+  const oportunidades = JSON.parse(await fs.readFile(oportunidadesPath, "utf8"));
+  // Mesma lógica de scripts/atualizar_dados.js:chaveOportunidade() — duplicada aqui de
+  // propósito porque este script não importa atualizar_dados.js (é um backfill único,
+  // roda uma vez e não faz parte do pipeline diário). Se um dia chaveOportunidade()
+  // mudar lá, replicar a mudança aqui também.
+  const chaveOportunidade = (r) => r.numeroControlePNCP || `${r.objeto}|${r.orgao}|${r.uf}`;
+  const linhasOportunidades = oportunidades.registros.map((r) => ({
+    chave: chaveOportunidade(r),
+    numero_controle_pncp: r.numeroControlePNCP || null,
+    objeto: r.objeto || "",
+    uf: r.uf || null,
+    publicacao: r.publicacao ? String(r.publicacao).slice(0, 10) : null,
+    encerramento: r.encerramento ? String(r.encerramento).slice(0, 10) : null,
+    dado: r,
+  }));
+  console.log(`Enviando ${linhasOportunidades.length} oportunidade(s)...`);
+  const enviadasOportunidades = await upsertEmLotes("oportunidades_abertas", linhasOportunidades, "chave");
+  console.log(`OK — ${enviadasOportunidades} linha(s) na tabela "oportunidades_abertas".`);
+
+  const { registros: _ro, ...oportunidadesMeta } = oportunidades;
+  await fs.writeFile(path.join(dirDados, "oportunidades_meta.json"), JSON.stringify(oportunidadesMeta), "utf8");
+  console.log("Gravado data/oportunidades_meta.json");
+
+  console.log("\nBackfill concluído. Agora pode remover contratos_recentes.json, mercado_segmentos.json,");
+  console.log("oportunidades_abertas.json e boletim/ do git (git rm --cached).");
 }
 
 main().catch((e) => {
