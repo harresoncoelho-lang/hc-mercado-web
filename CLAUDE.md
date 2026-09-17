@@ -81,15 +81,16 @@ helpers in `painel.html`.
 
 ### Data flow: three tiers, deliberately separated by cost
 
-1. **Small, versioned JSON in `data/`** (`contratos_meta.json`, `mercado_meta.json`, `oportunidades_abertas.json`,
+1. **Small, versioned JSON in `data/`** (`contratos_meta.json`, `mercado_meta.json`, `oportunidades_meta.json`,
    etc.) — committed to git, served as static files, cached 5 min / stale-while-revalidate 1h per
    `netlify.toml`. `painel.html` fetches these directly.
-2. **Large/growing data in Supabase Postgres** (`contratos`, `mercado_atas` tables — see
-   `supabase/schema_dados_mercado.sql`) — queried live from `painel.html` using the Supabase client with the
-   public anon key (RLS restricts `SELECT` to `authenticated` users only; writes are service-role-only, from
-   the robot). This replaced committing multi-MB JSON files (`contratos_recentes.json`,
-   `mercado_segmentos.json` — now gitignored) directly to git, because every commit to those files triggered a
-   full Netlify production redeploy.
+2. **Large/growing data in Supabase Postgres** (`contratos`, `mercado_atas`, `oportunidades_abertas` tables —
+   see `supabase/schema_dados_mercado.sql` / `supabase/schema_oportunidades.sql`) — queried live from
+   `painel.html` using the Supabase client with the public anon key (RLS restricts `SELECT` to `authenticated`
+   users only; writes are service-role-only, from the robot). This replaced committing multi-MB JSON files
+   (`contratos_recentes.json`, `mercado_segmentos.json`, `oportunidades_abertas.json`, `boletim/*.json` — now
+   gitignored) directly to git, because every commit to those files triggered a full Netlify production
+   redeploy.
 3. **Small "key → JSON blob" data** (`convenios`, `sistema_s_am`, `editais_vistos` history) lives in a generic
    `dados_robo` Supabase table (`chave text primary key, dado jsonb`) via `scripts/supabase_dados.js`'s
    `buscarBlob`/`salvarBlob` — same rationale: avoid git commits (and redeploys) on every robot run.
@@ -105,7 +106,9 @@ Brasília-time conversion, no DST). Key ones:
 
 - `atualizar_dados.js` — main PNCP collector. **Incremental**, not a full re-scrape: reads existing data,
   fetches only what's new since last run (with a small overlap window for late publications), merges, and
-  prunes anything older than `RETENCAO_DIAS` (730 days default). Has two independently time-boxed phases
+  prunes anything older than `RETENCAO_DIAS` (730 days default; open opportunities use `RETENCAO_DIAS_OPORTUNIDADES`,
+  120 days, and sync to the `oportunidades_abertas` Supabase table the same way `contratos`/`mercado_atas` do —
+  see the Data flow section above). Has two independently time-boxed phases
   (contracts nationwide vs. market-segment atas) because the atas phase is much more expensive per record.
   Followed in the same workflow by a chain of enrichment scripts (`coletar_empresas.js`,
   `coletar_fornecedores_sicaf.js`, `enriquecer_*.js`) that build up a private prospecting database
