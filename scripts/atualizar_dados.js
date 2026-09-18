@@ -1190,19 +1190,19 @@ async function sincronizarOportunidadesNoSupabase(oportunidades) {
     encerramento: r.encerramento ? String(r.encerramento).slice(0, 10) : null,
     dado: r,
   }));
-  try {
-    const enviadas = await upsertEmLotes("oportunidades_abertas", linhas, "chave");
-    console.log(`[supabase] ${enviadas} oportunidade(s) sincronizada(s) na tabela "oportunidades_abertas".`);
-    // Poda pela mesma retenção que já era aplicada em memória. Só considera "publicacao"
-    // (quase sempre presente nos dados do PNCP) — um registro sem publicacao mas com
-    // encerramento antigo pode sobreviver aqui; mesma limitação que "contratos" já aceita
-    // (removerMaisAntigosQue só compara 1 coluna). Não é regressão: o arquivo antigo também
-    // não tinha uma segunda passada dedicada só pra esse caso raro.
-    const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    await removerMaisAntigosQue("oportunidades_abertas", "publicacao", limiteRetencaoIso);
-  } catch (e) {
-    console.log(`[supabase] Falha ao sincronizar oportunidades (${e && e.message}) — dados continuam só no arquivo local desta execução.`);
-  }
+  // Propositalmente SEM try/catch aqui (diferente das outras sincronizarXNoSupabase deste
+  // arquivo): quem chama precisa saber se a sincronização falhou, porque o metadado de
+  // cobertura (coberturaPorUf) só pode ser gravado depois que estas linhas realmente
+  // chegaram no banco — ver comentário em main() logo antes da chamada.
+  const enviadas = await upsertEmLotes("oportunidades_abertas", linhas, "chave");
+  console.log(`[supabase] ${enviadas} oportunidade(s) sincronizada(s) na tabela "oportunidades_abertas".`);
+  // Poda pela mesma retenção que já era aplicada em memória. Só considera "publicacao"
+  // (quase sempre presente nos dados do PNCP) — um registro sem publicacao mas com
+  // encerramento antigo pode sobreviver aqui; mesma limitação que "contratos" já aceita
+  // (removerMaisAntigosQue só compara 1 coluna). Não é regressão: o arquivo antigo também
+  // não tinha uma segunda passada dedicada só pra esse caso raro.
+  const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await removerMaisAntigosQue("oportunidades_abertas", "publicacao", limiteRetencaoIso);
 }
 
 async function main() {
@@ -1238,15 +1238,38 @@ async function main() {
   // usam. O que muda é que ele NUNCA mais é comitado (ver Achado #2 do plano).
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   const { registros: _registrosOportunidades, ...oportunidadesMeta } = oportunidades;
-  await salvarBlob("dados_robo", "oportunidades_meta", oportunidadesMeta);
-  console.log('[supabase] Metadado de oportunidades gravado em dados_robo/"oportunidades_meta" (não vai pro git)');
   // "semPendencias" (ver coletarOportunidadesAbertas) significa que a recuperação de
   // 3h não tinha UF nenhuma pra atualizar — reenviar as ~17 mil linhas pro Supabase
   // nesse caso seria puro desperdício de escrita, 8x/dia, sem mudança nenhuma.
+  //
+  // A sincronização roda ANTES de salvar o metadado (coberturaPorUf) de propósito: se
+  // salvássemos o metadado primeiro e a sincronização falhasse depois, o metadado já
+  // marcaria as UFs desta execução como cobertas hoje, e ufsPendentesDeAtualizacao (que só
+  // olha o metadado) pularia essas UFs pelo resto do dia nas recuperações horárias
+  // seguintes — perdendo pra sempre os editais daquela janela (o PNCP só devolve
+  // "ainda aberto agora"). Só gravamos o metadado depois de confirmar que as linhas
+  // realmente chegaram no Supabase.
+  let sincronizacaoOportunidadesOk = true;
   if (!oportunidades.semPendencias) {
-    await sincronizarOportunidadesNoSupabase(oportunidades);
+    try {
+      await sincronizarOportunidadesNoSupabase(oportunidades);
+    } catch (e) {
+      sincronizacaoOportunidadesOk = false;
+      console.log(`[supabase] Falha ao sincronizar oportunidades (${e && e.message}) — dados continuam só no arquivo local desta execução; o metadado de cobertura NÃO será atualizado, pra essas UFs continuarem pendentes na próxima recuperação.`);
+    }
   } else {
     console.log("[supabase] Sem UFs pendentes nesta recuperação — sincronização com o Supabase pulada.");
+  }
+  if (sincronizacaoOportunidadesOk) {
+    try {
+      await salvarBlob("dados_robo", "oportunidades_meta", oportunidadesMeta);
+      console.log('[supabase] Metadado de oportunidades gravado em dados_robo/"oportunidades_meta" (não vai pro git)');
+    } catch (e) {
+      // Falha transitória ao gravar só o metadado não pode abortar o resto do pipeline
+      // (ex.: coletarMercadoSegmentos logo abaixo) — mesmo padrão log-e-segue das outras
+      // chamadas ao Supabase neste arquivo. A próxima execução tenta gravar de novo.
+      console.log(`[supabase] Falha ao gravar o metadado de oportunidades (${e && e.message}) — seguindo sem atualizar; a próxima execução tenta de novo.`);
+    }
   }
 
   // Uma indisponibilidade do PNCP não deve abortar o pipeline inteiro. A função de coleta
