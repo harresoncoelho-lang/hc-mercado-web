@@ -32,6 +32,11 @@ const resumo = (r) => r.json ? `n=${(r.json.data || []).length} totalRegistros=$
   let r = await get({ uf: "AC", pagina: 1, tamanhoPagina: 50 });
   console.log(seg(), r.status, r.ms + "ms", resumo(r), JSON.stringify(r.h));
   if (r.json && r.json.data && r.json.data[0]) console.log("   campos do item:", Object.keys(r.json.data[0]).join(","));
+  // Fail-fast: se a fonte não responde nem ao baseline, o resto só queimaria 20 min de timeouts.
+  if (!r.json) {
+    for (let i = 0; i < 2 && !r.json; i++) { await sleep(3000); r = await get({ uf: "AC", pagina: 1, tamanhoPagina: 10 }); console.log(seg(), "   retry baseline", r.status, r.ms + "ms"); }
+    if (!r.json) { console.log("\n== FONTE INDISPONIVEL: 3 tentativas sem resposta; sonda abortada (repetir quando o PNCP voltar) =="); return; }
+  }
 
   console.log("\n-- 2) tamanhoPagina máximo aceito (uf=AC)");
   for (const tp of [10, 50, 100, 200, 500]) {
