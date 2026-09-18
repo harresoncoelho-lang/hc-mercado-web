@@ -1,0 +1,14 @@
+name: Diag UF AM (temporario)
+on:
+  push:
+    branches: [diag-uf-am]
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 .github/diag/diag_uf_am.py
+        env:
+          PYTHONIOENCODING: utf-8
