@@ -463,18 +463,157 @@ function extrairFonteOrcamentaria(item) {
   return null;
 }
 
-function ufsPendentesDeAtualizacao(existentes, agora = new Date()) {
-  const inicioDoDia = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
-  const falhas = new Set(Array.isArray(existentes && existentes.ufsComFalha) ? existentes.ufsComFalha : []);
-  const cobertura = (existentes && existentes.coberturaPorUf) || {};
-  return UFS.filter((uf) => {
-    const atualizadoEm = cobertura[uf] && cobertura[uf].atualizadoEm;
-    const ultimaColeta = atualizadoEm ? new Date(atualizadoEm).getTime() : NaN;
-    return falhas.has(uf) || !Number.isFinite(ultimaColeta) || ultimaColeta < inicioDoDia;
+// Fila de coleta: da UF mais defasada pra menos defasada (nunca coletada primeiro). Com o
+// rate limit do PNCP cada execução só consegue algumas UFs; uma fila em ordem alfabética
+// (a antiga ordem de UFS) fazia as mesmas UFs ganharem sempre e as outras ficarem dias sem
+// coleta. Uma UF que falhou há pouco (rate limit, fonte fora) vai pro fim: senão ela, sempre
+// a mais velha, monopolizaria a cota de todas as execuções seguintes sem nunca completar.
+const JANELA_RETENTATIVA_UF_MS = 30 * 60 * 1000;
+const STATUS_DE_FALHA_POR_UF = new Set(["rate_limit", "fonte_indisponivel", "erro"]);
+
+function ordenarUfsPorDefasagem(ufs, cobertura = {}, agoraMs = Date.now()) {
+  const chave = (uf) => {
+    const c = cobertura[uf] || {};
+    const coleta = Date.parse(c.atualizadoEm);
+    const tentativa = Date.parse(c.tentativaEm);
+    const falhouAgora = STATUS_DE_FALHA_POR_UF.has(c.ultimoStatus) && Number.isFinite(tentativa) && agoraMs - tentativa < JANELA_RETENTATIVA_UF_MS;
+    return { penalidade: falhouAgora ? 1 : 0, coleta: Number.isFinite(coleta) ? coleta : -Infinity };
+  };
+  // Array.prototype.sort é estável: empates (ex.: várias UFs nunca coletadas) mantêm a ordem de entrada.
+  return [...ufs].sort((a, b) => {
+    const ka = chave(a);
+    const kb = chave(b);
+    if (ka.penalidade !== kb.penalidade) return ka.penalidade - kb.penalidade;
+    if (ka.coleta === kb.coleta) return 0;
+    return ka.coleta < kb.coleta ? -1 : 1;
   });
 }
 
-async function coletarOportunidadesAbertas(caminhoArquivo) {
+// UFs que precisam de coleta, já em ordem de prioridade. Sem `frescorMaxMs`, vale a regra
+// antiga (pendente = não coletada ainda hoje, em UTC, como o cron). Com ele, pendente = mais
+// velha que o limite — é o que permite coletar várias vezes por dia. `ufsPermitidas` restringe
+// a um shard (UFS_ALVO). Só falha EXPLÍCITA conta como pendência imediata: "parcial" (teto de
+// páginas) não, senão o teto faria a mesma UF ser recoletada sem nenhum ganho a cada execução.
+function ufsPendentesDeAtualizacao(existentes, agora = new Date(), opcoes = {}) {
+  const inicioDoDia = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
+  const limiteIdadeMs = Number.isFinite(opcoes.frescorMaxMs) && opcoes.frescorMaxMs > 0 ? opcoes.frescorMaxMs : null;
+  const falhas = new Set(Array.isArray(existentes && existentes.ufsComFalha) ? existentes.ufsComFalha : []);
+  const cobertura = (existentes && existentes.coberturaPorUf) || {};
+  const permitidas = opcoes.ufsPermitidas || null;
+  const pendentes = UFS.filter((uf) => {
+    if (permitidas && !permitidas.has(uf)) return false;
+    const atualizadoEm = cobertura[uf] && cobertura[uf].atualizadoEm;
+    const ultimaColeta = atualizadoEm ? new Date(atualizadoEm).getTime() : NaN;
+    if (falhas.has(uf) || !Number.isFinite(ultimaColeta)) return true;
+    return limiteIdadeMs ? agora.getTime() - ultimaColeta > limiteIdadeMs : ultimaColeta < inicioDoDia;
+  });
+  return ordenarUfsPorDefasagem(pendentes, cobertura, agora.getTime());
+}
+
+// ---------- Rate limit do PNCP (endpoint /contratacoes/proposta) ----------
+// O PNCP limita por IP e responde 429 já na 1ª página quando a cota estourou. Repetir em
+// poucos segundos (o backoff antigo, teto de 8s) só queima tentativas: precisa de pausa longa,
+// a MESMA pra todos os workers (o limite é do IP, não da requisição) e de intervalo adaptativo
+// (fica mais lento depois de um 429 e volta ao normal depois de uma sequência de sucessos).
+function retryAfterMs(valor, agoraMs = Date.now()) {
+  if (!valor) return 0;
+  const segundos = Number(valor);
+  if (Number.isFinite(segundos)) return Math.max(0, segundos * 1000);
+  const data = Date.parse(valor);
+  return Number.isFinite(data) ? Math.max(0, data - agoraMs) : 0;
+}
+
+function criarLimitadorPncp({ intervaloMs = 900, cooldownInicialMs = 30000, cooldownMaxMs = 300000 } = {}) {
+  return {
+    intervaloBaseMs: intervaloMs, intervaloMs, proximaChamadaEm: 0,
+    cooldownInicialMs, cooldownMs: cooldownInicialMs, cooldownMaxMs,
+    sucessosSeguidos: 0, total429: 0, esgotado: false,
+  };
+}
+
+// Reserva o próximo horário de saída de forma síncrona (vários workers não furam a fila).
+async function esperarVezPncp(lim) {
+  const agora = Date.now();
+  const espera = Math.max(0, lim.proximaChamadaEm - agora);
+  lim.proximaChamadaEm = Math.max(agora, lim.proximaChamadaEm) + lim.intervaloMs;
+  if (espera > 0) await new Promise((r) => setTimeout(r, espera));
+}
+
+// Devolve { dados } ou { erro }, com erro em "rate_limit" | "fonte" (timeout/5xx) | "http" (4xx
+// ou corpo inválido). Diferenciar o motivo é o ponto: rate limit pede pausa e menos requisições;
+// "fonte" (PNCP fora) pede desistir logo; só o segundo deve acionar o circuit breaker.
+async function buscarPaginaPropostas(url, lim, { rotulo = "", timeoutMs = 25000, tentativas = 4, maxCiclos429 = 3 } = {}) {
+  let falhasTransitorias = 0;
+  let ciclos429 = 0;
+  for (;;) {
+    await esperarVezPncp(lim);
+    let resp;
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        resp = await fetch(url, { headers: { Accept: "application/json" }, signal: ctrl.signal });
+      } finally {
+        clearTimeout(t);
+      }
+    } catch (e) {
+      falhasTransitorias += 1;
+      if (falhasTransitorias >= tentativas) {
+        console.log(`[fetch ${rotulo}] Falhou após ${tentativas} tentativas (${e && e.name === "AbortError" ? `timeout ${timeoutMs}ms` : String(e && e.message || e)}) em ${url}`);
+        return { erro: "fonte" };
+      }
+      await esperarComBackoff(falhasTransitorias - 1);
+      continue;
+    }
+    if (resp.status === 429) {
+      if (resp.body && resp.body.cancel) resp.body.cancel().catch(() => {});
+      ciclos429 += 1;
+      lim.total429 += 1;
+      lim.sucessosSeguidos = 0;
+      const espera = Math.max(retryAfterMs(resp.headers.get("retry-after")), lim.cooldownMs);
+      lim.cooldownMs = Math.min(lim.cooldownMs * 2, lim.cooldownMaxMs);
+      lim.intervaloMs = Math.min(lim.intervaloMs * 1.5, lim.intervaloBaseMs * 4);
+      // Sem tempo pra esperar o bloqueio passar: melhor devolver a cota cedo do que gastar o
+      // orçamento parado — as UFs não tentadas continuam pendentes pra próxima execução.
+      if (ciclos429 > maxCiclos429 || espera > tempoRestanteMs() - 8000) {
+        console.log(`[fetch ${rotulo}] Rate-limit (429) persistente (${ciclos429} ciclo(s), próxima pausa ${Math.round(espera / 1000)}s) — encerrando coleta desta execução em ${url}`);
+        lim.esgotado = true;
+        return { erro: "rate_limit" };
+      }
+      lim.proximaChamadaEm = Math.max(lim.proximaChamadaEm, Date.now() + espera);
+      console.log(`[fetch ${rotulo}] 429 do PNCP — pausa de ${Math.round(espera / 1000)}s pra todos os workers (intervalo agora ${Math.round(lim.intervaloMs)}ms).`);
+      continue;
+    }
+    if (resp.status >= 500) {
+      falhasTransitorias += 1;
+      if (falhasTransitorias >= tentativas) {
+        console.log(`[fetch ${rotulo}] HTTP ${resp.status} após ${tentativas} tentativas em ${url}`);
+        return { erro: "fonte" };
+      }
+      await esperarComBackoff(falhasTransitorias - 1);
+      continue;
+    }
+    if (resp.status === 204) return { dados: { data: [], totalPaginas: 0, totalRegistros: 0 } };
+    if (!resp.ok) {
+      console.log(`[fetch ${rotulo}] HTTP ${resp.status} em ${url}`);
+      return { erro: "http" };
+    }
+    try {
+      const texto = await resp.text();
+      const dados = texto ? JSON.parse(texto) : null;
+      if (!dados) return { erro: "http" };
+      lim.sucessosSeguidos += 1;
+      lim.cooldownMs = lim.cooldownInicialMs;
+      if (lim.sucessosSeguidos >= 20) lim.intervaloMs = Math.max(lim.intervaloBaseMs, lim.intervaloMs * 0.8);
+      return { dados };
+    } catch (e) {
+      console.log(`[fetch ${rotulo}] Corpo inválido (${e && e.message}) em ${url}`);
+      return { erro: "http" };
+    }
+  }
+}
+
+async function coletarOportunidadesAbertas(caminhoArquivo, opcoes = {}) {
   // Orçamento maior (era 6 min fixo) e busca em PARALELO por UF (era 1 UF de cada vez) —
   // com 27 UFs e a API do PNCP às vezes lenta, rodar sequencial estourava o orçamento
   // depois de só 8-9 UFs e o resto nunca era nem tentado. Um pool de workers concorrentes
@@ -497,61 +636,91 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   // do primeiro sucesso caracterizam indisponibilidade da fonte, não falta de
   // cobertura de um estado específico.
   const LIMIAR_FALHAS_FONTE = parseInt(process.env.LIMIAR_FALHAS_FONTE_OPORTUNIDADES || "3", 10);
-  let proximaChamadaEm = 0;
+  // Teto de páginas por UF (50 itens cada). O valor antigo (20 = 1000 registros) truncava em
+  // silêncio 10 UFs; agora o truncamento é detectado e registrado (completa=false), e o teto
+  // pode ser ajustado sem editar o código.
+  const MAX_PAGINAS_UF = parseInt(process.env.MAX_PAGINAS_UF_OPORTUNIDADES || "20", 10);
   let falhasAntesDoPrimeiroSucesso = 0;
   let fonteIndisponivel = false;
-  async function respeitarCadenciaPncp() {
-    const agora = Date.now();
-    const espera = Math.max(0, proximaChamadaEm - agora);
-    proximaChamadaEm = Math.max(agora, proximaChamadaEm) + INTERVALO_MS;
-    if (espera > 0) await new Promise((r) => setTimeout(r, espera));
-  }
+  const limitador = criarLimitadorPncp({
+    intervaloMs: INTERVALO_MS,
+    cooldownInicialMs: parseInt(process.env.COOLDOWN_429_MS_OPORTUNIDADES || "30000", 10),
+    cooldownMaxMs: parseInt(process.env.COOLDOWN_429_MAX_MS_OPORTUNIDADES || "300000", 10),
+  });
+  // Injeção só pros testes: a busca real fala com o PNCP pelo limitador acima.
+  const buscarPagina = opcoes.buscarPagina || ((url, rotulo) => buscarPaginaPropostas(url, limitador, { rotulo }));
+  const aoConcluirUf = opcoes.aoConcluirUf || null;
   iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
   const recuperarPendentes = process.env.RECUPERAR_UFS_PENDENTES === "1";
-  const pendentesAnteriores = new Set(ufsPendentesDeAtualizacao(existentes));
-  // Uma UF sem erro também precisa de recuperação se sua última coleta ficou em
-  // outro dia. Só olhar ufsComFalha deixava AM preso em 03/09, mesmo com editais
-  // novos disponíveis. UFs já coletadas hoje (UTC, como o cron) não são repetidas.
-  const ufsAlvo = recuperarPendentes && pendentesAnteriores.size > 0
-    ? UFS.filter((uf) => pendentesAnteriores.has(uf))
-    : UFS;
-  if (recuperarPendentes && pendentesAnteriores.size === 0) {
-    console.log("[oportunidades] Recuperação dispensada: não há UFs pendentes no último boletim.");
+  // UFS_ALVO (lista separada por vírgula) restringe a coleta a um shard; FRESCOR_MAX_HORAS
+  // troca "pendente = não coletada hoje" por "pendente = mais velha que N horas", que é o que
+  // permite ao workflow rodar várias vezes por dia sem repetir UFs recém-coletadas.
+  const ufsAlvoEnv = (process.env.UFS_ALVO || "").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+  const ufsDesconhecidas = ufsAlvoEnv.filter((uf) => !UFS.includes(uf));
+  if (ufsDesconhecidas.length > 0) console.log(`[oportunidades] UFS_ALVO com sigla desconhecida ignorada: ${ufsDesconhecidas.join(", ")}.`);
+  const ufsPermitidas = ufsAlvoEnv.length > 0 ? new Set(ufsAlvoEnv.filter((uf) => UFS.includes(uf))) : null;
+  const frescorMaxHoras = parseFloat(process.env.FRESCOR_MAX_HORAS || "");
+  const modoSomentePendentes = recuperarPendentes || Number.isFinite(frescorMaxHoras);
+  const cobertura = (existentes && existentes.coberturaPorUf) || {};
+  const pendentesAnteriores = new Set(ufsPendentesDeAtualizacao(existentes, new Date(), {
+    frescorMaxMs: Number.isFinite(frescorMaxHoras) ? frescorMaxHoras * 3600 * 1000 : null,
+    ufsPermitidas,
+  }));
+  // Uma UF sem erro também precisa de recuperação se sua última coleta ficou velha. Só olhar
+  // ufsComFalha deixava AM preso em 03/09, mesmo com editais novos disponíveis.
+  // A fila sai SEMPRE da UF mais defasada pra menos defasada (ver ordenarUfsPorDefasagem).
+  const universo = UFS.filter((uf) => !ufsPermitidas || ufsPermitidas.has(uf));
+  const ufsAlvo = modoSomentePendentes
+    ? ordenarUfsPorDefasagem(universo.filter((uf) => pendentesAnteriores.has(uf)), cobertura)
+    : ordenarUfsPorDefasagem(universo, cobertura);
+  if (modoSomentePendentes && ufsAlvo.length === 0) {
+    console.log("[oportunidades] Coleta dispensada: não há UFs pendentes no último boletim.");
     return { ...existentes, semPendencias: true, ufsOkNaExecucao: [] };
   }
+  console.log(`[oportunidades] Fila (mais defasada primeiro): ${ufsAlvo.join(", ")}.`);
   const hoje = new Date();
   const dataFinal = fmtData(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
   const todas = [];
   let ufsComFalha = [];
   let ufsOk = [];
   const coberturaPorUf = { ...((existentes && existentes.coberturaPorUf) || {}) };
+  const resumoPorUf = {};
+  const ufsComRateLimit = new Set();
 
   const filaUfs = [...ufsAlvo];
 
   async function processarUf(uf) {
-    if (fonteIndisponivel) {
+    if (fonteIndisponivel || limitador.esgotado) {
       ufsComFalha.push(uf);
       return;
     }
     let pagina = 1;
     let totalPaginas = 1;
+    let totalApi = null;
     let falhouUf = false;
+    let motivoFalha = null;
     let registrosDaUf = 0;
+    const daUf = [];
 
-    while (pagina <= totalPaginas && pagina <= 20) {
-      if (tempoRestanteMs() < 8000) { falhouUf = true; break; }
+    while (pagina <= totalPaginas && pagina <= MAX_PAGINAS_UF) {
+      if (tempoRestanteMs() < 8000) { falhouUf = true; motivoFalha = "erro"; break; }
       const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=50`;
-      // Para oportunidades, uma resposta perdida significa um boletim incompleto. Usa mais
-      // tentativas que as coletas de enriquecimento, com o backoff já centralizado acima.
-      const dados = await fetchComRetentativa(url, 4, 25000, `oportunidades ${uf}`, respeitarCadenciaPncp);
-      if (!dados) { falhouUf = true; break; }
+      // Para oportunidades, uma resposta perdida significa um boletim incompleto: mais
+      // tentativas que as coletas de enriquecimento e pausa longa (compartilhada) no 429.
+      const { dados, erro } = await buscarPagina(url, `oportunidades ${uf}`);
+      if (!dados) {
+        falhouUf = true;
+        motivoFalha = erro === "rate_limit" ? "rate_limit" : erro === "fonte" ? "fonte_indisponivel" : "erro";
+        break;
+      }
       const itens = dados.data || [];
       totalPaginas = dados.totalPaginas || 1;
+      if (totalApi === null && Number.isFinite(dados.totalRegistros)) totalApi = dados.totalRegistros;
 
       for (const item of itens) {
         registrosDaUf += 1;
-        todas.push({
+        daUf.push({
           objeto: item.objetoCompra || item.objetoContrato || "",
           orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Órgão não informado",
           uf,
@@ -577,9 +746,37 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       }
       pagina += 1;
     }
+    // Teto de páginas atingido com páginas ainda por ler = coleta INCOMPLETA. Antes isso era
+    // silencioso (10 UFs paravam em exatamente 1000 registros). Continua valendo como coleta
+    // feita (a base fica fresca), mas marcada completa=false pro painel e pra fila saberem.
+    const truncada = !falhouUf && pagina <= totalPaginas;
+    let status = falhouUf ? motivoFalha : (truncada ? "parcial" : "ok");
+    let erroTexto = falhouUf
+      ? `falha na página ${pagina} de ${totalPaginas}`
+      : (truncada ? `teto de ${MAX_PAGINAS_UF} páginas: ${registrosDaUf} de ${totalApi ?? "?"} registros` : null);
+    todas.push(...daUf);
+    // Checkpoint por UF: grava as linhas e a cobertura ASSIM QUE a UF termina (também na falha,
+    // com o que já foi lido: upsert é idempotente e editais novos já servem). Antes tudo só era
+    // gravado no fim do run, e um run morto pelo 429 ou pelo timeout perdia todo o progresso.
+    if (aoConcluirUf) {
+      try {
+        await aoConcluirUf({ uf, registros: daUf, totalApi, completa: status === "ok", status, erro: erroTexto });
+      } catch (e) {
+        // Sem gravar, a UF não pode ser dada como coberta (a próxima execução tem que refazê-la).
+        console.log(`[oportunidades] ${uf}: falha ao gravar no Supabase (${e && e.message}) — UF continua pendente.`);
+        if (!falhouUf) { status = "erro"; erroTexto = `gravação no Supabase: ${e && e.message}`; }
+        falhouUf = true;
+        motivoFalha = motivoFalha || "erro";
+      }
+    }
+    if (motivoFalha === "rate_limit") ufsComRateLimit.add(uf);
+    resumoPorUf[uf] = { status, registros: registrosDaUf, totalApi, erro: erroTexto };
+    console.log(`[oportunidades] ${uf}: ${status} — ${registrosDaUf}${totalApi !== null ? `/${totalApi}` : ""} registro(s)${erroTexto ? ` (${erroTexto})` : ""}.`);
     if (falhouUf) {
       ufsComFalha.push(uf);
-      if (ufsOk.length === 0) {
+      // O circuit breaker é pra PNCP fora do ar (timeout/5xx). 429 NÃO conta: é a fonte
+      // funcionando e pedindo calma, e já tem tratamento próprio (pausa global + esgotado).
+      if (ufsOk.length === 0 && motivoFalha === "fonte_indisponivel") {
         falhasAntesDoPrimeiroSucesso += 1;
         if (falhasAntesDoPrimeiroSucesso >= LIMIAR_FALHAS_FONTE) {
           fonteIndisponivel = true;
@@ -590,7 +787,10 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       ufsOk.push(uf);
       coberturaPorUf[uf] = {
         atualizadoEm: new Date().toISOString(),
+        tentativaEm: new Date().toISOString(),
         registrosColetados: registrosDaUf,
+        completa: status === "ok",
+        ultimoStatus: status,
       };
     }
   }
@@ -617,10 +817,11 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   // sistêmico — tentar de novo, agora sem concorrência de outras 5 UFs disputando a mesma
   // API, resolve a maioria dos casos (era comum um estado como "AM" falhar sozinho mesmo
   // com todas as outras 26 UFs tendo sido coletadas com sucesso na mesma execução).
-  if (ufsComFalha.length > 0 && !fonteIndisponivel && tempoRestanteMs() > 20000) {
-    const paraRetentar = [...ufsComFalha];
+  // Não vale com rate limit esgotado: repetir só gastaria requisições que o PNCP já recusou.
+  const paraRetentar = ufsComFalha.filter((uf) => !ufsComRateLimit.has(uf));
+  if (paraRetentar.length > 0 && !fonteIndisponivel && !limitador.esgotado && tempoRestanteMs() > 20000) {
     console.log(`[oportunidades] Segunda passada em ${paraRetentar.length} UF(s) que falharam: ${paraRetentar.join(", ")}.`);
-    ufsComFalha = [];
+    ufsComFalha = ufsComFalha.filter((uf) => ufsComRateLimit.has(uf));
     for (const uf of paraRetentar) {
       if (tempoRestanteMs() < 10000) { ufsComFalha.push(uf); continue; }
       await processarUf(uf);
@@ -655,7 +856,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   );
 
   const falhasDestaExecucao = [...new Set(ufsComFalha)];
-  const ufsComFalhaFinais = recuperarPendentes
+  const ufsComFalhaFinais = modoSomentePendentes
     ? UFS.filter((uf) => ufsAlvo.includes(uf) ? falhasDestaExecucao.includes(uf) : pendentesAnteriores.has(uf))
     : falhasDestaExecucao;
   const tentativaEm = new Date().toISOString();
@@ -673,6 +874,8 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     ufsOkNaExecucao: [...new Set(ufsOk)],
     coberturaPorUf,
     saudeFonte: fonteIndisponivel ? "indisponivel" : (ufsComFalha.length ? "parcial" : "ok"),
+    resumoPorUf,
+    total429: limitador.total429,
     registros,
   };
 }
@@ -1157,31 +1360,10 @@ function chaveOportunidade(r) {
   return r.numeroControlePNCP || `${r.objeto}|${r.orgao}|${r.uf}`;
 }
 
-// O metadado das oportunidades (coberturaPorUf, atualizadoEm, ufsComFalha...) mora na
-// tabela dados_robo, chave "oportunidades_meta" — não num arquivo comitado. É isso que faz
-// o progresso da recuperação de UFs sobreviver de uma execução pra outra: o workflow de
-// recuperação roda de hora em hora e não comita nada, então um metadado local morreria com
-// o job e a execução seguinte reprocessaria as mesmas UFs contra uma fonte sensível a
-// excesso de requisições.
-async function hidratarOportunidadesDoSupabase(caminhoArquivo) {
-  try {
-    const meta = await buscarBlob("dados_robo", "oportunidades_meta");
-    if (!meta) {
-      console.log("[supabase] Sem metadado anterior de oportunidades — tratando como 1ª execução.");
-      return;
-    }
-    const linhas = await baixarTodasAsLinhas("oportunidades_abertas", "dado");
-    const registros = linhas.map((l) => l.dado);
-    const fs = await import("node:fs/promises");
-    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
-    console.log(`[supabase] Hidratada(s) ${registros.length} oportunidade(s) do Supabase pra continuar o incremental.`);
-  } catch (e) {
-    console.log(`[supabase] Falha ao ler o estado anterior das oportunidades (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
-  }
-}
-
-async function sincronizarOportunidadesNoSupabase(oportunidades) {
-  const linhas = (oportunidades.registros || []).map((r) => ({
+// Linha da tabela oportunidades_abertas pra um registro coletado. Mesmo mapeamento do backfill
+// (scripts/migrar_dados_supabase.js) — se mudar aqui, mudar lá também.
+function linhaOportunidade(r) {
+  return {
     chave: chaveOportunidade(r),
     numero_controle_pncp: r.numeroControlePNCP || null,
     objeto: r.objeto || "",
@@ -1189,18 +1371,129 @@ async function sincronizarOportunidadesNoSupabase(oportunidades) {
     publicacao: r.publicacao ? String(r.publicacao).slice(0, 10) : null,
     encerramento: r.encerramento ? String(r.encerramento).slice(0, 10) : null,
     dado: r,
-  }));
-  // Propositalmente SEM try/catch aqui (diferente das outras sincronizarXNoSupabase deste
-  // arquivo): quem chama precisa saber se a sincronização falhou, porque o metadado de
-  // cobertura (coberturaPorUf) só pode ser gravado depois que estas linhas realmente
-  // chegaram no banco — ver comentário em main() logo antes da chamada.
-  const enviadas = await upsertEmLotes("oportunidades_abertas", linhas, "chave");
-  console.log(`[supabase] ${enviadas} oportunidade(s) sincronizada(s) na tabela "oportunidades_abertas".`);
-  // Poda pela mesma retenção que já era aplicada em memória. Só considera "publicacao"
-  // (quase sempre presente nos dados do PNCP) — um registro sem publicacao mas com
-  // encerramento antigo pode sobreviver aqui; mesma limitação que "contratos" já aceita
-  // (removerMaisAntigosQue só compara 1 coluna). Não é regressão: o arquivo antigo também
-  // não tinha uma segunda passada dedicada só pra esse caso raro.
+  };
+}
+
+// Frescor por UF: 1 linha por UF em public.oportunidades_cobertura (ver
+// supabase/schema_oportunidades_cobertura.sql). Substitui o "coberturaPorUf" que vivia só no
+// blob dados_robo/"oportunidades_meta": com uma linha por UF, vários jobs (um shard por IP) gravam
+// a sua UF sem sobrescrever a dos outros. O blob continua sendo gravado, derivado desta tabela,
+// porque o painel ainda o lê (frescorBaseBoletim) e a aba de fontes lista a chave.
+async function carregarCoberturaDoSupabase() {
+  const linhas = await baixarTodasAsLinhas("oportunidades_cobertura", "*");
+  const coberturaPorUf = {};
+  for (const l of linhas) {
+    coberturaPorUf[l.uf] = {
+      atualizadoEm: l.atualizado_em,
+      tentativaEm: l.tentativa_em,
+      registrosColetados: l.registros,
+      completa: l.completa,
+      ultimoStatus: l.ultimo_status,
+    };
+  }
+  const ufsComFalha = linhas.filter((l) => STATUS_DE_FALHA_POR_UF.has(l.ultimo_status)).map((l) => l.uf);
+  return { coberturaPorUf, ufsComFalha, total: linhas.length };
+}
+
+// Mescla o metadado da execução com o estado real da tabela de cobertura (que reflete também o
+// que os outros shards gravaram). Sem tabela (migration não aplicada) devolve o metadado como veio.
+function metaOportunidadesComCobertura(meta, cobertura) {
+  if (!cobertura || cobertura.total === 0) return meta;
+  const datas = Object.values(cobertura.coberturaPorUf).map((c) => Date.parse(c.atualizadoEm)).filter(Number.isFinite);
+  const ufsComFalha = UFS.filter((uf) => cobertura.ufsComFalha.includes(uf));
+  return {
+    ...meta,
+    coberturaPorUf: cobertura.coberturaPorUf,
+    atualizadoEm: datas.length ? new Date(Math.max(...datas)).toISOString() : meta.atualizadoEm,
+    ufsComFalha,
+    ufsOk: UFS.filter((uf) => !ufsComFalha.includes(uf)),
+  };
+}
+
+// O metadado das oportunidades (coberturaPorUf, atualizadoEm, ufsComFalha...) mora no Supabase —
+// tabela oportunidades_cobertura (por UF) + blob dados_robo/"oportunidades_meta" —, não num arquivo
+// comitado. É isso que faz o progresso da coleta sobreviver de uma execução pra outra: o workflow
+// roda de hora em hora e não comita nada, então um estado local morreria com o job e a execução
+// seguinte reprocessaria as mesmas UFs contra uma fonte sensível a excesso de requisições.
+//
+// comRegistros=false (modo shard, UFS_ALVO) pula o download das ~18 mil linhas (~16 MB): o banco é
+// a fonte de verdade e cada UF já é gravada por upsert no próprio checkpoint, então o job só
+// precisa da cobertura pra decidir a fila.
+async function hidratarOportunidadesDoSupabase(caminhoArquivo, { comRegistros = true } = {}) {
+  try {
+    const blob = await buscarBlob("dados_robo", "oportunidades_meta");
+    let cobertura = null;
+    try {
+      cobertura = await carregarCoberturaDoSupabase();
+    } catch (e) {
+      console.log(`[supabase] Tabela oportunidades_cobertura indisponível (${e && e.message}) — usando só o metadado em blob.`);
+    }
+    if (!blob && !(cobertura && cobertura.total > 0)) {
+      console.log("[supabase] Sem metadado anterior de oportunidades — tratando como 1ª execução.");
+      return;
+    }
+    const meta = { ...(blob || {}) };
+    if (cobertura && cobertura.total > 0) {
+      meta.coberturaPorUf = cobertura.coberturaPorUf;
+      meta.ufsComFalha = cobertura.ufsComFalha;
+    }
+    let registros = [];
+    if (comRegistros) {
+      const linhas = await baixarTodasAsLinhas("oportunidades_abertas", "dado");
+      registros = linhas.map((l) => l.dado);
+    }
+    const fs = await import("node:fs/promises");
+    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
+    console.log(`[supabase] Estado anterior carregado: cobertura de ${Object.keys(meta.coberturaPorUf || {}).length} UF(s)${comRegistros ? ` e ${registros.length} oportunidade(s)` : " (sem baixar as oportunidades — modo shard)"}.`);
+  } catch (e) {
+    console.log(`[supabase] Falha ao ler o estado anterior das oportunidades (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
+  }
+}
+
+let avisouCoberturaIndisponivel = false;
+
+// Checkpoint de UMA UF: grava as linhas de oportunidades e, DEPOIS, a cobertura dela. A ordem é
+// deliberada: se as linhas falharem, a cobertura não avança e a UF continua pendente na próxima
+// execução (o PNCP só devolve "ainda aberto agora", então marcar como coberta uma UF cujas linhas
+// não chegaram no banco perderia esses editais). Sem try/catch de propósito: quem chama precisa
+// saber que falhou. Em falha de coleta (rate limit no meio da UF) as linhas já lidas são gravadas
+// mesmo assim — upsert é idempotente — mas atualizado_em NÃO avança, só a tentativa é registrada.
+async function sincronizarUfNoSupabase({ uf, registros, totalApi, completa, status, erro }) {
+  // A paginação do PNCP pode repetir um item entre páginas se a base mudar durante a coleta, e o
+  // Postgres recusa um upsert com a mesma chave duas vezes no mesmo lote.
+  const porChave = new Map();
+  for (const r of registros) porChave.set(chaveOportunidade(r), linhaOportunidade(r));
+  if (porChave.size > 0) await upsertEmLotes("oportunidades_abertas", [...porChave.values()], "chave");
+  const agora = new Date().toISOString();
+  const linhaCobertura = {
+    uf,
+    tentativa_em: agora,
+    ultimo_status: status,
+    ultimo_erro: erro || null,
+    completa: !!completa,
+    total_api: totalApi ?? null,
+  };
+  if (status === "ok" || status === "parcial") {
+    linhaCobertura.atualizado_em = agora;
+    linhaCobertura.registros = registros.length;
+  }
+  try {
+    await upsertEmLotes("oportunidades_cobertura", [linhaCobertura], "uf");
+  } catch (e) {
+    // Migration ainda não aplicada: não derruba a coleta (o blob de metadado continua valendo).
+    if (!/HTTP 404|PGRST205/.test(String(e && e.message))) throw e;
+    if (!avisouCoberturaIndisponivel) {
+      avisouCoberturaIndisponivel = true;
+      console.log(`[supabase] Tabela oportunidades_cobertura não existe (${e.message}) — aplique supabase/schema_oportunidades_cobertura.sql. Seguindo só com o blob.`);
+    }
+  }
+}
+
+// Poda pela mesma retenção que já era aplicada em memória. Só considera "publicacao" (quase
+// sempre presente nos dados do PNCP) — um registro sem publicacao mas com encerramento antigo
+// pode sobreviver aqui; mesma limitação que "contratos" já aceita (removerMaisAntigosQue só
+// compara 1 coluna).
+async function podarOportunidadesAntigas() {
   const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await removerMaisAntigosQue("oportunidades_abertas", "publicacao", limiteRetencaoIso);
 }
@@ -1230,39 +1523,37 @@ async function main() {
   }
 
   const caminhoOportunidades = path.join(dirDados, "oportunidades_abertas.json");
-  await hidratarOportunidadesDoSupabase(caminhoOportunidades);
-  const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
+  // Modo shard (UFS_ALVO): não baixa as ~18 mil oportunidades, o banco é a fonte de verdade.
+  const modoShard = (process.env.UFS_ALVO || "").trim() !== "";
+  await hidratarOportunidadesDoSupabase(caminhoOportunidades, { comRegistros: !modoShard });
+  // Cada UF é gravada no Supabase (linhas + cobertura) assim que termina — ver
+  // sincronizarUfNoSupabase. Isso substitui o envio único no fim da execução.
+  const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades, { aoConcluirUf: sincronizarUfNoSupabase });
   // O arquivo local continua sendo escrito (gitignored, ver .gitignore) porque
   // scripts/preparar_dossies_editais.js roda depois, no mesmo job, e lê esse
   // caminho — mesmo padrão que contratos_recentes.json/mercado_segmentos.json já
   // usam. O que muda é que ele NUNCA mais é comitado (ver Achado #2 do plano).
   await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
-  const { registros: _registrosOportunidades, ...oportunidadesMeta } = oportunidades;
-  // "semPendencias" (ver coletarOportunidadesAbertas) significa que a recuperação de
-  // 3h não tinha UF nenhuma pra atualizar — reenviar as ~17 mil linhas pro Supabase
-  // nesse caso seria puro desperdício de escrita, 8x/dia, sem mudança nenhuma.
-  //
-  // A sincronização roda ANTES de salvar o metadado (coberturaPorUf) de propósito: se
-  // salvássemos o metadado primeiro e a sincronização falhasse depois, o metadado já
-  // marcaria as UFs desta execução como cobertas hoje, e ufsPendentesDeAtualizacao (que só
-  // olha o metadado) pularia essas UFs pelo resto do dia nas recuperações horárias
-  // seguintes — perdendo pra sempre os editais daquela janela (o PNCP só devolve
-  // "ainda aberto agora"). Só gravamos o metadado depois de confirmar que as linhas
-  // realmente chegaram no Supabase.
-  let sincronizacaoOportunidadesOk = true;
-  if (!oportunidades.semPendencias) {
-    try {
-      await sincronizarOportunidadesNoSupabase(oportunidades);
-    } catch (e) {
-      sincronizacaoOportunidadesOk = false;
-      console.log(`[supabase] Falha ao sincronizar oportunidades (${e && e.message}) — dados continuam só no arquivo local desta execução; o metadado de cobertura NÃO será atualizado, pra essas UFs continuarem pendentes na próxima recuperação.`);
-    }
+  const { registros: _registrosOportunidades, resumoPorUf: _resumoPorUf, total429: _total429, ...oportunidadesMeta } = oportunidades;
+  // "semPendencias" (ver coletarOportunidadesAbertas) significa que não havia UF nenhuma pra
+  // coletar: nada mudou no banco, então não há o que podar nem metadado novo pra gravar.
+  if (oportunidades.semPendencias) {
+    console.log("[supabase] Sem UFs pendentes nesta execução — nada a gravar no Supabase.");
   } else {
-    console.log("[supabase] Sem UFs pendentes nesta recuperação — sincronização com o Supabase pulada.");
-  }
-  if (sincronizacaoOportunidadesOk) {
     try {
-      await salvarBlob("dados_robo", "oportunidades_meta", oportunidadesMeta);
+      await podarOportunidadesAntigas();
+    } catch (e) {
+      console.log(`[supabase] Falha ao podar oportunidades antigas (${e && e.message}) — a próxima execução tenta de novo.`);
+    }
+    try {
+      // Blob derivado do estado REAL da tabela de cobertura (que inclui o que os outros shards
+      // gravaram), não só desta execução. Em modo shard o totalRegistros da execução é parcial
+      // (só as UFs deste shard), então não vai pro blob.
+      let cobertura = null;
+      try { cobertura = await carregarCoberturaDoSupabase(); } catch { /* sem tabela: mantém o metadado da execução */ }
+      const { totalRegistros: _parcial, ...semTotal } = oportunidadesMeta;
+      const metaBlob = metaOportunidadesComCobertura(modoShard ? semTotal : oportunidadesMeta, cobertura);
+      await salvarBlob("dados_robo", "oportunidades_meta", metaBlob);
       console.log('[supabase] Metadado de oportunidades gravado em dados_robo/"oportunidades_meta" (não vai pro git)');
     } catch (e) {
       // Falha transitória ao gravar só o metadado não pode abortar o resto do pipeline
@@ -1277,11 +1568,11 @@ async function main() {
   // atualizadoEm no último dado realmente lido. Isso permite que as demais rotinas — em
   // especial a preparação antecipada dos dossiês — continuem usando a base confiável.
   const MIN_UFS_OK_OPORTUNIDADES = parseInt(process.env.MIN_UFS_OK_OPORTUNIDADES || "24", 10);
-  const ufsOkOportunidades = UFS.length - oportunidades.ufsComFalha.length;
-  if (recuperarPendentes && !oportunidades.semPendencias && oportunidades.ufsOkNaExecucao.length === 0) {
-    console.warn("[oportunidades] Recuperação não atualizou nenhuma UF pendente; o último boletim íntegro foi preservado.");
+  const ufsOkOportunidades = UFS.length - (oportunidades.ufsComFalha || []).length;
+  if ((recuperarPendentes || modoShard) && !oportunidades.semPendencias && oportunidades.ufsOkNaExecucao.length === 0) {
+    console.warn("[oportunidades] A execução não atualizou nenhuma UF pendente; o último boletim íntegro foi preservado.");
   }
-  if (!recuperarPendentes && ufsOkOportunidades < MIN_UFS_OK_OPORTUNIDADES) {
+  if (!recuperarPendentes && !modoShard && ufsOkOportunidades < MIN_UFS_OK_OPORTUNIDADES) {
     console.warn(
       `[oportunidades] Cobertura parcial/indisponível: ${ufsOkOportunidades}/${UFS.length} UFs concluídas ` +
       `(referência operacional: ${MIN_UFS_OK_OPORTUNIDADES}). O último boletim íntegro foi preservado.`
