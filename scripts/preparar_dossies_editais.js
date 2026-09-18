@@ -116,13 +116,46 @@ function selecionarCandidatos(registros, dossies, agora = Date.now()) {
     .map((item) => item.registro);
 }
 
-async function main() {
-  const arquivo = path.join(__dirname, "..", "data", "oportunidades_abertas.json");
-  const dados = JSON.parse(fs.readFileSync(arquivo, "utf8"));
-  const corte = Date.now() - DIAS * 24 * 60 * 60 * 1000;
-  const recentes = (dados.registros || [])
-    .filter((r) => r && r.numeroControlePNCP && dataValida(r.publicacao)?.getTime() >= corte)
+// As oportunidades vivem no Supabase (tabela oportunidades_abertas); o job não pode depender de
+// data/oportunidades_abertas.json: num runner limpo (ex.: job de dossiês do workflow por shard)
+// esse arquivo não existe, e em modo shard ele só teria o que aquele shard acabou de coletar.
+// Lê só a janela de DIAS (coluna "publicacao" indexada) em páginas de 1000. Sem a chave de serviço
+// ou com falha na consulta, cai pro arquivo local, que os workflows antigos ainda hidratam.
+async function carregarRecentesDoSupabase(corteMs, { chaveServico = process.env.SUPABASE_SERVICE_ROLE_KEY, buscar = fetch } = {}) {
+  if (!chaveServico) return null;
+  const corteIso = new Date(corteMs).toISOString().slice(0, 10);
+  const registros = [];
+  const tamanhoPagina = 1000;
+  for (let offset = 0; ; offset += tamanhoPagina) {
+    const url = `${SUPABASE_URL}/rest/v1/oportunidades_abertas?select=dado&publicacao=gte.${corteIso}&order=publicacao.desc,chave.asc&limit=${tamanhoPagina}&offset=${offset}`;
+    const resposta = await buscar(url, { headers: { apikey: chaveServico, Authorization: `Bearer ${chaveServico}` } });
+    if (!resposta.ok) throw new Error(`Supabase oportunidades_abertas HTTP ${resposta.status}`);
+    const pagina = await resposta.json();
+    for (const linha of pagina) registros.push(linha.dado);
+    if (pagina.length < tamanhoPagina) return registros;
+  }
+}
+
+async function carregarRecentes(corteMs, opcoes = {}) {
+  let registros = null;
+  try {
+    registros = await carregarRecentesDoSupabase(corteMs, opcoes);
+  } catch (erro) {
+    console.warn(`[dossiês] não foi possível ler as oportunidades do Supabase (${erro.message}); tentando o arquivo local.`);
+  }
+  if (!registros) {
+    const arquivo = opcoes.arquivo || path.join(__dirname, "..", "data", "oportunidades_abertas.json");
+    if (!fs.existsSync(arquivo)) throw new Error("sem oportunidades: Supabase indisponível e data/oportunidades_abertas.json não existe neste runner.");
+    registros = JSON.parse(fs.readFileSync(arquivo, "utf8")).registros || [];
+  }
+  return registros
+    .filter((r) => r && r.numeroControlePNCP && dataValida(r.publicacao)?.getTime() >= corteMs)
     .sort((a, b) => dataValida(b.publicacao) - dataValida(a.publicacao));
+}
+
+async function main() {
+  const corte = Date.now() - DIAS * 24 * 60 * 60 * 1000;
+  const recentes = await carregarRecentes(corte);
   const dossies = await buscarDossiesPersistidos(recentes.map((registro) => registro.numeroControlePNCP));
   const candidatos = selecionarCandidatos(recentes, dossies);
 
@@ -159,4 +192,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { prioridadeDoDossie, selecionarCandidatos, prepararUm };
+module.exports = { prioridadeDoDossie, selecionarCandidatos, prepararUm, carregarRecentes };

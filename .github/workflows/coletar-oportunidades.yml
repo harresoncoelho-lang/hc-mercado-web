@@ -86,7 +86,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      # TODO(coletor): definir como o job de dossiês obtém data/oportunidades_abertas.json (hoje é hidratado dentro de atualizar_dados.js)
+      # Runner limpo: o script de dossiês lê as oportunidades recentes direto do Supabase
+      # (SUPABASE_SERVICE_ROLE_KEY abaixo), não de data/oportunidades_abertas.json.
       - name: Preparar dossiês recém-coletados
         env:
           LICITAPLENA_URL: "https://licitaplena.com.br"
