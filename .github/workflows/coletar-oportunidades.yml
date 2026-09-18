@@ -1,0 +1,104 @@
+name: Coletar oportunidades do PNCP
+
+# POR QUE MATRIX: o PNCP aplica rate limit (HTTP 429) POR IP. Um único runner só
+# consegue atualizar 5-6 das 27 UFs por execução antes de ser bloqueado. Cada job
+# de uma matrix roda num runner com IP próprio; dividir as UFs em 3 shards
+# multiplica a cota disponível. Os shards são balanceados por VOLUME de registros
+# abertos (UFs grandes espalhadas: 3/3/4 entre os shards, menores completam):
+#   A ~5,5k = SP,RJ,CE + PA,RN,MS,RO,AL,RR,AP
+#   B ~5,5k = MG,SC,GO + ES,PB,DF,MA,SE,AC
+#   C ~5,6k = PR,PE,RS,BA + MT,PI,TO,AM
+#
+# POR QUE CONCURRENCY PRÓPRIO: o grupo `atualizar-dados-pncp` é compartilhado com
+# o job diário (~2h). Quem usa esse grupo fica preso atrás dele e o GitHub descarta
+# execuções pendentes, o que fazia a recuperação horária rodar só a cada 3-6h.
+# Aqui há um grupo POR SHARD (sem cancelar em andamento): não espera o job diário
+# e duas execuções do mesmo shard nunca se sobrepõem.
+#
+# Este workflow SUBSTITUI `recuperar-oportunidades-pncp.yml` após o cutover
+# (desativação do antigo é etapa separada, fora deste arquivo).
+#
+# Os dados vivem no Supabase; o robô NÃO faz commit no repositório.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      frescor_max_horas:
+        description: "UFs coletadas há menos que isso (horas) são puladas"
+        required: false
+        default: "3"
+      limite_minutos:
+        description: "Tempo máximo de coleta por shard (minutos)"
+        required: false
+        default: "20"
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    # limite da coleta + margem para checkout, setup e gravação final
+    timeout-minutes: ${{ fromJSON(inputs.limite_minutos || '20') + 35 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: A
+            ufs: "SP,RJ,CE,PA,RN,MS,RO,AL,RR,AP"
+          - nome: B
+            ufs: "MG,SC,GO,ES,PB,DF,MA,SE,AC"
+          - nome: C
+            ufs: "PR,PE,RS,BA,MT,PI,TO,AM"
+    concurrency:
+      group: coletar-oportunidades-${{ matrix.nome }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Coletar oportunidades (shard ${{ matrix.nome }})
+        env:
+          SOMENTE_OPORTUNIDADES: "1"
+          # lista separada por vírgula; o coletor ordena da UF mais defasada para a menos
+          UFS_ALVO: ${{ matrix.ufs }}
+          # UFs coletadas há menos que isso são puladas
+          FRESCOR_MAX_HORAS: ${{ inputs.frescor_max_horas || '3' }}
+          LIMITE_MINUTOS_OPORTUNIDADES: ${{ inputs.limite_minutos || '20' }}
+          CONCORRENCIA_UF_OPORTUNIDADES: "1" # ajustar após sonda
+          INTERVALO_MS_OPORTUNIDADES: "1200" # ajustar após sonda
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/atualizar_dados.js
+
+  dossies:
+    needs: coletar
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    concurrency:
+      group: coletar-oportunidades-dossies
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # TODO(coletor): definir como o job de dossiês obtém data/oportunidades_abertas.json (hoje é hidratado dentro de atualizar_dados.js)
+      - name: Preparar dossiês recém-coletados
+        env:
+          LICITAPLENA_URL: "https://licitaplena.com.br"
+          MAX_DOSSIES_POR_EXECUCAO: "120"
+          DIAS_PUBLICACAO_DOSSIE: "7"
+          CONCORRENCIA_DOSSIES: "3"
+          REPROCESSAR_PARCIAL_APOS_HORAS: "24"
+          DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$DOSSIES_EDITAIS_CHAVE" ]; then
+            echo "DOSSIES_EDITAIS_CHAVE não configurada; preparação antecipada aguardará a configuração do segredo."
+            exit 0
+          fi
+          node scripts/preparar_dossies_editais.js

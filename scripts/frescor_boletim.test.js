@@ -39,6 +39,7 @@ function criarContexto(base, cache = null) {
     textoUfs: (ufs) => ufs.join(", "),
     buscarOportunidadesAbertas: async () => { consultas++; throw new Error("Consulta automática indevida"); },
     escapeHtml: String,
+    mostrarSeloFrescorUf: async () => {},
   });
   for (const nome of ["metaBoletim", "filtrarResultadosDoBoletim", "combinarResultadosDoBoletim", "resultadosDoRoboParaBoletim", "carregarBaseDoRoboParaBoletim", "frescorBaseBoletim", "gerarBoletim"]) {
     vm.runInContext(extrairFuncao(nome), contexto);

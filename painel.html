@@ -546,6 +546,15 @@
   .situacao-ativa { color: var(--verde-texto); background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.35); }
   .situacao-outra { color: var(--laranja-texto); background: rgba(232,113,10,0.12); border: 1px solid rgba(232,113,10,0.35); }
 
+  /* Selo de frescor da coleta por UF (Boletim e Encontrar Licitações). A cor reforça, mas o
+     ícone e o texto do selo já dizem o nível, então não dependem só dela. */
+  .selo-frescor-lista { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 2px 0; }
+  .selo-frescor { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid; }
+  .selo-frescor-fresca { color: var(--verde-texto); background: rgba(76,175,80,0.12); border-color: rgba(76,175,80,0.35); }
+  .selo-frescor-atencao { color: var(--laranja-texto); background: rgba(232,113,10,0.12); border-color: rgba(232,113,10,0.35); }
+  .selo-frescor-defasada { color: var(--vermelho-texto); background: rgba(232,97,122,0.12); border-color: rgba(232,97,122,0.4); }
+  .selo-frescor-aviso { margin: 8px 2px 0; }
+
   /* Badges genéricos de modalidade (usados na tabela de Convênios e Emendas Federais) */
   .badge-modalidade {
     display: inline-block; font-size: 11px; font-weight: 600;
@@ -1682,6 +1691,7 @@
       <div>
         <h2 style="margin-top:0;">Boletim de oportunidades</h2>
         <p class="dica-clique" id="bol-meta" style="margin:0;">Configure seu filtro para gerar o boletim automaticamente a cada visita.</p>
+        <div id="bol-frescor"></div>
       </div>
     </div>
     <div class="secao-conteudo-principal">
@@ -1713,6 +1723,7 @@
       <div>
         <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Encontrar Licitações</h2>
         <p class="dica-clique" style="margin:4px 0 0;">Pesquise oportunidades publicadas e aplique apenas os filtros que importam. Depois, abra o processo para ver os detalhes e a fonte oficial.</p>
+        <div id="op-frescor"></div>
       </div>
     </div>
     <div class="painel-filtros painel-filtros-recolhivel" id="op-filtros-principais">
@@ -5827,6 +5838,88 @@
     return ` · última coleta: ${descricao}${desatualizada ? ' · A base pode estar desatualizada. Use "Atualizar boletim" para consultar o PNCP.' : ""}`;
   }
 
+  // ---- Selo de frescor por UF (tabela oportunidades_cobertura, 1 linha por UF) ----
+  // O robô às vezes fica dias sem coletar uma UF (429 do PNCP); sem este selo o painel
+  // mostra a base velha sem avisar qual estado está afetado. Limiares em horas: ajuste aqui.
+  const FRESCOR_UF_FRESCA_ATE_H = 6;
+  const FRESCOR_UF_DEFASADA_APOS_H = 24;
+  const CACHE_COBERTURA_UF_TTL_MS = 5 * 60 * 1000; // mesmo TTL das demais consultas ao Supabase
+  let promessaCoberturaUf = null;
+  let coberturaUfEm = 0;
+
+  // Função pura (relógio injetado). Recebe as linhas cruas da tabela e devolve, por UF pedida,
+  // {uf, horas, nivel, parcial, atualizadoEm}. UF sem linha na tabela é omitida: sem dado, o
+  // painel não afirma nada. Nunca coletada (NULL/data inválida) conta como defasada.
+  function frescorPorUf(linhas, agoraMs, ufs) {
+    const porUf = new Map((linhas || []).map((l) => [String(l.uf || "").toUpperCase(), l]));
+    return (ufs || []).filter((uf) => porUf.has(uf)).map((uf) => {
+      const linha = porUf.get(uf);
+      const coleta = Date.parse(linha.atualizado_em);
+      const horas = Number.isFinite(coleta) ? Math.max(0, (agoraMs - coleta) / 3600000) : null;
+      const nivel = horas === null || horas > FRESCOR_UF_DEFASADA_APOS_H ? "defasada"
+        : horas > FRESCOR_UF_FRESCA_ATE_H ? "atencao" : "fresca";
+      return { uf, horas, nivel, parcial: linha.completa === false, atualizadoEm: horas === null ? null : linha.atualizado_em };
+    });
+  }
+
+  // Uma consulta só (as 27 linhas), memoizada como Promise pra Boletim e Encontrar Licitações
+  // não dispararem duas idas ao servidor. Falha (rede, RLS, tabela ausente) devolve null e
+  // NÃO fica memoizada: o selo simplesmente não aparece e a próxima tentativa refaz.
+  function carregarCoberturaUf() {
+    if (promessaCoberturaUf && (Date.now() - coberturaUfEm) < CACHE_COBERTURA_UF_TTL_MS) return promessaCoberturaUf;
+    coberturaUfEm = Date.now();
+    const promessa = (async () => {
+      try {
+        await aguardarSupabaseAutenticado();
+        const { data, error } = await window.__sbClient.from("oportunidades_cobertura")
+          .select("uf,atualizado_em,registros,total_api,completa,tentativa_em,ultimo_status");
+        if (error) throw error;
+        return data || [];
+      } catch (e) {
+        console.error("[oportunidades_cobertura] erro na consulta:", e);
+        if (promessaCoberturaUf === promessa) promessaCoberturaUf = null;
+        return null;
+      }
+    })();
+    promessaCoberturaUf = promessa;
+    return promessa;
+  }
+
+  function htmlSeloFrescorUf(itens, acao) {
+    if (!itens.length) return "";
+    const icone = { fresca: "ph-check-circle", atencao: "ph-info", defasada: "ph-warning" };
+    const nivelTexto = { fresca: "dados recentes", atencao: "coleta com mais de 6 horas", defasada: "dados defasados" };
+    const selos = itens.map((i) => {
+      const quando = i.horas === null ? "nunca coletada"
+        : i.horas < 1 ? "coletada há menos de 1h"
+        : i.horas < 48 ? `coletada há ${Math.floor(i.horas)}h` : `coletada há ${Math.floor(i.horas / 24)}d`;
+      const texto = `${i.uf} · ${quando}${i.parcial ? " · cobertura parcial" : ""}`;
+      const exato = i.atualizadoEm ? `última coleta em ${new Date(i.atualizadoEm).toLocaleString("pt-BR")}` : "sem coleta registrada";
+      const dica = escapeHtml(`${texto} (${nivelTexto[i.nivel]}; ${exato})`);
+      return `<span class="selo-frescor selo-frescor-${i.nivel}" role="group" title="${dica}" aria-label="${dica}"><svg class='icone-ph' aria-hidden="true"><use href='#${icone[i.nivel]}'></use></svg>${escapeHtml(texto)}</span>`;
+    }).join("");
+    const aviso = (lista, msg) => (lista.length
+      ? `<div class="aviso selo-frescor-aviso" role="status">${escapeHtml(msg(lista.join(", ")))} Use "${escapeHtml(acao)}" para consultar o PNCP ao vivo.</div>` : "");
+    const defasadas = itens.filter((i) => i.nivel === "defasada");
+    return `<div class="selo-frescor-lista" role="group" aria-label="Frescor da coleta por estado">${selos}</div>`
+      + aviso(defasadas.filter((i) => i.horas !== null).map((i) => i.uf), (ufs) => `Dados de ${ufs} têm mais de 24h — podem faltar editais recentes.`)
+      + aviso(defasadas.filter((i) => i.horas === null).map((i) => i.uf), (ufs) => `Dados de ${ufs} ainda não foram coletados — podem faltar editais.`);
+  }
+
+  // Nunca lança: qualquer falha só deixa o selo de fora, sem afetar o boletim/busca.
+  async function mostrarSeloFrescorUf(idAlvo, ufs, acao) {
+    const alvo = document.getElementById(idAlvo);
+    if (!alvo) return;
+    try {
+      const lista = normalizarUfs(ufs);
+      const linhas = lista.length ? await carregarCoberturaUf() : null;
+      alvo.innerHTML = linhas ? htmlSeloFrescorUf(frescorPorUf(linhas, Date.now(), lista), acao) : "";
+    } catch (e) {
+      console.error("[selo de frescor]", e);
+      alvo.innerHTML = "";
+    }
+  }
+
   function complementarBoletimComSistemaS(filtro, ufs, palavras, resultadosBase, metaEl, sufixo = "", atualizadoAoVivoEm = null) {
     const chaveDaEdicao = chaveCacheBoletim(filtro);
     // Sistema S fica fora do caminho crítico da primeira pintura. Quando existir dado
@@ -5860,6 +5953,8 @@
 
     const ufs = normalizarUfs(filtro.ufs || filtro.uf);
     const palavras = filtro.palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
+    // Fora do caminho crítico: o selo não bloqueia nem quebra a primeira pintura.
+    void mostrarSeloFrescorUf("bol-frescor", ufs, "Atualizar boletim");
     const cacheInicial = lerCacheResultadoBoletim(filtro);
     if (cacheInicial) {
       // A edição anterior vem do próprio navegador de forma síncrona: login e refresh não
@@ -6037,6 +6132,7 @@
   async function buscarOportunidades() {
     opJaBuscado = true;
     const ufs = ufsDoSelect(document.getElementById("op-uf"));
+    void mostrarSeloFrescorUf("op-frescor", ufs, "Buscar oportunidades");
     const municipioFiltro = document.getElementById("op-municipio").value.trim().toLowerCase();
     const dataDe = document.getElementById("op-data-de").value;
     const dataAte = document.getElementById("op-data-ate").value;
