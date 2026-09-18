@@ -2507,6 +2507,7 @@
           return { ...fonte, ok: true, atualizadoEm: data.atualizado_em || null };
         }
         // Nenhuma fonte desta lista vem mais de arquivo estático — todas moram no Supabase.
+        console.warn("[status] fonte sem \"supabase\" nem \"tabelaSupabase\" em FONTES_STATUS:", fonte);
         return { ...fonte, ok: false };
       } catch (e) {
         return { ...fonte, ok: false };
@@ -4741,7 +4742,10 @@
         return entradaCache.resultado;
       }
       const resultado = await consultarOportunidadesSupabase(estados);
-      cacheOportunidadesSupabase.set(chaveCache, { em: Date.now(), resultado });
+      // Só memoiza sucesso: cachear null/erro por 5 min prendia a sessão inteira num
+      // "sem dados" mesmo que uma tentativa seguinte funcionasse (mesmo cuidado que
+      // consultarContratosSupabase já toma retornando antes do .set() no caminho de erro).
+      if (resultado) cacheOportunidadesSupabase.set(chaveCache, { em: Date.now(), resultado });
       return resultado;
     }
 
@@ -4749,7 +4753,12 @@
       try {
         await aguardarSupabaseAutenticado();
         const registros = [];
-        for (let inicio = 0; inicio < LIMITE_OPORTUNIDADES_SUPABASE; inicio += PAGINA_OPORTUNIDADES_SUPABASE) {
+        // Avança por "pagina.length" (não por PAGINA_OPORTUNIDADES_SUPABASE fixo): se o
+        // db-max-rows configurado no projeto Supabase for menor que 1000, cada página volta
+        // mais curta que o pedido SEM ser a última — parar nesse caso truncaria em silêncio,
+        // exatamente o bug que esta paginação existe pra evitar. Só para quando o servidor
+        // devolve uma página vazia (fim real dos dados) ou ao bater o teto de segurança.
+        for (let inicio = 0; inicio < LIMITE_OPORTUNIDADES_SUPABASE;) {
           const fim = Math.min(inicio + PAGINA_OPORTUNIDADES_SUPABASE, LIMITE_OPORTUNIDADES_SUPABASE) - 1;
           // Ordenar pela chave primária é o que deixa a paginação estável: sem ORDER BY o
           // Postgres não garante a mesma ordem entre páginas, e linhas poderiam repetir ou
@@ -4768,7 +4777,8 @@
           }
           const pagina = data || [];
           for (const linha of pagina) registros.push(linha.dado);
-          if (pagina.length < fim - inicio + 1) break;
+          if (pagina.length === 0) break;
+          inicio += pagina.length;
         }
         return { registros };
       } catch (e) {
@@ -6061,7 +6071,7 @@
     try {
       // Busca sempre ao vivo direto na API de busca do PNCP (rápida e cobre todo o
       // histórico, não só "aberto agora" — ver comentário na função). O cache do robô
-      // (data/oportunidades_abertas.json) é só um complemento pra garantir cobertura
+      // (tabela oportunidades_abertas no Supabase) é só um complemento pra garantir cobertura
       // extra caso o robô já tenha visto algo que a busca ao vivo não trouxe nesta página.
       const resp = await buscarOportunidadesAbertas(ufs, palavras, 20);
       let resultados = resp.encontrados;
@@ -6257,8 +6267,8 @@
   }
 
   // Breakdown de licitações publicadas por modalidade de contratação (pregão eletrônico,
-  // dispensa, concorrência etc.) — usa data/oportunidades_abertas.json, que já é coletado
-  // nacionalmente (todas as UFs) pelo robô com modalidadeNome por registro. Prioriza o valor
+  // dispensa, concorrência etc.) — usa a tabela oportunidades_abertas do Supabase, que já é
+  // coletada nacionalmente (todas as UFs) pelo robô com modalidadeNome por registro. Prioriza o valor
   // homologado (contratação já decidida) e cai pro valor estimado quando ainda não homologou
   // (licitação em andamento) — assim toda licitação entra com algum valor de referência.
   function calcularPorModalidade(registros) {
@@ -7317,7 +7327,7 @@
       let oportunidadesAbertas = [];
       let falhaConexaoOportunidades = false;
       let ufOportunidadesFalhouHoje = false;
-      // Cache de licitações publicadas (data/oportunidades_abertas.json) é nacional, todas as
+      // Cache de licitações publicadas (tabela oportunidades_abertas no Supabase) é nacional, todas as
       // UFs, com modalidadeNome/valorTotalEstimado/valorTotalHomologado por registro (ver
       // coletarOportunidadesAbertas em scripts/atualizar_dados.js) — carrega uma vez só e
       // reaproveita tanto pra tabela de "abertas agora" (só quando UF selecionada, como
