@@ -147,3 +147,83 @@ test("login não dispara restaurações de ferramentas que ainda estão fechadas
   assert.match(html, /nav button\[data-alvo="oportunidades"\][\s\S]{0,500}restaurarOportunidades/);
   assert.match(html, /nav button\[data-alvo="diagnostico"\][\s\S]{0,300}restaurarDiagnostico/);
 });
+
+// Cliente Supabase falso: cada "from().select()...range()" devolve uma thenable que resolve
+// via "responder", chamado com o estado acumulado da query (inicio/fim pedidos, filtros de
+// uf/or aplicados). Cobre o mapeamento de linha (dado jsonb -> registro) e a paginação de
+// carregarOportunidadesSupabase/consultarOportunidadesSupabase, que antes só tinham
+// chaveOportunidade testado (Task 2 Passo 6 do plano previa também o mapeamento de linha).
+function clienteSupabaseFake(responder) {
+  return {
+    from: () => {
+      const estado = {};
+      const chain = {
+        select: () => chain,
+        order: () => chain,
+        range: (inicio, fim) => { estado.inicio = inicio; estado.fim = fim; return chain; },
+        in: (_coluna, valores) => { estado.uf = valores; return chain; },
+        or: (str) => { estado.or = str; return chain; },
+        then: (resolve, reject) => Promise.resolve(responder({ ...estado })).then(resolve, reject),
+      };
+      return chain;
+    },
+  };
+}
+function contextoOportunidadesSupabase(responder) {
+  const vm = require("node:vm");
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const inicio = html.indexOf("async function aguardarSupabaseAutenticado() {");
+  const fim = html.indexOf("function sanitizarParaIlike(palavra) {", inicio);
+  assert.ok(inicio >= 0 && fim > inicio);
+  const contexto = vm.createContext({
+    window: { __sbClient: clienteSupabaseFake(responder), __clienteAtual: true },
+    console: { error() {}, warn() {} },
+  });
+  vm.runInContext(html.slice(inicio, fim), contexto);
+  return contexto;
+}
+
+test("consultarOportunidadesSupabase mapeia cada linha pro seu dado jsonb, sem vazar colunas indexadas", async () => {
+  let chamadas = 0;
+  const contexto = contextoOportunidadesSupabase(() => {
+    chamadas++;
+    if (chamadas === 1) return { data: [{ dado: { numeroControlePNCP: "1" }, chave: "1", uf: "AM" }, { dado: { numeroControlePNCP: "2" }, chave: "2", uf: "AM" }], error: null };
+    return { data: [], error: null };
+  });
+  const resultado = await contexto.consultarOportunidadesSupabase([]);
+  // JSON.stringify em vez de assert.deepEqual: os objetos vêm do contexto isolado do vm
+  // (realm diferente), então deepStrictEqual os rejeitaria mesmo com estrutura idêntica.
+  assert.equal(JSON.stringify(resultado), JSON.stringify({ registros: [{ numeroControlePNCP: "1" }, { numeroControlePNCP: "2" }] }));
+});
+
+test("paginação avança pelo tamanho real da página, não por um tamanho fixo assumido", async () => {
+  // Simula um db-max-rows do projeto Supabase abaixo do PAGINA_OPORTUNIDADES_SUPABASE
+  // (1000) pedido pelo código: o servidor nunca devolve mais que 500 linhas por vez,
+  // mesmo esse não sendo o fim dos dados. Regressão pro bug em que o loop parava na
+  // primeira página curta (pagina.length < tamanho pedido) e truncava o resultado em
+  // silêncio.
+  const total = 1200;
+  let entregues = 0;
+  const chamadasRange = [];
+  const contexto = contextoOportunidadesSupabase(({ inicio, fim }) => {
+    chamadasRange.push([inicio, fim]);
+    const restantes = total - entregues;
+    const tamanho = Math.min(500, restantes);
+    const pagina = Array.from({ length: tamanho }, (_, i) => ({ dado: { id: entregues + i } }));
+    entregues += tamanho;
+    return { data: pagina, error: null };
+  });
+  const resultado = await contexto.consultarOportunidadesSupabase([]);
+  assert.equal(resultado.registros.length, total);
+  assert.equal(resultado.registros[0].id, 0);
+  assert.equal(resultado.registros.at(-1).id, total - 1);
+  // 500+500+200 preenche os 1200, e uma 4ª chamada com página vazia é quem encerra o loop.
+  assert.equal(chamadasRange.length, 4);
+});
+
+test("consultarOportunidadesSupabase devolve null e não quebra em erro do Supabase", async () => {
+  const contexto = contextoOportunidadesSupabase(() => ({ data: null, error: { message: "falhou" } }));
+  assert.equal(await contexto.consultarOportunidadesSupabase([]), null);
+});
