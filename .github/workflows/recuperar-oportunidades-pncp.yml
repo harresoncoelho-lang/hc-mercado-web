@@ -8,7 +8,11 @@ concurrency:
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    # Antes rodava de hora em hora (24 pushes/dia possiveis pro main, cada um disparando
+    # um deploy completo no Netlify e consumindo credito de build). Espacado pra a cada 3h
+    # (8x/dia) - ainda cobre bem o dia sem gerar deploy toda hora. Ver Segundo-Cerebro
+    # /03-Bugs-Conhecidos.md sobre o consumo de credito do Netlify.
+    - cron: "17 */3 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -41,6 +45,9 @@ jobs:
           MAX_DOSSIES_POR_EXECUCAO: "120"
           DIAS_PUBLICACAO_DOSSIE: "7"
           CONCORRENCIA_DOSSIES: "3"
+          # Job tem 35 min no total e o passo de coleta já reserva até 28 min: orçamento
+          # curto aqui evita estourar o timeout do job e derrubar o commit/push final.
+          LIMITE_MINUTOS_DOSSIES: "5"
           REPROCESSAR_PARCIAL_APOS_HORAS: "24"
           DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
