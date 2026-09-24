@@ -1179,7 +1179,16 @@ exports.handler = async (event) => {
     fonteLida = true;
   }
 
-  if (modo === "resumo" && !fonteLida) return { statusCode: 422, headers, body: JSON.stringify({ erro: "O documento oficial não pôde ser lido. O resumo e o checklist não foram gerados.", estrutura: null, fonteLida: false, motivoFonteNaoLida, emProcessamento: false }) };
+  // Sem o texto do documento não há como gerar o dossiê pela IA — mas a ficha oficial
+  // (objeto, órgão, prazos etc.) já foi recuperada acima e é preferível a um erro sem
+  // alternativa. Contratações por dispensa/ato, por exemplo, às vezes não têm um PDF de
+  // edital completo no PNCP, só um aviso — o fallback cobre esse caso como o de PDF ilegível.
+  if (modo === "resumo" && !fonteLida) {
+    const contingencia = respostaDeContingencia(edital, motivoFonteNaoLida, "O documento oficial não pôde ser lido — mostrando uma ficha baseada apenas nos dados já publicados pelo PNCP.");
+    contingencia.headers = headers;
+    contingencia.body = JSON.stringify(contingencia.body);
+    return contingencia;
+  }
 
   // A preparação em lote conserva apenas a fonte, sem disparar IA paga.
   if (modo === "resumo" && fonteLida) {
