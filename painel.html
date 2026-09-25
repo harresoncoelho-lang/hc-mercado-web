@@ -3595,7 +3595,9 @@
       // O detalhe oficial pode chegar após um dossiê já persistido. Atualizamos a
       // estrutura visível no mesmo modal, sem exigir fechar/reabrir e sem duplicar seções.
       void detalhePncp.then(() => {
-        if (iaEditalAtual === edital && iaEstruturaAtual) renderizarEstruturaIA(iaEstruturaAtual);
+        // Por ID, não por referência: uma nova busca pode reconstruir o array de
+        // resultados (novos objetos) sem trocar de edital — === perderia essa atualização.
+        if (iaEditalAtual && idOportunidade(iaEditalAtual) === idOportunidade(edital) && iaEstruturaAtual) renderizarEstruturaIA(iaEstruturaAtual);
       }).catch(() => {});
       void carregarItensDoResumoIA(edital);
       const resumoLocal = lerCacheLocalResumo(edital);
