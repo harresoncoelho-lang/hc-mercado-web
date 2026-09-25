@@ -3,7 +3,7 @@
 // Env obrigatórias: DOSSIES_EDITAIS_CHAVE.
 // Env opcionais: LICITAPLENA_URL (https://licitaplena.com.br), MAX_DOSSIES_POR_EXECUCAO (12),
 // DIAS_PUBLICACAO_DOSSIE (3), CONCORRENCIA_DOSSIES (1), LIMITE_MINUTOS_DOSSIES (20),
-// SUPABASE_SERVICE_ROLE_KEY, VERSAO_DOSSIE (16) e REPROCESSAR_PARCIAL_APOS_HORAS (24).
+// SUPABASE_SERVICE_ROLE_KEY e REPROCESSAR_PARCIAL_APOS_HORAS (24).
 //
 // O cliente nunca deve precisar iniciar leitura de PDF/IA no clique. Este job chama a
 // rota interna, que aproveita o cache persistente e só lê os documentos ainda ausentes.
@@ -17,7 +17,13 @@ const DIAS = Math.max(1, Number(process.env.DIAS_PUBLICACAO_DOSSIE || 3));
 const CONCORRENCIA = Math.max(1, Number(process.env.CONCORRENCIA_DOSSIES || 1));
 const LIMITE_MINUTOS = Math.max(1, Number(process.env.LIMITE_MINUTOS_DOSSIES || 20));
 const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
-const VERSAO_DOSSIE = Math.max(1, Number(process.env.VERSAO_DOSSIE || 16));
+// Fonte única: a mesma VERSAO_RESUMO que a Function grava e exige no cache. Lida do
+// código-fonte (sem require) para não carregar as dependências da Function aqui.
+const VERSAO_DOSSIE = Number(
+  (fs.readFileSync(path.join(__dirname, "../netlify/functions/lib/ia-edital.js"), "utf8")
+    .match(/^const VERSAO_RESUMO = (\d+);/m) || [])[1]
+);
+if (!VERSAO_DOSSIE) throw new Error("VERSAO_RESUMO não encontrada em netlify/functions/lib/ia-edital.js");
 const REPROCESSAR_PARCIAL_APOS_MS = Math.max(1, Number(process.env.REPROCESSAR_PARCIAL_APOS_HORAS || 24)) * 60 * 60 * 1000;
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 
@@ -164,4 +170,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { prioridadeDoDossie, selecionarCandidatos, prepararUm };
+module.exports = { VERSAO_DOSSIE, prioridadeDoDossie, selecionarCandidatos, prepararUm };
