@@ -2878,6 +2878,7 @@
   }
 
   function renderizarEstruturaIA(est) {
+    console.log('[ia-debug] renderizarEstruturaIA:escrevendo-dom', { numeroControlePNCPModalAberto: iaEditalAtual?.numeroControlePNCP, objetoModalAberto: iaEditalAtual?.objeto, objetoDoEstReceibido: est?.identificacao?.objeto });
     const estruturaComFonte = aplicarDadosOficiaisNaEstruturaIA(est, iaEditalAtual);
     const itensPncp = iaItensPncpAtual || estruturaComFonte.itensPncp || [];
     iaEstruturaAtual = {
@@ -2957,11 +2958,16 @@
     });
   }
 
-  function cancelarConsultaResumo() {
+  function cancelarConsultaResumo(novoNumeroControlePNCP) {
+    const geracaoAnterior = iaGeracaoModal;
     iaGeracaoModal += 1;
+    console.log('[ia-debug] cancelarConsultaResumo', { geracaoAnterior, geracaoNova: iaGeracaoModal, numeroControlePNCPAnterior: iaEditalAtual?.numeroControlePNCP, novoNumeroControlePNCP, tinhaRequisicaoEmAndamento: Boolean(iaRequisicaoAtual) });
     clearTimeout(iaTemporizadorResumo);
     iaTemporizadorResumo = null;
-    if (iaRequisicaoAtual) iaRequisicaoAtual.abort();
+    if (iaRequisicaoAtual) {
+      console.log('[ia-debug] abortando requisicaoAtual', { numeroControlePNCPAbortado: iaEditalAtual?.numeroControlePNCP, novoNumeroControlePNCP });
+      iaRequisicaoAtual.abort();
+    }
     iaRequisicaoAtual = null;
     iaCarregando = false;
   }
@@ -2988,6 +2994,8 @@
     if (iaCarregando || !iaEditalAtual || (modo === "pergunta" && iaResumoPendente)) return;
     const geracao = iaGeracaoModal;
     const edital = iaEditalAtual;
+    const numeroCapturado = edital?.numeroControlePNCP;
+    console.log('[ia-debug] chamarIA:inicio', { modo, numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal });
     const controlador = new AbortController();
     iaRequisicaoAtual = controlador;
     iaCarregando = true;
@@ -2996,6 +3004,7 @@
     const carregando = escreverMensagemIA(mensagemEspera, "msg-carregando");
     try {
       const token = await obterTokenSessao();
+      console.log('[ia-debug] chamarIA:pos-token', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, numeroControlePNCPAtual: iaEditalAtual?.numeroControlePNCP, staleDetectado: geracao !== iaGeracaoModal });
       if (geracao !== iaGeracaoModal) return;
       const enviar = (credencial) => fetch("/.netlify/functions/ia-edital", {
         signal: controlador.signal,
@@ -3004,19 +3013,23 @@
         body: JSON.stringify({ modo, edital, pergunta, retomarAnalise: Boolean(opcoes.retomarAnalise), historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
       });
       let resp = await enviar(token);
+      console.log('[ia-debug] chamarIA:pos-fetch', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, numeroControlePNCPAtual: iaEditalAtual?.numeroControlePNCP, staleDetectado: geracao !== iaGeracaoModal, abortado: controlador.signal.aborted, httpStatus: resp.status });
       if (geracao !== iaGeracaoModal || controlador.signal.aborted) return;
       // Uma única renovação natural cobre expiração durante a leitura longa.
       // Indisponibilidade 503 não significa credencial inválida.
       if (modo === "resumo" && resp.status === 401) {
         const renovacao = await window.__sbClient.auth.refreshSession();
+        console.log('[ia-debug] chamarIA:pos-refresh', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, staleDetectado: geracao !== iaGeracaoModal });
         if (geracao !== iaGeracaoModal || controlador.signal.aborted) return;
         if (renovacao.error) throw new Error("SESSAO_INDISPONIVEL");
         if (!renovacao.data?.session?.access_token) throw new Error("SESSAO_AUSENTE");
         resp = await enviar(renovacao.data.session.access_token);
+        console.log('[ia-debug] chamarIA:pos-fetch-renovado', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, staleDetectado: geracao !== iaGeracaoModal, httpStatus: resp.status });
       }
       let dados;
       try {
         dados = await resp.json();
+        console.log('[ia-debug] chamarIA:pos-json', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, numeroControlePNCPAtual: iaEditalAtual?.numeroControlePNCP, staleDetectado: geracao !== iaGeracaoModal, temEstrutura: Boolean(dados?.estrutura), doCache: Boolean(dados?.doCache) });
         if (geracao !== iaGeracaoModal) return;
       } catch (erroResposta) {
         if (geracao !== iaGeracaoModal) return;
@@ -3034,6 +3047,7 @@
         carregando.textContent = dados.aviso || `Preparando resumo: etapa ${etapa} de ${total}. Você pode fechar e retomar depois.`;
         iaTemporizadorResumo = setTimeout(() => {
           iaTemporizadorResumo = null;
+          console.log('[ia-debug] chamarIA:retry-pendente', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, staleDetectado: geracao !== iaGeracaoModal });
           if (geracao !== iaGeracaoModal) return;
           carregando.remove();
           void chamarIA("resumo", null);
@@ -3063,6 +3077,7 @@
         estruturaRecebida.modoDegradado = Boolean(dados.modoDegradado);
         estruturaRecebida.metodoResumo = dados.metodoResumo || estruturaRecebida.metodoResumo;
         estruturaRecebida.aviso = dados.aviso || estruturaRecebida.aviso;
+        console.log('[ia-debug] chamarIA:pre-render', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, numeroControlePNCPAtual: iaEditalAtual?.numeroControlePNCP, objetoRecebido: estruturaRecebida?.identificacao?.objeto });
         renderizarEstruturaIA(estruturaRecebida);
         if (dados.modoDegradado) {
           escreverMensagemIA(dados.aviso || "A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
@@ -3079,6 +3094,7 @@
       iaHistorico.push({ role: "user", content: pergunta || "(resumo inicial)" });
       iaHistorico.push({ role: "assistant", content: dados.resposta });
     } catch (e) {
+      console.log('[ia-debug] chamarIA:catch', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, staleDetectado: geracao !== iaGeracaoModal, mensagemErro: e?.message, nomeErro: e?.name });
       if (geracao !== iaGeracaoModal) return;
       carregando.remove();
       if (modo === "resumo") {
@@ -3087,6 +3103,7 @@
         escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
       }
     } finally {
+      console.log('[ia-debug] chamarIA:finally', { numeroCapturado, geracaoCapturada: geracao, geracaoAtual: iaGeracaoModal, vaiLimpar: geracao === iaGeracaoModal });
       if (geracao === iaGeracaoModal) {
         iaCarregando = false;
         iaRequisicaoAtual = null;
@@ -3132,6 +3149,7 @@
   function sincronizarItensPncpNoResumo(edital, itens, renderizar = true) {
     const lista = Array.isArray(itens) ? itens : [];
     if (!lista.length) return;
+    console.log('[ia-debug] sincronizarItensPncpNoResumo', { numeroCapturado: edital?.numeroControlePNCP, numeroControlePNCPAtual: iaEditalAtual?.numeroControlePNCP, idCapturado: idOportunidade(edital), idAtual: iaEditalAtual ? idOportunidade(iaEditalAtual) : null });
     if (!iaEditalAtual || idOportunidade(iaEditalAtual) !== idOportunidade(edital)) return;
     iaItensPncpAtual = lista;
     if (!iaEstruturaAtual) return;
@@ -3534,12 +3552,15 @@
   }
 
   function abrirModalIA(edital) {
-    cancelarConsultaResumo();
+    console.log('[ia-debug] abrirModalIA:entrada', { numeroControlePNCP: edital?.numeroControlePNCP, objeto: edital?.objeto, geracaoAntes: iaGeracaoModal });
+    cancelarConsultaResumo(edital?.numeroControlePNCP);
+    console.log('[ia-debug] abrirModalIA:pos-cancelar', { numeroControlePNCP: edital?.numeroControlePNCP, geracaoDepois: iaGeracaoModal });
     bloquearAcoesResumo(true);
     document.getElementById("modal-ia-checklist-doc").innerHTML = "<svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist .docx";
     iaEditalAtual = edital;
     iaHistorico = [];
     iaTextoEdital = null;
+    console.log('[ia-debug] iaEstruturaAtual:zerado', { numeroControlePNCP: edital?.numeroControlePNCP });
     iaEstruturaAtual = null;
     iaItensPncpAtual = null;
     iaItensPncpCarregando = null;
@@ -3591,10 +3612,12 @@
       // O dossiê pronto é a fonte prioritária. Não aguardamos o PNCP antes de consultá-lo:
       // isso faz o resumo pré-processado abrir imediatamente, inclusive em outro navegador.
       // O detalhe oficial segue em paralelo apenas para complementar cards ainda sem dossiê.
+      const numeroCapturadoDetalhe = edital?.numeroControlePNCP;
       const detalhePncp = enriquecerEditalComDetalhePncp(edital);
       // O detalhe oficial pode chegar após um dossiê já persistido. Atualizamos a
       // estrutura visível no mesmo modal, sem exigir fechar/reabrir e sem duplicar seções.
       void detalhePncp.then(() => {
+        console.log('[ia-debug] detalhePncp:then', { numeroCapturado: numeroCapturadoDetalhe, numeroControlePNCPAtual: iaEditalAtual?.numeroControlePNCP, mesmoObjetoRef: iaEditalAtual === edital, iaEstruturaAtualExiste: Boolean(iaEstruturaAtual), objetoDeIaEstruturaAtual: iaEstruturaAtual?.identificacao?.objeto });
         if (iaEditalAtual === edital && iaEstruturaAtual) renderizarEstruturaIA(iaEstruturaAtual);
       }).catch(() => {});
       void carregarItensDoResumoIA(edital);
@@ -3605,6 +3628,7 @@
           chamarIA("resumo", null, { reprocessarEstrutura: true });
           return;
         }
+        console.log('[ia-debug] abrirModalIA:cache-local-hit', { numeroControlePNCP: edital?.numeroControlePNCP });
         renderizarEstruturaIA(resumoLocal.estrutura);
         bloquearAcoesResumo(false);
         iaHistorico.push({ role: "user", content: "(resumo inicial)" });
