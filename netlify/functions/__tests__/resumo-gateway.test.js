@@ -20,9 +20,9 @@ function preencher(s) {
   if (s.type === "array") return [];
   return Object.fromEntries(s.required.map(k => [k, preencher(s.properties[k])]));
 }
-async function preparar(store = memoria()) {
+async function preparar(store = memoria(), fonte = "Fonte oficial integral de teste.") {
   const eventos = []; let chave;
-  const parametros = { store, fonte: "Fonte oficial integral de teste.", ficha: { numeroControlePNCP: "00508903000188-1-001755/2026", objeto: "Objeto oficial" }, cobertura: { documentosLidos: ["Edital"] }, usuario: "dono", authorization: "Bearer ficticio",
+  const parametros = { store, fonte, ficha: { numeroControlePNCP: "00508903000188-1-001755/2026", objeto: "Objeto oficial" }, cobertura: { documentosLidos: ["Edital"] }, usuario: "dono", authorization: "Bearer ficticio",
     autorizar: async () => { eventos.push("cota"); return { ok: true }; },
     disparar: async (_url, opcoes) => { eventos.push("disparo"); chave = JSON.parse(opcoes.body).chave; return { status: 202 }; } };
   const resposta = await gateway.solicitarResumo(parametros);
@@ -175,4 +175,88 @@ test("orçamento de saída acomoda raciocínio sem mudar modelo ou alvo de conci
   assert.equal(request.model, "gpt-5.1");
   assert.equal(request.reasoning.effort, "medium");
   assert.match(request.input[0].content, /conciso/);
+});
+
+test("âncoras recuperam datas operacionais de editais diferentes sem incluir legislação histórica", () => {
+  const agora = Date.UTC(2026, 8, 13);
+  const pe = "Fichas até 28/09/2026. Análise 30/09/2026 10:30. Reabertura 02/10/2026 12:30.";
+  assert.deepEqual(gateway.ancorasPrazos(pe, {}, agora).datasAusentes, ["28/09/2026", "30/09/2026", "02/10/2026"]);
+  const outra = "Lei de 01/04/2021. Propostas até 15/09/2026. Sessão 16/09/2026 às 08:00.";
+  assert.deepEqual(gateway.ancorasPrazos(outra, { prazos: { limiteEnvioPropostas: "15/09/2026" } }, agora).datasAusentes, ["16/09/2026"]);
+  const request = gateway.requisicaoRevisao("INTRODUÇÃO".repeat(500) + pe, {}, agora);
+  assert.ok(!request.input[1].content.includes("INTRODUÇÃO".repeat(500)));
+  assert.deepEqual(Object.keys(request.text.format.schema.properties), ["prazos", "outrasInformacoesRelevantes", "analiseCritica"]);
+});
+
+test("cache sem revisão usa fase curta uma vez e preserva campos e custo da geração", async () => {
+  const x = await preparar(memoria(), "Fichas até 28/09/2026; análise 30/09/2026; reabertura 02/10/2026.");
+  const registro = await x.store.getWithMetadata(x.chave);
+  const estrutura = preencher(schema).estrutura;
+  estrutura.identificacao.objeto = "OBJETO ORIGINAL";
+  await x.store.setJSON(x.chave, { ...registro.data, status: "concluido", resultado: { estrutura, versao: 17 }, usoPrivado: { total_tokens: 10000 }, custoEstimadoCreditos: 32 });
+  await Promise.all([gateway.solicitarResumo(x.parametros), gateway.solicitarResumo(x.parametros)]);
+  assert.deepEqual(x.eventos, ["cota", "disparo", "cota", "disparo"]);
+  assert.equal((await x.store.getWithMetadata(x.chave)).data.fase, "revisao_prazos");
+  await gateway.solicitarResumo(x.parametros);
+  assert.equal(x.eventos.length, 4);
+  const patch = preencher(gateway.SCHEMA_REVISAO);
+  patch.outrasInformacoesRelevantes = ["Fichas 28/09/2026; análise 30/09/2026; reabertura 02/10/2026."];
+  await gateway.executarResumo({ store: x.store, chave: x.chave, usuario: "dono", cliente: { responses: { create: async request => {
+    assert.equal(request.text.format.name, "revisao_prazos");
+    return { status: "completed", output_text: JSON.stringify(patch), usage: { input_tokens: 100, output_tokens: 100 } };
+  } } } });
+  const final = (await x.store.getWithMetadata(x.chave)).data;
+  assert.equal(final.resultado.revisaoPrazos, true);
+  assert.equal(final.resultado.estrutura.identificacao.objeto, "OBJETO ORIGINAL");
+  assert.equal(final.fasesPrivadas.geracao.custo, 32);
+  assert.ok(final.fasesPrivadas.revisao_prazos.uso);
+});
+
+test("revisão inválida ou sem data preserva rascunho e não publica resumo incompleto", async () => {
+  for (const invalido of ["campo", "data"]) {
+    const x = await preparar(memoria(), "Enviar fichas até 28/09/2026.");
+    const registro = await x.store.getWithMetadata(x.chave);
+    const rascunho = { estrutura: preencher(schema).estrutura };
+    await x.store.setJSON(x.chave, { ...registro.data, fase: "revisao_prazos", resultado: rascunho });
+    const patch = preencher(gateway.SCHEMA_REVISAO);
+    if (invalido === "campo") patch.identificacao = { objeto: "ADULTERADO" };
+    await gateway.executarResumo({ store: x.store, chave: x.chave, usuario: "dono", cliente: { responses: { create: async () => ({ status: "completed", output_text: JSON.stringify(patch) }) } } });
+    const salvo = (await x.store.getWithMetadata(x.chave)).data;
+    assert.equal(salvo.status, "falhou");
+    assert.deepEqual(salvo.resultado, rascunho);
+    assert.equal(await x.store.getWithMetadata(x.parametros.ficha.numeroControlePNCP), null);
+    assert.equal(gateway.respostaJob(salvo).body.estrutura, null);
+  }
+});
+
+test("job do robô leva a chave no disparo, grava o dossiê no Supabase sem validade por idade e falha não bloqueia o cliente", async () => {
+  const antigoFetch = global.fetch, antigaChave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "servico-teste";
+  const gravacoes = [];
+  global.fetch = async (url, opcoes) => { gravacoes.push({ url, corpo: JSON.parse(opcoes.body) }); return { ok: true, status: 201 }; };
+  try {
+    const store = memoria(); let cabecalhos;
+    const parametros = { store, fonte: "Fonte do robô.", ficha: { numeroControlePNCP: "00508903000188-1-001755/2026" }, usuario: gateway.USUARIO_ROBO, chaveRobo: "chave-robo",
+      autorizar: async () => ({ ok: true }), disparar: async (_url, opcoes) => { cabecalhos = opcoes.headers; return { status: 202 }; } };
+    assert.equal((await gateway.solicitarResumo(parametros)).statusCode, 202);
+    assert.equal(cabecalhos["x-licitaplena-dossies-chave"], "chave-robo");
+    const chave = [...store.dados.keys()][0];
+    await gateway.executarResumo({ store, chave, usuario: gateway.USUARIO_ROBO, cliente: { responses: { create: async () => ({ status: "completed", output_text: JSON.stringify(preencher(schema)) }) } } });
+    const final = store.dados.get("00508903000188-1-001755/2026").data;
+    assert.equal(final.expiraEm, undefined);
+    assert.equal(gravacoes.length, 1);
+    assert.match(gravacoes[0].url, /dossies_editais/);
+    assert.equal(gravacoes[0].corpo[0].versao, 17);
+    assert.equal(gravacoes[0].corpo[0].status, "pronto");
+
+    const falho = { ...parametros, fonte: "Outra fonte do robô." };
+    await gateway.solicitarResumo(falho);
+    const chaveFalha = [...store.dados.keys()].find((k) => k.startsWith("gateway:") && k !== chave);
+    await gateway.executarResumo({ store, chave: chaveFalha, usuario: gateway.USUARIO_ROBO, cliente: { responses: { create: async () => { throw Object.assign(new Error("x"), { status: 400 }); } } } });
+    const cliente = await gateway.solicitarResumo({ ...falho, usuario: "cliente", chaveRobo: null, retomar: true });
+    assert.equal(cliente.statusCode, 202);
+  } finally {
+    global.fetch = antigoFetch;
+    if (antigaChave === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = antigaChave;
+  }
 });

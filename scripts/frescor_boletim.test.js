@@ -22,6 +22,9 @@ function criarContexto(base, cache = null) {
   let consultas = 0;
   const contexto = vm.createContext({
     Date: DataFixa,
+    BOL_FRESCOR_MS: 6 * 60 * 60 * 1000,
+    BOL_REVALIDACAO_MS: 5 * 60 * 1000,
+    bolAtualizacao: { emAndamento: false, ultimaLeitura: 0, tentativas: new Map() },
     window: {},
     document: { getElementById(id) {
       if (!elementos.has(id)) elementos.set(id, {});
@@ -29,6 +32,9 @@ function criarContexto(base, cache = null) {
     } },
     normalizarUfs: (ufs) => ufs,
     lerFiltroBoletim: () => ({ ufs: ["AM"], palavrasRaw: "material" }),
+    chaveCacheBoletim: (filtro) => JSON.stringify(filtro),
+    buscarExtrasSistemaS: async () => [],
+    ufEstaSelecionada: () => true,
     lerCacheResultadoBoletim: () => cache,
     carregarBlobSupabase: async (chave) => (base && chave === "oportunidades_meta" ? { atualizadoEm: base.atualizadoEm, ultimaTentativaEm: base.ultimaTentativaEm, coberturaPorUf: base.coberturaPorUf } : null),
     carregarOportunidadesSupabase: async (estados) => (base ? { registros: base.registros } : null),
@@ -40,7 +46,7 @@ function criarContexto(base, cache = null) {
     buscarOportunidadesAbertas: async () => { consultas++; throw new Error("Consulta automática indevida"); },
     escapeHtml: String,
   });
-  for (const nome of ["metaBoletim", "filtrarResultadosDoBoletim", "combinarResultadosDoBoletim", "resultadosDoRoboParaBoletim", "carregarBaseDoRoboParaBoletim", "frescorBaseBoletim", "gerarBoletim"]) {
+  for (const nome of ["metaBoletim", "filtrarResultadosDoBoletim", "combinarResultadosDoBoletim", "resultadosDoRoboParaBoletim", "carregarBaseDoRoboParaBoletim", "frescorBaseBoletim", "precisaAtualizarBoletim", "gerarBoletim"]) {
     vm.runInContext(extrairFuncao(nome), contexto);
   }
   return { contexto, renderizacoes, gravacoes, consultas: () => consultas, elementos };
@@ -55,6 +61,46 @@ test("frescor considera coleta efetiva e ignora tentativa recente", async () => 
   assert.equal(base.coberturaPorUf.AM.atualizadoEm, "2026-09-03T16:00:00Z");
   assert.match(contexto.frescorBaseBoletim(base), /03\/09\/2026/);
   assert.match(contexto.frescorBaseBoletim(base), /Atualizar boletim/);
+});
+
+test("base sem data ou com uma UF antiga pede recuperação; consulta recente e cooldown evitam repetição", () => {
+  const { contexto } = criarContexto(null);
+  const atual = { coberturaPorUf: { AM: { atualizadoEm: agora }, RR: { atualizadoEm: "2026-09-11T09:59:59Z" } } };
+  assert.equal(contexto.precisaAtualizarBoletim(null, null), true);
+  assert.equal(contexto.precisaAtualizarBoletim(atual, null), true);
+  assert.equal(contexto.precisaAtualizarBoletim({ coberturaPorUf: { AM: { atualizadoEm: agora }, RR: {} } }, null), true);
+  assert.equal(contexto.precisaAtualizarBoletim(atual, { atualizadoAoVivoEm: agora }), false);
+  assert.equal(contexto.precisaAtualizarBoletim(atual, null, Date.parse(agora) - 299999), false);
+  assert.equal(contexto.precisaAtualizarBoletim(atual, null, Date.parse(agora) - 300000), true);
+  assert.equal(contexto.precisaAtualizarBoletim({ atualizadoEm: "2026-09-11T10:00:01Z" }, null), false);
+});
+
+test("consulta parcial e erro preservam edição anterior sem marcar coleta como atual", async () => {
+  for (const falha of [false, true]) {
+    const ambiente = criarContexto({ atualizadoEm: "2026-09-03T16:00:00Z", registros: [registro("anterior")] });
+    // A base do robô entra na edição inicial; a consulta ao vivo parcial não a mescla de volta.
+    ambiente.contexto.mesclarComCacheRobo = (lista, registros) => (lista.length ? lista : registros);
+    ambiente.contexto.buscarOportunidadesAbertas = async () => {
+      if (falha) throw new Error("PNCP indisponível");
+      return { encontrados: [registro("parcial")], falhaConexao: true };
+    };
+    await ambiente.contexto.gerarBoletim();
+    assert.ok(ambiente.renderizacoes.at(-1).some(r => r.numeroControlePNCP === "anterior"));
+    assert.equal(ambiente.gravacoes.at(-1)[2], null);
+    assert.equal(ambiente.contexto.bolAtualizacao.emAndamento, false);
+  }
+});
+
+test("reentrada durante carregamento não dispara segunda coleta", async () => {
+  const ambiente = criarContexto(null);
+  let liberar, chamadas = 0;
+  ambiente.contexto.carregarBaseDoRoboParaBoletim = () => { chamadas++; return new Promise(resolve => { liberar = resolve; }); };
+  const primeira = ambiente.contexto.gerarBoletim();
+  await ambiente.contexto.gerarBoletim();
+  assert.equal(chamadas, 1);
+  liberar({ atualizadoEm: agora, registros: [] });
+  await primeira;
+  assert.equal(ambiente.contexto.bolAtualizacao.emAndamento, false);
 });
 
 test("frescor distingue coleta sem data de coleta atual", () => {

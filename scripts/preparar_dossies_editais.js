@@ -78,7 +78,11 @@ async function prepararUm(registro) {
   const corpo = await resposta.json().catch(() => ({}));
   if (!resposta.ok || corpo.erro) throw new Error(corpo.erro || `HTTP ${resposta.status}`);
   if (resposta.status === 202 || corpo.emProcessamento) return "pendente";
-  return corpo.doCache ? "reaproveitado" : "gerado";
+  if (corpo.doCache) return "reaproveitado";
+  // Nenhum dos dois é dossiê gerado: não podem ser contados como tal.
+  if (corpo.fontePreparada) return "fonte_preparada";
+  if (corpo.fonteLida === false) return "sem_documento";
+  return "gerado";
 }
 
 function dividirEmLotes(lista, tamanho) {
@@ -140,21 +144,23 @@ async function main() {
   const candidatos = selecionarCandidatos(recentes, dossies);
 
   console.log(`[dossiês] ${recentes.length} edital(is) recente(s), ${candidatos.length} pendente(s); limite ${LIMITE}, concorrência ${CONCORRENCIA}, orçamento ${LIMITE_MINUTOS} min.`);
-  let indice = 0, gerados = 0, reaproveitados = 0, pendentes = 0, falhas = 0;
+  let indice = 0, falhas = 0;
+  const contagem = { gerado: 0, reaproveitado: 0, pendente: 0, sem_documento: 0, fonte_preparada: 0 };
   await Promise.all(Array.from({ length: Math.min(CONCORRENCIA, candidatos.length) }, async () => {
     while (indice < candidatos.length && tempoRestanteMs() > 0) {
       const atual = candidatos[indice++];
       try {
         let resultado = await prepararUm(atual);
+        const disparouGeracao = resultado === "pendente";
         // O job existente completa os lotes sem depender de cliques no navegador.
         // O orçamento de tempo encerra esta execução preservando o progresso para o próximo cron.
         while (resultado === "pendente" && tempoRestanteMs() > 0) {
           await new Promise((resolve) => setTimeout(resolve, 65000));
           resultado = await prepararUm(atual);
         }
-        if (resultado === "reaproveitado") reaproveitados += 1;
-        else if (resultado === "pendente") pendentes += 1;
-        else gerados += 1;
+        // Concluído o job, a consulta seguinte já encontra o dossiê no cache: foi gerado agora.
+        if (disparouGeracao && resultado === "reaproveitado") resultado = "gerado";
+        contagem[resultado] += 1;
         console.log(`[dossiês] ${resultado}: ${atual.numeroControlePNCP}`);
       } catch (erro) {
         falhas += 1;
@@ -162,7 +168,7 @@ async function main() {
       }
     }
   }));
-  console.log(`[dossiês] concluído: ${gerados} gerado(s), ${reaproveitados} reaproveitado(s), ${pendentes} pendente(s), ${falhas} falha(s).`);
+  console.log(`[dossiês] concluído: ${contagem.gerado} gerado(s), ${contagem.reaproveitado} reaproveitado(s), ${contagem.pendente} pendente(s), ${contagem.sem_documento} sem documento legível, ${contagem.fonte_preparada} só fonte preparada, ${falhas} falha(s).`);
   if (falhas === candidatos.length && candidatos.length) process.exitCode = 1;
 }
 

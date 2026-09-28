@@ -150,6 +150,24 @@ test("sanitização final conserva exigência do quinto bloco além dos limites 
   assert.ok(final.pendenciasParaConferencia.some((item) => item.includes("condição 14")));
 });
 
+test("robô não conta fonte preparada nem ficha sem documento como dossiê gerado", async () => {
+  const antigoFetch = global.fetch, antigaChave = process.env.DOSSIES_EDITAIS_CHAVE;
+  process.env.DOSSIES_EDITAIS_CHAVE = "chave-teste";
+  const { prepararUm } = require("../../../scripts/preparar_dossies_editais");
+  const casos = [[{ fontePreparada: true, fonteLida: true }, "fonte_preparada"], [{ fonteLida: false, modoDegradado: true }, "sem_documento"],
+    [{ doCache: true, estrutura: {} }, "reaproveitado"], [{ estrutura: {}, fonteLida: true }, "gerado"]];
+  try {
+    for (const [corpo, esperado] of casos) {
+      global.fetch = async () => ({ ok: true, status: 200, json: async () => corpo });
+      assert.equal(await prepararUm({ numeroControlePNCP: "12345678000199-1-1/2026" }), esperado);
+    }
+  } finally {
+    global.fetch = antigoFetch;
+    if (antigaChave === undefined) delete process.env.DOSSIES_EDITAIS_CHAVE;
+    else process.env.DOSSIES_EDITAIS_CHAVE = antigaChave;
+  }
+});
+
 test("robô conta HTTP202 como pendente, sem anunciar dossiê gerado", async () => {
   const antigoFetch = global.fetch, antigaChave = process.env.DOSSIES_EDITAIS_CHAVE;
   process.env.DOSSIES_EDITAIS_CHAVE = "chave-teste";

@@ -81,7 +81,8 @@ test("endpoint requer armazenamento e despacha Gateway sem usar dados adulterado
     assert.equal(despachos.length, 1);
     assert.doesNotMatch(JSON.stringify([...blobs.values()]), /ADULTERADO/);
     const robo = await modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", { method: "POST", headers: { "content-type": "application/json", "x-licitaplena-dossies-chave": "robo-teste" }, body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026" } }) }), { requestId: "qa-robo" });
-    assert.equal((await robo.json()).fontePreparada, true);
+    // O robô entra no mesmo job do Gateway já em andamento em vez de só preparar a fonte.
+    assert.equal((await robo.json()).emProcessamento, true);
     assert.equal(despachos.length, 1);
     assert.ok(rotasBlob.filter(rota => rota.metodo === "get").every(rota => rota.url.startsWith("https://blobs-forte-teste.invalid/")));
   } finally {

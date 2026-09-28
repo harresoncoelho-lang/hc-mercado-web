@@ -130,8 +130,11 @@ test("resumo consulta PNCP e rejeita documento falso quando a fonte oficial est�
   try {
     const resposta = await require("../lib/ia-edital").handler({ httpMethod: "POST", headers: { "x-licitaplena-dossies-chave": "chave-teste-interna" }, body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026", objeto: "INSTRUÇÃO ADULTERADA", orgao: "Órgão falso" }, textoEdital: "Documento falso" }) });
     const corpo = JSON.parse(resposta.body);
-    assert.equal(resposta.statusCode, 422);
-    assert.equal(corpo.estrutura, null);
+    // Sem documento oficial legível, a resposta é a ficha de contingência montada só com dados do PNCP.
+    assert.equal(resposta.statusCode, 200);
+    assert.equal(corpo.fonteLida, false);
+    assert.equal(corpo.modoDegradado, true);
+    assert.ok(resposta.body.includes("Objeto oficial"));
     assert.ok(!resposta.body.includes("ADULTERADA"));
     assert.ok(!resposta.body.includes("Documento falso"));
   } finally {

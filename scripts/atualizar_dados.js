@@ -464,13 +464,14 @@ function extrairFonteOrcamentaria(item) {
 }
 
 function ufsPendentesDeAtualizacao(existentes, agora = new Date()) {
-  const inicioDoDia = Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate());
+  // Virar o dia UTC não garante uma coleta recente durante o expediente local.
+  const limiteAtualizacao = agora.getTime() - 6 * 60 * 60 * 1000;
   const falhas = new Set(Array.isArray(existentes && existentes.ufsComFalha) ? existentes.ufsComFalha : []);
   const cobertura = (existentes && existentes.coberturaPorUf) || {};
   return UFS.filter((uf) => {
     const atualizadoEm = cobertura[uf] && cobertura[uf].atualizadoEm;
     const ultimaColeta = atualizadoEm ? new Date(atualizadoEm).getTime() : NaN;
-    return falhas.has(uf) || !Number.isFinite(ultimaColeta) || ultimaColeta < inicioDoDia;
+    return falhas.has(uf) || !Number.isFinite(ultimaColeta) || ultimaColeta <= limiteAtualizacao;
   });
 }
 

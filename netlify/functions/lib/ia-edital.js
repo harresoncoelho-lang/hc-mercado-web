@@ -47,7 +47,6 @@ const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
 const VERSAO_RESUMO = 17;
 const VERSAO_VALIDACAO_CATALOGO = 17;
-const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
@@ -55,50 +54,7 @@ const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require
 const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-// O Blob mantém a leitura extremamente rápida; o Supabase é a fonte durável e
-// consultável do dossiê (status, versão e conteúdo), inclusive para auditoria.
-async function buscarDossiePersistido(numeroControlePNCP) {
-  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!chave || !numeroControlePNCP) return null;
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/dossies_editais?numero_controle_pncp=eq.${encodeURIComponent(numeroControlePNCP)}&select=dossie,versao,expira_em`;
-    const resposta = await fetch(url, { headers: { apikey: chave, Authorization: `Bearer ${chave}` } });
-    if (!resposta.ok) return null;
-    const linhas = await resposta.json();
-    const linha = linhas[0];
-    if (!linha || !linha.dossie || (linha.expira_em && new Date(linha.expira_em).getTime() <= Date.now())) return null;
-    return { ...linha.dossie, versao: linha.versao || linha.dossie.versao };
-  } catch (e) {
-    return null;
-  }
-}
-
-async function salvarDossiePersistido(numeroControlePNCP, dossie) {
-  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!chave || !numeroControlePNCP || !dossie) return;
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/dossies_editais?on_conflict=numero_controle_pncp`, {
-      method: "POST",
-      headers: {
-        apikey: chave,
-        Authorization: `Bearer ${chave}`,
-        "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal",
-      },
-      body: JSON.stringify([{
-        numero_controle_pncp: numeroControlePNCP,
-        versao: dossie.versao || VERSAO_RESUMO,
-        status: dossie.modoDegradado || dossie.metadadosIndisponiveis || dossie.estrutura?.coberturaLeitura?.parcial ? "parcial" : "pronto",
-        fonte_lida: Boolean(dossie.fonteLida),
-        dossie,
-        atualizado_em: new Date().toISOString(),
-        gerado_em: dossie.geradoEm || new Date().toISOString(),
-      }]),
-    });
-  } catch (e) {
-    // O resumo atual continua válido mesmo se a camada de auditoria estiver indisponível.
-  }
-}
+const { buscarDossiePersistido, salvarDossiePersistido } = require("../_dossies_persistidos");
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -1054,7 +1010,7 @@ exports.handler = async (event) => {
   const chaveRobo = process.env.DOSSIES_EDITAIS_CHAVE;
   const cabecalhosRecebidos = event.headers || {};
   const ehRoboInterno = Boolean(chaveRobo && cabecalhosRecebidos["x-licitaplena-dossies-chave"] === chaveRobo);
-  const sessao = ehRoboInterno ? { ok: true, userId: "robo-dossies-editais" } : await exigirUsuarioLogado(event);
+  const sessao = ehRoboInterno ? { ok: true, userId: require("../_resumo_gateway").USUARIO_ROBO } : await exigirUsuarioLogado(event);
   if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
   let body;
   try {
@@ -1120,6 +1076,7 @@ exports.handler = async (event) => {
   if (modo === "resumo" && edital.numeroControlePNCP) {
     try {
       let cache = storeResumos ? await storeResumos.get(edital.numeroControlePNCP, { type: "json" }) : null;
+      const cacheDoBlob = Boolean(cache);
       if (!cache) cache = await buscarDossiePersistido(edital.numeroControlePNCP);
       // Aceita tanto o cache do resumo ESTRUTURADO (JSON, caminho ideal) quanto do resumo
       // em TEXTO CORRIDO (fallback, quando a extração em JSON não deu certo) — os dois têm
@@ -1129,14 +1086,24 @@ exports.handler = async (event) => {
       // Resumos antigos eram texto corrido e não traziam o checklist completo. Só usa
       // cache da versão atual; assim uma evolução do dossiê chega para todos sem exigir
       // que cada pessoa descubra como limpar dados do navegador.
-      const cacheAindaValido = !cache || !cache.expiraEm || new Date(cache.expiraEm).getTime() > Date.now();
+      // Sem validade por idade: o edital publicado não muda. Só versão e status
+      // (degradado/metadados ausentes) invalidam; um "expiraEm" de caches antigos é ignorado.
       // Um resumo antigo em texto corrido é útil como contingência, mas não deve
       // impedir que outro navegador recupere o dossiê estruturado. Quando o
       // cliente pede a atualização, reaproveitamos apenas uma estrutura completa;
       // caso contrário, lemos a fonte novamente e substituímos o cache incompleto.
-      const cachePodeResponder = cache && !cache.modoDegradado && !cache.metadadosIndisponiveis && cacheAindaValido && cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
+      // Dossiês gravados antes da revisão de prazos não têm a marca. Deriva dela do
+      // próprio cache (texto + estrutura), sem reler o PDF: só os que realmente deixaram
+      // datas de fora vão para a revisão pontual do gateway.
+      if (cache && !cache.revisaoPrazos && cache.textoEdital && cache.estrutura) {
+        cache.revisaoPrazos = require("../_resumo_gateway").ancorasPrazos(cache.textoEdital, cache.estrutura).datasAusentes.length === 0;
+      }
+      const cachePodeResponder = cache && cache.revisaoPrazos && !cache.modoDegradado && !cache.metadadosIndisponiveis && cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
         (cache.estrutura || (cache.resposta && !reprocessarEstrutura));
       if (cachePodeResponder) {
+        // Dossiês concluídos só no Blob (antes da gravação pelo Gateway) entram no Supabase
+        // quando o robô passa por eles; é o Supabase que o robô consulta para saber o que falta.
+        if (ehRoboInterno && cacheDoBlob) await salvarDossiePersistido(edital.numeroControlePNCP, cache);
         return {
           statusCode: 200,
           headers,
@@ -1151,6 +1118,7 @@ exports.handler = async (event) => {
             metodoResumo: cache.metodoResumo || "documentos",
             metadadosIndisponiveis: Boolean(cache.metadadosIndisponiveis),
             versao: cache.versao,
+            revisaoPrazos: Boolean(cache.revisaoPrazos),
             doCache: true,
             erro: null,
           }),
@@ -1190,16 +1158,17 @@ exports.handler = async (event) => {
     return contingencia;
   }
 
-  // A preparação em lote conserva apenas a fonte, sem disparar IA paga.
+  // O robô gera o dossiê completo pelo mesmo Gateway do cliente (é o que torna o resumo
+  // "pré-carregado"); o orçamento dele é o limite por execução do job, não a cota diária.
   if (modo === "resumo" && fonteLida) {
-    if (ehRoboInterno) return { statusCode: 200, headers, body: JSON.stringify({ fontePreparada: true, fonteLida: true, estrutura: null, metodoResumo: "fonte_preparada", versao: VERSAO_RESUMO }) };
     if (!storeResumos) return { statusCode: 503, headers, body: JSON.stringify({ erro: "O armazenamento do resumo está indisponível. A geração não foi iniciada.", estrutura: null }) };
     try {
       const { solicitarResumo } = require("../_resumo_gateway");
       const resultado = await solicitarResumo({ store: storeResumos, fonte: textoEdital, ficha: edital, cobertura: coberturaLeitura,
         retomar: body.retomarAnalise === true,
         usuario: sessao.userId, authorization: cabecalhosRecebidos.authorization || cabecalhosRecebidos.Authorization || "",
-        autorizar: () => verificarLimiteDiario(sessao.userId, "ia-edital", 40) });
+        chaveRobo: ehRoboInterno ? chaveRobo : null,
+        autorizar: () => ehRoboInterno ? { ok: true } : verificarLimiteDiario(sessao.userId, "ia-edital", 40) });
       return { statusCode: resultado.statusCode, headers, body: JSON.stringify(resultado.body) };
     } catch (_) {
       return { statusCode: 503, headers, body: JSON.stringify({ erro: "Não foi possível iniciar o resumo com segurança. Tente novamente mais tarde.", estrutura: null, emProcessamento: false }) };
@@ -1312,7 +1281,6 @@ exports.handler = async (event) => {
             motivoFonteNaoLida: null,
             versao: VERSAO_RESUMO,
             geradoEm: new Date().toISOString(),
-            expiraEm: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           };
           try {
             if (storeResumos) {

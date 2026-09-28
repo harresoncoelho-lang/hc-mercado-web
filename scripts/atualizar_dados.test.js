@@ -24,10 +24,10 @@ test("recuperação inclui UF antiga, falha explícita e cobertura desconhecida"
   assert.equal(existentes.coberturaPorUf.AM.atualizadoEm, "2026-09-03T18:38:42Z");
 });
 
-test("recuperação dispensa UFs coletadas no mesmo dia UTC", () => {
-  const coberturaPorUf = Object.fromEntries(["AM", "RR", "SP", "AC", "AL"].map((uf) => [uf, { atualizadoEm: "2026-09-11T00:00:00Z" }]));
-  assert.deepEqual(Array.from(contexto.ufsPendentesDeAtualizacao({ coberturaPorUf }, new Date("2026-09-11T23:59:00Z"))), []);
-  assert.equal(contexto.ufsPendentesDeAtualizacao({ coberturaPorUf }, new Date("2026-09-12T00:00:00Z")).length, 5);
+test("recuperação dispensa UFs coletadas nas últimas 6 horas", () => {
+  const coberturaPorUf = Object.fromEntries(["AM", "RR", "SP", "AC", "AL"].map((uf) => [uf, { atualizadoEm: "2026-09-11T20:00:00Z" }]));
+  assert.deepEqual(Array.from(contexto.ufsPendentesDeAtualizacao({ coberturaPorUf }, new Date("2026-09-12T01:59:00Z"))), []);
+  assert.equal(contexto.ufsPendentesDeAtualizacao({ coberturaPorUf }, new Date("2026-09-12T02:00:00Z")).length, 5);
 });
 
 test("recuperação mantém UF antiga não concluída como pendente", async () => {

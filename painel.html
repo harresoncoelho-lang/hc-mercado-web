@@ -883,6 +883,8 @@
   #modal-ia-fundo { padding:0; justify-content:flex-end; }
   #modal-ia-fundo .modal-ia { width:85%; max-width:1080px; height:100vh; max-height:100vh; border-radius:0; padding:0; background:#fff; color:#252525; }
   #modal-ia-fundo .modal-ia-topo { padding:20px 28px 14px; border-bottom:1px solid #ddd; flex-shrink:0; }
+  #modal-ia-alternar-pergunta { margin-left:auto; margin-right:16px; padding:9px 12px; background:white; border:1px solid #ddd; border-radius:4px; color:#454545; cursor:pointer; }
+  #modal-ia-form:not([hidden]) { display:flex; }
   #modal-ia-fundo .modal-ia-corpo { flex:1; overflow-y:auto; padding:18px 28px 26px; }
   #modal-ia-fundo .modal-ia-conversa { overflow:visible; display:block; padding:0; }
   #modal-ia-fundo .msg-ia[data-resumo-estrutura] { background:transparent; border:0; padding:0; }
@@ -1147,6 +1149,8 @@
 
   .boletim-corpo { padding: 16px; }
   .boletim-objeto { font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
+  .boletim-identificacao { font-size: 13px; font-weight: 700; color: var(--azul); margin: 0 0 6px; }
+  .boletim-identificacao:empty { display: none; }
   .tags-objeto { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 0 14px; }
   .boletim-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 20px; margin-bottom: 12px; }
   .boletim-meta dt { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--texto-fraco); margin-bottom: 2px; }
@@ -2226,10 +2230,11 @@
   <div class="modal-ia">
     <div class="modal-ia-topo">
       <h3 id="modal-ia-titulo" style="margin:0;">Resumo do Edital</h3>
+      <button type="button" id="modal-ia-alternar-pergunta" aria-expanded="false" aria-controls="modal-ia-form">Pergunte ao Edital</button>
       <button type="button" id="modal-ia-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <div class="modal-ia-corpo">
-    <form id="modal-ia-form" style="display:flex;gap:8px;margin-top:12px;">
+    <form id="modal-ia-form" hidden style="gap:8px;margin-top:12px;">
       <input id="modal-ia-pergunta" placeholder="Pergunte algo sobre este edital..." style="flex:1;padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font-size:14px;font-family:inherit;">
       <button type="submit" class="btn-buscar" id="modal-ia-enviar" style="padding:10px 18px;">Perguntar</button>
     </form>
@@ -2661,7 +2666,9 @@
     const modelo = ResumoModelo.montar(est, iaEditalAtual || {});
     alvo.style.display = "grid";
     alvo.innerHTML = modelo.cards.map(([rotulo, valor]) => `<div class="modal-ia-cartao-topo"><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(valor)}</dd></div>`).join("");
-    document.getElementById("modal-ia-titulo").textContent = `Resumo do Edital ${modelo.numero || ""}`.trim();
+    const numeroOficial = iaEditalAtual?.numeroCompra && iaEditalAtual?.anoCompra
+      ? `${iaEditalAtual.numeroCompra}/${iaEditalAtual.anoCompra}` : modelo.numero;
+    document.getElementById("modal-ia-titulo").textContent = `Resumo do Edital ${numeroOficial || ""}`.trim();
   }
 
   // Cria uma seção fixa (sempre aberta, sem seta/clique) — igual ao padrão ConLicitação
@@ -2952,7 +2959,7 @@
 
   function bloquearAcoesResumo(bloquear) {
     iaResumoPendente = bloquear;
-    ["modal-ia-checklist-email", "modal-ia-checklist-doc", "modal-ia-imprimir", "modal-ia-pergunta", "modal-ia-enviar"].forEach((id) => {
+    ["modal-ia-checklist-email", "modal-ia-checklist-doc", "modal-ia-imprimir", "modal-ia-pergunta", "modal-ia-enviar", "modal-ia-alternar-pergunta"].forEach((id) => {
       document.getElementById(id).disabled = bloquear;
     });
   }
@@ -2967,7 +2974,7 @@
   }
 
   function fecharModalIA() {
-    cancelarConsultaResumo();
+    cancelarConsultaResumo(null);
     iaEditalAtual = null;
     document.getElementById("modal-ia-fundo").classList.remove("aberto");
   }
@@ -3546,6 +3553,8 @@
     document.getElementById("modal-ia-objeto").textContent = edital.objeto || "";
     document.getElementById("modal-ia-conversa").innerHTML = "";
     document.getElementById("modal-ia-pergunta").value = "";
+    document.getElementById("modal-ia-form").hidden = true;
+    document.getElementById("modal-ia-alternar-pergunta").setAttribute("aria-expanded", "false");
     document.getElementById("modal-ia-cartoes-topo").style.display = "none";
     document.getElementById("modal-ia-cartoes-topo").innerHTML = "";
 
@@ -3699,6 +3708,21 @@
       botao.disabled = false;
       botao.textContent = "Enviar e-mail";
     }
+  });
+  document.getElementById("modal-ia-alternar-pergunta").addEventListener("click", (ev) => {
+    const form = document.getElementById("modal-ia-form");
+    form.hidden = !form.hidden;
+    ev.currentTarget.setAttribute("aria-expanded", String(!form.hidden));
+    if (!form.hidden) document.getElementById("modal-ia-pergunta").focus();
+  });
+  document.getElementById("modal-ia-form").addEventListener("keydown", (ev) => {
+    if (ev.key !== "Escape") return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.currentTarget.hidden = true;
+    const botao = document.getElementById("modal-ia-alternar-pergunta");
+    botao.setAttribute("aria-expanded", "false");
+    botao.focus();
   });
   document.getElementById("modal-ia-form").addEventListener("submit", (ev) => {
     ev.preventDefault();
@@ -5170,6 +5194,13 @@
   // Monta um par rótulo:valor do dl.boletim-meta, mostrando "Não informado" em vez de
   // esconder o campo quando a API do PNCP não trouxe valor pra ele (mesmo padrão que o
   // próprio PNCP usa na página do edital).
+  // "Pregão Eletrônico 019/2026" no topo do card. Sem número/ano do PNCP (comum em
+  // Dispensa), mostra só a modalidade — nunca inventa número.
+  function identificacaoCompra(r) {
+    const numero = (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : "";
+    return [r.modalidadeNome || r.modalidade, numero].filter(Boolean).join(" ");
+  }
+
   function campoBoletimMeta(rotulo, valor, campoDetalhe) {
     const texto = (valor === null || valor === undefined || valor === "") ? "Não informado" : valor;
     const atributoDetalhe = campoDetalhe ? ` data-detalhe-campo="${escapeHtml(campoDetalhe)}"` : "";
@@ -5211,6 +5242,7 @@
           </div>
         </div>
         <div class="boletim-corpo">
+          ${r.fonte ? "" : `<p class="boletim-identificacao" data-detalhe-campo="identificacaoCompra">${escapeHtml(identificacaoCompra(r))}</p>`}
           <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}${r.fonte ? ` <span class="fonte-badge">${escapeHtml(r.fonte)}</span>` : ""}</p>
           ${tagsObjetoHtml}
           <dl class="boletim-meta">
@@ -5273,6 +5305,7 @@
   function textoCampoDetalhePncp(campo, edital) {
     if (campo === "srp") return edital.srp === true ? "Sim" : (edital.srp === false ? "Não" : "Não informado");
     if (campo === "valorTotalEstimado" || campo === "valorTotalHomologado") return formatarMoedaItem(edital[campo]) || "Não informado";
+    if (campo === "identificacaoCompra") return identificacaoCompra(edital);
     if (campo === "numeroCompraAno") {
       return (edital.numeroCompra && edital.anoCompra) ? `${edital.numeroCompra}/${edital.anoCompra}` : "Não informado";
     }
@@ -5637,10 +5670,10 @@
     return `Boletim · estados: ${textoUfs(ufs)} · ${palavras.join(", ")} · publicações recentes e oportunidades abertas${sufixo}`;
   }
 
-  // Controla se o boletim já foi gerado nessa visita à página — evita refazer a busca ao vivo
-  // (e mostrar "Gerando boletim..." de novo) toda vez que o usuário só troca de aba e volta.
-  // Só busca de novo quando o filtro é salvo ou o botão "Atualizar boletim" é clicado.
   let bolJaGerado = false;
+  const BOL_FRESCOR_MS = 6 * 60 * 60 * 1000;
+  const BOL_REVALIDACAO_MS = 5 * 60 * 1000;
+  const bolAtualizacao = { emAndamento: false, ultimaLeitura: 0, tentativas: new Map() };
 
   // ---- Calendário mensal do boletim (inspirado na visão de calendário do ConLicitação) ----
   // Agrupa as oportunidades do boletim pela data de publicação e mostra um calendário do mês
@@ -5707,7 +5740,7 @@
     if (diaSelecionado) {
       html += `<div class="bol-cal-filtro-ativo">Mostrando oportunidades de ${diaSelecionado.split("-").reverse().join("/")}<button type="button" id="bol-cal-limpar">Ver todos os dias ✕</button></div>`;
     } else {
-      html += `<p class="bol-cal-legenda">Os dias marcados tiveram editais novos publicados. Clique num dia pra ver só as oportunidades daquela data.</p>`;
+      html += `<p class="bol-cal-legenda">O calendário mostra a data de publicação do edital. O e-mail pode incluir editais publicados em dias anteriores. Clique num dia para ver suas oportunidades.</p>`;
     }
     html += `</div>`;
     return html;
@@ -5821,12 +5854,22 @@
   function frescorBaseBoletim(base) {
     const cobertura = Object.entries(base?.coberturaPorUf || {});
     const datas = cobertura.length ? cobertura : [["base", { atualizadoEm: base?.atualizadoEm }]];
-    const desatualizada = datas.some(([, dado]) => !dado?.atualizadoEm || !Number.isFinite(Date.parse(dado.atualizadoEm)) || Date.now() - Date.parse(dado.atualizadoEm) > 24 * 60 * 60 * 1000);
+    const desatualizada = datas.some(([, dado]) => !dado?.atualizadoEm || !Number.isFinite(Date.parse(dado.atualizadoEm)) || Date.now() - Date.parse(dado.atualizadoEm) > BOL_FRESCOR_MS);
     const descricao = datas.map(([uf, dado]) => {
       const data = new Date(dado?.atualizadoEm || NaN);
       return `${uf}: ${isNaN(data) ? "coleta sem data confirmada" : data.toLocaleString("pt-BR")}`;
     }).join("; ");
     return ` · última coleta: ${descricao}${desatualizada ? ' · A base pode estar desatualizada. Use "Atualizar boletim" para consultar o PNCP.' : ""}`;
+  }
+
+  function precisaAtualizarBoletim(base, cache, ultimaTentativa = 0) {
+    const agora = Date.now();
+    if (ultimaTentativa && agora - ultimaTentativa < BOL_REVALIDACAO_MS) return false;
+    if (agora - Date.parse(cache?.atualizadoAoVivoEm) < BOL_FRESCOR_MS) return false;
+    const cobertura = Object.values(base?.coberturaPorUf || {});
+    const datas = cobertura.length ? cobertura : [{ atualizadoEm: base?.atualizadoEm }];
+    return datas.some((dado) => !Number.isFinite(Date.parse(dado?.atualizadoEm))
+      || agora - Date.parse(dado.atualizadoEm) > BOL_FRESCOR_MS);
   }
 
   function complementarBoletimComSistemaS(filtro, ufs, palavras, resultadosBase, metaEl, sufixo = "", atualizadoAoVivoEm = null) {
@@ -5844,8 +5887,7 @@
   }
 
   async function gerarBoletim({ atualizarAoVivo = false } = {}) {
-    // Marca como "já gerado" logo de cara — trocar de aba e voltar não cria trabalho
-    // de rede. Só o botão "Atualizar boletim" consulta o PNCP ao vivo.
+    if (bolAtualizacao.emAndamento) return;
     bolJaGerado = true;
     const alvo = document.getElementById("bol-resultado");
     const metaEl = document.getElementById("bol-meta");
@@ -5862,7 +5904,11 @@
 
     const ufs = normalizarUfs(filtro.ufs || filtro.uf);
     const palavras = filtro.palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
+    const chaveEdicao = chaveCacheBoletim(filtro);
+    bolAtualizacao.emAndamento = true;
+    bolAtualizacao.ultimaLeitura = Date.now();
     const cacheInicial = lerCacheResultadoBoletim(filtro);
+    let resultadosAnteriores = filtrarResultadosDoBoletim(cacheInicial?.resultados || []);
     if (cacheInicial) {
       // A edição anterior vem do próprio navegador de forma síncrona: login e refresh não
       // dependem da rede para ter conteúdo na tela.
@@ -5883,6 +5929,7 @@
       // A base do robô é sempre a primeira fonte do boletim. Ela já contém os detalhes
       // enriquecidos e é independente da disponibilidade momentânea do PNCP.
       const cacheOportunidades = await carregarBaseDoRoboParaBoletim(ufs);
+      if (chaveCacheBoletim(lerFiltroBoletim() || {}) !== chaveEdicao) return;
       if (!atualizarAoVivo) {
         const resultadosRobo = resultadosDoRoboParaBoletim(cacheOportunidades, ufs, palavras);
         const idsRobo = new Set(resultadosRobo.map((registro) => registro.numeroControlePNCP).filter(Boolean));
@@ -5901,27 +5948,33 @@
         });
         const resultados = filtrarResultadosDoBoletim(combinarResultadosDoBoletim(
           combinarResultadosDoBoletim(registrosCachePrioritarios, resultadosRobo), registrosCache));
+        resultadosAnteriores = resultados;
         const sufixo = frescorBaseBoletim(cacheOportunidades);
         metaEl.textContent = metaBoletim(ufs, palavras, sufixo);
         if (resultados.length === 0) {
           salvarCacheResultadoBoletim(filtro, [], cacheInicial?.atualizadoAoVivoEm || null);
           renderizarBoletimComCalendario([], '<div class="aviso">Nenhuma oportunidade encontrada para o seu filtro na última coleta do robô.</div>');
+        } else {
+          salvarCacheResultadoBoletim(filtro, resultados, cacheInicial?.atualizadoAoVivoEm || null);
+          renderizarBoletimComCalendario(resultados, "");
+        }
+        if (!precisaAtualizarBoletim(cacheOportunidades, cacheInicial, bolAtualizacao.tentativas.get(chaveEdicao))) {
+          complementarBoletimComSistemaS(filtro, ufs, palavras, resultados, metaEl, sufixo, cacheInicial?.atualizadoAoVivoEm || null);
           return;
         }
-        salvarCacheResultadoBoletim(filtro, resultados, cacheInicial?.atualizadoAoVivoEm || null);
-        renderizarBoletimComCalendario(resultados, "");
-        complementarBoletimComSistemaS(filtro, ufs, palavras, resultados, metaEl, sufixo, cacheInicial?.atualizadoAoVivoEm || null);
-        return;
       }
 
-      // A conferência ao vivo só ocorre por ação explícita do usuário. Mesmo aqui, a
-      // edição já visível continua na tela enquanto o PNCP responde.
+      // A edição fica visível durante a recuperação; falhas não apagam o que já havia.
+      bolAtualizacao.tentativas.set(chaveEdicao, Date.now());
+      metaEl.textContent = metaBoletim(ufs, palavras, `${frescorBaseBoletim(cacheOportunidades)} · conferindo atualizações no PNCP`);
       const resp = await buscarOportunidadesAbertas(ufs, palavras, 15);
+      if (chaveCacheBoletim(lerFiltroBoletim() || {}) !== chaveEdicao) return;
       let resultadosBrutos = resp.encontrados;
       if (cacheOportunidades && Array.isArray(cacheOportunidades.registros) && cacheOportunidades.registros.length > 0) {
         resultadosBrutos = mesclarComCacheRobo(resultadosBrutos, cacheOportunidades.registros, ufs, palavras);
       }
       let resultados = filtrarResultadosDoBoletim(resultadosBrutos);
+      if (resp.falhaConexao) resultados = combinarResultadosDoBoletim(resultados, resultadosAnteriores);
       metaEl.textContent = metaBoletim(ufs, palavras);
       let avisoHtml = resp.falhaConexao
         ? '<div class="aviso">A API pública do PNCP não respondeu agora — mostrando também o que o robô já tinha coletado, então a lista abaixo pode não estar 100% atualizada.</div>'
@@ -5929,8 +5982,11 @@
 
       resultados = combinarResultadosDoBoletim(resultados, await buscarExtrasSistemaS(ufs, palavras))
         .filter((r) => ufEstaSelecionada(r.uf, ufs));
+      if (chaveCacheBoletim(lerFiltroBoletim() || {}) !== chaveEdicao) return;
 
+      const atualizadoAoVivoEm = resp.falhaConexao ? cacheInicial?.atualizadoAoVivoEm || null : new Date().toISOString();
       if (resultados.length === 0) {
+        salvarCacheResultadoBoletim(filtro, resultadosAnteriores, atualizadoAoVivoEm);
         if (cacheInicial) {
           metaEl.textContent = metaBoletim(ufs, palavras, " · a atualização não trouxe novos resultados; mantendo a última edição disponível");
           return;
@@ -5941,25 +5997,26 @@
         return;
       }
 
-      const atualizadoAoVivoEm = resp.falhaConexao ? cacheInicial?.atualizadoAoVivoEm || null : new Date().toISOString();
       salvarCacheResultadoBoletim(filtro, resultados, atualizadoAoVivoEm);
       metaEl.textContent = metaBoletim(ufs, palavras, resp.falhaConexao
         ? frescorBaseBoletim(cacheOportunidades)
         : ` · consulta ao PNCP em ${new Date(atualizadoAoVivoEm).toLocaleString("pt-BR")}`);
       renderizarBoletimComCalendario(resultados, avisoHtml);
     } catch (e) {
-      if (cacheInicial) {
+      if (chaveCacheBoletim(lerFiltroBoletim() || {}) !== chaveEdicao) return;
+      if (resultadosAnteriores.length || cacheInicial) {
         metaEl.textContent = metaBoletim(ufs, palavras, " · não foi possível atualizar agora; mantendo a última edição disponível");
         return;
       }
       alvo.innerHTML = `<div class="aviso">Erro ao gerar boletim: ${escapeHtml(String(e))}</div>`;
+    } finally {
+      bolAtualizacao.emAndamento = false;
+      if (chaveCacheBoletim(lerFiltroBoletim() || {}) !== chaveEdicao) void gerarBoletim();
     }
   }
 
   document.querySelector('nav button[data-alvo="boletim"]').addEventListener("click", () => {
-    // Só busca de novo se ainda não foi gerado nessa visita — voltar pra essa aba não deve
-    // refazer a busca ao vivo. Pra atualizar de verdade, use o botão "Atualizar boletim".
-    if (!bolJaGerado) gerarBoletim();
+    if (!bolJaGerado || Date.now() - bolAtualizacao.ultimaLeitura >= BOL_REVALIDACAO_MS) gerarBoletim();
   });
 
   document.getElementById("bol-atualizar").addEventListener("click", () => gerarBoletim({ atualizarAoVivo: true }));
