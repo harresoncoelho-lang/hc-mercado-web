@@ -1,6 +1,12 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+  # Cada deploy de produção custa 15 créditos e os robôs commitam só data/ todo dia.
+  # Exit 0 = pula o build: nada mudou fora de data/ desde o último deploy publicado.
+  # Se o ref anterior não existir no clone, o git sai com erro e o deploy acontece.
+  # Efeito: data/mercado_meta.json e data/contratos_meta.json (lidos pelo painel)
+  # só chegam ao ar no próximo deploy de código.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)data/'"
 
 # Cabeçalhos de segurança padrão pra todo o site. CSP ainda permite 'unsafe-inline' em
 # script/style porque o site é feito de páginas HTML únicas com JS/CSS embutido (não dá pra
