@@ -6076,10 +6076,12 @@
   // refiltrar tudo de novo toda vez que sai da aba e volta, ou recarrega a página — mesma
   // ideia já usada no filtro salvo do Boletim.
   function salvarFiltroOportunidades(ufs, municipio, dataDe, dataAte, palavrasRaw, uasg, avancados) {
+    const lista = normalizarUfs(ufs);
+    const filtro = { ufs: lista, uf: lista[0] || "", municipio, dataDe, dataAte, palavrasRaw, uasg, ...avancados };
     try {
-      const lista = normalizarUfs(ufs);
-      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify({ ufs: lista, uf: lista[0] || "", municipio, dataDe, dataAte, palavrasRaw, uasg, ...avancados }));
+      localStorage.setItem("hc_oportunidades_filtro", JSON.stringify(filtro));
     } catch (e) { /* localStorage indisponível */ }
+    return filtro;
   }
   function lerFiltroOportunidades() {
     try {
@@ -6093,7 +6095,40 @@
   // a busca ao vivo (só o botão "Buscar oportunidades" ou a restauração inicial fazem isso).
   let opJaBuscado = false;
 
-  async function buscarOportunidades() {
+  // Resultado da última busca, por filtro. Reabrir a página com o mesmo filtro mostra a
+  // lista na hora e confere o PNCP ao vivo em segundo plano (pode haver edital novo desde
+  // então). A janela curta só evita repetir a consulta ao reabrir logo em seguida.
+  const OP_RESULTADO_CHAVE = "hc_oportunidades_resultado";
+  const OP_RESULTADO_JANELA_MS = 10 * 60 * 1000;
+  let opBuscaSeq = 0;
+  function lerResultadoOportunidades(chaveFiltro) {
+    try {
+      const cache = JSON.parse(localStorage.getItem(OP_RESULTADO_CHAVE) || "null");
+      return cache && cache.chaveFiltro === chaveFiltro && Array.isArray(cache.resultados) && cache.resultados.length ? cache : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function salvarResultadoOportunidades(chaveFiltro, resultados, aviso) {
+    try {
+      localStorage.setItem(OP_RESULTADO_CHAVE, JSON.stringify({ chaveFiltro, salvoEm: Date.now(), resultados, aviso }));
+    } catch (e) { /* cota do localStorage: a próxima abertura só volta a esperar a rede */ }
+  }
+  // Fica fora de #op-resultado: a lista se redesenha sozinha (lidos, favoritos) e não
+  // pode trazer de volta um texto de status já superado.
+  function definirNotaResultadoOportunidades(alvo, texto) {
+    let nota = document.getElementById("op-resultado-nota");
+    if (!nota) {
+      nota = document.createElement("p");
+      nota.id = "op-resultado-nota";
+      nota.style.cssText = "margin:0 0 8px;font-size:12px;color:var(--texto-fraco);";
+      alvo.before(nota);
+    }
+    nota.textContent = texto;
+    nota.hidden = !texto;
+  }
+
+  async function buscarOportunidades({ restauracao = false } = {}) {
     opJaBuscado = true;
     const ufs = ufsDoSelect(document.getElementById("op-uf"));
     const municipioFiltro = document.getElementById("op-municipio").value.trim().toLowerCase();
@@ -6116,16 +6151,30 @@
       return;
     }
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
-    salvarFiltroOportunidades(ufs, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro, {
+    const chaveFiltro = JSON.stringify(salvarFiltroOportunidades(ufs, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro, {
       esfera: esferaFiltro,
       valorMin: valorMinRaw,
       valorMax: valorMaxRaw,
       codigo: document.getElementById("op-codigo").value.trim(),
       orgaoTexto: document.getElementById("op-orgao").value.trim(),
-    });
+    }));
+    // Uma busca mais nova (filtro trocado no meio do caminho) invalida a resposta desta.
+    const seq = ++opBuscaSeq;
+    const anterior = lerResultadoOportunidades(chaveFiltro);
+    const horaAnterior = anterior ? new Date(anterior.salvoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
 
-    btn.disabled = true;
-    alvo.innerHTML = '<div class="carregando">Buscando licitações no PNCP...</div>';
+    if (anterior) {
+      const recente = restauracao && Date.now() - anterior.salvoEm < OP_RESULTADO_JANELA_MS;
+      renderizarPainelBoletim(alvo, anterior.resultados, anterior.aviso || "");
+      definirNotaResultadoOportunidades(alvo, recente
+        ? `Resultado da busca das ${horaAnterior}.`
+        : `Resultado da busca das ${horaAnterior} · conferindo novidades no PNCP…`);
+      if (recente) return;
+    } else {
+      definirNotaResultadoOportunidades(alvo, "");
+      btn.disabled = true;
+      alvo.innerHTML = '<div class="carregando">Buscando licitações no PNCP...</div>';
+    }
 
     try {
       // Busca sempre ao vivo direto na API de busca do PNCP (rápida e cobre todo o
@@ -6197,11 +6246,26 @@
         });
       }
 
+      if (seq !== opBuscaSeq) return;
+      if (anterior && falhaConexao) {
+        // Uma resposta parcial do PNCP não substitui a lista completa já exibida.
+        definirNotaResultadoOportunidades(alvo, `Resultado da busca das ${horaAnterior} · o PNCP não respondeu agora; tente "Buscar oportunidades" em instantes.`);
+        return;
+      }
+
       let avisoConexao = avisoFonte;
       if (falhaConexao) {
         avisoConexao += '<div class="aviso">A API pública do PNCP não respondeu (está lenta ou fora do ar no momento). Os resultados abaixo podem estar incompletos — tente novamente em alguns instantes.</div>';
       }
+      if (!falhaConexao) salvarResultadoOportunidades(chaveFiltro, resultados, avisoConexao);
+      const ids = (lista) => lista.map(idOportunidade).sort().join("|");
+      if (anterior && resultados.length && ids(resultados) === ids(anterior.resultados)) {
+        // Nada novo: mantém a lista na tela (rolagem, filtro rápido) e só confirma a conferência.
+        definirNotaResultadoOportunidades(alvo, `Conferido no PNCP às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · nenhuma novidade.`);
+        return;
+      }
 
+      if (anterior) definirNotaResultadoOportunidades(alvo, `Atualizado com o PNCP às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`);
       if (resultados.length === 0) {
         alvo.innerHTML = avisoConexao + '<div class="aviso">Nenhuma oportunidade aberta encontrada agora para esse filtro.</div>';
         return;
@@ -6209,13 +6273,18 @@
 
       renderizarPainelBoletim(alvo, resultados, avisoConexao);
     } catch (e) {
+      if (seq !== opBuscaSeq) return;
+      if (anterior) {
+        definirNotaResultadoOportunidades(alvo, `Resultado da busca das ${horaAnterior} · não foi possível conferir o PNCP agora.`);
+        return;
+      }
       alvo.innerHTML = `<div class="aviso">Erro ao buscar: ${escapeHtml(String(e))}</div>`;
     } finally {
-      btn.disabled = false;
+      if (seq === opBuscaSeq) btn.disabled = false;
     }
   }
 
-  document.getElementById("op-buscar").addEventListener("click", buscarOportunidades);
+  document.getElementById("op-buscar").addEventListener("click", () => buscarOportunidades());
 
   // Restaura o último filtro salvo apenas quando a ferramenta é aberta. Consultas de
   // ferramentas escondidas durante o login só competem por rede e atrasam a primeira tela.
@@ -6239,8 +6308,10 @@
         document.getElementById("op-municipio").value = filtro.municipio;
       } catch (e) { /* segue sem restaurar o município se a lista não carregar a tempo */ }
     }
-    await buscarOportunidades();
+    // Antes da busca: com resultado salvo, a lista aparece na hora e a conferência ao
+    // vivo pode levar até um minuto; os chips não podem esperar por ela.
     atualizarSeletorUfs(document.getElementById("op-uf"));
+    await buscarOportunidades({ restauracao: true });
   }
   document.querySelector('nav button[data-alvo="oportunidades"]').addEventListener("click", () => {
     // A aba pode voltar do cache visual do navegador: força os chips a espelharem
