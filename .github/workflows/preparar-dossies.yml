@@ -1,0 +1,48 @@
+name: Preparar dossiês dos editais
+
+# Execução manual só da preparação de dossiês, para esvaziar o backlog sem esperar
+# a coleta completa. Não escreve no repositório: lê a base no Supabase e chama a
+# Function, que grava os dossiês em dossies_editais.
+concurrency:
+  group: preparar-dossies
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_dossies:
+        description: "Máximo de dossiês nesta execução"
+        default: "400"
+      concorrencia:
+        description: "Dossiês em paralelo"
+        default: "3"
+      limite_minutos:
+        description: "Orçamento de tempo (min)"
+        default: "90"
+      dias_publicacao:
+        description: "Janela de publicação (dias)"
+        default: "7"
+
+permissions:
+  contents: read
+
+jobs:
+  preparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Preparar dossiês
+        env:
+          LICITAPLENA_URL: "https://licitaplena.com.br"
+          MAX_DOSSIES_POR_EXECUCAO: ${{ inputs.max_dossies }}
+          CONCORRENCIA_DOSSIES: ${{ inputs.concorrencia }}
+          LIMITE_MINUTOS_DOSSIES: ${{ inputs.limite_minutos }}
+          DIAS_PUBLICACAO_DOSSIE: ${{ inputs.dias_publicacao }}
+          REPROCESSAR_PARCIAL_APOS_HORAS: "24"
+          DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preparar_dossies_editais.js

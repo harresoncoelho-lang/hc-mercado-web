@@ -133,11 +133,28 @@ function selecionarCandidatos(registros, dossies, agora = Date.now()) {
     .map((item) => item.registro);
 }
 
-async function main() {
+// Após a coleta o arquivo local existe; numa execução só de dossiês (sem coleta antes)
+// a mesma base vem da tabela que o coletor sincroniza no Supabase.
+async function carregarRegistros(corte) {
   const arquivo = path.join(__dirname, "..", "data", "oportunidades_abertas.json");
-  const dados = JSON.parse(fs.readFileSync(arquivo, "utf8"));
+  if (fs.existsSync(arquivo)) return JSON.parse(fs.readFileSync(arquivo, "utf8")).registros || [];
+  const chaveServico = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!chaveServico) throw new Error("Sem data/oportunidades_abertas.json e sem SUPABASE_SERVICE_ROLE_KEY para ler a base.");
+  const desde = new Date(corte).toISOString().slice(0, 10);
+  const registros = [];
+  for (let offset = 0; ; offset += 1000) {
+    const url = `${SUPABASE_URL}/rest/v1/oportunidades_abertas?select=dado&publicacao=gte.${desde}&order=publicacao.desc&limit=1000&offset=${offset}`;
+    const resposta = await fetch(url, { headers: { apikey: chaveServico, Authorization: `Bearer ${chaveServico}` } });
+    if (!resposta.ok) throw new Error(`Leitura de oportunidades_abertas falhou: HTTP ${resposta.status}`);
+    const lote = await resposta.json();
+    registros.push(...lote.map((linha) => linha.dado));
+    if (lote.length < 1000) return registros;
+  }
+}
+
+async function main() {
   const corte = Date.now() - DIAS * 24 * 60 * 60 * 1000;
-  const recentes = (dados.registros || [])
+  const recentes = (await carregarRegistros(corte))
     .filter((r) => r && r.numeroControlePNCP && dataValida(r.publicacao)?.getTime() >= corte)
     .sort((a, b) => dataValida(b.publicacao) - dataValida(a.publicacao));
   const dossies = await buscarDossiesPersistidos(recentes.map((registro) => registro.numeroControlePNCP));
