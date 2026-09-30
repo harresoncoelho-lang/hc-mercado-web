@@ -49,9 +49,14 @@ jobs:
           # em uma fila de leitura; processamos toda a janela recente com paralelismo
           # conservador para respeitar PNCP e o provedor de análise.
           MAX_DOSSIES_POR_EXECUCAO: "180"
-          DIAS_PUBLICACAO_DOSSIE: "7"
+          # 30 dias = a base inteira de abertas; o rodízio do script evita que os
+          # antigos fiquem para trás.
+          DIAS_PUBLICACAO_DOSSIE: "30"
           CONCORRENCIA_DOSSIES: "3"
-          LIMITE_MINUTOS_DOSSIES: "20"
+          # Sem este passo o job leva até ~105 min de um timeout de 130 (medido em
+          # 23-28/09). Com geração real (~4 min por dossiê) o orçamento é consumido
+          # inteiro: 20 min deixariam ~4 min de folga; 10 min deixam ~14.
+          LIMITE_MINUTOS_DOSSIES: "10"
           REPROCESSAR_PARCIAL_APOS_HORAS: "24"
           DOSSIES_EDITAIS_CHAVE: ${{ secrets.DOSSIES_EDITAIS_CHAVE }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

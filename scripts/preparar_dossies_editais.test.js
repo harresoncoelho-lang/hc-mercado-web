@@ -35,3 +35,15 @@ test("seleção ignora pronto atual e mantém a ordem de prioridade", () => {
   ]);
   assert.deepEqual(selecionarCandidatos(registros, dossies).map((registro) => registro.numeroControlePNCP), ["novo", "antigo"]);
 });
+
+test("rodízio: começa em ponto aleatório da fila mais antiga-primeiro, sem furar prioridade", () => {
+  const dia = { a: 1, b: 2, c: 3, d: 4 };
+  const registros = ["d", "a", "c", "b"].map((id) => ({ numeroControlePNCP: id, publicacao: `2026-09-0${dia[id]}T00:00:00Z` }));
+  const dossies = new Map([["x", { versao: V - 1 }]]);
+  const comVersaoVelha = [...registros, { numeroControlePNCP: "x", publicacao: "2026-08-01T00:00:00Z" }];
+  const ids = (aleatorio) => selecionarCandidatos(comVersaoVelha, dossies, Date.now(), () => aleatorio).map((r) => r.numeroControlePNCP);
+  assert.deepEqual(ids(0), ["a", "b", "c", "d", "x"]);
+  assert.deepEqual(ids(0.5), ["c", "d", "a", "b", "x"]);
+  // Qualquer edital pode abrir a fila; nenhum fica preso no fim para sempre.
+  assert.deepEqual(new Set([0, 0.25, 0.5, 0.75].map((v) => ids(v)[0])), new Set(["a", "b", "c", "d"]));
+});

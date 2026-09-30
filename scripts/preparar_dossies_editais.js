@@ -2,7 +2,7 @@
 // Uso: node scripts/preparar_dossies_editais.js
 // Env obrigatórias: DOSSIES_EDITAIS_CHAVE.
 // Env opcionais: LICITAPLENA_URL (https://licitaplena.com.br), MAX_DOSSIES_POR_EXECUCAO (12),
-// DIAS_PUBLICACAO_DOSSIE (3), CONCORRENCIA_DOSSIES (1), LIMITE_MINUTOS_DOSSIES (20),
+// DIAS_PUBLICACAO_DOSSIE (30), CONCORRENCIA_DOSSIES (1), LIMITE_MINUTOS_DOSSIES (20),
 // SUPABASE_SERVICE_ROLE_KEY e REPROCESSAR_PARCIAL_APOS_HORAS (24).
 //
 // O cliente nunca deve precisar iniciar leitura de PDF/IA no clique. Este job chama a
@@ -13,7 +13,7 @@ const path = require("path");
 
 const URL_SITE = (process.env.LICITAPLENA_URL || "https://licitaplena.com.br").replace(/\/$/, "");
 const LIMITE = Math.max(1, Number(process.env.MAX_DOSSIES_POR_EXECUCAO || 12));
-const DIAS = Math.max(1, Number(process.env.DIAS_PUBLICACAO_DOSSIE || 3));
+const DIAS = Math.max(1, Number(process.env.DIAS_PUBLICACAO_DOSSIE || 30));
 const CONCORRENCIA = Math.max(1, Number(process.env.CONCORRENCIA_DOSSIES || 1));
 const LIMITE_MINUTOS = Math.max(1, Number(process.env.LIMITE_MINUTOS_DOSSIES || 20));
 const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
@@ -124,13 +124,23 @@ function prioridadeDoDossie(registro, dossie, agora = Date.now()) {
   return null; // pronto, ou parcial ainda dentro da janela de descanso
 }
 
-function selecionarCandidatos(registros, dossies, agora = Date.now()) {
-  return registros
-    .map((registro) => ({ registro, prioridade: prioridadeDoDossie(registro, dossies.get(registro.numeroControlePNCP), agora) }))
-    .filter((item) => item.prioridade !== null)
-    .sort((a, b) => a.prioridade - b.prioridade || dataValida(b.registro.publicacao) - dataValida(a.registro.publicacao))
-    .slice(0, LIMITE)
-    .map((item) => item.registro);
+// Dentro de cada prioridade a fila vai do mais antigo ao mais novo, mas cada execução
+// começa num ponto aleatório dela. Resultados que a Function não persiste (sem documento
+// legível, 503/504) continuam inéditos para sempre; com ponto de partida fixo eles
+// ocupariam o início da fila em toda execução e o restante nunca seria alcançado.
+function selecionarCandidatos(registros, dossies, agora = Date.now(), aleatorio = Math.random) {
+  const grupos = [[], [], [], []];
+  for (const registro of registros) {
+    const prioridade = prioridadeDoDossie(registro, dossies.get(registro.numeroControlePNCP), agora);
+    if (prioridade !== null) grupos[prioridade].push(registro);
+  }
+  return grupos
+    .flatMap((grupo) => {
+      grupo.sort((a, b) => dataValida(a.publicacao) - dataValida(b.publicacao));
+      const inicio = Math.floor(aleatorio() * grupo.length);
+      return grupo.slice(inicio).concat(grupo.slice(0, inicio));
+    })
+    .slice(0, LIMITE);
 }
 
 // Após a coleta o arquivo local existe; numa execução só de dossiês (sem coleta antes)
