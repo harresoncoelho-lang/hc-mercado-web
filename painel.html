@@ -1385,6 +1385,8 @@
   .dash-filtro-campo label { display: block; font-size: 11px; color: var(--texto-fraco); margin-bottom: 5px; }
   .dash-filtro-campo input { width: 100%; background: var(--cartao-claro); border: 1px solid var(--borda); border-radius: var(--raio-pq); padding: 9px 10px; color: var(--texto); font-size: 13px; font-family: inherit; cursor: pointer; }
   .dash-filtro-campo input:hover { border-color: var(--azul); }
+  .aviso-sincronizacao-operacional:not(:empty) { position: fixed; right: 18px; bottom: 18px; z-index: 10020; max-width: min(420px, calc(100vw - 36px)); padding: 12px 16px; border: 1px solid var(--azul); border-radius: 10px; background: var(--cartao); color: var(--texto); box-shadow: 0 8px 28px rgba(0,0,0,.28); font-size: 13px; }
+  .aviso-sincronizacao-operacional.erro:not(:empty) { border-color: var(--vermelho); }
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -4347,15 +4349,19 @@
       link: edital.link || null,
       valor: edital.valor || null,
       fonte: edital.fonte || null,
+      valorTotalEstimado: edital.valorTotalEstimado ?? null,
+      numeroCompra: edital.numeroCompra || null,
+      anoCompra: edital.anoCompra || null,
+      codigoUnidade: edital.codigoUnidade || null,
+      dataSessao: edital.dataSessao || edital.data_sessao || null,
     };
     salvarMapa("kanban-editais", mapa);
   }
 
   // Um status no Boletim não deve obrigar o usuário a redigitar o que já veio do
-  // edital. A sincronização cria apenas um dossiê por oportunidade e empresa; depois
-  // disso ela só atualiza o estágio, preservando os campos manuais (custos, proposta,
-  // documentos e empenhos). Processos perdidos continuam no histórico, mas deixam de
-  // contar como trabalho ativo.
+  // edital. A sincronização cria apenas um dossiê por oportunidade e empresa, atualiza
+  // estágio/resultado declarado pelo usuário e preserva campos manuais e fontes oficiais.
+  // Processos perdidos continuam no histórico, mas deixam de contar como trabalho ativo.
   function numeroOperacional(valor) {
     if (typeof valor === "number") return Number.isFinite(valor) ? valor : null;
     const texto = String(valor || "").trim();
@@ -4372,64 +4378,138 @@
     if (Number.isNaN(data.getTime())) return null;
     return comHora ? data.toISOString() : data.toISOString().slice(0, 10);
   }
-  function proximoEstagioDoKanban(status) {
-    return ({ interesse: "triagem", participando: "preparacao", ganhei: "homologado", perdi: "perdido" })[status] || null;
+  function dadosStatusOperacional(status) {
+    return ({
+      interesse: { estagio: "triagem", decisao: "em_analise", resultado: "nao_apurado" },
+      participando: { estagio: "preparacao", decisao: "participar", resultado: "em_disputa" },
+      ganhei: { estagio: "homologado", decisao: "participar", resultado: "vitoria_sem_detalhamento" },
+      perdi: { estagio: "perdido", decisao: "participar", resultado: "sem_vitoria" }
+    })[status] || null;
+  }
+  const PREFIXO_RESULTADO_KANBAN = "Status informado no Kanban: ";
+  const STATUS_RESULTADO_KANBAN = { interesse: "Tenho interesse", participando: "Participando", ganhei: "Ganhei", perdi: "Perdi" };
+  const sincronizacoesOperacionais = new Map();
+  let contextoOperacionalPromise = null;
+  function avisarSincronizacaoOperacional(mensagem, erro = false) {
+    let aviso = document.getElementById("aviso-sincronizacao-operacional");
+    if (!aviso) {
+      aviso = document.createElement("div");
+      aviso.id = "aviso-sincronizacao-operacional";
+      aviso.setAttribute("role", "status");
+      document.body.appendChild(aviso);
+    }
+    aviso.textContent = mensagem;
+    aviso.className = erro ? "aviso-sincronizacao-operacional erro" : "aviso-sincronizacao-operacional";
+    clearTimeout(aviso.temporizador);
+    aviso.temporizador = setTimeout(() => { aviso.textContent = ""; }, erro ? 12000 : 5000);
   }
   async function empresaOperacionalParaDossie() {
-    const { data: organizacaoId, error: erroOrg } = await sb.rpc("bootstrap_operacao");
-    if (erroOrg || !organizacaoId) throw erroOrg || new Error("Organização operacional indisponível.");
-    const { data: empresas, error } = await sb.from("operacao_empresas")
-      .select("id,razao_social").eq("organizacao_id", organizacaoId).eq("ativo", true).order("razao_social");
-    if (error) throw error;
+    if (!contextoOperacionalPromise) {
+      contextoOperacionalPromise = (async () => {
+        await aguardarSupabaseAutenticado();
+        const sb = window.__sbClient;
+        const { data: organizacaoId, error: erroOrg } = await sb.rpc("bootstrap_operacao");
+        if (erroOrg || !organizacaoId) throw erroOrg || new Error("Organização operacional indisponível.");
+        const { data: empresas, error } = await sb.from("operacao_empresas")
+          .select("id,razao_social").eq("organizacao_id", organizacaoId).eq("ativo", true).order("razao_social");
+        if (error) throw error;
+        return { organizacaoId, empresas: empresas || [] };
+      })().catch(erro => { contextoOperacionalPromise = null; throw erro; });
+    }
+    const { organizacaoId, empresas } = await contextoOperacionalPromise;
     const preferida = localStorage.getItem("licitaplena_empresa_operacional_id");
-    const empresa = (empresas || []).find(e => e.id === preferida) || (empresas || [])[0];
+    const empresa = empresas.find(e => e.id === preferida) || empresas[0];
     if (!empresa) throw new Error("Cadastre uma empresa na Central Operacional antes de criar o dossiê.");
     return { organizacaoId, empresa };
   }
   async function sincronizarDossieOperacional(id, edital, status) {
-    const estagio = proximoEstagioDoKanban(status);
-    if (!estagio || !edital) return;
-    try {
-      const { organizacaoId, empresa } = await empresaOperacionalParaDossie();
-      const { data: existente, error: erroBusca } = await sb.from("operacao_processos")
-        .select("id,status,decisao").eq("organizacao_id", organizacaoId).eq("empresa_id", empresa.id)
-        .eq("origem_externa_id", id).maybeSingle();
-      if (erroBusca) throw erroBusca;
-      const decisao = status === "perdi" ? "nao_participar" : "participar";
-      if (existente) {
-        const { error } = await sb.from("operacao_processos").update({
-          status: estagio, decisao, atualizado_em: new Date().toISOString(),
-          resultado: status === "ganhei" ? "Resultado marcado como ganho no Kanban" : (status === "perdi" ? "Resultado marcado como perdido no Kanban" : null)
-        }).eq("id", existente.id);
-        if (error) throw error;
-        return;
+    const dadosStatus = dadosStatusOperacional(status);
+    if (!dadosStatus || !edital) return null;
+    const { organizacaoId, empresa } = await empresaOperacionalParaDossie();
+    const sb = window.__sbClient;
+    const { data: existente, error: erroBusca } = await sb.from("operacao_processos")
+      .select("*").eq("organizacao_id", organizacaoId).eq("empresa_id", empresa.id)
+      .eq("origem_externa_id", id).maybeSingle();
+    if (erroBusca) throw erroBusca;
+    const prazoPropostas = dataOperacional(edital.encerramento, true);
+    const sessaoExplicita = dataOperacional(edital.dataSessao || edital.data_sessao, true);
+    const url = linkPncp(edital.numeroControlePNCP) || edital.link || null;
+    const numeroCompra = edital.numeroCompra && edital.anoCompra ? `${edital.numeroCompra}/${edital.anoCompra}` : null;
+    const origem = {
+      objeto: edital.objeto || "Oportunidade do Boletim", orgao: edital.orgao || null,
+      numero: numeroCompra || edital.numeroControlePNCP || null, modalidade: edital.modalidade || null,
+      sistema: edital.fonte || null, uasg: edital.codigoUnidade || null, url_origem: url,
+      valor_estimado: numeroOperacional(edital.valorTotalEstimado ?? edital.valor),
+      data_publicacao: dataOperacional(edital.publicacao, false), data_sessao: sessaoExplicita
+    };
+    let processo = existente;
+    if (existente) {
+      const camposVazios = Object.fromEntries(Object.entries(origem).filter(([campo, valor]) =>
+        valor != null && valor !== "" && (existente[campo] == null || existente[campo] === "")));
+      const resultadoAnterior = String(existente.resultado || "");
+      const resultadoManual = existente.fonte_resultado || existente.data_resultado || existente.valor_homologado != null || (resultadoAnterior &&
+        !resultadoAnterior.startsWith(PREFIXO_RESULTADO_KANBAN) &&
+        !resultadoAnterior.startsWith("Resultado marcado como "));
+      const atualizacao = {
+        ...camposVazios, status: dadosStatus.estagio, decisao: dadosStatus.decisao,
+        atualizado_em: new Date().toISOString()
+      };
+      if (!resultadoManual) {
+        atualizacao.situacao_resultado = dadosStatus.resultado;
+        atualizacao.resultado = PREFIXO_RESULTADO_KANBAN + STATUS_RESULTADO_KANBAN[status] + " (informação do usuário; confira a fonte oficial).";
       }
-      const sessao = dataOperacional(edital.encerramento, true);
-      const url = linkPncp(edital.numeroControlePNCP) || edital.link || null;
-      const { data: processo, error } = await sb.from("operacao_processos").insert({
+      // A versão anterior confundia prazo de propostas com data da sessão. Corrigir
+      // apenas registros ainda identificáveis como automáticos; nunca apagar data manual.
+      if (!sessaoExplicita && prazoPropostas && existente.observacoes?.startsWith("Pré-preenchido automaticamente") &&
+          existente.data_sessao === prazoPropostas) atualizacao.data_sessao = null;
+      const { error } = await sb.from("operacao_processos").update(atualizacao)
+        .eq("id", existente.id).eq("organizacao_id", organizacaoId);
+      if (error) throw error;
+      processo = { ...existente, ...atualizacao };
+    } else {
+      const { data, error } = await sb.from("operacao_processos").insert({
         organizacao_id: organizacaoId, empresa_id: empresa.id, origem_externa_id: id,
-        objeto: edital.objeto || "Oportunidade do Boletim", orgao: edital.orgao || null,
-        numero: edital.numeroControlePNCP || null, modalidade: edital.modalidade || null,
-        url_origem: url, status: estagio, decisao,
-        valor_estimado: numeroOperacional(edital.valor), data_publicacao: dataOperacional(edital.publicacao, false),
-        data_sessao: sessao, observacoes: "Pré-preenchido automaticamente a partir do Boletim / Kanban. Confira o edital antes de enviar a proposta."
+        ...origem, status: dadosStatus.estagio, decisao: dadosStatus.decisao,
+        situacao_resultado: dadosStatus.resultado,
+        resultado: PREFIXO_RESULTADO_KANBAN + STATUS_RESULTADO_KANBAN[status] + " (informação do usuário; confira a fonte oficial).",
+        observacoes: "Pré-preenchido automaticamente a partir do Boletim / Kanban. Confira o edital antes de enviar a proposta."
       }).select("id,objeto").single();
       if (error) throw error;
-      if (sessao) {
-        const { error: erroPrazo } = await sb.from("operacao_prazos_processo").insert({
-          organizacao_id: organizacaoId, processo_id: processo.id, categoria: "proposta",
-          titulo: "Prazo do Boletim: " + processo.objeto, vencimento: sessao
-        });
-        if (erroPrazo) console.warn("Dossiê criado sem prazo automático:", erroPrazo.message);
-      }
-    } catch (erro) {
-      // O acompanhamento local continua funcionando. O aviso no console evita expor
-      // detalhes internos ao usuário e permite que ele tente a sincronização novamente
-      // ao alterar o cartão ou recarregar o Boletim.
-      console.warn("Não foi possível sincronizar o dossiê automaticamente:", erro.message || erro);
+      processo = data;
     }
+    if (prazoPropostas) {
+      const { data: prazos, error: erroPrazoBusca } = await sb.from("operacao_prazos_processo")
+        .select("id,titulo,concluido_em").eq("organizacao_id", organizacaoId)
+        .eq("processo_id", processo.id).eq("categoria", "proposta");
+      if (erroPrazoBusca) throw erroPrazoBusca;
+      const automatico = (prazos || []).find(p => p.titulo === "Prazo de propostas (Boletim)" || p.titulo.startsWith("Prazo do Boletim: "));
+      if (automatico && !automatico.concluido_em) {
+        const { error } = await sb.from("operacao_prazos_processo").update({ titulo: "Prazo de propostas (Boletim)", vencimento: prazoPropostas })
+          .eq("id", automatico.id).eq("organizacao_id", organizacaoId);
+        if (error) throw error;
+      } else if (!automatico) {
+        const { error } = await sb.from("operacao_prazos_processo").insert({
+          organizacao_id: organizacaoId, processo_id: processo.id, categoria: "proposta",
+          titulo: "Prazo de propostas (Boletim)", vencimento: prazoPropostas
+        });
+        if (error) throw error;
+      }
+    }
+    return { id: processo.id, empresa: empresa.razao_social };
   }
-
+  function agendarSincronizacaoDossie(id, edital, status, silencioso = false) {
+    if (!id || !edital || !dadosStatusOperacional(status)) return;
+    const anterior = sincronizacoesOperacionais.get(id) || Promise.resolve();
+    const tarefa = anterior.catch(() => {}).then(() => sincronizarDossieOperacional(id, edital, status));
+    sincronizacoesOperacionais.set(id, tarefa);
+    void tarefa.then(resultado => {
+      if (!silencioso) avisarSincronizacaoOperacional(`Dossiê atualizado para ${resultado.empresa || "a empresa ativa"}.`);
+    }).catch(erro => {
+      console.warn("Não foi possível sincronizar o dossiê automaticamente:", erro);
+      avisarSincronizacaoOperacional("Status salvo neste navegador, mas o dossiê não foi atualizado. Confira a empresa ativa na Central Operacional e tente novamente.", true);
+    }).finally(() => { if (sincronizacoesOperacionais.get(id) === tarefa) sincronizacoesOperacionais.delete(id); });
+    return tarefa;
+  }
   function classePrazoKanban(iso) {
     if (!iso) return null;
     const d = new Date(iso);
@@ -4463,6 +4543,7 @@
         <select class="kanban-card-mover" data-id="${escapeHtml(id)}" title="Mover para outra coluna">${opcoesMoverHtml}</select>
         <textarea class="kanban-card-anotacao" data-id="${escapeHtml(id)}" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual || "")}</textarea>
         <div class="kanban-card-acoes">
+          <button type="button" class="kanban-btn-dossie" data-id="${escapeHtml(id)}">Dossiê</button>
           <button type="button" class="kanban-btn-resumir" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumo</button>
           <button type="button" class="kanban-btn-abrir" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg> PNCP</button>
           ${(edital.numeroControlePNCP && edital.encerramento) ? `<button type="button" class="btn-criar-lembrete" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(edital.numeroControlePNCP)}" data-encerramento="${escapeHtml(edital.encerramento)}" data-objeto="${escapeHtml((edital.objeto || "").slice(0, 200))}"><svg class='icone-ph'><use href='#ph-bell'></use></svg></button>` : ""}
@@ -4524,7 +4605,7 @@
         const novoStatus = coluna.dataset.status;
         if (!id || !novoStatus) return;
         definirNoMapa("status-licitacao", id, novoStatus);
-        void sincronizarDossieOperacional(id, lerMapa("kanban-editais")[id], novoStatus);
+        agendarSincronizacaoDossie(id, lerMapa("kanban-editais")[id], novoStatus);
         renderizarKanban();
       });
     });
@@ -4534,7 +4615,7 @@
       sel.addEventListener("click", (ev) => ev.stopPropagation());
       sel.addEventListener("change", () => {
         definirNoMapa("status-licitacao", sel.dataset.id, sel.value);
-        void sincronizarDossieOperacional(sel.dataset.id, lerMapa("kanban-editais")[sel.dataset.id], sel.value);
+        agendarSincronizacaoDossie(sel.dataset.id, lerMapa("kanban-editais")[sel.dataset.id], sel.value);
         renderizarKanban();
       });
     });
@@ -4565,6 +4646,23 @@
       });
     });
 
+    alvo.querySelectorAll(".kanban-btn-dossie").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        const edital = lerMapa("kanban-editais")[id];
+        const status = lerMapa("status-licitacao")[id];
+        btn.disabled = true;
+        try {
+          const pendente = sincronizacoesOperacionais.get(id);
+          if (pendente) await pendente;
+          else await agendarSincronizacaoDossie(id, edital, status, true);
+          window.location.href = `processos?origem=${encodeURIComponent(id)}`;
+        } catch (erro) {
+          btn.disabled = false;
+          avisarSincronizacaoOperacional("Não foi possível abrir o dossiê. Confira a empresa ativa e tente novamente.", true);
+        }
+      });
+    });
     alvo.querySelectorAll(".kanban-btn-abrir").forEach((btn) => {
       btn.addEventListener("click", () => {
         const editaisMapa = lerMapa("kanban-editais");
@@ -5535,7 +5633,7 @@
           const idx = Number(card.dataset.idx);
           if (selectStatus.value) {
             salvarSnapshotKanban(id, resultados[idx]);
-            void sincronizarDossieOperacional(id, resultados[idx], selectStatus.value);
+            agendarSincronizacaoDossie(id, resultados[idx], selectStatus.value);
           }
           else definirNoMapa("kanban-editais", id, null);
         });

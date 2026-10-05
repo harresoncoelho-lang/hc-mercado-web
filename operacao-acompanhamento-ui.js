@@ -3,6 +3,7 @@
   const ROTULOS = {
     nao_apurado: "Não apurado", nao_participou: "Não participou", em_disputa: "Em disputa",
     sem_vitoria: "Participou sem vencer", vitoria_parcial: "Vitória parcial", vitoria_total: "Vitória total",
+    vitoria_sem_detalhamento: "Ganhou — itens pendentes de detalhamento",
     revogado_anulado: "Revogado / anulado", pendente: "Pendente", ganho: "Ganho", perdido: "Perdido",
     desclassificado: "Desclassificado", inabilitado: "Inabilitado", nao_disputado: "Não disputado",
     cancelado: "Cancelado", a_assinar: "A assinar", vigente: "Vigente", encerrado: "Encerrado", rescindido: "Rescindido",
@@ -75,7 +76,7 @@
       const itens = doProcesso(estado.itens, id);
       const situacao = f.get("situacao_resultado");
       const valor = valorNumero(f.get("valor_homologado"));
-      if (!itens.length && valor != null && !["vitoria_parcial", "vitoria_total"].includes(situacao)) {
+      if (!itens.length && valor != null && !["vitoria_parcial", "vitoria_total", "vitoria_sem_detalhamento"].includes(situacao)) {
         aviso("Informe valor homologado somente para vitória parcial ou total.", "erro"); return;
       }
       const dados = { data_resultado: f.get("data_resultado") || null, fonte_resultado: linkSeguro(f.get("fonte_resultado")) || null, motivo_perda: f.get("motivo_perda") || null, atualizado_em: new Date().toISOString() };
