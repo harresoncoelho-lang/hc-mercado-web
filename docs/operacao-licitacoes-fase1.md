@@ -50,6 +50,30 @@ ficam em bucket privado segregado pelo UUID da organização.
    planos públicos; conectar o HC Licitações somente por contratos de API explicitamente
    autorizados, sem compartilhar bases privadas por padrão.
 
+## Revisão de 05/10/2026 — acompanhamento completo
+
+O dossiê atual em `processos.html` já cadastra empresa, objeto, órgão, número,
+decisão inicial, sessão, prazos, custo/proposta, estágio e empenhos. Ainda **não**
+equivale à planilha operacional completa: o banco tem campos de resultado e
+motivo de perda, mas a interface só permite atualizar o estágio; não registra
+resultados por item/lote, valor homologado por item nem fonte/data da homologação.
+O usuário enviará uma planilha de referência para fechar os campos e o fluxo.
+
+O modelo a implementar deve distinguir, para cada processo, *não analisado*,
+*não participou*, *participou sem vencer*, *venceu parcialmente* e *venceu*;
+e, para cada item/lote, proposta, situação, quantidade e valor homologado,
+motivo de perda/desclassificação quando comprovado e link do documento oficial.
+Somatórios do painel devem vir dos itens registrados e identificados, nunca
+inferir vitória a partir de uma mudança manual de estágio. A agenda precisa
+mostrar abertura da sessão e demais marcos, inclusive vencidos não concluídos.
+
+Incidente de documento reproduzido no código: `ev.currentTarget.reset()` era
+chamado depois de `await`, quando `currentTarget` já pode ser `null`. Isso
+explicava uma mensagem de falha mesmo após upload/inserção. A correção local
+captura o formulário antes da espera e também cobre compromisso, processo,
+prazo e empenho. Antes de orientar uma nova tentativa, verificar se o arquivo
+da captura já gerou registro para evitar duplicação.
+
 ## Como ativar a fase 1
 
 1. No Supabase do LicitaPlena, abra **SQL Editor**.
