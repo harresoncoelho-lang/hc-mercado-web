@@ -52,12 +52,11 @@ ficam em bucket privado segregado pelo UUID da organização.
 
 ## Revisão de 05/10/2026 — acompanhamento completo
 
-O dossiê atual em `processos.html` já cadastra empresa, objeto, órgão, número,
-decisão inicial, sessão, prazos, custo/proposta, estágio e empenhos. Ainda **não**
-equivale à planilha operacional completa: o banco tem campos de resultado e
-motivo de perda, mas a interface só permite atualizar o estágio; não registra
-resultados por item/lote, valor homologado por item nem fonte/data da homologação.
-O usuário enviará uma planilha de referência para fechar os campos e o fluxo.
+Os dois modelos recebidos em imagem representam (1) uma ficha individual com
+número, órgão, portal, abertura e relatório datado e (2) uma carteira tabular
+com sistema, UASG, pregão, objeto, participação e situação. As imagens não
+contêm um arquivo de planilha importável; registros antigos precisam ser
+cadastrados ou migrados separadamente, sem presumir dados das capturas.
 
 O modelo a implementar deve distinguir, para cada processo, *não analisado*,
 *não participou*, *participou sem vencer*, *venceu parcialmente* e *venceu*;
@@ -66,6 +65,24 @@ motivo de perda/desclassificação quando comprovado e link do documento oficial
 Somatórios do painel devem vir dos itens registrados e identificados, nunca
 inferir vitória a partir de uma mudança manual de estágio. A agenda precisa
 mostrar abertura da sessão e demais marcos, inclusive vencidos não concluídos.
+
+Implementação local preparada: `supabase/operacao_acompanhamento.sql` amplia
+o esquema sem apagar processos antigos. A carteira mantém estágio operacional
+separado do resultado. O dossiê recebe resultados por item/lote, histórico
+cronológico com categoria, contratos, empenhos e anexos privados. O total
+homologado só é exibido quando o valor dos itens ganhos foi informado. A
+listagem principal aparece antes dos detalhes; consultas paginadas evitam
+truncar editais grandes com centenas de itens. Falha no carregamento de detalhes
+é exibida como erro, não como resultado vazio. Fonte oficial e ocorrências
+continuam registradas manualmente: o sistema não confirma vitória por inferência.
+
+Em 05/10/2026, a migração foi executada no projeto de produção
+`lsqjamqvmrcyrvowndiu`. A consulta posterior confirmou cinco colunas, quatro
+tabelas e quatro políticas de organização com RLS ativo. A verificação local
+percorreu mais de 1.200 itens sem truncamento. Ainda é necessário validar no
+site publicado o cadastro, a reabertura e o anexo com uma sessão autenticada;
+um teste com duas organizações distintas exige contas apropriadas e não foi
+simulado com o papel administrativo do SQL Editor.
 
 Incidente de documento reproduzido no código: `ev.currentTarget.reset()` era
 chamado depois de `await`, quando `currentTarget` já pode ser `null`. Isso

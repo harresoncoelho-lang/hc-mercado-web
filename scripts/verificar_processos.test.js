@@ -17,10 +17,34 @@ test("dossiê compartilha o tema e a empresa ativa com o painel", () => {
   assert.match(html, /licitaplena_empresa_operacional_id/);
 });
 
+test("carregamento percorre todas as páginas de itens e lotes", async () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
+  const inicio = html.indexOf("  async function consultarTodas(");
+  const fim = html.indexOf("  async function carregarTudo(", inicio);
+  assert.ok(inicio > 0 && fim > inicio);
+  const chamadas = [];
+  const registros = Array.from({ length: 1201 }, (_, id) => ({ id }));
+  const contexto = { sb: { from: tabela => {
+    assert.equal(tabela, "operacao_itens_resultado");
+    return { select: () => ({ in: (_, ids) => {
+      assert.deepEqual([...ids], ["processo"]);
+      const consulta = { order: () => consulta, async range(inicioPagina, fimPagina) {
+        chamadas.push([inicioPagina, fimPagina]);
+        return { data: registros.slice(inicioPagina, fimPagina + 1), error: null };
+      } };
+      return consulta;
+    } }) };
+  } } };
+  vm.runInNewContext(`${html.slice(inicio, fim)}\nthis.consultarPorProcessos = consultarPorProcessos;`, contexto);
+  const resultado = await contexto.consultarPorProcessos("operacao_itens_resultado", ["processo"], "identificador");
+  assert.equal(resultado.data.length, 1201);
+  assert.deepEqual(chamadas, [[0, 499], [500, 999], [1000, 1499]]);
+});
+
 test("processo, prazo e empenho terminam de salvar após o evento perder currentTarget", async () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
   const inicio = html.indexOf("  async function salvarProcesso(");
-  const fim = html.indexOf('  $("empresa-atual")', inicio);
+  const fim = html.indexOf("  const acompanhamento=", inicio);
   assert.ok(inicio > 0 && fim > inicio);
   for (const [funcao, tabela, campos] of [
     ["salvarProcesso", "operacao_processos", [["objeto", "Aquisição de materiais"], ["decisao", "em_analise"]]],
@@ -31,7 +55,7 @@ test("processo, prazo e empenho terminam de salvar após o evento perder current
     const formulario = { dados: new Map(campos), reset() { chamadas.push("reset"); } };
     const evento = { currentTarget: formulario, preventDefault() {} };
     const contexto = {
-      estado: { orgId: "org", empresaId: "empresa", processos: [{ id: "processo" }] },
+      estado: { orgId: "org", empresaId: "empresa", processos: [{ id: "processo" }], prazos: [] },
       FormData: class { constructor(form) { this.dados = form.dados; } get(chave) { return this.dados.get(chave) || null; } },
       sb: { from(nome) {
         assert.equal(nome, tabela);
