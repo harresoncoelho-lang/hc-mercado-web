@@ -101,7 +101,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
           concluido=true;
           break;
         }
-        if(!concluido)throw new Error("A análise do edital ainda está em andamento. Abra o processo novamente mais tarde.");
+        if(!concluido)throw new Error("A análise do edital ainda está em andamento. Abra o processo novamente mais tarde");
         requisitos=LicitaOperacaoEdital.requisitosDaEstrutura({...dados.estrutura,fonteLida:!!dados.fonteLida,modoDegradado:!!dados.modoDegradado});
       }
       if(!requisitos.length){
@@ -117,7 +117,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
       if(error)throw error;
       if(data?.length){processo.documentos_exigidos=requisitos;processo.checklist_fonte="resumo";processo.checklist_gerado_em=geradoEm;processo.atualizado_em=data[0].atualizado_em;}
       else checklistIndisponivel.add(processo.id);
-    }catch(erro){console.warn("Checklist automático indisponível:",erro);motivosChecklist.set(processo.id,`A consulta automática falhou: ${erro.message||"erro não identificado"}.`);checklistIndisponivel.add(processo.id);}
+    }catch(erro){console.warn("Checklist automático indisponível:",erro);const mensagem=erro.message||"erro não identificado";motivosChecklist.set(processo.id,`${mensagem.includes("ainda está em andamento")?"":"A consulta automática falhou: "}${mensagem}.`);checklistIndisponivel.add(processo.id);}
     finally{consultasChecklist.delete(processo.id);if($("modal-dossie").classList.contains("aberto")&&$("modal-dossie").dataset.processoId===processo.id)abrirDossie(processo.id);}
   }
   function renderizarItensOficiais(processo){
