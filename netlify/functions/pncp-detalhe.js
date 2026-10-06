@@ -14,6 +14,29 @@ function fonteOrcamentaria(dados) {
   return fontes.length ? fontes.join(", ") : null;
 }
 
+// O PNCP publica a descrição do sigilo com a chave grafada "orcamentoSilosoDescricao";
+// aceitamos as duas grafias para não perder o aviso se a API corrigir o nome.
+function orcamentoSigiloso(dados) {
+  const descricao = dados.orcamentoSigilosoDescricao || dados.orcamentoSilosoDescricao || null;
+  return descricao && !/sem sigilo/i.test(descricao) ? descricao : null;
+}
+
+// Campos publicados pelo PNCP que mudam a decisão de participar: onde a disputa
+// acontece, quem compra, sigilo do orçamento e justificativa de pregão presencial.
+function camposDaDisputa(dados) {
+  return {
+    nomeUnidade: dados.unidadeOrgao && dados.unidadeOrgao.nomeUnidade || null,
+    plataforma: dados.usuarioNome || null,
+    linkSistemaOrigem: dados.linkSistemaOrigem || null,
+    linkProcessoEletronico: dados.linkProcessoEletronico || null,
+    informacaoComplementar: dados.informacaoComplementar || null,
+    orcamentoSigiloso: orcamentoSigiloso(dados),
+    justificativaPresencial: dados.justificativaPresencial || null,
+    orgaoSubRogado: dados.orgaoSubRogado && dados.orgaoSubRogado.razaoSocial || null,
+    atualizadoEm: dados.dataAtualizacaoGlobal || null,
+  };
+}
+
 exports.handler = async (event) => {
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
   const q = event.queryStringParameters || {};
@@ -52,6 +75,7 @@ exports.handler = async (event) => {
       encerramento: dados.dataEncerramentoProposta || null,
       inicioRecebimento: dados.dataAberturaProposta || dados.dataInicioRecebimentoProposta || null,
       publicacao: dados.dataPublicacaoPncp || null,
+      ...camposDaDisputa(dados),
     };
     return { statusCode: 200, headers, body: JSON.stringify({ erro: null, detalhe }) };
   } catch (erro) {
