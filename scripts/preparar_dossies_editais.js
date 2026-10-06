@@ -124,22 +124,29 @@ function prioridadeDoDossie(registro, dossie, agora = Date.now()) {
   return null; // pronto, ou parcial ainda dentro da janela de descanso
 }
 
+// Editais publicados nesta janela furam a fila dos inéditos, do mais novo ao mais antigo:
+// é o que o cliente abre primeiro no boletim, e precisa estar pronto antes do clique.
+const JANELA_RECENTES_MS = 48 * 60 * 60 * 1000;
+
 // Dentro de cada prioridade a fila vai do mais antigo ao mais novo, mas cada execução
 // começa num ponto aleatório dela. Resultados que a Function não persiste (sem documento
 // legível, 503/504) continuam inéditos para sempre; com ponto de partida fixo eles
 // ocupariam o início da fila em toda execução e o restante nunca seria alcançado.
 function selecionarCandidatos(registros, dossies, agora = Date.now(), aleatorio = Math.random) {
   const grupos = [[], [], [], []];
+  const recentes = [];
   for (const registro of registros) {
     const prioridade = prioridadeDoDossie(registro, dossies.get(registro.numeroControlePNCP), agora);
-    if (prioridade !== null) grupos[prioridade].push(registro);
+    if (prioridade === 0 && agora - (dataValida(registro.publicacao)?.getTime() || 0) <= JANELA_RECENTES_MS) recentes.push(registro);
+    else if (prioridade !== null) grupos[prioridade].push(registro);
   }
-  return grupos
+  recentes.sort((a, b) => dataValida(b.publicacao) - dataValida(a.publicacao));
+  return recentes.concat(grupos
     .flatMap((grupo) => {
       grupo.sort((a, b) => dataValida(a.publicacao) - dataValida(b.publicacao));
       const inicio = Math.floor(aleatorio() * grupo.length);
       return grupo.slice(inicio).concat(grupo.slice(0, inicio));
-    })
+    }))
     .slice(0, LIMITE);
 }
 

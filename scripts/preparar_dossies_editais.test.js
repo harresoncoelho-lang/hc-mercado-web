@@ -47,3 +47,16 @@ test("rodízio: começa em ponto aleatório da fila mais antiga-primeiro, sem fu
   // Qualquer edital pode abrir a fila; nenhum fica preso no fim para sempre.
   assert.deepEqual(new Set([0, 0.25, 0.5, 0.75].map((v) => ids(v)[0])), new Set(["a", "b", "c", "d"]));
 });
+
+test("inéditos publicados nas últimas 48h vêm primeiro, do mais novo ao mais antigo", () => {
+  const agora = Date.parse("2026-10-06T12:00:00Z");
+  const registros = [
+    { numeroControlePNCP: "velho", publicacao: "2026-09-20T00:00:00Z" },
+    { numeroControlePNCP: "ontem", publicacao: "2026-10-05T08:00:00Z" },
+    { numeroControlePNCP: "hoje", publicacao: "2026-10-06T07:00:00Z" },
+    { numeroControlePNCP: "versao-velha", publicacao: "2026-10-06T09:00:00Z" },
+  ];
+  const dossies = new Map([["versao-velha", { versao: V - 1, status: "pronto" }]]);
+  const ids = selecionarCandidatos(registros, dossies, agora, () => 0).map((r) => r.numeroControlePNCP);
+  assert.deepEqual(ids, ["hoje", "ontem", "velho", "versao-velha"]);
+});
