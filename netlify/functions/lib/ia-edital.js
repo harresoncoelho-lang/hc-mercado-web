@@ -648,7 +648,8 @@ function normalizarListaDoDossie(valor, limite) {
   const saida = [];
   const chaves = new Set();
   for (const bruto of (Array.isArray(valor) ? valor : [])) {
-    const texto = String(bruto || "").replace(/\s+/g, " ").trim();
+    const valorTexto = typeof bruto === "string" ? bruto : bruto && typeof bruto.texto === "string" ? bruto.texto : "";
+    const texto = valorTexto.replace(/\s+/g, " ").trim();
     const chave = chaveLista(texto);
     if (!texto || texto.length > 4000 || /^nao informado$/.test(chave) || itemCombinatorioDeCertidao(texto)) continue;
     // Uma exigência mais longa que apenas repete uma já listada não acrescenta

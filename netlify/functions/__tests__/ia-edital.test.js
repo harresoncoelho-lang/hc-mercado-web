@@ -173,6 +173,16 @@ test("remove combinações artificiais de certidões antes de exibir o dossiê",
   ]);
 });
 
+test("consulta operacional preserva o texto de documentos estruturados", () => {
+  const { __test } = carregarComModelo(null);
+  const lista = __test.normalizarListaDoDossie([
+    { texto: "Registro comercial (Edital 9.1)", categoria: "Jurídica" },
+    { texto: "Certidão fiscal (Edital 9.2)", categoria: "Fiscal" },
+    { texto: "Registro comercial (Edital 9.1)", categoria: "Jurídica" },
+  ], 15);
+  assert.deepEqual(lista, ["Registro comercial (Edital 9.1)", "Certidão fiscal (Edital 9.2)"]);
+});
+
 test("síntese rejeita entrada acima do orçamento antes de chamar provedor", async () => {
   const anterior = global.fetch; let chamadas = 0;
   global.fetch = async () => { chamadas++; throw new Error("Não deve chamar"); };
