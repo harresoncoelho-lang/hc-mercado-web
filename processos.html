@@ -72,7 +72,8 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   function dataLocal(v){if(!v)return "";const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
   function docsValidos(){const hoje=new Date();return estado.documentos.filter(d => d.vencimento && new Date(`${d.vencimento}T23:59:59`) >= hoje).map(d=>d.tipo.toLocaleLowerCase("pt-BR"));}
   async function preencherChecklistDoResumo(processo){
-    if((processo.documentos_exigidos||[]).length || processo.checklist_editado_manualmente || consultasChecklist.has(processo.id) || checklistIndisponivel.has(processo.id))return;
+    const checklistAutomatico=processo.checklist_fonte==="resumo"&&!processo.checklist_editado_manualmente;
+    if(((processo.documentos_exigidos||[]).length&&!checklistAutomatico) || processo.checklist_editado_manualmente || consultasChecklist.has(processo.id) || checklistIndisponivel.has(processo.id))return;
     const pncp=LicitaOperacaoEdital.idPncp(processo);
     if(!pncp){checklistIndisponivel.add(processo.id);return;}
     consultasChecklist.add(processo.id);
@@ -110,6 +111,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
         motivosChecklist.set(processo.id,principalNaoLido?`O documento principal não pôde ser lido (${principalNaoLido}).`:"O material lido não trouxe requisitos de habilitação verificáveis.");
         checklistIndisponivel.add(processo.id);return;
       }
+      if(JSON.stringify(requisitos)===JSON.stringify(processo.documentos_exigidos||[]))return;
       const geradoEm=dados.geradoEm||new Date().toISOString();
       const {data,error}=await sb.from("operacao_processos").update({documentos_exigidos:requisitos,checklist_fonte:"resumo",checklist_gerado_em:geradoEm,atualizado_em:new Date().toISOString()})
         .eq("id",processo.id).eq("organizacao_id",estado.orgId).eq("empresa_id",processo.empresa_id)

@@ -17,6 +17,14 @@ test("checklist usa somente requisitos de habilitação e declarações de fonte
   assert.deepEqual(requisitosDaEstrutura({ fonteLida: true, modoDegradado: true, documentosHabilitacao: ["Indevido"] }), []);
 });
 
+test("checklist converte documentos estruturados sem perder o texto oficial", () => {
+  const requisitos = requisitosDaEstrutura({ fonteLida: true,
+    documentosHabilitacao: [{ texto: "Certidão federal (Edital 9.2)", categoria: "Fiscal" }, { categoria: "Sem texto" }],
+    declaracoesExigidas: ["Declaração de ciência (Edital 5.4)"],
+  });
+  assert.deepEqual(requisitos, ["Certidão federal (Edital 9.2)", "Declaração de ciência (Edital 5.4)"]);
+});
+
 test("identifica apenas controle PNCP válido no processo", () => {
   assert.equal(idPncp({ origem_externa_id: "12345678000199-1-12/2026" }), "12345678000199-1-12/2026");
   assert.equal(idPncp({ origem_externa_id: "objeto|órgão|data", numero: "12345678000199-1-12/2026" }), "12345678000199-1-12/2026");
@@ -55,6 +63,8 @@ test("edição humana impede que novo resumo substitua checklist ou restaure ite
   const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
   assert.match(html, /checklist_editado_manualmente:true/);
   assert.match(html, /\.eq\("checklist_editado_manualmente",false\)/);
+  assert.match(html, /checklistAutomatico=processo\.checklist_fonte==="resumo"/);
+  assert.match(html, /JSON\.stringify\(requisitos\)===JSON\.stringify\(processo\.documentos_exigidos\|\|\[\]\)/);
 });
 
 test("checklist espera o resumo progressivo antes de gravar requisitos", async () => {

@@ -5,6 +5,7 @@
   if (raiz) raiz.LicitaOperacaoEdital = api;
 })(typeof window !== "undefined" ? window : null, function () {
   function texto(valor) {
+    if (valor && typeof valor === "object" && !Array.isArray(valor)) valor = valor.texto;
     return typeof valor === "string" ? valor.replace(/\s+/g, " ").trim() : "";
   }
 
