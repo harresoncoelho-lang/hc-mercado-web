@@ -4711,10 +4711,9 @@
       municipio: "",
       uf: r.uf,
       encerramento: dataBrParaIso(r.dataAbertura),
-      // SESC/AM traz dataPublicacao real; SENAC/AM não tem esse campo separado, então
-      // usamos a data de abertura como melhor aproximação de "quando essa oportunidade
-      // apareceu" pra poder entrar na busca por período.
-      publicacao: dataBrParaIso(r.dataPublicacao) || dataBrParaIso(r.dataAbertura),
+      // Abertura não é publicação. O SENAC/AM não informa a publicação na listagem;
+      // nesse caso deixamos o campo ausente, sem colocar o edital no dia errado.
+      publicacao: dataBrParaIso(r.dataPublicacao),
       numeroControlePNCP: r.numero,
       link: r.link,
       fonte: r.fonte,
@@ -5354,8 +5353,8 @@
             ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome, "modoDisputaNome")}
             ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal, "amparoLegal")}
             ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria, "fonteOrcamentaria")}
-            ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : ""}
-            <div><dt>Data fim de recebimento de propostas</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
+            ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : (r.fonte ? `<div><dt>Publicação</dt><dd>Não informada pela fonte</dd></div>` : "")}
+            <div><dt>${r.fonte ? "Abertura" : "Data fim de recebimento de propostas"}</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
             ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado), "valorTotalEstimado")}
             ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado), "valorTotalHomologado")}
             ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null, "numeroCompraAno")}
@@ -6334,10 +6333,10 @@
         const limiteDe = dataDe ? new Date(dataDe + "T00:00:00") : null;
         const limiteAte = dataAte ? new Date(dataAte + "T23:59:59") : null;
         resultados = resultados.filter((r) => {
-          const refBruta = r.publicacao || r.encerramento;
-          if (!refBruta) return true; // sem data de referência: não exclui por falta de dado
+          const refBruta = r.publicacao;
+          if (!refBruta) return false; // sem publicação verificável, não pertence a um período de publicação
           const d = new Date(refBruta);
-          if (isNaN(d)) return true;
+          if (isNaN(d)) return false;
           if (limiteDe && d < limiteDe) return false;
           if (limiteAte && d > limiteAte) return false;
           return true;

@@ -93,3 +93,11 @@ test("todos os dias reais são botões acessíveis, incluindo dias sem dados", (
   assert.equal([...calendario.html.matchAll(/<button\b[^>]*data-dia=/g)].length, 30);
   assert.match(calendario.html, /aria-pressed="false"/);
 });
+
+test("o calendário não posiciona edital sem data de publicação pela data de abertura", () => {
+  const resultados = [{ publicacao: null, encerramento: "2026-10-15", fonte: "SENAC/AM" }];
+  const { contexto, renderizacoes } = criarCalendario(resultados);
+  const dias = vm.runInContext("[...bolAgruparPorDia(bolResultadosCompletos).keys()]", contexto);
+  assert.equal(dias.length, 0);
+  assert.equal(renderizacoes.at(-1).lista.length, 1, "o edital continua na lista geral");
+});
