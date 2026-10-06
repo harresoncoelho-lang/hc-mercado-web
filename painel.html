@@ -5756,11 +5756,16 @@
     const palavras = String((filtro && filtro.palavrasRaw) || "").trim().toLowerCase();
     return `hc_boletim_resultado_v${BOL_CACHE_VERSAO}:${ufs}:${palavras}`;
   }
+  function corrigirDatasCacheBoletim(resultados) {
+    return resultados.map((r) => r?.fonte === "SENAC/AM" && r.publicacao
+      ? { ...r, publicacao: null } : r);
+  }
   function lerCacheResultadoBoletim(filtro) {
     try {
       const bruto = localStorage.getItem(chaveCacheBoletim(filtro));
       const cache = bruto ? JSON.parse(bruto) : null;
-      return cache && Array.isArray(cache.resultados) ? cache : null;
+      return cache && Array.isArray(cache.resultados)
+        ? { ...cache, resultados: corrigirDatasCacheBoletim(cache.resultados) } : null;
     } catch (e) {
       return null;
     }
@@ -5770,7 +5775,7 @@
       localStorage.setItem(chaveCacheBoletim(filtro), JSON.stringify({
         salvoEm: new Date().toISOString(),
         atualizadoAoVivoEm,
-        resultados,
+        resultados: corrigirDatasCacheBoletim(resultados),
       }));
     } catch (e) { /* armazenamento indisponível: o boletim segue normal */ }
   }

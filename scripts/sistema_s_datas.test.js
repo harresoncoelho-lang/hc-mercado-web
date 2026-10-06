@@ -22,3 +22,33 @@ test("SESC/AM preserva publicação e abertura como campos distintos", () => {
   assert.equal(registro.publicacao, "2026-10-05");
   assert.equal(registro.encerramento, "2026-10-15");
 });
+
+test("cache legado do boletim remove datas falsas do SENAC antes da primeira pintura", () => {
+  const inicioCache = html.indexOf("  const BOL_CACHE_VERSAO =");
+  const fimCache = html.indexOf("  function metaBoletim(", inicioCache);
+  assert.ok(inicioCache >= 0 && fimCache > inicioCache);
+  const armazenamento = new Map();
+  const cacheContexto = vm.createContext({
+    normalizarUfs: (ufs) => ufs,
+    localStorage: {
+      getItem: (chave) => armazenamento.get(chave),
+      setItem: (chave, valor) => armazenamento.set(chave, valor),
+    },
+  });
+  vm.runInContext(html.slice(inicioCache, fimCache), cacheContexto);
+  const filtro = { ufs: ["AM"], palavrasRaw: "evento" };
+  const chave = cacheContexto.chaveCacheBoletim(filtro);
+  armazenamento.set(chave, JSON.stringify({ salvoEm: "2026-10-05T23:00:00Z", resultados: [
+    { fonte: "SENAC/AM", numeroControlePNCP: "008/2026", publicacao: "2026-10-13", encerramento: "2026-10-13" },
+    { fonte: "SENAC/AM", numeroControlePNCP: "007/2026", publicacao: "2026-10-15", encerramento: "2026-10-15" },
+    { fonte: "SESC/AM", publicacao: "2026-10-05", encerramento: "2026-10-15" },
+  ] }));
+  const cache = cacheContexto.lerCacheResultadoBoletim(filtro);
+  assert.equal(cache.resultados[0].publicacao, null);
+  assert.equal(cache.resultados[1].publicacao, null);
+  assert.equal(cache.resultados[0].encerramento, "2026-10-13");
+  assert.equal(cache.resultados[1].encerramento, "2026-10-15");
+  assert.equal(cache.resultados[2].publicacao, "2026-10-05");
+  cacheContexto.salvarCacheResultadoBoletim(filtro, cache.resultados);
+  assert.equal(JSON.parse(armazenamento.get(chave)).resultados[0].publicacao, null);
+});
