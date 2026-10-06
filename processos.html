@@ -25,15 +25,15 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   <div id="aviso" class="aviso"></div>
   <section class="metricas"><div class="metrica"><span>Processos ativos</span><b id="m-ativos">—</b><span>em preparação, proposta, sessão ou habilitação</span></div><div class="metrica"><span>Prazos vencidos</span><b id="m-prazos">—</b><span>pendências que precisam de ação</span></div><div class="metrica"><span>Vitórias registradas</span><b id="m-ganhos">—</b><span>declaradas ou apuradas por item</span></div><div class="metrica"><span>Valor homologado</span><b id="m-homologado">—</b><span>valores registrados; confira a fonte</span></div><div class="metrica"><span>Saldo de empenhos</span><b id="m-saldo">—</b><span>execução ainda pendente</span></div></section>
   <div class="abas"><button class="aba ativa" data-aba="funil">Funil de processos</button><button class="aba" data-aba="prazos">Prazos e sessão</button><button class="aba" data-aba="empenhos">Empenhos e execução</button></div>
-  <section id="aba-funil" class="painel ativo"><div class="card"><div class="cabecalho-card"><div><h2>Carteira de licitações</h2><p>Abra um processo para ver seu checklist, preço mínimo e relatório.</p></div><button class="btn" id="btn-atualizar">Atualizar</button></div><div class="filtros"><input id="busca" placeholder="Busque por objeto, órgão ou número"><select id="filtro-status"><option value="">Todos os estágios</option><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option></select></div><div id="lista-processos" class="grade"></div></div></section>
+  <section id="aba-funil" class="painel ativo"><div class="card"><div class="cabecalho-card"><div><h2>Carteira de licitações</h2><p>Abra um processo para acompanhar a sessão, os itens e o resultado.</p></div><button class="btn" id="btn-atualizar">Atualizar</button></div><div class="filtros"><input id="busca" placeholder="Busque por objeto, órgão ou número"><select id="filtro-status"><option value="">Todos os estágios</option><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option></select></div><div id="lista-processos" class="grade"></div></div></section>
   <section id="aba-prazos" class="painel"><div class="card"><div class="cabecalho-card"><div><h2>Agenda dos processos</h2><p>Use o edital como fonte final para validar cada prazo.</p></div></div><div id="lista-prazos"></div></div></section>
   <section id="aba-empenhos" class="painel"><div class="card"><div class="cabecalho-card"><div><h2>Execução e empenhos</h2><p>Controle o que foi emitido, entregue, recebido e pago.</p></div></div><div class="tabela-wrap"><table class="tabela"><thead><tr><th>Empenho</th><th>Processo</th><th>Valor / saldo</th><th>Entrega</th><th>Status</th></tr></thead><tbody id="lista-empenhos"></tbody></table></div></div></section>
 </main>
 
-<div id="modal-processo" class="modal"><form id="form-processo" class="modal-corpo"><h2 id="titulo-form-processo">Novo processo</h2><input name="id" type="hidden"><div class="form-grade"><div class="inteiro"><label>Objeto</label><input name="objeto" required maxlength="500" placeholder="Ex.: Aquisição de material gráfico"></div><div><label>Número / processo</label><input name="numero" maxlength="100"></div><div><label>Modalidade</label><input name="modalidade" maxlength="80" placeholder="Pregão eletrônico, dispensa..."></div><div><label>Sistema / portal</label><input name="sistema" maxlength="100" placeholder="Ex.: e-Compras, Compras.gov.br"></div><div><label>UASG, se houver</label><input name="uasg" maxlength="30"></div><div class="inteiro"><label>Órgão comprador</label><input name="orgao" maxlength="220"></div><div class="inteiro"><label>Link oficial</label><input name="url_origem" type="url" maxlength="500" placeholder="https://pncp.gov.br/..."></div><div><label>Decisão inicial</label><select name="decisao"><option value="em_analise">Em análise</option><option value="participar">Participar</option><option value="nao_participar">Não participar</option></select></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div><div><label>Publicação</label><input name="data_publicacao" type="date"></div><div><label>Sessão</label><input name="data_sessao" type="datetime-local"></div><div><label>Valor estimado</label><input name="valor_estimado" type="number" min="0" step="0.01"></div><div><label>Custo direto</label><input name="custo_direto" type="number" min="0" step="0.01"></div><div><label>Frete e despesas variáveis</label><input name="frete" type="number" min="0" step="0.01"></div><div><label>Tributos (%)</label><input name="tributos_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Garantia (%)</label><input name="garantia_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Margem desejada (%)</label><input name="margem_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Preço da proposta</label><input name="preco_proposta" type="number" min="0" step="0.01"></div><div class="inteiro"><label>Documentos exigidos</label><textarea name="documentos_exigidos" rows="4" placeholder="Um por linha. Ex.: Certidão Federal&#10;CNDT&#10;Atestado de capacidade técnica"></textarea><p class="nota">O dossiê cruza estes nomes com os documentos válidos da empresa; a conferência do edital continua obrigatória.</p></div><div class="inteiro"><label>Observações da decisão</label><textarea name="observacoes" rows="3" maxlength="3000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-processo">Cancelar</button><button class="btn primario" id="btn-salvar-processo">Salvar dossiê</button></div></form></div>
+<div id="modal-processo" class="modal"><form id="form-processo" class="modal-corpo"><h2 id="titulo-form-processo">Novo processo</h2><input name="id" type="hidden"><div class="form-grade"><div class="inteiro"><label>Objeto</label><input name="objeto" required maxlength="500" placeholder="Ex.: Aquisição de material gráfico"></div><div><label>Número / processo</label><input name="numero" maxlength="100"></div><div><label>Modalidade</label><input name="modalidade" maxlength="80" placeholder="Pregão eletrônico, dispensa..."></div><div><label>Sistema / portal</label><input name="sistema" maxlength="100" placeholder="Ex.: e-Compras, Compras.gov.br"></div><div><label>UASG, se houver</label><input name="uasg" maxlength="30"></div><div class="inteiro"><label>Órgão comprador</label><input name="orgao" maxlength="220"></div><div class="inteiro"><label>Link oficial</label><input name="url_origem" type="url" maxlength="500" placeholder="https://pncp.gov.br/..."></div><div><label>Decisão inicial</label><select name="decisao"><option value="em_analise">Em análise</option><option value="participar">Participar</option><option value="nao_participar">Não participar</option></select></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div><div><label>Publicação</label><input name="data_publicacao" type="date"></div><div><label>Sessão</label><input name="data_sessao" type="datetime-local"></div><div><label>Valor estimado</label><input name="valor_estimado" type="number" min="0" step="0.01"></div><div><label>Custo direto</label><input name="custo_direto" type="number" min="0" step="0.01"></div><div><label>Frete e despesas variáveis</label><input name="frete" type="number" min="0" step="0.01"></div><div><label>Tributos (%)</label><input name="tributos_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Garantia (%)</label><input name="garantia_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Margem desejada (%)</label><input name="margem_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Preço da proposta</label><input name="preco_proposta" type="number" min="0" step="0.01"></div><div class="inteiro"><label>Observações da decisão</label><textarea name="observacoes" rows="3" maxlength="3000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-processo">Cancelar</button><button class="btn primario" id="btn-salvar-processo">Salvar dossiê</button></div></form></div>
 
 <div id="modal-dossie" class="modal"><div class="modal-corpo"><div class="cabecalho-card"><div><h2 id="d-titulo">Dossiê</h2><p id="d-subtitulo"></p></div><button class="btn" data-fechar="modal-dossie">Fechar</button></div><div id="d-conteudo"></div></div></div>
-<div id="modal-relatorio" class="modal"><div class="modal-corpo"><div class="cabecalho-card"><div><h2>Relatório do processo</h2><p class="nota">Prévia completa. Para baixar em PDF, clique em “Imprimir / salvar PDF” e escolha “Salvar como PDF” no navegador.</p></div><button class="btn" type="button" data-fechar="modal-relatorio">Fechar</button></div><div class="acoes-bloco"><button class="btn primario" type="button" id="btn-salvar-pdf">Imprimir / salvar PDF</button></div><iframe id="relatorio-frame" title="Prévia do relatório operacional"></iframe></div></div>
+<div id="modal-relatorio" class="modal"><div class="modal-corpo"><div class="cabecalho-card"><div><h2>Relatório do processo</h2><p class="nota">Prévia com os dados básicos e somente os itens/lotes ganhos. Para baixar em PDF, clique em “Imprimir / salvar PDF” e escolha “Salvar como PDF” no navegador.</p></div><button class="btn" type="button" data-fechar="modal-relatorio">Fechar</button></div><div class="acoes-bloco"><button class="btn primario" type="button" id="btn-salvar-pdf">Imprimir / salvar PDF</button></div><iframe id="relatorio-frame" title="Prévia do relatório operacional"></iframe></div></div>
 
 <div id="modal-resultado" class="modal"><form id="form-resultado" class="modal-corpo"><h2>Resultado do processo</h2><input name="processo_id" type="hidden"><p class="nota">Registre apenas o resultado confirmado. Se houver itens/lotes, a apuração do painel virá deles.</p><div class="form-grade"><div><label>Situação</label><select name="situacao_resultado"><option value="nao_apurado">Não apurado</option><option value="nao_participou">Não participou</option><option value="em_disputa">Em disputa</option><option value="sem_vitoria">Participou sem vencer</option><option value="vitoria_sem_detalhamento">Ganhou — itens pendentes de detalhamento</option><option value="vitoria_parcial">Vitória parcial</option><option value="vitoria_total">Vitória total</option><option value="revogado_anulado">Revogado / anulado</option></select></div><div><label>Data do resultado</label><input name="data_resultado" type="date"></div><div><label>Valor homologado à empresa (R$)</label><input name="valor_homologado" type="number" min="0" step="0.01"></div><div><label>Link da fonte oficial</label><input name="fonte_resultado" type="url" maxlength="500"></div><div class="inteiro"><label>Motivo de perda / observação</label><textarea name="motivo_perda" rows="3" maxlength="2000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-resultado">Cancelar</button><button class="btn primario">Salvar resultado</button></div></form></div>
 
@@ -53,10 +53,6 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
 (() => {
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const estado = { orgId:null, empresaId:null, empresas:[], processos:[], documentos:[], prazos:[], empenhos:[], itens:[], ocorrencias:[], contratos:[], anexos:[], detalhesCarregados:false, erroDetalhes:false };
-  const consultasChecklist = new Set();
-  const checklistsAutomaticosConferidos = new Set();
-  const checklistIndisponivel = new Set();
-  const motivosChecklist = new Map();
   const itensOficiais = new Map();
   const consultasItens = new Set();
   const falhasItens = new Set();
@@ -71,58 +67,6 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   function aviso(texto,tipo="info"){const e=$("aviso");e.textContent=texto;e.className=`aviso ${tipo}`;} function fecharAviso(){$("aviso").className="aviso";} function abrir(id){$(id).classList.add("aberto");} function fechar(id){$(id).classList.remove("aberto");}
   function numero(v){if(v==null||v==="")return null;const n=Number(v);return Number.isFinite(n) && n >= 0 ? n : null;} function calcularMinimo(f){const base=(numero(f.get("custo_direto"))||0)+(numero(f.get("frete"))||0), pct=(numero(f.get("tributos_percentual"))||0)+(numero(f.get("garantia_percentual"))||0)+(numero(f.get("margem_percentual"))||0); return base && pct < 100 ? Number((base/(1-pct/100)).toFixed(2)) : null;}
   function dataLocal(v){if(!v)return "";const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-  function docsValidos(){const hoje=new Date();return estado.documentos.filter(d => d.vencimento && new Date(`${d.vencimento}T23:59:59`) >= hoje).map(d=>d.tipo.toLocaleLowerCase("pt-BR"));}
-  async function preencherChecklistDoResumo(processo){
-    const checklistAutomatico=processo.checklist_fonte==="resumo"&&!processo.checklist_editado_manualmente;
-    if(((processo.documentos_exigidos||[]).length&&!checklistAutomatico) || processo.checklist_editado_manualmente || consultasChecklist.has(processo.id) || checklistIndisponivel.has(processo.id))return;
-    const pncp=LicitaOperacaoEdital.idPncp(processo);
-    if(!pncp){checklistIndisponivel.add(processo.id);return;}
-    consultasChecklist.add(processo.id);
-    try{
-      const {data:{session}}=await sb.auth.getSession();
-      if(!session)throw new Error("Sessão expirada");
-      const resposta=await fetch("/.netlify/functions/ia-edital",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({modo:"consulta_requisitos",edital:{numeroControlePNCP:pncp}})});
-      if(!resposta.ok)throw new Error(`Consulta indisponível (${resposta.status})`);
-      let dados=await resposta.json();
-      let requisitos=LicitaOperacaoEdital.requisitosDaEstrutura({fonteLida:!!dados.disponivel,documentosHabilitacao:dados.requisitos||[]});
-      // Se ainda não houve resumo, inicia a análise apenas deste edital selecionado.
-      // A consulta acima evita refazer um resumo já validado em outra sessão.
-      if(!dados.disponivel){
-        let concluido=false;
-        for(let tentativa=0;tentativa<24;tentativa++){
-          const {data:{session:atual}}=await sb.auth.getSession();
-          if(!atual)throw new Error("Sessão expirada");
-          const geracao=await fetch("/.netlify/functions/ia-edital",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${atual.access_token}`},body:JSON.stringify({modo:"resumo",edital:{numeroControlePNCP:pncp}})});
-          dados=await geracao.json();
-          if(geracao.status===202&&dados.emProcessamento){
-            const segundos=Math.min(5,Math.max(1,Number(dados.progresso?.aguardarSegundos)||2));
-            await new Promise(resolve=>setTimeout(resolve,segundos*1000));
-            continue;
-          }
-          if(!geracao.ok||dados.erro)throw new Error(dados.erro||`Resumo indisponível (${geracao.status})`);
-          concluido=true;
-          break;
-        }
-        if(!concluido)throw new Error("A análise do edital ainda está em andamento. Abra o processo novamente mais tarde");
-        requisitos=LicitaOperacaoEdital.requisitosDaEstrutura({...dados.estrutura,fonteLida:!!dados.fonteLida,modoDegradado:!!dados.modoDegradado});
-      }
-      if(!requisitos.length){
-        const cobertura=dados.cobertura||dados.estrutura?.coberturaLeitura;
-        const principalNaoLido=cobertura?.documentosNaoLidos?.find(item=>/\b(edital|termo de refer[eê]ncia)\b/i.test(item));
-        motivosChecklist.set(processo.id,principalNaoLido?`O documento principal não pôde ser lido (${principalNaoLido}).`:"O material lido não trouxe requisitos de habilitação verificáveis.");
-        checklistIndisponivel.add(processo.id);return;
-      }
-      if(JSON.stringify(requisitos)===JSON.stringify(processo.documentos_exigidos||[]))return;
-      const geradoEm=dados.geradoEm||new Date().toISOString();
-      const {data,error}=await sb.from("operacao_processos").update({documentos_exigidos:requisitos,checklist_fonte:"resumo",checklist_gerado_em:geradoEm,atualizado_em:new Date().toISOString()})
-        .eq("id",processo.id).eq("organizacao_id",estado.orgId).eq("empresa_id",processo.empresa_id)
-        .eq("checklist_editado_manualmente",false).eq("atualizado_em",processo.atualizado_em).select("id,atualizado_em");
-      if(error)throw error;
-      if(data?.length){processo.documentos_exigidos=requisitos;processo.checklist_fonte="resumo";processo.checklist_gerado_em=geradoEm;processo.atualizado_em=data[0].atualizado_em;}
-      else checklistIndisponivel.add(processo.id);
-    }catch(erro){console.warn("Checklist automático indisponível:",erro);const mensagem=erro.message||"erro não identificado";motivosChecklist.set(processo.id,`${mensagem.includes("ainda está em andamento")?"":"A consulta automática falhou: "}${mensagem}.`);checklistIndisponivel.add(processo.id);}
-    finally{consultasChecklist.delete(processo.id);if($("modal-dossie").classList.contains("aberto")&&$("modal-dossie").dataset.processoId===processo.id)abrirDossie(processo.id);}
-  }
   function renderizarItensOficiais(processo){
     const alvo=$("d-itens-edital");
     if(!alvo)return;
@@ -219,19 +163,16 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   function renderizarEmpenhos(){if(!estado.detalhesCarregados){$("lista-empenhos").innerHTML=`<tr><td colspan="5" class="vazio">${estado.erroDetalhes?"Empenhos indisponíveis. Confira o aviso no topo.":"Carregando empenhos…"}</td></tr>`;return;}const processos=new Map(estado.processos.map(p=>[p.id,p]));const lista=estado.empenhos.filter(e=>processos.has(e.processo_id));$("lista-empenhos").innerHTML=lista.length?lista.map(e=>`<tr><td><strong>${esc(e.numero)}</strong><br><span class="nota">${data(e.emitido_em)}</span></td><td>${esc(processos.get(e.processo_id).objeto)}</td><td>${dinheiro(e.valor)}<br><span class="nota">Saldo: ${dinheiro(e.saldo ?? e.valor)}</span></td><td>${data(e.entrega_prevista)}</td><td><span class="tag ${e.status}">${esc(rotuloStatus(e.status))}</span></td></tr>`).join(""):`<tr><td colspan="5" class="vazio">Nenhum empenho cadastrado.</td></tr>`;}
   function abrirDossie(id){
     const p=estado.processos.find(x=>x.id===id);if(!p)return;
-    const exigidos=p.documentos_exigidos||[], validos=docsValidos(), origem=linkSeguro(p.url_origem);
-    const checklist=exigidos.length?exigidos.map((d,indice)=>`<div class="check"><span>${esc(d)}</span><span><span class="tag ${validos.includes(String(d).toLocaleLowerCase("pt-BR"))?"homologado":""}">${validos.includes(String(d).toLocaleLowerCase("pt-BR"))?"Documento válido":"Conferir"}</span> <button class="btn" type="button" data-excluir-requisito="${indice}" title="Remover este requisito do checklist">Excluir</button></span></div>`).join(""):`<p class="nota">${p.checklist_editado_manualmente?"Checklist esvaziado manualmente. Use Editar checklist para incluir requisitos.":consultasChecklist.has(id)?"Lendo o edital e preparando os requisitos automaticamente. Isso pode levar alguns minutos; você pode continuar usando a carteira.":!LicitaOperacaoEdital.idPncp(p)?"Esta oportunidade não tem identificador PNCP para consulta automática. Confira a fonte oficial e edite o checklist se necessário.":checklistIndisponivel.has(id)?`${esc(motivosChecklist.get(id)||"Não foi possível concluir o checklist automático agora.")} Confira a fonte oficial ou <button class="btn" type="button" data-retry-checklist="${id}">Tentar novamente</button>.`:"Os requisitos do edital serão consultados automaticamente. Confira o documento oficial antes de enviar a proposta."}</p>`;
+    const origem=linkSeguro(p.url_origem);
     $("d-titulo").textContent=p.objeto;
     $("d-subtitulo").textContent=[p.numero,p.orgao,p.modalidade,p.sistema,p.uasg?`UASG ${p.uasg}`:""].filter(Boolean).join(" · ")||"Dossiê privado";
-    $("d-conteudo").innerHTML=`<div class="dossie-grid"><div class="dado"><span>Decisão inicial</span><b>${esc(p.decisao.replaceAll("_"," "))}</b></div><div class="dado"><span>Estágio operacional</span><b>${esc(rotuloStatus(p.status))}</b></div><div class="dado"><span>Sessão</span><b>${dataHora(p.data_sessao)}</b></div><div class="dado"><span>Preço mínimo</span><b>${p.preco_minimo?dinheiro(p.preco_minimo):"Não calculado"}</b></div><div class="dado"><span>Proposta</span><b>${p.preco_proposta?dinheiro(p.preco_proposta):"Não registrada"}</b></div><div class="dado"><span>Responsável</span><b>${esc(p.responsavel||"Não definido")}</b></div></div><div class="card"><div class="cabecalho-card"><h3>Checklist de habilitação</h3><button class="btn" type="button" data-editar-checklist="${p.id}">Editar checklist</button></div><p class="nota">${p.checklist_fonte==="resumo"?`Extraído do Resumo do Edital${p.checklist_gerado_em?` em ${dataHora(p.checklist_gerado_em)}`:""}.`:"Requisitos da carteira."} Confira exigências e documentos oficiais.</p>${checklist}</div><div class="card" id="d-itens-edital"></div><div id="d-acompanhamento"></div><div class="acoes-dossie"><select id="d-status" aria-label="Estágio do processo"><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option><option value="arquivado">Arquivado</option></select><button class="btn" data-atualizar-status="${p.id}">Atualizar estágio</button><button class="btn" data-relatorio="${p.id}">Visualizar relatório</button>${origem?`<a class="btn" href="${esc(origem)}" target="_blank" rel="noopener">Abrir fonte oficial</a>`:""}</div>`;
+    $("d-conteudo").innerHTML=`<div class="dossie-grid"><div class="dado"><span>Órgão</span><b>${esc(p.orgao||"Não informado")}</b></div><div class="dado"><span>Publicação</span><b>${data(p.data_publicacao)}</b></div><div class="dado"><span>Sessão / abertura</span><b>${dataHora(p.data_sessao)}</b></div><div class="dado"><span>Estágio</span><b>${esc(rotuloStatus(p.status))}</b></div></div><div class="card" id="d-itens-edital"></div><div id="d-acompanhamento"></div><div class="acoes-dossie"><select id="d-status" aria-label="Estágio do processo"><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option><option value="arquivado">Arquivado</option></select><button class="btn" data-atualizar-status="${p.id}">Atualizar estágio</button><button class="btn" data-relatorio="${p.id}">Visualizar relatório</button>${origem?`<a class="btn" href="${esc(origem)}" target="_blank" rel="noopener">Abrir fonte oficial</a>`:""}</div>`;
     $("d-status").value=p.status;
     $("modal-dossie").dataset.processoId=id;
     acompanhamento.renderizar(p);
     abrir("modal-dossie");
     renderizarItensOficiais(p);
     void carregarItensOficiais(p);
-    const atualizarAutomatico=p.checklist_fonte==="resumo"&&!p.checklist_editado_manualmente&&!checklistsAutomaticosConferidos.has(p.id);
-    if(!exigidos.length||atualizarAutomatico){checklistsAutomaticosConferidos.add(p.id);void preencherChecklistDoResumo(p);}
   }
   async function visualizarRelatorio(id){
     if(!estado.detalhesCarregados){aviso("Aguarde o carregamento completo do acompanhamento antes de gerar o relatório.","erro");return;}
@@ -240,21 +181,13 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     $("btn-salvar-pdf").disabled=true;
     $("relatorio-frame").srcdoc='<!doctype html><html lang="pt-BR"><meta charset="utf-8"><body style="font:16px Arial;padding:24px">Preparando relatório completo…</body></html>';
     abrir("modal-relatorio");
-    if(!itensOficiais.has(id)&&!falhasItens.has(id)){
-      if(consultasItens.has(id)){
-        for(let tentativa=0;tentativa<40&&consultasItens.has(id);tentativa++)await new Promise(resolve=>setTimeout(resolve,250));
-      }else await carregarItensOficiais(processo);
-    }
     if(!$("modal-relatorio").classList.contains("aberto"))return;
     const doProcesso=colecao=>colecao.filter(item=>item.processo_id===id);
     try{
       $("relatorio-frame").onload=()=>{$("btn-salvar-pdf").disabled=!$("relatorio-frame").contentDocument?.title?.startsWith("Relatório operacional");};
       $("relatorio-frame").srcdoc=LicitaRelatorioOperacional.gerarHtml({
         processo,empresa:estado.empresas.find(item=>item.id===processo.empresa_id),
-        itens:doProcesso(estado.itens),itensOficiais:itensOficiais.get(id)??null,
-        ocorrencias:doProcesso(estado.ocorrencias),prazos:doProcesso(estado.prazos),
-        contratos:doProcesso(estado.contratos),empenhos:doProcesso(estado.empenhos),
-        anexos:doProcesso(estado.anexos),resultado:resultadoDoProcesso(processo),
+        itens:doProcesso(estado.itens),resultado:resultadoDoProcesso(processo),
       });
     }catch(erro){aviso("Não foi possível montar o relatório: "+erro.message,"erro");fechar("modal-relatorio");}
   }
@@ -263,17 +196,12 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     const form=$("form-processo");form.reset();
     for(const campo of ["id","objeto","numero","modalidade","sistema","uasg","orgao","url_origem","decisao","responsavel","data_publicacao","valor_estimado","custo_direto","frete","tributos_percentual","garantia_percentual","margem_percentual","preco_proposta","observacoes"]){form.elements.namedItem(campo).value=(campo==="id"?p.id:p[campo])??"";}
     form.elements.namedItem("data_sessao").value=dataLocal(p.data_sessao);
-    form.elements.namedItem("documentos_exigidos").value=(p.documentos_exigidos||[]).join("\n");
     $("titulo-form-processo").textContent="Editar processo";fechar("modal-dossie");abrir("modal-processo");
   }
   async function salvarProcesso(ev){
     ev.preventDefault();const formulario=ev.currentTarget,f=new FormData(formulario), id=f.get("id");
-    const req=String(f.get("documentos_exigidos")||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-    const anterior=estado.processos.find(x=>x.id===id);
-    const checklistAlterado=anterior?JSON.stringify(req)!==JSON.stringify(anterior.documentos_exigidos||[]):req.length>0;
-    const checklistManual=Boolean(anterior?.checklist_editado_manualmente||checklistAlterado);
     const sessao=f.get("data_sessao")?new Date(f.get("data_sessao")).toISOString():null;
-    const dados={objeto:String(f.get("objeto")).trim(),numero:f.get("numero")||null,modalidade:f.get("modalidade")||null,sistema:f.get("sistema")||null,uasg:f.get("uasg")||null,orgao:f.get("orgao")||null,url_origem:linkSeguro(f.get("url_origem"))||null,decisao:f.get("decisao"),responsavel:f.get("responsavel")||null,data_publicacao:f.get("data_publicacao")||null,data_sessao:sessao,valor_estimado:numero(f.get("valor_estimado")),custo_direto:numero(f.get("custo_direto")),frete:numero(f.get("frete")),tributos_percentual:numero(f.get("tributos_percentual")),garantia_percentual:numero(f.get("garantia_percentual")),margem_percentual:numero(f.get("margem_percentual")),preco_minimo:calcularMinimo(f),preco_proposta:numero(f.get("preco_proposta")),documentos_exigidos:req,checklist_fonte:checklistManual?"manual":anterior?.checklist_fonte||"manual",checklist_editado_manualmente:checklistManual,observacoes:f.get("observacoes")||null,atualizado_em:new Date().toISOString()};
+    const dados={objeto:String(f.get("objeto")).trim(),numero:f.get("numero")||null,modalidade:f.get("modalidade")||null,sistema:f.get("sistema")||null,uasg:f.get("uasg")||null,orgao:f.get("orgao")||null,url_origem:linkSeguro(f.get("url_origem"))||null,decisao:f.get("decisao"),responsavel:f.get("responsavel")||null,data_publicacao:f.get("data_publicacao")||null,data_sessao:sessao,valor_estimado:numero(f.get("valor_estimado")),custo_direto:numero(f.get("custo_direto")),frete:numero(f.get("frete")),tributos_percentual:numero(f.get("tributos_percentual")),garantia_percentual:numero(f.get("garantia_percentual")),margem_percentual:numero(f.get("margem_percentual")),preco_minimo:calcularMinimo(f),preco_proposta:numero(f.get("preco_proposta")),observacoes:f.get("observacoes")||null,atualizado_em:new Date().toISOString()};
     const consulta=id
       ? sb.from("operacao_processos").update(dados).eq("id",id).eq("organizacao_id",estado.orgId)
       : sb.from("operacao_processos").insert({...dados,organizacao_id:estado.orgId,empresa_id:estado.empresaId});
@@ -303,18 +231,11 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)fechar(m.id);}));
   document.querySelectorAll(".aba").forEach(b=>b.onclick=()=>{document.querySelectorAll(".aba").forEach(x=>x.classList.remove("ativa"));document.querySelectorAll(".painel").forEach(x=>x.classList.remove("ativo"));b.classList.add("ativa");$("aba-"+b.dataset.aba).classList.add("ativo");});
   $("lista-processos").addEventListener("click",e=>{const p=e.target.closest("[data-processo]");if(p)abrirDossie(p.dataset.processo);});
-  $("d-conteudo").addEventListener("click",async e=>{const prazo=e.target.closest("[data-add-prazo]"),empenho=e.target.closest("[data-add-empenho]"),rel=e.target.closest("[data-relatorio]"),atualizar=e.target.closest("[data-atualizar-status]"),editar=e.target.closest("[data-editar-checklist]"),excluir=e.target.closest("[data-excluir-requisito]");if(editar){editarProcesso(editar.dataset.editarChecklist);return;}if(excluir){const id=$("modal-dossie").dataset.processoId,p=estado.processos.find(x=>x.id===id),indice=Number(excluir.dataset.excluirRequisito);if(!p||!Number.isInteger(indice)||indice<0||indice>=p.documentos_exigidos.length)return;if(!confirm("Excluir este requisito do checklist deste processo?"))return;const requisitos=p.documentos_exigidos.filter((_,i)=>i!==indice);const {error}=await sb.from("operacao_processos").update({documentos_exigidos:requisitos,checklist_fonte:"manual",checklist_editado_manualmente:true,atualizado_em:new Date().toISOString()}).eq("id",id).eq("empresa_id",estado.empresaId);if(error){aviso("Não foi possível excluir o requisito: "+error.message,"erro");return;}p.documentos_exigidos=requisitos;p.checklist_fonte="manual";p.checklist_editado_manualmente=true;abrirDossie(id);return;}if(prazo){$("form-prazo").reset();$("titulo-form-prazo").textContent="Novo prazo do processo";$("form-prazo").processo_id.value=prazo.dataset.addPrazo;fechar("modal-dossie");abrir("modal-prazo");}if(empenho){$("form-empenho").reset();$("titulo-form-empenho").textContent="Novo empenho";$("form-empenho").processo_id.value=empenho.dataset.addEmpenho;fechar("modal-dossie");abrir("modal-empenho");}if(rel)void visualizarRelatorio(rel.dataset.relatorio);if(atualizar){const {error}=await sb.from("operacao_processos").update({status:$("d-status").value,atualizado_em:new Date().toISOString()}).eq("id",atualizar.dataset.atualizarStatus);if(error){aviso("Não foi possível atualizar o estágio: "+error.message,"erro");return;}await carregarTudo();abrirDossie(atualizar.dataset.atualizarStatus);}});
+  $("d-conteudo").addEventListener("click",async e=>{const prazo=e.target.closest("[data-add-prazo]"),empenho=e.target.closest("[data-add-empenho]"),rel=e.target.closest("[data-relatorio]"),atualizar=e.target.closest("[data-atualizar-status]");if(prazo){$("form-prazo").reset();$("titulo-form-prazo").textContent="Novo prazo do processo";$("form-prazo").processo_id.value=prazo.dataset.addPrazo;fechar("modal-dossie");abrir("modal-prazo");}if(empenho){$("form-empenho").reset();$("titulo-form-empenho").textContent="Novo empenho";$("form-empenho").processo_id.value=empenho.dataset.addEmpenho;fechar("modal-dossie");abrir("modal-empenho");}if(rel)void visualizarRelatorio(rel.dataset.relatorio);if(atualizar){const {error}=await sb.from("operacao_processos").update({status:$("d-status").value,atualizado_em:new Date().toISOString()}).eq("id",atualizar.dataset.atualizarStatus);if(error){aviso("Não foi possível atualizar o estágio: "+error.message,"erro");return;}await carregarTudo();abrirDossie(atualizar.dataset.atualizarStatus);}});
   $("d-conteudo").addEventListener("click",e=>{
     const id=$("modal-dossie").dataset.processoId;
     const processo=estado.processos.find(item=>item.id===id);
     if(!processo)return;
-    if(e.target.closest("[data-retry-checklist]")){
-      checklistIndisponivel.delete(id);
-      motivosChecklist.delete(id);
-      void preencherChecklistDoResumo(processo);
-      abrirDossie(id);
-      return;
-    }
     const mais=e.target.closest("[data-mais-itens]");
     if(mais){limiteItensVisiveis.set(id,(limiteItensVisiveis.get(id)||30)+30);renderizarItensOficiais(processo);return;}
     const acompanhar=e.target.closest("[data-acompanhar-item]");

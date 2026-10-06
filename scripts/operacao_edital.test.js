@@ -55,41 +55,12 @@ test("prévia recebe todos os registros do processo sem abrir outra guia", async
   await vm.runInNewContext(`${html.slice(inicio, fim)}; visualizarRelatorio`, contexto)("p");
   assert.equal(frame.srcdoc, "<html>relatório</html>");
   assert.equal(recebido.itens.length, 1);
-  assert.equal(recebido.prazos.length, 1);
   assert.equal(recebido.empresa.razao_social, "Empresa");
+  assert.equal(recebido.itens[0].processo_id, "p");
 });
 
-test("edição humana impede que novo resumo substitua checklist ou restaure item excluído", () => {
+test("carteira não mostra nem dispara o checklist do resumo", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
-  assert.match(html, /checklist_editado_manualmente:true/);
-  assert.match(html, /\.eq\("checklist_editado_manualmente",false\)/);
-  assert.match(html, /checklistAutomatico=processo\.checklist_fonte==="resumo"/);
-  assert.match(html, /JSON\.stringify\(requisitos\)===JSON\.stringify\(processo\.documentos_exigidos\|\|\[\]\)/);
-  assert.match(html, /checklistsAutomaticosConferidos\.has\(p\.id\)/);
-  assert.match(html, /if\(!exigidos\.length\|\|atualizarAutomatico\)/);
-});
-
-test("checklist espera o resumo progressivo antes de gravar requisitos", async () => {
-  const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
-  const inicio = html.indexOf("  async function preencherChecklistDoResumo(processo){");
-  const fim = html.indexOf("  function renderizarItensOficiais(processo){", inicio);
-  assert.ok(inicio >= 0 && fim > inicio);
-  const chamadas = [], gravacoes = [];
-  const respostas = [
-    { disponivel: false, requisitos: [] },
-    { emProcessamento: true, progresso: { aguardarSegundos: 1 } },
-    { fonteLida: true, estrutura: { documentosHabilitacao: ["Certidão fiscal [Edital, 7.1]"] } },
-  ];
-  const consulta = { eq() { return this; }, select() { return Promise.resolve({ data: [{ id: "p1", atualizado_em: "novo" }], error: null }); } };
-  const contexto = { LicitaOperacaoEdital: require("../operacao-edital"), consultasChecklist: new Set(), checklistIndisponivel: new Set(),
-    estado: { orgId: "org" }, sb: { auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) },
-      from: () => ({ update: dados => { gravacoes.push(dados); return consulta; } }) },
-    fetch: async (_url, opcoes) => { chamadas.push(JSON.parse(opcoes.body).modo); const status = chamadas.length === 2 ? 202 : 200; return { ok: true, status, json: async () => respostas.shift() }; },
-    $: () => ({ classList: { contains: () => false } }), console, setTimeout: resolva => resolva(), abrirDossie: () => assert.fail("Modal fechado") };
-  const processo = { id: "p1", empresa_id: "empresa", origem_externa_id: "12345678000199-1-12/2026", atualizado_em: "antigo", documentos_exigidos: [] };
-  await vm.runInNewContext(`${html.slice(inicio, fim)}; preencherChecklistDoResumo`, contexto)(processo);
-  assert.deepEqual(chamadas, ["consulta_requisitos", "resumo", "resumo"]);
-  assert.equal(gravacoes.length, 1);
-  assert.equal(processo.documentos_exigidos[0], "Certidão fiscal [Edital, 7.1]");
-  assert.equal(processo.atualizado_em, "novo");
+  assert.doesNotMatch(html, /Checklist de habilitação|preencherChecklistDoResumo|data-retry-checklist/);
+  assert.doesNotMatch(html, /name="documentos_exigidos"/);
 });
