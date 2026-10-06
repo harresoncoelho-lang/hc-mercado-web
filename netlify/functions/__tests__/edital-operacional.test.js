@@ -26,7 +26,7 @@ test("releitura pontual só alcança cache antigo sem checklist cujo edital foi 
   assert.equal(precisaReleituraPrioritaria(cache), false);
   delete cache.estrutura.coberturaLeitura.prioridadeDocumentoPrincipal;
   cache.estrutura.documentosHabilitacao = ["Documento exigido no edital"];
-  assert.equal(precisaReleituraPrioritaria(cache), false);
+  assert.equal(precisaReleituraPrioritaria(cache), true);
 });
 
 test("narrativa contratual corrige página pela cláusula única e recupera condições reais", () => {

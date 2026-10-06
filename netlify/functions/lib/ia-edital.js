@@ -152,7 +152,6 @@ function precisaReleituraPrioritaria(cache) {
   const estrutura = cache?.estrutura;
   const cobertura = estrutura?.coberturaLeitura;
   return Boolean(cobertura?.parcial && !cobertura.prioridadeDocumentoPrincipal &&
-    !normalizarListaDoDossie(estrutura.documentosHabilitacao, 200).length && !normalizarListaDoDossie(estrutura.declaracoesExigidas, 200).length &&
     cobertura.documentosNaoLidos?.some((documento) => /\bedital(?:\.pdf)?\b.*limite de documentos/i.test(documento)));
 }
 
