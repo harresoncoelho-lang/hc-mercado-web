@@ -19,6 +19,9 @@ test("releitura pontual só alcança cache antigo sem checklist cujo edital foi 
     parcial: true, documentosNaoLidos: ["Edital.pdf (#15): limite de documentos"],
   } } };
   assert.equal(precisaReleituraPrioritaria(cache), true);
+  cache.estrutura.documentosHabilitacao = ["Não informado"];
+  assert.equal(precisaReleituraPrioritaria(cache), true);
+  cache.estrutura.documentosHabilitacao = [];
   cache.estrutura.coberturaLeitura.prioridadeDocumentoPrincipal = true;
   assert.equal(precisaReleituraPrioritaria(cache), false);
   delete cache.estrutura.coberturaLeitura.prioridadeDocumentoPrincipal;
