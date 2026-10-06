@@ -21,7 +21,7 @@
     if (!p || !resultado) throw new Error("Processo e resultado são obrigatórios.");
     const ganhos = itens.filter(item => item.situacao === "ganho");
     const ganhosHtml = ganhos.length
-      ? `<table><thead><tr><th>Item/lote</th><th>Descrição</th><th>Quantidade</th><th>Valor homologado à empresa</th><th>Fonte oficial</th></tr></thead><tbody>${ganhos.map(item => `<tr><td>${esc(`${item.tipo || "Item"} ${item.identificador || ""}`)}</td><td>${esc(item.descricao || "Não informada")}</td><td>${esc(item.quantidade ?? "Não informada")}</td><td>${esc(dinheiro(item.valor_homologado))}</td><td>${fonte(item.fonte_oficial)}</td></tr>`).join("")}</tbody></table>`
+      ? `<table><thead><tr><th>Item/lote</th><th>Descrição</th><th>Marca / modelo</th><th>Quantidade</th><th>Valor homologado à empresa</th><th>Fonte oficial</th></tr></thead><tbody>${ganhos.map(item => `<tr><td>${esc(`${item.tipo || "Item"} ${item.identificador || ""}`)}</td><td>${esc(item.descricao || "Não informada")}</td><td>${esc([item.marca, item.modelo].filter(Boolean).join(" / ") || "Não informado")}</td><td>${esc(item.quantidade ?? "Não informada")}</td><td>${esc(dinheiro(item.valor_homologado))}</td><td>${fonte(item.fonte_oficial)}</td></tr>`).join("")}</tbody></table>`
       : `<p class="nota">${["vitoria_total", "vitoria_parcial", "vitoria_sem_detalhamento"].includes(resultado.situacao) ? "Vitória informada, mas os itens/lotes ganhos ainda não foram detalhados." : "Nenhum item/lote ganho registrado até esta emissão."}</p>`;
     const identificacao = [
       campo("Empresa", esc(empresa?.razao_social || "Não informada")),

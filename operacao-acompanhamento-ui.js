@@ -41,7 +41,7 @@
           <p class="nota">Data: ${data(processo.data_resultado)} · ${origem(processo.fonte_resultado) || "Fonte oficial não vinculada"}${processo.motivo_perda ? ` · ${esc(processo.motivo_perda)}` : ""}</p>
           ${processo.resultado ? `<p class="nota">Registro anterior do processo: ${esc(processo.resultado)}</p>` : ""}
           <div class="acoes-bloco"><button class="btn" data-editar-processo="${processo.id}">Editar cadastro e sessão</button><button class="btn" data-resultado="${processo.id}">Registrar resultado</button><button class="btn" data-item="${processo.id}">+ Item/lote</button></div>
-          ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}${item.quantidade == null ? "" : ` · qtd.: ${esc(item.quantidade)}`}</small>${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button> <button class="btn perigo" data-excluir-item="${item.id}">Excluir lançamento</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
+          ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}${item.quantidade == null ? "" : ` · qtd.: ${esc(item.quantidade)}`}</small>${item.marca || item.modelo ? `<small>Marca: ${esc(item.marca || "—")} · Modelo: ${esc(item.modelo || "—")}</small>` : ""}${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button> <button class="btn perigo" data-excluir-item="${item.id}">Excluir lançamento</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
         </section>
         <section class="bloco-dossie"><h3>Relatório cronológico</h3><div class="acoes-bloco"><button class="btn" data-ocorrencia="${processo.id}">+ Ocorrência</button></div>
           ${lista(ocorrencias, evento => `<div class="linha-registro"><strong>${dataHora(evento.ocorrido_em)} · ${esc(evento.categoria)}</strong><small>${esc(evento.descricao)}</small>${origem(evento.fonte_oficial)} <button class="btn" data-editar-ocorrencia="${evento.id}">Corrigir registro</button></div>`, "Nenhuma ocorrência registrada. Anote sessões, mensagens, diligências e decisões com suas datas.")}
@@ -91,7 +91,7 @@
       const formulario = ev.currentTarget, f = new FormData(formulario), id = f.get("processo_id");
       const valor = valorNumero(f.get("valor_homologado"));
       if (valor != null && f.get("situacao") !== "ganho") { aviso("O valor homologado à empresa só cabe em item ganho.", "erro"); return; }
-      const dados = { tipo: f.get("tipo"), identificador: String(f.get("identificador")).trim(), descricao: f.get("descricao") || null, situacao: f.get("situacao"), quantidade: valorNumero(f.get("quantidade")), valor_proposta: valorNumero(f.get("valor_proposta")), valor_homologado: valor, motivo: f.get("motivo") || null, fonte_oficial: linkSeguro(f.get("fonte_oficial")) || null, atualizado_em: new Date().toISOString() };
+      const dados = { tipo: f.get("tipo"), identificador: String(f.get("identificador")).trim(), descricao: f.get("descricao") || null, marca: String(f.get("marca") || "").trim() || null, modelo: String(f.get("modelo") || "").trim() || null, situacao: f.get("situacao"), quantidade: valorNumero(f.get("quantidade")), valor_proposta: valorNumero(f.get("valor_proposta")), valor_homologado: valor, motivo: f.get("motivo") || null, fonte_oficial: linkSeguro(f.get("fonte_oficial")) || null, atualizado_em: new Date().toISOString() };
       const consulta = f.get("id")
         ? sb.from("operacao_itens_resultado").update(dados).eq("id", f.get("id")).eq("organizacao_id", estado.orgId)
         : sb.from("operacao_itens_resultado").insert({ ...dados, organizacao_id: estado.orgId, processo_id: id });
@@ -202,7 +202,7 @@
         if (item || corrigirItem) {
           const registro = estado.itens.find(x => x.id === corrigirItem);
           const form = prepararFormulario("item", item || registro.processo_id);
-          if (registro) for (const campo of ["id", "tipo", "identificador", "descricao", "situacao", "quantidade", "valor_proposta", "valor_homologado", "motivo", "fonte_oficial"]) form.elements.namedItem(campo).value = registro[campo] ?? "";
+          if (registro) for (const campo of ["id", "tipo", "identificador", "descricao", "marca", "modelo", "situacao", "quantidade", "valor_proposta", "valor_homologado", "motivo", "fonte_oficial"]) form.elements.namedItem(campo).value = registro[campo] ?? "";
           return;
         }
         if (ocorrencia) { const form = prepararFormulario("ocorrencia", ocorrencia); form.elements.namedItem("ocorrido_em").value = dataLocal(new Date()); return; }

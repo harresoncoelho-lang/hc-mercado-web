@@ -1,4 +1,4 @@
-/* global module, window */
+/* global module, window, URL */
 (function (raiz, fabrica) {
   const api = fabrica();
   if (typeof module === "object" && module.exports) module.exports = api;
@@ -27,7 +27,14 @@
 
   function idPncp(processo) {
     const candidatos = [processo?.origem_externa_id, processo?.numero];
-    return candidatos.find(valor => typeof valor === "string" && /^\d{14}-\d+-\d+\/\d{4}$/.test(valor)) || null;
+    const direto = candidatos.find(valor => typeof valor === "string" && /^\d{14}-\d+-\d+\/\d{4}$/.test(valor));
+    if (direto) return direto;
+    try {
+      const url = new URL(processo?.url_origem);
+      if (url.hostname !== "pncp.gov.br") return null;
+      const partes = url.pathname.match(/^\/app\/(?:editais|contratos)\/(\d{14})\/(\d{4})\/(\d+)\/?$/);
+      return partes ? `${partes[1]}-1-${partes[3]}/${partes[2]}` : null;
+    } catch { return null; }
   }
 
   return { requisitosDaEstrutura, idPncp };

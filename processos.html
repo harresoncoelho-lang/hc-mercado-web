@@ -16,6 +16,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
 @media(min-width:821px){.metricas{grid-template-columns:repeat(5,minmax(0,1fr))}#modal-dossie .modal-corpo{width:min(1050px,100%)}}
 .bloco-dossie{border-top:1px solid var(--borda);padding-top:17px;margin-top:18px}.bloco-dossie h3{margin:0 0 12px;font-size:16px}.linha-registro{padding:10px 0;border-bottom:1px solid var(--borda)}.linha-registro:last-child{border-bottom:0}.linha-registro small{display:block;color:var(--fraco);margin-top:4px;line-height:1.5}.linha-registro .tag{margin-right:5px}.linha-registro a{color:#8fc3ff;word-break:break-word}.acoes-bloco{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}.aviso-dados{border-left:3px solid var(--laranja);padding:9px 12px;background:var(--card2);color:var(--fraco);margin:8px 0}
 #modal-relatorio .modal-corpo{width:min(1150px,100%);height:min(94vh,100%);display:flex;flex-direction:column;overflow:hidden}#relatorio-frame{width:100%;flex:1;min-height:0;border:1px solid var(--borda);border-radius:8px;background:#fff}#modal-relatorio .acoes-bloco{justify-content:flex-end}
+#d-itens-edital{padding:12px;margin-bottom:12px}.itens-lista{max-height:360px;overflow:auto;margin:12px 0;border-top:1px solid var(--borda);border-bottom:1px solid var(--borda)}.ir-item{display:flex;align-items:center;gap:8px;margin:0}.ir-item input{width:105px}.acoes-bloco{align-items:center;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -37,7 +38,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
 
 <div id="modal-resultado" class="modal"><form id="form-resultado" class="modal-corpo"><h2>Resultado do processo</h2><input name="processo_id" type="hidden"><p class="nota">Registre apenas o resultado confirmado. Se houver itens/lotes, a apuração do painel virá deles.</p><div class="form-grade"><div><label>Situação</label><select name="situacao_resultado"><option value="nao_apurado">Não apurado</option><option value="nao_participou">Não participou</option><option value="em_disputa">Em disputa</option><option value="sem_vitoria">Participou sem vencer</option><option value="vitoria_sem_detalhamento">Ganhou — itens pendentes de detalhamento</option><option value="vitoria_parcial">Vitória parcial</option><option value="vitoria_total">Vitória total</option><option value="revogado_anulado">Revogado / anulado</option></select></div><div><label>Data do resultado</label><input name="data_resultado" type="date"></div><div><label>Valor homologado à empresa (R$)</label><input name="valor_homologado" type="number" min="0" step="0.01"></div><div><label>Link da fonte oficial</label><input name="fonte_resultado" type="url" maxlength="500"></div><div class="inteiro"><label>Motivo de perda / observação</label><textarea name="motivo_perda" rows="3" maxlength="2000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-resultado">Cancelar</button><button class="btn primario">Salvar resultado</button></div></form></div>
 
-<div id="modal-item" class="modal"><form id="form-item" class="modal-corpo"><h2>Resultado por item ou lote</h2><input name="id" type="hidden"><input name="processo_id" type="hidden"><div class="form-grade"><div><label>Tipo</label><select name="tipo"><option value="item">Item</option><option value="lote">Lote</option></select></div><div><label>Número / identificador</label><input name="identificador" required maxlength="80"></div><div class="inteiro"><label>Descrição</label><input name="descricao" maxlength="500"></div><div><label>Situação</label><select name="situacao"><option value="pendente">Pendente</option><option value="ganho">Ganho</option><option value="perdido">Perdido</option><option value="desclassificado">Desclassificado</option><option value="inabilitado">Inabilitado</option><option value="nao_disputado">Não disputado</option><option value="cancelado">Cancelado</option></select></div><div><label>Quantidade</label><input name="quantidade" type="number" min="0" step="0.001"></div><div><label>Valor da nossa proposta (R$)</label><input name="valor_proposta" type="number" min="0" step="0.01"></div><div><label>Valor total homologado à nossa empresa (R$)</label><input name="valor_homologado" type="number" min="0" step="0.01"></div><div class="inteiro"><label>Motivo / observação</label><textarea name="motivo" rows="2" maxlength="2000"></textarea></div><div class="inteiro"><label>Link da fonte oficial</label><input name="fonte_oficial" type="url" maxlength="500"></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-item">Cancelar</button><button class="btn primario">Salvar item/lote</button></div></form></div>
+<div id="modal-item" class="modal"><form id="form-item" class="modal-corpo"><h2>Resultado por item ou lote</h2><input name="id" type="hidden"><input name="processo_id" type="hidden"><div class="form-grade"><div><label>Tipo</label><select name="tipo"><option value="item">Item</option><option value="lote">Lote</option></select></div><div><label>Número / identificador</label><input name="identificador" required maxlength="80"></div><div class="inteiro"><label>Descrição</label><input name="descricao" maxlength="500"></div><div><label>Marca ofertada</label><input name="marca" maxlength="120" placeholder="Ex.: fabricante"></div><div><label>Modelo ofertado</label><input name="modelo" maxlength="180" placeholder="Ex.: referência do produto"></div><div><label>Situação</label><select name="situacao"><option value="pendente">Pendente</option><option value="ganho">Ganho</option><option value="perdido">Perdido</option><option value="desclassificado">Desclassificado</option><option value="inabilitado">Inabilitado</option><option value="nao_disputado">Não disputado</option><option value="cancelado">Cancelado</option></select></div><div><label>Quantidade</label><input name="quantidade" type="number" min="0" step="0.001"></div><div><label>Valor da nossa proposta (R$)</label><input name="valor_proposta" type="number" min="0" step="0.01"></div><div><label>Valor total homologado à nossa empresa (R$)</label><input name="valor_homologado" type="number" min="0" step="0.01"></div><div class="inteiro"><label>Motivo / observação</label><textarea name="motivo" rows="2" maxlength="2000"></textarea></div><div class="inteiro"><label>Link da fonte oficial</label><input name="fonte_oficial" type="url" maxlength="500"></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-item">Cancelar</button><button class="btn primario">Salvar item/lote</button></div></form></div>
 
 <div id="modal-ocorrencia" class="modal"><form id="form-ocorrencia" class="modal-corpo"><h2>Registrar ocorrência</h2><input name="id" type="hidden"><input name="processo_id" type="hidden"><div class="form-grade"><div><label>Data e hora</label><input name="ocorrido_em" type="datetime-local" required></div><div><label>Categoria</label><select name="categoria"><option value="registro">Registro</option><option value="sessao">Sessão</option><option value="chat">Mensagem do chat</option><option value="diligencia">Diligência</option><option value="recurso">Recurso</option><option value="resultado">Resultado</option><option value="contrato">Contrato</option><option value="execucao">Execução</option></select></div><div class="inteiro"><label>Descrição do ocorrido</label><textarea name="descricao" required rows="4" maxlength="4000"></textarea></div><div class="inteiro"><label>Link da fonte, se houver</label><input name="fonte_oficial" type="url" maxlength="500"></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-ocorrencia">Cancelar</button><button class="btn primario">Salvar ocorrência</button></div></form></div>
 
@@ -55,8 +56,10 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   const estado = { orgId:null, empresaId:null, empresas:[], processos:[], documentos:[], prazos:[], empenhos:[], itens:[], ocorrencias:[], contratos:[], anexos:[], detalhesCarregados:false, erroDetalhes:false };
   const itensOficiais = new Map();
   const consultasItens = new Set();
-  const falhasItens = new Set();
-  const limiteItensVisiveis = new Map();
+  const falhasItens = new Map();
+  const paginasItens = new Map();
+  const paginaAtualItens = new Map();
+  const itensAbertos = new Set();
   let origemPendente = new URLSearchParams(location.search).get("origem");
   const $ = id => document.getElementById(id), esc = v => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const dinheiro = v => Number(v || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"}), data = v => v ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? `${v}T12:00:00` : v).toLocaleDateString("pt-BR") : "—";
@@ -70,26 +73,38 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   function renderizarItensOficiais(processo){
     const alvo=$("d-itens-edital");
     if(!alvo)return;
-    const itens=itensOficiais.get(processo.id);
-    if(!itens){alvo.innerHTML=`<p class="nota">${consultasItens.has(processo.id)?"Carregando itens oficiais do PNCP…":falhasItens.has(processo.id)?"Não foi possível consultar os itens oficiais agora. Confira a fonte e tente atualizar.":"Itens oficiais ainda não disponíveis para esta fonte."}</p>`;return;}
-    const limite=limiteItensVisiveis.get(processo.id)||30;
+    const aberto=itensAbertos.has(processo.id);
+    const pagina=paginaAtualItens.get(processo.id)||1;
+    const dados=itensOficiais.get(processo.id);
+    const itens=dados?.itens||[];
     const registrados=new Set(estado.itens.filter(item=>item.processo_id===processo.id).map(item=>String(item.identificador)));
-    alvo.innerHTML=`<h3>Itens oficiais do edital (${itens.length})</h3><p class="nota">Descrição e quantidade vieram do PNCP; informe apenas o resultado da sua empresa quando houver.</p>${itens.slice(0,limite).map((item,indice)=>`<div class="linha-registro"><strong>Item ${esc(item.numero)}</strong><small>${esc(item.descricao||"Sem descrição")} · ${esc(item.quantidade??"—")} ${esc(item.unidade||"")}</small>${registrados.has(String(item.numero))?'<span class="tag">Resultado em acompanhamento</span>':`<button type="button" class="btn" data-acompanhar-item="${indice}">Acompanhar resultado</button>`}</div>`).join("")}${itens.length>limite?`<button type="button" class="btn" data-mais-itens="${processo.id}">Mostrar mais ${Math.min(30,itens.length-limite)} itens</button>`:""}`;
+    const cabecalho=`<button type="button" class="btn" data-alternar-itens="${processo.id}" aria-expanded="${aberto}">${aberto?"▾ Fechar":"▸ Abrir"} itens oficiais${dados?` · página ${pagina}`:""}</button>`;
+    if(!aberto){alvo.innerHTML=cabecalho;return;}
+    const erro=falhasItens.get(processo.id);
+    const conteudo=consultasItens.has(processo.id)?'<p class="nota">Carregando esta página de itens do PNCP…</p>':erro?`<p class="nota">${esc(erro)} <button type="button" class="btn" data-retry-itens="${processo.id}">Tentar novamente</button></p>`:dados?`<div class="itens-lista">${itens.length?itens.map((item,indice)=>`<div class="linha-registro"><strong>Item ${esc(item.numero)}</strong><small>${esc(item.descricao||"Sem descrição")} · ${esc(item.quantidade??"—")} ${esc(item.unidade||"")}</small>${registrados.has(String(item.numero))?'<span class="tag">Resultado em acompanhamento</span>':`<button type="button" class="btn" data-acompanhar-item="${indice}">Registrar resultado</button>`}</div>`).join(""):'<p class="nota">Nenhum item nesta página.</p>'}</div><div class="acoes-bloco"><button type="button" class="btn" data-pagina-itens="${pagina-1}" ${pagina===1?"disabled":""}>Anterior</button><span>Página ${pagina} · ${itens.length} itens</span><button type="button" class="btn" data-pagina-itens="${pagina+1}" ${dados.proximaPagina?"":"disabled"}>Próxima</button><label class="ir-item">Ir ao item nº <input type="number" id="numero-item-busca" min="1" step="1" placeholder="Ex.: 900"></label><button type="button" class="btn" data-buscar-item>Ir</button></div>`:'<p class="nota">Abra a lista para consultar os itens.</p>';
+    alvo.innerHTML=`${cabecalho}<p class="nota">Itens do PNCP, 100 por página. Selecione um item para registrar o resultado, marca e modelo; a lista pode ser fechada a qualquer momento.</p>${conteudo}`;
   }
-  async function carregarItensOficiais(processo){
-    if(itensOficiais.has(processo.id)||consultasItens.has(processo.id)||falhasItens.has(processo.id))return;
+  async function carregarItensOficiais(processo,pagina=1){
+    if(consultasItens.has(processo.id))return;
     const pncp=LicitaOperacaoEdital.idPncp(processo);
-    if(!pncp){falhasItens.add(processo.id);return;}
+    if(!pncp){falhasItens.set(processo.id,"Esta oportunidade não tem um vínculo PNCP identificável. Confira o link oficial.");renderizarItensOficiais(processo);return;}
+    const chave=`${processo.id}:${pagina}`;
+    if(paginasItens.has(chave)){paginaAtualItens.set(processo.id,pagina);itensOficiais.set(processo.id,paginasItens.get(chave));falhasItens.delete(processo.id);renderizarItensOficiais(processo);return;}
+    paginaAtualItens.set(processo.id,pagina);
     consultasItens.add(processo.id);
+    falhasItens.delete(processo.id);
+    renderizarItensOficiais(processo);
     try{
       const [cnpj,,sequenciaAno]=pncp.split("-");
       const [sequencial,ano]=sequenciaAno.split("/");
-      const resposta=await fetch(`/.netlify/functions/pncp-itens?cnpj=${cnpj}&ano=${ano}&sequencial=${sequencial}`);
+      const resposta=await fetch(`/.netlify/functions/pncp-itens?cnpj=${cnpj}&ano=${ano}&sequencial=${sequencial}&pagina=${pagina}`);
       if(!resposta.ok)throw new Error(`PNCP indisponível (${resposta.status})`);
       const dados=await resposta.json();
       if(dados.erro||!Array.isArray(dados.itens))throw new Error(dados.erro||"Resposta de itens inválida");
-      itensOficiais.set(processo.id,dados.itens);
-    }catch(erro){console.warn("Itens oficiais indisponíveis:",erro);falhasItens.add(processo.id);}
+      paginasItens.set(chave,dados);
+      paginaAtualItens.set(processo.id,pagina);
+      itensOficiais.set(processo.id,dados);
+    }catch(erro){console.warn("Itens oficiais indisponíveis:",erro);falhasItens.set(processo.id,`Não foi possível consultar os itens: ${erro.message}.`);}
     finally{consultasItens.delete(processo.id);if($("modal-dossie").classList.contains("aberto")&&$("modal-dossie").dataset.processoId===processo.id)renderizarItensOficiais(processo);}
   }
   async function autenticar(){const {data:{session}}=await sb.auth.getSession();if(!session){location.replace("login.html");return false;}const {data:cliente}=await sb.from("clientes").select("status").eq("id",session.user.id).maybeSingle();if(!cliente||cliente.status!=="aprovado"){await sb.auth.signOut();location.replace("login.html");return false;}return true;}
@@ -172,7 +187,6 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     acompanhamento.renderizar(p);
     abrir("modal-dossie");
     renderizarItensOficiais(p);
-    void carregarItensOficiais(p);
   }
   async function visualizarRelatorio(id){
     if(!estado.detalhesCarregados){aviso("Aguarde o carregamento completo do acompanhamento antes de gerar o relatório.","erro");return;}
@@ -236,12 +250,23 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     const id=$("modal-dossie").dataset.processoId;
     const processo=estado.processos.find(item=>item.id===id);
     if(!processo)return;
-    const mais=e.target.closest("[data-mais-itens]");
-    if(mais){limiteItensVisiveis.set(id,(limiteItensVisiveis.get(id)||30)+30);renderizarItensOficiais(processo);return;}
+    if(e.target.closest("[data-alternar-itens]")){
+      if(itensAbertos.has(id))itensAbertos.delete(id);
+      else{itensAbertos.add(id);if(!itensOficiais.has(id))void carregarItensOficiais(processo);}
+      renderizarItensOficiais(processo);return;
+    }
+    if(e.target.closest("[data-retry-itens]")){void carregarItensOficiais(processo,paginaAtualItens.get(id)||1);return;}
+    const paginaBotao=e.target.closest("[data-pagina-itens]");
+    if(paginaBotao){void carregarItensOficiais(processo,Number(paginaBotao.dataset.paginaItens));return;}
+    if(e.target.closest("[data-buscar-item]")){
+      const numeroItem=Number($("numero-item-busca")?.value);
+      if(!Number.isSafeInteger(numeroItem)||numeroItem<1||numeroItem>100000){aviso("Informe um número de item válido.","erro");return;}
+      void carregarItensOficiais(processo,Math.ceil(numeroItem/100));return;
+    }
     const acompanhar=e.target.closest("[data-acompanhar-item]");
     if(!acompanhar)return;
     const indice=Number(acompanhar.dataset.acompanharItem);
-    const item=itensOficiais.get(id)?.[indice];
+    const item=itensOficiais.get(id)?.itens?.[indice];
     if(!item)return;
     const form=$("form-item");
     form.reset();

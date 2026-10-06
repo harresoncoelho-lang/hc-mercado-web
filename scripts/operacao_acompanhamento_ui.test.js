@@ -80,6 +80,21 @@ test("item perdido não recebe valor homologado à empresa", async () => {
   assert.match(ambiente.avisos[0], /só cabe em item ganho/);
 });
 
+test("item ganho salva marca e modelo informados pelo licitante", async () => {
+  const ambiente = preparar();
+  let payload;
+  ambiente.deps.sb = { from: () => ({ async insert(dados) { payload = dados; return { error: null }; } }) };
+  const formulario = { dados: new Map([["processo_id", "p"], ["tipo", "item"], ["identificador", "2"], ["situacao", "ganho"], ["marca", " Fabricante A "], ["modelo", " Modelo X "], ["valor_homologado", "50"]]), reset() {} };
+  const codigo = fs.readFileSync(path.join(__dirname, "..", "operacao-acompanhamento-ui.js"), "utf8");
+  const janela = { LicitaAcompanhamento: dominio };
+  vm.runInNewContext(codigo, { window: janela, FormData: class { constructor(form) { this.dados = form.dados; } get(chave) { return this.dados.get(chave) || null; } } });
+  janela.criarAcompanhamentoOperacional(ambiente.deps).vincular();
+  await ambiente.ouvintes.get("item")({ preventDefault() {}, currentTarget: formulario });
+  assert.equal(payload.marca, "Fabricante A");
+  assert.equal(payload.modelo, "Modelo X");
+  assert.equal(payload.valor_homologado, 50);
+});
+
 test("anexo mantém o formulário após o await e registra o arquivo privado", async () => {
   const ambiente = preparar();
   const chamadas = [];

@@ -29,6 +29,8 @@ test("identifica apenas controle PNCP válido no processo", () => {
   assert.equal(idPncp({ origem_externa_id: "12345678000199-1-12/2026" }), "12345678000199-1-12/2026");
   assert.equal(idPncp({ origem_externa_id: "objeto|órgão|data", numero: "12345678000199-1-12/2026" }), "12345678000199-1-12/2026");
   assert.equal(idPncp({ origem_externa_id: "objeto|órgão|data" }), null);
+  assert.equal(idPncp({ origem_externa_id: "objeto|órgão|data", numero: "003/2026", url_origem: "https://pncp.gov.br/app/editais/04477782000105/2026/14" }), "04477782000105-1-14/2026");
+  assert.equal(idPncp({ url_origem: "https://outro.exemplo/app/editais/04477782000105/2026/14" }), null);
 });
 
 test("relatório usa prévia interna e impressão para salvar PDF, sem popup", () => {
@@ -63,4 +65,13 @@ test("carteira não mostra nem dispara o checklist do resumo", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
   assert.doesNotMatch(html, /Checklist de habilitação|preencherChecklistDoResumo|data-retry-checklist/);
   assert.doesNotMatch(html, /name="documentos_exigidos"/);
+});
+
+test("itens oficiais ficam recolhidos e carregam página somente ao abrir", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
+  const abertura = html.slice(html.indexOf("  function abrirDossie(id){"), html.indexOf("  async function visualizarRelatorio(id){"));
+  assert.doesNotMatch(abertura, /carregarItensOficiais\(p\)/);
+  assert.match(html, /data-alternar-itens/);
+  assert.match(html, /&pagina=\$\{pagina\}/);
+  assert.match(html, /class="itens-lista"/);
 });

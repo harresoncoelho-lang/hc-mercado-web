@@ -27,7 +27,9 @@ exports.handler = async (event) => {
   const cnpj = (q.cnpj || "").replace(/\D/g, "");
   const ano = parseInt(q.ano, 10);
   const sequencial = parseInt(q.sequencial, 10);
-  if (cnpj.length !== 14 || !ano || !sequencial) {
+  const paginado = q.pagina !== undefined;
+  const paginaPedida = Number(q.pagina);
+  if (cnpj.length !== 14 || !ano || !sequencial || (paginado && (!Number.isInteger(paginaPedida) || paginaPedida < 1 || paginaPedida > 1000))) {
     return { statusCode: 400, headers, body: JSON.stringify({ erro: "Informe cnpj, ano e sequencial válidos.", itens: [] }) };
   }
   try {
@@ -36,12 +38,15 @@ exports.handler = async (event) => {
     const tamanhoPagina = 100;
     const itensPorNumero = new Map();
     try {
-      for (let pagina = 1; pagina <= 20; pagina += 1) {
+      for (let pagina = paginado ? paginaPedida : 1; pagina <= (paginado ? paginaPedida : 20); pagina += 1) {
         const resp = await fetch(`${BASE_URL}/${cnpj}/compras/${ano}/${sequencial}/itens?pagina=${pagina}&tamanhoPagina=${tamanhoPagina}`, {
           headers: { Accept: "application/json", "User-Agent": USER_AGENT_NAVEGADOR },
           signal: ctrl.signal,
         });
-        if (!resp.ok) break;
+        if (!resp.ok) {
+          if (paginado) throw new Error(`PNCP indisponível (${resp.status})`);
+          break;
+        }
         const dados = await resp.json();
         const lote = Array.isArray(dados) ? dados : (dados.data || []);
         if (!Array.isArray(lote) || lote.length === 0) break;
@@ -76,7 +81,7 @@ exports.handler = async (event) => {
       ncmNbs: [i.ncmNbsCodigo, i.ncmNbsDescricao].filter(Boolean).join(" - "),
       informacaoComplementar: i.informacaoComplementar || "",
     }));
-    return { statusCode: 200, headers, body: JSON.stringify({ erro: null, itens }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ erro: null, itens, proximaPagina: paginado && itens.length === tamanhoPagina ? paginaPedida + 1 : null }) };
   } catch (e) {
     return { statusCode: 200, headers, body: JSON.stringify({ erro: String((e && e.message) || e), itens: [] }) };
   }

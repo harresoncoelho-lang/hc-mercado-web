@@ -8,11 +8,11 @@ test("relatório resume a oportunidade e mostra somente itens ganhos", () => {
     empresa: { razao_social: "Empresa de teste" },
     resultado: { situacao: "vitoria_parcial", ganhos: 1, total: 2, valor: 100 },
     itens: [
-      { tipo: "item", identificador: "1", descricao: "Caneta azul", situacao: "ganho", valor_homologado: 100 },
+      { tipo: "item", identificador: "1", descricao: "Caneta azul", marca: "Marca A", modelo: "Modelo B", situacao: "ganho", valor_homologado: 100 },
       { tipo: "item", identificador: "2", descricao: "Lápis preto", situacao: "perdido" },
     ],
   });
-  for (const texto of ["Empresa de teste", "Prefeitura", "15/10/2026", "Caneta azul"]) assert.match(html, new RegExp(texto));
+  for (const texto of ["Empresa de teste", "Prefeitura", "15/10/2026", "Caneta azul", "Marca A / Modelo B"]) assert.match(html, new RegExp(texto));
   assert.match(html, /Itens\/lotes ganhos \(1\)/);
   for (const texto of ["Certidão fiscal", "Lápis preto", "Checklist de habilitação", "Relatório cronológico"]) assert.doesNotMatch(html, new RegExp(texto));
   assert.match(html, /@page\{size:A4/);
