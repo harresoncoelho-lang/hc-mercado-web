@@ -25,6 +25,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="resumo-modelo.js"></script>
+<script src="operacao-edital.js"></script>
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
   (function () {
@@ -2655,6 +2656,11 @@
         motivoFonteNaoLida: dados.motivoFonteNaoLida || null,
         modoDegradado: Boolean(dados.modoDegradado),
       }));
+      const id = idOportunidade(edital);
+      const status = lerMapa("status-licitacao")[id];
+      if (status && empresaOperacionalId && dados.fonteLida === true && dados.estrutura) {
+        void agendarSincronizacaoDossie(id, edital, status, true, empresaOperacionalId);
+      }
     } catch (e) {
       // Alguns navegadores podem bloquear armazenamento; o cache do servidor
       // continua sendo a fonte persistente principal.
@@ -4502,9 +4508,36 @@
         situacao_resultado: dadosStatus.resultado,
         resultado: PREFIXO_RESULTADO_KANBAN + STATUS_RESULTADO_KANBAN[status] + " (informação do usuário; confira a fonte oficial).",
         observacoes: "Pré-preenchido automaticamente a partir do Boletim / Kanban. Confira o edital antes de enviar a proposta."
-      }).select("id,objeto").single();
+      }).select("*").single();
       if (error) throw error;
       processo = data;
+    }
+    if (!processo.checklist_editado_manualmente && !(processo.documentos_exigidos || []).length && /^\d{14}-\d+-\d+\/\d{4}$/.test(edital.numeroControlePNCP || "")) {
+      let requisitos = LicitaOperacaoEdital.requisitosDaEstrutura(lerCacheLocalResumo(edital)?.estrutura);
+      let geradoEm = null;
+      if (!requisitos.length) {
+        try {
+          const { data: { session } } = await sb.auth.getSession();
+          if (session) {
+            const resposta = await fetch("/.netlify/functions/ia-edital", {
+              method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({ modo: "consulta_requisitos", edital: { numeroControlePNCP: edital.numeroControlePNCP } }),
+            });
+            if (resposta.ok) {
+              const dados = await resposta.json();
+              requisitos = LicitaOperacaoEdital.requisitosDaEstrutura({ fonteLida: Boolean(dados.disponivel), documentosHabilitacao: dados.requisitos || [] });
+              geradoEm = dados.geradoEm || null;
+            }
+          }
+        } catch (erro) { console.warn("Checklist do resumo indisponível:", erro); }
+      }
+      if (requisitos.length) {
+        const { error } = await sb.from("operacao_processos").update({
+          documentos_exigidos: requisitos, checklist_fonte: "resumo", checklist_gerado_em: geradoEm || new Date().toISOString(),
+        }).eq("id", processo.id).eq("empresa_id", empresa.id).eq("checklist_editado_manualmente", false)
+          .eq("atualizado_em", processo.atualizado_em);
+        if (error) throw error;
+      }
     }
     if (prazoPropostas) {
       const { data: prazos, error: erroPrazoBusca } = await sb.from("operacao_prazos_processo")

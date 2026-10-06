@@ -41,7 +41,7 @@
           <p class="nota">Data: ${data(processo.data_resultado)} · ${origem(processo.fonte_resultado) || "Fonte oficial não vinculada"}${processo.motivo_perda ? ` · ${esc(processo.motivo_perda)}` : ""}</p>
           ${processo.resultado ? `<p class="nota">Registro anterior do processo: ${esc(processo.resultado)}</p>` : ""}
           <div class="acoes-bloco"><button class="btn" data-editar-processo="${processo.id}">Editar cadastro e sessão</button><button class="btn" data-resultado="${processo.id}">Registrar resultado</button><button class="btn" data-item="${processo.id}">+ Item/lote</button></div>
-          ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}${item.quantidade == null ? "" : ` · qtd.: ${esc(item.quantidade)}`}</small>${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
+          ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}${item.quantidade == null ? "" : ` · qtd.: ${esc(item.quantidade)}`}</small>${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button> <button class="btn perigo" data-excluir-item="${item.id}">Excluir lançamento</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
         </section>
         <section class="bloco-dossie"><h3>Relatório cronológico</h3><div class="acoes-bloco"><button class="btn" data-ocorrencia="${processo.id}">+ Ocorrência</button></div>
           ${lista(ocorrencias, evento => `<div class="linha-registro"><strong>${dataHora(evento.ocorrido_em)} · ${esc(evento.categoria)}</strong><small>${esc(evento.descricao)}</small>${origem(evento.fonte_oficial)} <button class="btn" data-editar-ocorrencia="${evento.id}">Corrigir registro</button></div>`, "Nenhuma ocorrência registrada. Anote sessões, mensagens, diligências e decisões com suas datas.")}
@@ -98,6 +98,20 @@
       const { error } = await consulta;
       if (error) { aviso("Não foi possível salvar o item/lote: " + error.message, "erro"); return; }
       formulario.reset(); fechar("modal-item"); await atualizarEReabrir(id);
+    }
+
+    async function excluirItem(id) {
+      const item = estado.itens.find(registro => registro.id === id && estado.processos.some(processo => processo.id === registro.processo_id && processo.empresa_id === estado.empresaId));
+      if (!item || !window.confirm(`Excluir o lançamento do ${item.tipo} ${item.identificador}? A apuração e os indicadores serão recalculados.`)) return;
+      const { data: excluidos, error } = await sb.from("operacao_itens_resultado").delete()
+        .eq("id", item.id).eq("processo_id", item.processo_id).eq("organizacao_id", estado.orgId).select("id");
+      if (error || !excluidos?.length) { aviso("Não foi possível excluir o item/lote. Atualize a página e tente novamente." + (error ? ` ${error.message}` : ""), "erro"); return; }
+      await atualizarEReabrir(item.processo_id);
+      const processo = estado.processos.find(registro => registro.id === item.processo_id);
+      const restantes = doProcesso(estado.itens, item.processo_id);
+      if (!restantes.length && ["vitoria_total", "vitoria_parcial", "vitoria_sem_detalhamento"].includes(processo?.situacao_resultado)) {
+        aviso("Lançamento excluído. Ainda há uma vitória registrada manualmente no resultado do processo; use 'Registrar resultado' para corrigir essa informação.", "info");
+      } else aviso("Lançamento excluído e indicadores recalculados.", "info");
     }
 
     async function salvarOcorrencia(ev) {
@@ -172,10 +186,11 @@
       $("form-contrato").addEventListener("submit", salvarContrato);
       $("form-anexo").addEventListener("submit", salvarAnexo);
       $("d-conteudo").addEventListener("click", async ev => {
-        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-concluir-prazo]");
+        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-excluir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-concluir-prazo]");
         if (!botao) return;
-        const { editarProcesso: editar, resultado, item, corrigirItem, ocorrencia, editarOcorrencia, editarPrazo, contrato, editarContrato, editarEmpenho, anexo, abrirAnexo: abrirId, concluirPrazo } = botao.dataset;
+        const { editarProcesso: editar, resultado, item, corrigirItem, excluirItem: excluirId, ocorrencia, editarOcorrencia, editarPrazo, contrato, editarContrato, editarEmpenho, anexo, abrirAnexo: abrirId, concluirPrazo } = botao.dataset;
         if (editar) { editarProcesso(editar); return; }
+        if (excluirId) { await excluirItem(excluirId); return; }
         if (resultado) {
           const p = estado.processos.find(processo => processo.id === resultado), form = prepararFormulario("resultado", resultado);
           for (const campo of ["situacao_resultado", "data_resultado", "valor_homologado", "fonte_resultado", "motivo_perda"]) form.elements.namedItem(campo).value = p[campo] ?? "";

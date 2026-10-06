@@ -14,7 +14,7 @@ function preparar() {
   for (const nome of ["resultado", "item", "ocorrencia", "contrato", "anexo"]) {
     elementos.set(`form-${nome}`, { addEventListener(evento, fn) { ouvintes.set(nome, fn); } });
   }
-  elementos.set("d-conteudo", { addEventListener() {} });
+  elementos.set("d-conteudo", { addEventListener(_evento, fn) { ouvintes.set("d-conteudo", fn); } });
   elementos.set("d-acompanhamento", { innerHTML: "" });
   elementos.set("btn-salvar-anexo", { disabled: false });
   const estado = { orgId: "org", empresaId: "empresa", itens: [], ocorrencias: [], contratos: [], anexos: [], prazos: [], empenhos: [], detalhesCarregados: true };
@@ -42,6 +42,25 @@ test("dossiê distingue resultado manual de itens ganhos e conserva ocorrências
   assert.match(texto, /R\$ 50/);
   assert.match(texto, /Diligência recebida/);
   assert.doesNotMatch(texto, /R\$ 0/);
+});
+
+test("excluir item de teste recalcula vitória sem apagar outros processos", async () => {
+  const ambiente = preparar();
+  const item = { id: "item1", processo_id: "p", tipo: "item", identificador: "1", situacao: "ganho", valor_homologado: 100 };
+  ambiente.estado.processos = [{ id: "p", empresa_id: "empresa", situacao_resultado: "nao_apurado" }];
+  ambiente.estado.itens = [item];
+  ambiente.janela.confirm = () => true;
+  const filtros = [];
+  const consulta = { eq(campo, valor) { filtros.push([campo, valor]); return this; }, async select() { return { data: [{ id: "item1" }], error: null }; } };
+  ambiente.deps.sb = { from: tabela => { assert.equal(tabela, "operacao_itens_resultado"); return { delete: () => consulta }; } };
+  ambiente.deps.carregarTudo = async () => { ambiente.estado.itens = []; };
+  const ui = ambiente.janela.criarAcompanhamentoOperacional(ambiente.deps);
+  ui.vincular();
+  assert.equal(dominio.resultadoEfetivo(ambiente.estado.processos[0], ambiente.estado.itens).situacao, "vitoria_total");
+  await ambiente.ouvintes.get("d-conteudo")({ target: { closest: seletor => seletor.includes("[data-excluir-item]") ? { dataset: { excluirItem: "item1" } } : null } });
+  assert.deepEqual(filtros, [["id", "item1"], ["processo_id", "p"], ["organizacao_id", "org"]]);
+  assert.equal(dominio.resultadoEfetivo(ambiente.estado.processos[0], ambiente.estado.itens).situacao, "nao_apurado");
+  assert.match(ambiente.avisos.at(-1), /indicadores recalculados/);
 });
 
 test("item perdido não recebe valor homologado à empresa", async () => {

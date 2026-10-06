@@ -1021,7 +1021,7 @@ exports.handler = async (event) => {
 
   if (!body || typeof body !== "object" || Array.isArray(body)) return { statusCode: 400, headers, body: JSON.stringify({ erro: "Corpo inválido." }) };
   const { modo, pergunta, historico, reprocessarEstrutura } = body;
-  if (modo !== "resumo" && modo !== "pergunta") return { statusCode: 400, headers, body: JSON.stringify({ erro: "Modo inválido. Use resumo ou pergunta." }) };
+  if (modo !== "resumo" && modo !== "pergunta" && modo !== "consulta_requisitos") return { statusCode: 400, headers, body: JSON.stringify({ erro: "Modo inválido. Use resumo, pergunta ou consulta_requisitos." }) };
   let { edital } = body;
   let { textoEdital } = body;
   if (typeof textoEdital !== "string") textoEdital = null;
@@ -1031,6 +1031,9 @@ exports.handler = async (event) => {
   if (modo === "resumo") textoEdital = null;
   if (!edital || typeof edital !== "object" || Array.isArray(edital)) {
     return { statusCode: 400, headers, body: JSON.stringify({ erro: "Informe os dados do edital." }) };
+  }
+  if (modo === "consulta_requisitos" && !partesNumeroControle(edital.numeroControlePNCP)) {
+    return { statusCode: 400, headers, body: JSON.stringify({ erro: "Identificador PNCP inválido." }) };
   }
   if (modo === "resumo" && edital.numeroControlePNCP) {
     if (!partesNumeroControle(edital.numeroControlePNCP)) return { statusCode: 400, headers, body: JSON.stringify({ erro: "Identificador PNCP inválido." }) };
@@ -1054,6 +1057,25 @@ exports.handler = async (event) => {
   } catch (e) {
     console.warn("ia-edital: armazenamento não inicializado", e?.name === "MissingBlobsEnvironmentError" ? "ambiente_blobs_ausente" : "erro_inicializacao");
     storeResumos = null; // sem cache disponível — segue funcionando normalmente, só mais devagar
+  }
+
+  // Consulta barata para a Central Operacional: nunca baixa documentos nem
+  // inicia uma nova síntese. Apenas reaproveita um dossiê validado já concluído.
+  if (modo === "consulta_requisitos") {
+    try {
+      const numero = edital.numeroControlePNCP;
+      const valido = cache => cache && cache.fonteLida === true && !cache.modoDegradado && !cache.metadadosIndisponiveis &&
+        cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO && cache.estrutura;
+      let cache = storeResumos && await storeResumos.get(numero, { type: "json" });
+      if (!valido(cache)) cache = await buscarDossiePersistido(numero);
+      if (!valido(cache)) return { statusCode: 200, headers, body: JSON.stringify({ disponivel: false, requisitos: [] }) };
+      const estrutura = sanitizarListasDoDossie({ ...cache.estrutura });
+      const requisitos = [...estrutura.documentosHabilitacao, ...estrutura.declaracoesExigidas];
+      return { statusCode: 200, headers, body: JSON.stringify({ disponivel: true, requisitos,
+        cobertura: estrutura.coberturaLeitura || null, geradoEm: cache.geradoEm || null }) };
+    } catch (_) {
+      return { statusCode: 503, headers, body: JSON.stringify({ erro: "Não foi possível consultar os requisitos já analisados." }) };
+    }
   }
 
   if (modo === "resumo" && edital.numeroControlePNCP) edital = await recuperarFichaOficial(edital.numeroControlePNCP, storeResumos);
