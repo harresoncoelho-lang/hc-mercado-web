@@ -2868,6 +2868,16 @@
     };
   }
 
+  // Ficha exibida no instante em que o modal abre, enquanto o dossiê completo ainda
+  // não existe: o cliente vê os dados oficiais do PNCP na hora, e a leitura do edital
+  // pela IA substitui esta ficha no mesmo lugar quando terminar.
+  function montarFichaImediata(edital) {
+    const estrutura = montarEstruturaContingenciaLocal(edital);
+    estrutura.pendenciasParaConferencia = ["Ficha com os dados oficiais do PNCP. A leitura completa do edital está em preparação e aparece aqui automaticamente."];
+    estrutura.resumoGeral = `Ficha oficial da oportunidade: ${edital && edital.objeto || "objeto não informado"}. A análise detalhada do edital está sendo preparada.`;
+    return estrutura;
+  }
+
   // Versões antigas podiam guardar apenas o parágrafo de resposta. Esse formato
   // não deve deixar o modal em branco em outro navegador: convertemos a cópia
   // em uma ficha visual usando os mesmos dados públicos, sem chamar a IA.
@@ -3625,6 +3635,7 @@
         escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");
         return;
       }
+      renderizarEstruturaIA(montarFichaImediata(edital));
       chamarIA("resumo", null);
       void detalhePncp.catch(() => {});
     })();
