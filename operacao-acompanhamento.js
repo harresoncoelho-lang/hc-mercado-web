@@ -1,5 +1,13 @@
 /* global module, window */
 (function (raiz) {
+  function totalPorQuantidade(quantidade, valorUnitario) {
+    if (quantidade === "" || quantidade == null || valorUnitario === "" || valorUnitario == null) return null;
+    const qtd = Number(quantidade), unitario = Number(valorUnitario);
+    if (!Number.isFinite(qtd) || qtd <= 0 || !Number.isFinite(unitario) || unitario < 0) return null;
+    const total = Number((qtd * unitario).toFixed(2));
+    return Number.isFinite(total) && total <= 9999999999999.99 ? total : null;
+  }
+
   function apurarItens(itens) {
     if (!itens.length) return null;
     const ganhos = itens.filter(item => item.situacao === "ganho");
@@ -29,7 +37,7 @@
     };
   }
 
-  const api = { apurarItens, resultadoEfetivo };
+  const api = { apurarItens, resultadoEfetivo, totalPorQuantidade };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else raiz.LicitaAcompanhamento = api;
 })(typeof window !== "undefined" ? window : globalThis);

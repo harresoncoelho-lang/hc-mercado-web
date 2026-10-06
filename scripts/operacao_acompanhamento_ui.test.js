@@ -12,7 +12,7 @@ function preparar() {
   const ouvintes = new Map();
   const elementos = new Map();
   for (const nome of ["resultado", "item", "ocorrencia", "contrato", "anexo"]) {
-    elementos.set(`form-${nome}`, { addEventListener(evento, fn) { ouvintes.set(nome, fn); } });
+    elementos.set(`form-${nome}`, { addEventListener(evento, fn) { if (evento === "submit") ouvintes.set(nome, fn); } });
   }
   elementos.set("d-conteudo", { addEventListener(_evento, fn) { ouvintes.set("d-conteudo", fn); } });
   elementos.set("d-acompanhamento", { innerHTML: "" });
@@ -67,7 +67,7 @@ test("item perdido não recebe valor homologado à empresa", async () => {
   const ambiente = preparar();
   let gravacoes = 0;
   ambiente.deps.sb = { from: () => ({ insert() { gravacoes++; return Promise.resolve({ error: null }); } }) };
-  const formulario = { dados: new Map([["processo_id", "p"], ["tipo", "item"], ["identificador", "1"], ["situacao", "perdido"], ["valor_homologado", "100"]]) };
+  const formulario = { dados: new Map([["processo_id", "p"], ["tipo", "item"], ["identificador", "1"], ["situacao", "perdido"], ["valor_unitario_homologado", "100"]]) };
   const contexto = { FormData: class { constructor(form) { this.dados = form.dados; } get(chave) { return this.dados.get(chave) || null; } } };
   // O módulo usa FormData do navegador; o teste injeta a versão controlada no realm.
   const codigo = fs.readFileSync(path.join(__dirname, "..", "operacao-acompanhamento-ui.js"), "utf8");
@@ -84,7 +84,7 @@ test("item ganho salva marca e modelo informados pelo licitante", async () => {
   const ambiente = preparar();
   let payload;
   ambiente.deps.sb = { from: () => ({ async insert(dados) { payload = dados; return { error: null }; } }) };
-  const formulario = { dados: new Map([["processo_id", "p"], ["tipo", "item"], ["identificador", "2"], ["situacao", "ganho"], ["marca", " Fabricante A "], ["modelo", " Modelo X "], ["valor_homologado", "50"]]), reset() {} };
+  const formulario = { dados: new Map([["processo_id", "p"], ["tipo", "item"], ["identificador", "2"], ["situacao", "ganho"], ["marca", " Fabricante A "], ["modelo", " Modelo X "], ["quantidade", "2"], ["valor_unitario_proposta", "20"], ["valor_unitario_homologado", "25"]]), reset() {} };
   const codigo = fs.readFileSync(path.join(__dirname, "..", "operacao-acompanhamento-ui.js"), "utf8");
   const janela = { LicitaAcompanhamento: dominio };
   vm.runInNewContext(codigo, { window: janela, FormData: class { constructor(form) { this.dados = form.dados; } get(chave) { return this.dados.get(chave) || null; } } });
@@ -92,7 +92,10 @@ test("item ganho salva marca e modelo informados pelo licitante", async () => {
   await ambiente.ouvintes.get("item")({ preventDefault() {}, currentTarget: formulario });
   assert.equal(payload.marca, "Fabricante A");
   assert.equal(payload.modelo, "Modelo X");
+  assert.equal(payload.valor_proposta, 40);
   assert.equal(payload.valor_homologado, 50);
+  assert.equal(payload.valor_unitario_proposta, 20);
+  assert.equal(payload.valor_unitario_homologado, 25);
 });
 
 test("anexo mantém o formulário após o await e registra o arquivo privado", async () => {

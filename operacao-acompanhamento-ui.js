@@ -18,6 +18,18 @@
     const valorNumero = valor => valor === "" || valor == null ? null : Number(valor);
     const mensagemErro = erro => erro?.message || "Tente novamente.";
     const dataLocal = valor => { const instante = new Date(valor); return new Date(instante.getTime() - instante.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+    function atualizarValoresItem() {
+      const form = $("form-item"), campo = nome => form.elements.namedItem(nome);
+      const quantidade = campo("quantidade").value, proposta = campo("valor_unitario_proposta").value;
+      const homologado = campo("valor_unitario_homologado").value;
+      const ganho = campo("situacao").value === "ganho";
+      const anterior = estado.itens.find(item => item.id === campo("id").value);
+      const totalProposta = raiz.LicitaAcompanhamento.totalPorQuantidade(quantidade, proposta);
+      const totalHomologado = ganho ? raiz.LicitaAcompanhamento.totalPorQuantidade(quantidade, homologado) : null;
+      campo("valor_unitario_homologado").disabled = !ganho;
+      $("total-proposta-item").textContent = proposta === "" && anterior?.valor_proposta != null ? `Total anterior sem unitário: ${dinheiro(anterior.valor_proposta)}` : `Total proposto: ${valorOpcional(totalProposta)}`;
+      $("total-homologado-item").textContent = !ganho ? "Total homologado: somente se o item for ganho" : homologado === "" && anterior?.valor_homologado != null ? `Total anterior sem unitário: ${dinheiro(anterior.valor_homologado)}` : `Total homologado à empresa: ${valorOpcional(totalHomologado)}`;
+    }
 
     function renderizar(processo) {
       if (!estado.detalhesCarregados) {
@@ -41,7 +53,7 @@
           <p class="nota">Data: ${data(processo.data_resultado)} · ${origem(processo.fonte_resultado) || "Fonte oficial não vinculada"}${processo.motivo_perda ? ` · ${esc(processo.motivo_perda)}` : ""}</p>
           ${processo.resultado ? `<p class="nota">Registro anterior do processo: ${esc(processo.resultado)}</p>` : ""}
           <div class="acoes-bloco"><button class="btn" data-editar-processo="${processo.id}">Editar cadastro e sessão</button><button class="btn" data-resultado="${processo.id}">Registrar resultado</button><button class="btn" data-item="${processo.id}">+ Item/lote</button></div>
-          ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}${item.quantidade == null ? "" : ` · qtd.: ${esc(item.quantidade)}`}</small>${item.marca || item.modelo ? `<small>Marca: ${esc(item.marca || "—")} · Modelo: ${esc(item.modelo || "—")}</small>` : ""}${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button> <button class="btn perigo" data-excluir-item="${item.id}">Excluir lançamento</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
+          ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · qtd.: ${esc(item.quantidade ?? "Não informada")} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}</small>${item.valor_unitario_proposta != null || item.valor_unitario_homologado != null ? `<small>Unitário proposto: ${valorOpcional(item.valor_unitario_proposta)} · unitário homologado: ${valorOpcional(item.valor_unitario_homologado)}</small>` : ""}${item.marca || item.modelo ? `<small>Marca: ${esc(item.marca || "—")} · Modelo: ${esc(item.modelo || "—")}</small>` : ""}${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button> <button class="btn perigo" data-excluir-item="${item.id}">Excluir lançamento</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
         </section>
         <section class="bloco-dossie"><h3>Relatório cronológico</h3><div class="acoes-bloco"><button class="btn" data-ocorrencia="${processo.id}">+ Ocorrência</button></div>
           ${lista(ocorrencias, evento => `<div class="linha-registro"><strong>${dataHora(evento.ocorrido_em)} · ${esc(evento.categoria)}</strong><small>${esc(evento.descricao)}</small>${origem(evento.fonte_oficial)} <button class="btn" data-editar-ocorrencia="${evento.id}">Corrigir registro</button></div>`, "Nenhuma ocorrência registrada. Anote sessões, mensagens, diligências e decisões com suas datas.")}
@@ -65,6 +77,7 @@
       formulario.elements.namedItem("processo_id").value = id;
       fechar("modal-dossie");
       abrir(`modal-${nome}`);
+      if (nome === "item") atualizarValoresItem();
       return formulario;
     }
 
@@ -89,9 +102,19 @@
     async function salvarItem(ev) {
       ev.preventDefault();
       const formulario = ev.currentTarget, f = new FormData(formulario), id = f.get("processo_id");
-      const valor = valorNumero(f.get("valor_homologado"));
-      if (valor != null && f.get("situacao") !== "ganho") { aviso("O valor homologado à empresa só cabe em item ganho.", "erro"); return; }
-      const dados = { tipo: f.get("tipo"), identificador: String(f.get("identificador")).trim(), descricao: f.get("descricao") || null, marca: String(f.get("marca") || "").trim() || null, modelo: String(f.get("modelo") || "").trim() || null, situacao: f.get("situacao"), quantidade: valorNumero(f.get("quantidade")), valor_proposta: valorNumero(f.get("valor_proposta")), valor_homologado: valor, motivo: f.get("motivo") || null, fonte_oficial: linkSeguro(f.get("fonte_oficial")) || null, atualizado_em: new Date().toISOString() };
+      const quantidade = valorNumero(f.get("quantidade"));
+      const unitarioProposta = valorNumero(f.get("valor_unitario_proposta"));
+      const unitarioHomologado = valorNumero(f.get("valor_unitario_homologado"));
+      const ganho = f.get("situacao") === "ganho";
+      if ([quantidade, unitarioProposta, unitarioHomologado].some(valor => valor != null && (!Number.isFinite(valor) || valor < 0))) { aviso("Quantidade e preços devem ser números válidos e não negativos.", "erro"); return; }
+      if (!ganho && unitarioHomologado != null) { aviso("O preço homologado à empresa só cabe em item ganho.", "erro"); return; }
+      if ((unitarioProposta != null || (ganho && unitarioHomologado != null)) && !(quantidade > 0)) { aviso("Informe uma quantidade maior que zero para calcular os totais.", "erro"); return; }
+      const anterior = estado.itens.find(item => item.id === f.get("id"));
+      if (anterior && valorNumero(anterior.quantidade) !== quantidade && (anterior.valor_proposta != null && unitarioProposta == null || ganho && anterior.valor_homologado != null && unitarioHomologado == null)) { aviso("Este lançamento antigo não tem preço unitário. Informe-o antes de alterar a quantidade.", "erro"); return; }
+      const totalProposta = unitarioProposta == null ? anterior?.valor_proposta ?? null : raiz.LicitaAcompanhamento.totalPorQuantidade(quantidade, unitarioProposta);
+      const totalHomologado = !ganho ? null : unitarioHomologado == null ? anterior?.valor_homologado ?? null : raiz.LicitaAcompanhamento.totalPorQuantidade(quantidade, unitarioHomologado);
+      if (totalProposta == null && unitarioProposta != null || totalHomologado == null && ganho && unitarioHomologado != null) { aviso("O valor total excede o limite permitido.", "erro"); return; }
+      const dados = { tipo: f.get("tipo"), identificador: String(f.get("identificador")).trim(), descricao: f.get("descricao") || null, marca: String(f.get("marca") || "").trim() || null, modelo: String(f.get("modelo") || "").trim() || null, situacao: f.get("situacao"), quantidade, valor_unitario_proposta: unitarioProposta, valor_unitario_homologado: ganho ? unitarioHomologado : null, valor_proposta: totalProposta, valor_homologado: totalHomologado, motivo: f.get("motivo") || null, fonte_oficial: linkSeguro(f.get("fonte_oficial")) || null, atualizado_em: new Date().toISOString() };
       const consulta = f.get("id")
         ? sb.from("operacao_itens_resultado").update(dados).eq("id", f.get("id")).eq("organizacao_id", estado.orgId)
         : sb.from("operacao_itens_resultado").insert({ ...dados, organizacao_id: estado.orgId, processo_id: id });
@@ -182,6 +205,8 @@
     function vincular() {
       $("form-resultado").addEventListener("submit", salvarResultado);
       $("form-item").addEventListener("submit", salvarItem);
+      $("form-item").addEventListener("input", atualizarValoresItem);
+      $("form-item").addEventListener("change", atualizarValoresItem);
       $("form-ocorrencia").addEventListener("submit", salvarOcorrencia);
       $("form-contrato").addEventListener("submit", salvarContrato);
       $("form-anexo").addEventListener("submit", salvarAnexo);
@@ -202,7 +227,8 @@
         if (item || corrigirItem) {
           const registro = estado.itens.find(x => x.id === corrigirItem);
           const form = prepararFormulario("item", item || registro.processo_id);
-          if (registro) for (const campo of ["id", "tipo", "identificador", "descricao", "marca", "modelo", "situacao", "quantidade", "valor_proposta", "valor_homologado", "motivo", "fonte_oficial"]) form.elements.namedItem(campo).value = registro[campo] ?? "";
+          if (registro) for (const campo of ["id", "tipo", "identificador", "descricao", "marca", "modelo", "situacao", "quantidade", "valor_unitario_proposta", "valor_unitario_homologado", "motivo", "fonte_oficial"]) form.elements.namedItem(campo).value = registro[campo] ?? "";
+          atualizarValoresItem();
           return;
         }
         if (ocorrencia) { const form = prepararFormulario("ocorrencia", ocorrencia); form.elements.namedItem("ocorrido_em").value = dataLocal(new Date()); return; }
@@ -246,7 +272,7 @@
       });
     }
 
-    return { renderizar, vincular };
+    return { renderizar, vincular, atualizarValoresItem };
   }
 
   raiz.criarAcompanhamentoOperacional = criar;

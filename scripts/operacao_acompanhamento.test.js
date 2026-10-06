@@ -1,6 +1,17 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { apurarItens, resultadoEfetivo } = require("../operacao-acompanhamento");
+const { apurarItens, resultadoEfetivo, totalPorQuantidade } = require("../operacao-acompanhamento");
+
+test("preço unitário por item multiplica pela quantidade e preserva reais", () => {
+  assert.equal(totalPorQuantidade(600, 20), 12000);
+  assert.equal(totalPorQuantidade(3, 0.1), 0.3);
+  assert.equal(totalPorQuantidade(null, 20), null);
+  assert.equal(totalPorQuantidade(600, null), null);
+  assert.equal(totalPorQuantidade(0, 20), null);
+  assert.equal(totalPorQuantidade(600, -20), null);
+  const soProposta = apurarItens([{ situacao: "ganho", quantidade: 600, valor_proposta: 12000, valor_homologado: null }]);
+  assert.equal(soProposta.valor, null, "o preço ofertado não é homologação presumida");
+});
 
 test("não inventa vitória nem valor sem itens ou resultado explícito", () => {
   assert.equal(apurarItens([]), null);
