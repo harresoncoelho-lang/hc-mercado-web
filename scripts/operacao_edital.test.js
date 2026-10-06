@@ -65,6 +65,8 @@ test("edição humana impede que novo resumo substitua checklist ou restaure ite
   assert.match(html, /\.eq\("checklist_editado_manualmente",false\)/);
   assert.match(html, /checklistAutomatico=processo\.checklist_fonte==="resumo"/);
   assert.match(html, /JSON\.stringify\(requisitos\)===JSON\.stringify\(processo\.documentos_exigidos\|\|\[\]\)/);
+  assert.match(html, /checklistsAutomaticosConferidos\.has\(p\.id\)/);
+  assert.match(html, /if\(!exigidos\.length\|\|atualizarAutomatico\)/);
 });
 
 test("checklist espera o resumo progressivo antes de gravar requisitos", async () => {

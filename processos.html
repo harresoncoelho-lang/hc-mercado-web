@@ -54,6 +54,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const estado = { orgId:null, empresaId:null, empresas:[], processos:[], documentos:[], prazos:[], empenhos:[], itens:[], ocorrencias:[], contratos:[], anexos:[], detalhesCarregados:false, erroDetalhes:false };
   const consultasChecklist = new Set();
+  const checklistsAutomaticosConferidos = new Set();
   const checklistIndisponivel = new Set();
   const motivosChecklist = new Map();
   const itensOficiais = new Map();
@@ -229,7 +230,8 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     abrir("modal-dossie");
     renderizarItensOficiais(p);
     void carregarItensOficiais(p);
-    if(!exigidos.length)void preencherChecklistDoResumo(p);
+    const atualizarAutomatico=p.checklist_fonte==="resumo"&&!p.checklist_editado_manualmente&&!checklistsAutomaticosConferidos.has(p.id);
+    if(!exigidos.length||atualizarAutomatico){checklistsAutomaticosConferidos.add(p.id);void preencherChecklistDoResumo(p);}
   }
   async function visualizarRelatorio(id){
     if(!estado.detalhesCarregados){aviso("Aguarde o carregamento completo do acompanhamento antes de gerar o relatório.","erro");return;}
