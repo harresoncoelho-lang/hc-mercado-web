@@ -37,6 +37,67 @@ const CAMPOS = {
     const oficial = util(edital.numeroCompra) && util(edital.anoCompra) ? `${edital.numeroCompra}/${edital.anoCompra}` : util(edital.numero);
     return numero && !/^\d{14}-\d-\d+\/\d{4}$/.test(numero) ? numero : oficial || numero || util(edital.numeroControlePNCP);
   }
+  // Conta quantos itens compartilham cada valor de um campo do PNCP, ignorando os
+  // valores que não acrescentam informação (ex.: "Não se aplica").
+  function contarPorValor(itens, campo, ignorar) {
+    const contagem = new Map();
+    for (const item of itens) {
+      const valor = texto(item?.[campo]);
+      if (valor && !(ignorar && ignorar.test(valor))) contagem.set(valor, (contagem.get(valor) || 0) + 1);
+    }
+    return contagem;
+  }
+  function descreverContagem(contagem, total) {
+    return [...contagem].map(([valor, n]) => total > 1 ? `${valor} em ${n} de ${total} itens` : valor).join("; ");
+  }
+  // Campos que o PNCP publica prontos (benefício ME/EPP, sigilo, margem, conteúdo
+  // nacional, links da disputa). Entram na ficha mesmo antes da leitura do edital
+  // pela IA, porque mudam a decisão de participar e não dependem do PDF.
+  function oficiaisPncp(edital, itens) {
+    const total = itens.length;
+    const SEM_BENEFICIO = /sem benef|n[ãa]o se aplica/i;
+    const beneficios = contarPorValor(itens, "beneficio", SEM_BENEFICIO);
+    const comBeneficioInformado = itens.filter(i => texto(i?.beneficio)).length;
+    const criterios = contarPorValor(itens, "criterioJulgamento");
+    const margens = contarPorValor(itens, "margemPreferencia");
+    const conteudoNacional = itens.filter(i => i?.exigenciaConteudoNacional === true).length;
+    const itensSigilosos = itens.filter(i => i?.orcamentoSigiloso === true).length;
+    const sigilo = util(edital.orcamentoSigiloso) || (itensSigilosos ? `Orçamento sigiloso em ${itensSigilosos} de ${total} itens` : "");
+    const presencial = util(edital.justificativaPresencial) || (/presencial/i.test(texto(edital.modalidadeNome || edital.modalidade)) ? "Modalidade presencial" : "");
+    const preferenciaMeEpp = beneficios.size ? descreverContagem(beneficios, total)
+      : total && comBeneficioInformado === total ? "Sem benefício para ME/EPP nos itens" : "";
+    const atencao = [];
+    if (sigilo) atencao.push(`${sigilo}: o valor estimado só é divulgado depois da disputa.`);
+    for (const [valor, n] of beneficios) atencao.push(`${valor}: ${n} de ${total} ${total > 1 ? "itens" : "item"}.`);
+    for (const [valor, n] of margens) atencao.push(`${valor} para produto nacional: ${n} de ${total} ${total > 1 ? "itens" : "item"}.`);
+    if (conteudoNacional) atencao.push(`Exigência de conteúdo nacional: ${conteudoNacional} de ${total} ${total > 1 ? "itens" : "item"}.`);
+    if (presencial) atencao.push(`Disputa presencial: ${presencial}.`);
+    return {
+      identificacao: [
+        ["Unidade compradora", edital.nomeUnidade], ["Plataforma da disputa", edital.plataforma],
+        ["Link da disputa", edital.linkSistemaOrigem], ["Processo administrativo", edital.processo],
+        ["Processo eletrônico", edital.linkProcessoEletronico], ["Órgão sub-rogado", edital.orgaoSubRogado],
+      ].filter(([, v]) => util(v)).map(([rotulo, valor]) => ({rotulo, valor: util(valor)})),
+      sigilo, preferenciaMeEpp,
+      margemPreferencia: descreverContagem(margens, total),
+      conteudoNacional: conteudoNacional ? `Exigida em ${conteudoNacional} de ${total} ${total > 1 ? "itens" : "item"}` : "",
+      criterioPorItem: criterios.size > 1 ? descreverContagem(criterios, total) : "",
+      criterioUnico: criterios.size === 1 ? [...criterios.keys()][0] : "",
+      informacaoComplementar: util(edital.informacaoComplementar),
+      atencao,
+    };
+  }
+  function valorEstimado(valor, sigilo) {
+    const t = util(valor);
+    return sigilo && (!t || Number(t) === 0) ? "Sigiloso" : moeda(t);
+  }
+  function linhaItem(item, i) {
+    const quantidade = [item.quantidade, item.unidade].filter(v => v != null && v !== "").join(" ");
+    const unitario = !item.orcamentoSigiloso && Number(item.valorUnitarioEstimado) > 0 ? `${moeda(String(item.valorUnitarioEstimado))} un.` : "";
+    const beneficio = /sem benef|n[ãa]o se aplica/i.test(texto(item.beneficio)) ? "" : texto(item.beneficio);
+    const extras = [quantidade, unitario, beneficio].filter(Boolean).join(" · ");
+    return `${item.numeroItem || item.numero || i + 1}. ${texto(item.descricao).replace(/<[^>]*>/g, " ")}${extras ? ` — ${extras}` : ""}`;
+  }
   function montar(resumo = {}, edital = {}, consideracoes = "") {
     const est = {
       ...resumo,
@@ -44,7 +105,17 @@ const CAMPOS = {
       orgao: { ...resumo.orgao, nome: util(resumo.orgao?.nome) || util(edital.orgao) },
       dadosOficiais: { ...resumo.dadosOficiais, publicacao: util(resumo.dadosOficiais?.publicacao) || util(edital.publicacao), inicioRecebimento: util(resumo.dadosOficiais?.inicioRecebimento) || util(edital.inicioRecebimento), prazoFinal: util(resumo.dadosOficiais?.prazoFinal) || util(edital.encerramento) },
     };
-    const campos = chave => Object.entries(CAMPOS[chave]?.campos || {}).map(([k, rotulo]) => ({rotulo, valor: k === "valorEstimado" ? moeda(est[chave]?.[k]) : data(est[chave]?.[k])})).filter(c => c.valor);
+    const itens = Array.isArray(est.itensPncp) ? est.itensPncp : [];
+    const pncp = oficiaisPncp(edital, itens);
+    // A leitura do edital pela IA costuma trazer mais detalhe (ex.: percentual da cota),
+    // então o dado do PNCP só preenche o que ela deixou vazio.
+    est.detalhes = { ...est.detalhes,
+      valorEstimado: valorEstimado(util(est.detalhes?.valorEstimado) || util(edital.valor), pncp.sigilo),
+      preferenciaMeEpp: util(est.detalhes?.preferenciaMeEpp) || pncp.preferenciaMeEpp,
+      margemPreferencia: util(est.detalhes?.margemPreferencia) || pncp.margemPreferencia,
+      criterioJulgamento: util(est.detalhes?.criterioJulgamento) || pncp.criterioUnico,
+    };
+    const campos = chave => Object.entries(CAMPOS[chave]?.campos || {}).map(([k, rotulo]) => ({rotulo, valor: k === "valorEstimado" ? valorEstimado(est[chave]?.[k], pncp.sigilo) : data(est[chave]?.[k])})).filter(c => c.valor);
     const livre = (rotulo, valor) => util(valor) ? [{rotulo, valor: util(valor)}] : [];
     const lista = (rotulo, valores) => {
       const itens = Array.isArray(valores) ? valores.map(util).filter(Boolean) : [];
@@ -56,29 +127,28 @@ const CAMPOS = {
       if (!documentos.has(categoria)) documentos.set(categoria, []);
       documentos.get(categoria).push(item);
     }
-    const itens = Array.isArray(est.itensPncp) ? est.itensPncp : [];
     const secoes = [
-      ["Identificação da Licitação", [...livre("Objeto", est.identificacao.objeto), ...campos("identificacao"), ...campos("dadosOficiais").filter(c => c.rotulo !== "Modalidade" || c.valor !== est.identificacao.modalidade)]],
+      ["Identificação da Licitação", [...livre("Objeto", est.identificacao.objeto), ...campos("identificacao"), ...pncp.identificacao, ...campos("dadosOficiais").filter(c => c.rotulo !== "Modalidade" || c.valor !== est.identificacao.modalidade)]],
       ["Informações da Sessão Pública", campos("sessaoPublica")],
       ["Órgão Responsável", campos("orgao")],
-      ["Detalhes da Licitação", campos("detalhes")],
+      ["Detalhes da Licitação", [...campos("detalhes"), ...livre("Critério por item", pncp.criterioPorItem), ...livre("Conteúdo nacional", pncp.conteudoNacional)]],
       ["Seguro Garantia", campos("garantias")],
       ["Informações sobre entrega e execução", campos("entregaExecucao")],
       ["Prazos importantes", campos("prazos")],
       ["Critérios da Proposta e Julgamento", [...campos("criteriosProposta"), ...lista("Preparação e envio da proposta", est.requisitosProposta)]],
-      ["Resumo dos Itens", [...campos("itens"), ...lista(`Itens da oportunidade (${itens.length})`, itens.map((item, i) => `${item.numeroItem || i + 1}. ${texto(item.descricao).replace(/<[^>]*>/g, " ")} — ${[item.quantidade, item.unidade].filter(v => v != null && v !== "").join(" ")}`))]],
+      ["Resumo dos Itens", [...campos("itens"), ...lista(`Itens da oportunidade (${itens.length})`, itens.map(linhaItem))]],
       ["Documentos de habilitação exigidos", [...lista("Credenciamento e participação", est.documentosCredenciamento), ...[...documentos].flatMap(([categoria, valores]) => lista(categoria, valores))]],
       ["Atestado de capacidade técnica", livre("Exigência", est.atestadoCapacidadeTecnica)],
       ["Legislação", livre("Base legal", est.legislacao)],
       ["Anexos e declarações", [...lista("Declarações e formulários", est.declaracoesExigidas), ...livre("Anexos e modelos citados", est.anexosDeclaracoes)]],
-      ["Outras informações relevantes", lista("Informações complementares", est.outrasInformacoesRelevantes)],
+      ["Outras informações relevantes", [...livre("Informação complementar do órgão (PNCP)", pncp.informacaoComplementar), ...lista("Informações complementares", est.outrasInformacoesRelevantes)]],
       ["Condições de pagamento", livre("Pagamento", est.condicoesPagamento)],
       ["Penalidades e multas", [...livre("Penalidades", est.penalidades), ...livre("Multas", est.multas)]],
-      ["Análise crítica", [...campos("analiseCritica"), ...lista("Pendências para conferência", est.pendenciasParaConferencia), ...lista("Possíveis questionamentos", est.possiveisQuestionamentos), ...lista("Perguntas sugeridas ao órgão", est.questionamentosSugeridos)]],
+      ["Análise crítica", [...lista("Pontos de atenção (dados oficiais do PNCP)", pncp.atencao), ...campos("analiseCritica"), ...lista("Pendências para conferência", est.pendenciasParaConferencia), ...lista("Possíveis questionamentos", est.possiveisQuestionamentos), ...lista("Perguntas sugeridas ao órgão", est.questionamentosSugeridos)]],
       ["Análise e Considerações do Licitante", livre("Considerações do licitante", consideracoes)],
     ].map(([titulo, valores]) => ({titulo, campos: valores}));
     return { numero: est.identificacao.numero, objeto: est.identificacao.objeto,
-      cards: [["Valor estimado", moeda(util(est.detalhes?.valorEstimado) || util(edital.valor)) || "Não informado"], ["Modalidade", est.identificacao.modalidade || "Não informado"], ["Data da sessão", data(est.sessaoPublica?.data) || "Não informado"]], secoes };
+      cards: [["Valor estimado", est.detalhes.valorEstimado || "Não informado"], ["Modalidade", est.identificacao.modalidade || "Não informado"], ["Data da sessão", data(est.sessaoPublica?.data) || "Não informado"]], secoes };
   }
   const api = { montar, texto, util };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

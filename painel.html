@@ -3116,7 +3116,7 @@
   async function carregarItensDoResumoIA(edital) {
     if (Array.isArray(iaItensPncpAtual) && iaItensPncpAtual.length) return iaItensPncpAtual;
     if (iaItensPncpCarregando) return iaItensPncpCarregando;
-    const chaveCache = `itens-pncp-v1:${idOportunidade(edital)}`;
+    const chaveCache = `itens-pncp-v2:${idOportunidade(edital)}`;
     try {
       const salvo = JSON.parse(localStorage.getItem(chaveCache) || "null");
       if (salvo && Array.isArray(salvo.itens) && salvo.itens.length && Date.now() - Number(salvo.em || 0) < 6 * 60 * 60 * 1000) {
@@ -5542,7 +5542,7 @@
       painel.innerHTML = montarHtmlItens(itens);
       sincronizarItensPncpNoResumo(edital, itens);
       try {
-        localStorage.setItem(`itens-pncp-v1:${idOportunidade(edital)}`, JSON.stringify({ em: Date.now(), itens }));
+        localStorage.setItem(`itens-pncp-v2:${idOportunidade(edital)}`, JSON.stringify({ em: Date.now(), itens }));
       } catch (e) { /* cache local é apenas otimização */ }
     } catch (e) {
       painel.innerHTML = `<p class="itens-vazio">Erro ao buscar os itens. Tenta de novo em alguns segundos.</p>`;

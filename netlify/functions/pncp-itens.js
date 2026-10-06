@@ -12,6 +12,15 @@ const BASE_URL = "https://pncp.gov.br/api/pncp/v1/orgaos";
 const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+// Resume a margem de preferência do item (normal e adicional) em um texto curto, ou
+// vazio quando o PNCP indica que ela não se aplica.
+function margemPreferencia(item) {
+  const partes = [];
+  if (item.aplicabilidadeMargemPreferenciaNormal) partes.push(`normal${item.percentualMargemPreferenciaNormal ? ` de ${item.percentualMargemPreferenciaNormal}%` : ""}`);
+  if (item.aplicabilidadeMargemPreferenciaAdicional) partes.push(`adicional${item.percentualMargemPreferenciaAdicional ? ` de ${item.percentualMargemPreferenciaAdicional}%` : ""}`);
+  return partes.length ? `Margem ${partes.join(" e ")}` : "";
+}
+
 exports.handler = async (event) => {
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
   const q = event.queryStringParameters || {};
@@ -59,6 +68,13 @@ exports.handler = async (event) => {
       valorTotal: i.valorTotal,
       materialOuServico: i.materialOuServicoNome || "",
       situacao: i.situacaoCompraItemNome || "",
+      beneficio: i.tipoBeneficioNome || "",
+      criterioJulgamento: i.criterioJulgamentoNome || "",
+      orcamentoSigiloso: i.orcamentoSigiloso === true,
+      margemPreferencia: margemPreferencia(i),
+      exigenciaConteudoNacional: i.exigenciaConteudoNacional === true,
+      ncmNbs: [i.ncmNbsCodigo, i.ncmNbsDescricao].filter(Boolean).join(" - "),
+      informacaoComplementar: i.informacaoComplementar || "",
     }));
     return { statusCode: 200, headers, body: JSON.stringify({ erro: null, itens }) };
   } catch (e) {
