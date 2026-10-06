@@ -37,7 +37,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
 (() => {
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const TIPOS_ESSENCIAIS = ["Certidão Federal", "Certidão Estadual", "Certidão Municipal", "FGTS", "CNDT", "Balanço patrimonial", "Contrato social"];
-  const estado = { orgId: null, empresas: [], empresaId: null, documentos: [], limiteCnpjs: undefined };
+  const estado = { orgId: null, empresas: [], empresaId: null, documentos: [], limiteCnpjs: undefined, acessoEmpresaId: null };
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const hoje = () => new Date(new Date().toDateString());
@@ -49,7 +49,8 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   function normalizarCnpj(v) { const n = String(v || "").replace(/\D/g, ""); return n || null; }
   function atualizarCotaEmpresas() {
     const usadas = estado.empresas.length;
-    const texto = estado.limiteCnpjs === null ? `${usadas} empresa${usadas === 1 ? "" : "s"} ativa${usadas === 1 ? "" : "s"} · acesso administrativo sem limite` :
+    const texto = estado.acessoEmpresaId ? "Acesso restrito à empresa vinculada pelo administrador" :
+      estado.limiteCnpjs === null ? `${usadas} empresa${usadas === 1 ? "" : "s"} ativa${usadas === 1 ? "" : "s"} · acesso administrativo sem limite` :
       Number.isInteger(estado.limiteCnpjs) ? `${usadas} de ${estado.limiteCnpjs} empresa${estado.limiteCnpjs === 1 ? "" : "s"} ativa${estado.limiteCnpjs === 1 ? "" : "s"}` :
       `${usadas} empresa${usadas === 1 ? "" : "s"} ativa${usadas === 1 ? "" : "s"} · cota indisponível`;
     $("cota-empresas").textContent = texto;
@@ -73,7 +74,13 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
     if (!await autenticar()) return;
     const { data: orgId, error } = await sb.rpc("bootstrap_operacao");
     if (error) { aviso("A Central Operacional ainda precisa da migração do Supabase. Execute o arquivo supabase/operacao_licitacoes.sql no SQL Editor e recarregue esta página.", "erro"); return; }
-    estado.orgId = orgId; await carregarEmpresas(); await carregarLimiteCnpjs();
+    estado.orgId = orgId;
+    const { data: acesso, error: erroAcesso } = await sb.rpc("meu_acesso_operacao");
+    if (erroAcesso) { aviso("Não foi possível verificar seu acesso à empresa. Tente novamente.", "erro"); return; }
+    estado.acessoEmpresaId = acesso?.empresa_id || null;
+    if (estado.acessoEmpresaId) $("btn-nova-empresa").style.display = "none";
+    await carregarEmpresas();
+    if (!estado.acessoEmpresaId) await carregarLimiteCnpjs();
   }
   async function carregarEmpresas() {
     const { data, error } = await sb.from("operacao_empresas").select("id,razao_social,cnpj,responsavel").eq("organizacao_id", estado.orgId).eq("ativo", true).order("razao_social");
@@ -145,6 +152,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   async function selecionarEmpresaExistente(empresa, form) { estado.empresaId = empresa.id; localStorage.setItem("licitaplena_empresa_operacional_id", empresa.id); form.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); $("empresa-atual").value = empresa.id; await carregarDados(); aviso("Esta empresa já estava cadastrada e foi aberta para você.", "info"); }
   async function salvarEmpresa(ev) {
     ev.preventDefault();
+    if (estado.acessoEmpresaId) { aviso("Seu acesso permite somente a empresa vinculada.", "erro"); return; }
     const form = ev.currentTarget, dados = new FormData(form), cnpj = normalizarCnpj(dados.get("cnpj"));
     const razaoSocial = String(dados.get("razao_social") || "").trim(), responsavel = String(dados.get("responsavel") || "").trim() || null;
     const btn = form.querySelector('button[type="submit"]');

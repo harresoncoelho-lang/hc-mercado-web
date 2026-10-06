@@ -248,6 +248,7 @@
       <button data-status="todos">Todos</button>
       <button data-status="boletim">Boletim</button>
       <button data-status="equipe" id="tab-equipe" style="display:none;">Equipe</button>
+      <button data-status="acessos" id="tab-acessos" style="display:none;">Acessos por empresa</button>
     </div>
     <div class="cartao-lista faixa-auto-aprovacao">
       <div>
@@ -288,6 +289,27 @@
           </div>
         </form>
         <div class="erro" id="erro-add-membro"></div>
+      </div>
+    </div>
+    <div id="secao-acessos" style="display:none;">
+      <div class="cartao-lista" style="padding:24px;margin-bottom:20px;">
+        <h3 style="margin-top:0;">Convidar pessoa para uma empresa</h3>
+        <p class="nota-equipe">A pessoa verá somente a empresa escolhida na Central Operacional, no acompanhamento e no Kanban. Ela cria a própria senha pelo link do convite. Não recebe acesso administrativo.</p>
+        <form id="form-convite-empresa" class="form-equipe">
+          <label for="convite-nome">Nome</label><input id="convite-nome" type="text" required maxlength="120" autocomplete="name">
+          <label for="convite-email">E-mail da pessoa</label><input id="convite-email" type="email" required autocomplete="email">
+          <label for="convite-empresa">Empresa permitida</label><select id="convite-empresa" required><option value="">Carregando empresas...</option></select>
+          <div style="margin-top:20px;"><button type="submit" class="btn-adicionar">Criar convite</button></div>
+        </form>
+        <div id="resultado-convite-empresa" role="status" style="margin-top:12px;"></div>
+      </div>
+      <div class="cartao-lista" style="padding:24px;margin-bottom:20px;">
+        <h3 style="margin-top:0;">Pessoas com acesso restrito</h3>
+        <div id="lista-acessos-empresa" class="carregando">Carregando acessos...</div>
+      </div>
+      <div class="cartao-lista" style="padding:24px;">
+        <h3 style="margin-top:0;">Convites recentes</h3>
+        <div id="lista-convites-empresa" class="carregando">Carregando convites...</div>
       </div>
     </div>
   </main>
@@ -496,6 +518,7 @@
 
   function configurarAcessoEquipe() {
     document.getElementById("tab-equipe").style.display = adminAtual && adminAtual.role === "owner" ? "" : "none";
+    document.getElementById("tab-acessos").style.display = adminAtual && adminAtual.role === "owner" ? "" : "none";
   }
 
   // Chave "config_admin" em public.dados_robo (mesma tabela chave->jsonb usada pelo
@@ -769,6 +792,7 @@
           ${c.status !== "aprovado" ? `<button class="btn-aprovar" data-id="${c.id}" data-acao="aprovado">Aprovar</button>` : ""}
           ${c.status !== "rejeitado" ? `<button class="btn-rejeitar" data-id="${c.id}" data-acao="rejeitado">Rejeitar</button>` : ""}
           ${c.status !== "pendente" ? `<button class="btn-reverter" data-id="${c.id}" data-acao="pendente">Voltar p/ pendente</button>` : ""}
+          ${adminAtual?.role === "owner" ? `<button class="btn-rejeitar" data-excluir-cliente="${c.id}" title="Excluir conta definitivamente">Excluir</button>` : ""}
         </div></td>
       </tr>`;
     }
@@ -796,6 +820,33 @@
         carregarClientes();
       });
     });
+    alvo.querySelectorAll("button[data-excluir-cliente]").forEach((btn) => btn.addEventListener("click", async () => {
+      const cliente = todosClientes.find(c => c.id === btn.dataset.excluirCliente);
+      if (!cliente) return;
+      btn.disabled = true;
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session) throw new Error("Sessão expirada. Entre novamente.");
+        async function solicitar(acao, confirmarEmail) {
+          const response = await fetch("/.netlify/functions/admin-excluir-cliente", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ id: cliente.id, acao, confirmarEmail }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.erro || "Falha ao verificar cadastro.");
+          return data;
+        }
+        const previa = await solicitar("verificar");
+        if (!previa.podeExcluir) { alert("Exclusão bloqueada: " + previa.bloqueios.join(" ")); return; }
+        const digitado = prompt(`EXCLUSÃO DEFINITIVA de ${cliente.nome || cliente.empresa || "cliente"}. A conta e o cadastro não poderão ser recuperados. Digite o e-mail ${cliente.email} para confirmar:`);
+        if (digitado === null) return;
+        await solicitar("excluir", digitado.trim());
+        alert("Cadastro e conta de acesso excluídos.");
+        await carregarClientes();
+      } catch (erro) { alert("Não foi possível excluir: " + erro.message); }
+      finally { btn.disabled = false; }
+    }));
   }
 
   function badgeStatusBoletim(status) {
@@ -917,6 +968,73 @@
     carregarEquipe();
   });
 
+  async function carregarAcessosEmpresa() {
+    if (adminAtual?.role !== "owner") return;
+    const [empresas, acessos, convites] = await Promise.all([
+      sb.rpc("listar_empresas_convite_operacao"),
+      sb.rpc("listar_acessos_empresa_operacao"),
+      sb.rpc("listar_convites_empresa_operacao"),
+    ]);
+    const erro = empresas.error || acessos.error || convites.error;
+    if (erro) {
+      document.getElementById("lista-acessos-empresa").textContent = "Acessos indisponíveis. Confira a migração de convites no Supabase: " + erro.message;
+      document.getElementById("lista-convites-empresa").textContent = "Convites indisponíveis.";
+      return;
+    }
+    const seletor = document.getElementById("convite-empresa");
+    seletor.innerHTML = '<option value="">Selecione a empresa</option>' + (empresas.data || [])
+      .map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.razao_social)}${e.cnpj ? " · " + escapeHtml(e.cnpj) : ""}</option>`).join("");
+    const listaAcessos = document.getElementById("lista-acessos-empresa");
+    listaAcessos.innerHTML = (acessos.data || []).length ? `<table><thead><tr><th>Pessoa</th><th>Empresa</th><th>Ação</th></tr></thead><tbody>${acessos.data.map(a =>
+      `<tr><td>${escapeHtml(a.nome || a.email)}<br><small>${escapeHtml(a.email)}</small></td><td>${escapeHtml(a.empresa)}</td><td><button type="button" class="btn-rejeitar" data-revogar-acesso="${escapeHtml(a.usuario_id)}">Revogar acesso</button></td></tr>`
+    ).join("")}</tbody></table>` : '<div class="vazio">Nenhuma pessoa com acesso restrito.</div>';
+    listaAcessos.querySelectorAll("[data-revogar-acesso]").forEach(btn => btn.addEventListener("click", async () => {
+      if (!confirm("Revogar o acesso desta pessoa à empresa? Ela deixará de entrar no LicitaPlena.")) return;
+      btn.disabled = true;
+      const { error } = await sb.rpc("revogar_acesso_empresa_operacao", { p_usuario_id: btn.dataset.revogarAcesso });
+      if (error) { alert("Não foi possível revogar: " + error.message); btn.disabled = false; return; }
+      await carregarAcessosEmpresa();
+    }));
+    const listaConvites = document.getElementById("lista-convites-empresa");
+    listaConvites.innerHTML = (convites.data || []).length ? `<table><thead><tr><th>Pessoa</th><th>Empresa</th><th>Estado</th><th>Ação</th></tr></thead><tbody>${convites.data.map(c => {
+      const pendente = !c.aceito_em && !c.revogado_em && new Date(c.expira_em) > new Date();
+      const estado = c.aceito_em ? "Aceito" : c.revogado_em ? "Revogado" : pendente ? "Pendente" : "Expirado";
+      return `<tr><td>${escapeHtml(c.nome)}<br><small>${escapeHtml(c.email)}</small></td><td>${escapeHtml(c.empresa)}</td><td>${estado}</td><td>${pendente ? `<button type="button" class="btn-rejeitar" data-revogar-convite="${escapeHtml(c.id)}">Revogar</button>` : ""}</td></tr>`;
+    }).join("")}</tbody></table>` : '<div class="vazio">Nenhum convite criado.</div>';
+    listaConvites.querySelectorAll("[data-revogar-convite]").forEach(btn => btn.addEventListener("click", async () => {
+      if (!confirm("Revogar este convite ainda não utilizado?")) return;
+      btn.disabled = true;
+      const { error } = await sb.rpc("revogar_convite_empresa_operacao", { p_convite_id: btn.dataset.revogarConvite });
+      if (error) { alert("Não foi possível revogar: " + error.message); btn.disabled = false; return; }
+      await carregarAcessosEmpresa();
+    }));
+  }
+
+  document.getElementById("form-convite-empresa").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    if (adminAtual?.role !== "owner") return;
+    const btn = ev.currentTarget.querySelector('button[type="submit"]');
+    const resultado = document.getElementById("resultado-convite-empresa");
+    btn.disabled = true;
+    resultado.textContent = "Criando convite...";
+    const { data, error } = await sb.rpc("criar_convite_empresa_operacao", {
+      p_empresa_id: document.getElementById("convite-empresa").value,
+      p_email: document.getElementById("convite-email").value.trim(),
+      p_nome: document.getElementById("convite-nome").value.trim(),
+    });
+    btn.disabled = false;
+    if (error) { resultado.textContent = "Não foi possível criar: " + error.message; return; }
+    const link = new URL("convite.html", location.href);
+    link.searchParams.set("token", data.token);
+    resultado.innerHTML = `<strong>Convite criado. Copie e envie este link à pessoa indicada (nenhum e-mail foi enviado automaticamente):</strong><br><input id="link-convite-empresa" type="text" readonly value="${escapeHtml(link.href)}" style="width:min(100%,680px);margin:8px 0;"><button type="button" id="copiar-convite-empresa">Copiar link</button><p>Válido até ${new Date(data.expira_em).toLocaleString("pt-BR")} e restrito ao e-mail informado.</p>`;
+    document.getElementById("copiar-convite-empresa").onclick = async () => {
+      try { await navigator.clipboard.writeText(link.href); resultado.querySelector("strong").textContent = "Link copiado. Envie à pessoa indicada."; }
+      catch (_) { document.getElementById("link-convite-empresa").select(); }
+    };
+    ev.currentTarget.reset();
+    await carregarAcessosEmpresa();
+  });
+
   document.querySelectorAll(".tabs button").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("ativo"));
@@ -925,9 +1043,13 @@
       document.getElementById("secao-clientes").style.display = "none";
       document.getElementById("secao-equipe").style.display = "none";
       document.getElementById("secao-boletim").style.display = "none";
+      document.getElementById("secao-acessos").style.display = "none";
       if (status === "equipe") {
         document.getElementById("secao-equipe").style.display = "block";
         carregarEquipe();
+      } else if (status === "acessos") {
+        document.getElementById("secao-acessos").style.display = "block";
+        carregarAcessosEmpresa();
       } else if (status === "boletim") {
         document.getElementById("secao-boletim").style.display = "block";
         carregarLogsBoletim();

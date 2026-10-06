@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Convite de acesso — LicitaPlena</title>
+  <link rel="icon" type="image/png" href="favicon.png?v=3">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <script src="supabase-config.js"></script>
+  <style>
+    :root{font-family:Inter,Arial,sans-serif;color:#17263a;background:#f3f7fc}*{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
+    main{width:min(520px,100%);background:#fff;border:1px solid #d9e4ef;border-radius:16px;padding:28px;box-shadow:0 14px 40px #14396816}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:18px}header img{width:38px}h1{font-size:23px;margin:0}p{color:#556983;line-height:1.55}
+    label{display:block;font-size:13px;font-weight:700;margin:14px 0 5px}input{width:100%;padding:11px;border:1px solid #cbd8e6;border-radius:8px;font:inherit}
+    button{border:0;border-radius:8px;background:#236bd1;color:#fff;font:inherit;font-weight:700;padding:11px 15px;cursor:pointer;margin-top:14px}button:disabled{opacity:.6;cursor:wait}
+    .abas{display:flex;gap:8px}.abas button{background:#e9eff7;color:#1c3a61}.abas button.ativo{background:#236bd1;color:#fff}
+    .aviso{min-height:25px;font-size:14px;margin-top:16px}.aviso.erro{color:#ae2740}.aviso.ok{color:#176c43}
+    a{color:#195ab5}.consentimento{display:flex;gap:8px;align-items:start;font-size:13px;color:#475a73}.consentimento input{width:auto;margin-top:3px}
+  </style>
+</head>
+<body>
+<main>
+  <header><img src="logo-icone.svg" alt=""><h1>Acesso por empresa</h1></header>
+  <p>Este convite dá acesso somente à empresa indicada pelo administrador. Use exatamente o e-mail para o qual o convite foi criado.</p>
+  <div id="estado-convite" class="aviso"></div>
+  <div class="abas"><button type="button" id="aba-criar" class="ativo">Criar minha conta</button><button type="button" id="aba-entrar">Já tenho conta</button></div>
+  <form id="form-convite">
+    <label for="email">E-mail convidado</label><input id="email" type="email" required autocomplete="email">
+    <label for="senha">Senha</label><input id="senha" type="password" required minlength="8" autocomplete="new-password">
+    <div id="consentimento" class="consentimento" style="margin-top:15px;"><input id="aceite" type="checkbox" required><span>Li e aceito os <a href="termos-de-uso.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="politica-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span></div>
+    <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-top:18px;"></div>
+    <button id="enviar" type="submit">Criar conta e ativar acesso</button>
+  </form>
+  <p><a href="login.html">Voltar ao login</a></p>
+</main>
+<script>
+(() => {
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const token = new URL(location.href).searchParams.get("token") || "";
+  const $ = id => document.getElementById(id);
+  let modo = "criar";
+  function aviso(texto, tipo = "") { $("estado-convite").textContent = texto; $("estado-convite").className = "aviso " + tipo; }
+  function alternar(novo) {
+    modo = novo;
+    $("aba-criar").classList.toggle("ativo", modo === "criar");
+    $("aba-entrar").classList.toggle("ativo", modo === "entrar");
+    $("consentimento").style.display = modo === "criar" ? "flex" : "none";
+    $("aceite").required = modo === "criar";
+    $("senha").autocomplete = modo === "criar" ? "new-password" : "current-password";
+    $("enviar").textContent = modo === "criar" ? "Criar conta e ativar acesso" : "Entrar e ativar acesso";
+  }
+  async function aceitar() {
+    const { data, error } = await sb.rpc("aceitar_convite_empresa_operacao", { p_token: token });
+    if (error) throw error;
+    aviso("Acesso ativado para " + data.empresa + ". Abrindo seu painel...", "ok");
+    setTimeout(() => location.replace("painel.html"), 1200);
+  }
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(token)) {
+    aviso("Link de convite inválido. Peça um novo link ao administrador.", "erro");
+    $("enviar").disabled = true;
+  } else {
+    sb.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        $("email").value = session.user.email || "";
+        $("form-convite").style.display = "none";
+        try { await aceitar(); } catch (erro) { $("form-convite").style.display = "block"; alternar("entrar"); aviso(erro.message, "erro"); }
+      }
+    });
+  }
+  $("aba-criar").onclick = () => alternar("criar");
+  $("aba-entrar").onclick = () => alternar("entrar");
+  $("form-convite").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const botao = $("enviar"); botao.disabled = true; aviso("Validando acesso...");
+    const email = $("email").value.trim().toLowerCase();
+    const password = $("senha").value;
+    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
+    if (typeof hcaptcha !== "undefined" && !captchaToken) { aviso("Conclua a verificação de segurança.", "erro"); botao.disabled = false; return; }
+    try {
+      const resposta = modo === "criar"
+        ? await sb.auth.signUp({ email, password, options: { captchaToken, emailRedirectTo: location.href,
+          data: { nome: email.split("@")[0], aceite_termos: true } } })
+        : await sb.auth.signInWithPassword({ email, password, options: { captchaToken } });
+      if (resposta.error) throw resposta.error;
+      if (!resposta.data.session) {
+        aviso("Conta criada. Confirme o e-mail recebido e abra novamente este mesmo link para ativar o acesso.", "ok");
+        return;
+      }
+      await aceitar();
+    } catch (erro) { aviso("Não foi possível ativar o acesso: " + erro.message, "erro"); }
+    finally { botao.disabled = false; if (typeof hcaptcha !== "undefined") hcaptcha.reset(); }
+  });
+})();
+</script>
+</body>
+</html>
