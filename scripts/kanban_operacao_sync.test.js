@@ -53,7 +53,7 @@ function preparar(existente, prazos) {
   // A consulta da empresa é isolada, para testar o contrato de sincronização sem
   // depender da rede ou da sessão real do usuário.
   const codigoTestavel = codigo.replace(
-    "const { organizacaoId, empresa } = await empresaOperacionalParaDossie();",
+    "const { organizacaoId, empresa } = await empresaOperacionalParaDossie(empresaId);",
     'const organizacaoId = "org", empresa = { id: "empresa" };'
   );
   vm.runInNewContext(`${codigoTestavel}\nthis.sincronizar = sincronizarDossieOperacional; this.status = dadosStatusOperacional;`, contexto);
@@ -88,6 +88,30 @@ test("usa o cliente Supabase autenticado do painel, não variável de outro esco
   const resultado = await contexto.empresa();
   assert.equal(resultado.organizacaoId, "org");
   assert.equal(resultado.empresa.id, "empresa");
+});
+
+test("a empresa solicitada prevalece sobre a preferência salva no navegador", async () => {
+  const banco = {
+    rpc: async () => ({ data: "org", error: null }),
+    from(tabela) {
+      assert.equal(tabela, "operacao_empresas");
+      return {
+        select() { return this; }, eq() { return this; },
+        order: async () => ({ data: [
+          { id: "hcm", razao_social: "HCM" },
+          { id: "rymo", razao_social: "RyMo" },
+        ], error: null }),
+      };
+    },
+  };
+  const contexto = {
+    window: { __sbClient: banco },
+    localStorage: { getItem: () => "hcm" },
+    aguardarSupabaseAutenticado: async () => {},
+  };
+  vm.runInNewContext(`${codigo}\nthis.empresa = empresaOperacionalParaDossie;`, contexto);
+  assert.equal((await contexto.empresa("rymo")).empresa.id, "rymo");
+  await assert.rejects(contexto.empresa("inexistente"), /não está mais disponível/);
 });
 
 test("cria dossiê pré-preenchido sem confundir prazo da proposta com sessão", async () => {

@@ -875,6 +875,11 @@
     resize: vertical; box-sizing: border-box;
   }
   .kanban-card-anotacao:focus { outline: none; border-color: var(--azul); }
+  .empresa-acompanhamento { display:flex; align-items:end; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
+  .empresa-acompanhamento label { display:grid; gap:5px; font-size:12px; font-weight:700; color:var(--texto-fraco); }
+  .empresa-acompanhamento select { min-width:240px; max-width:min(100%,420px); padding:9px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--fundo-fraco); color:var(--texto); font:inherit; }
+  .empresa-acompanhamento a { color:var(--azul-texto); font-size:12px; padding-bottom:10px; }
+  .empresa-acompanhamento .empresa-ajuda { width:100%; margin:0; color:var(--texto-fraco); font-size:12px; }
   @media (max-width: 900px) { .kanban-coluna { flex: 0 0 260px; } }
   .modal-ia-consideracoes { width: 100%; min-height: 70px; padding: 10px; background: var(--fundo-fraco); border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box; margin-top: 8px; }
   @media (max-width: 640px) { .modal-ia { max-width: 100%; } }
@@ -1691,6 +1696,7 @@
       </div>
     </div>
     <div class="secao-conteudo-principal">
+    <div class="empresa-acompanhamento"><label for="bol-empresa">Acompanhar oportunidades para<select id="bol-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">A escolha define a empresa do acompanhamento; não altera os editais públicos do boletim.</p></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px;">
         <button class="btn-imprimir" id="bol-atualizar" title="Buscar de novo agora"><svg class='icone-ph'><use href='#ph-arrows-clockwise'></use></svg> Atualizar boletim</button>
         <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle"><svg class='icone-ph'><use href='#ph-gear'></use></svg> Configurar filtro do boletim</button>
@@ -1715,6 +1721,7 @@
 
   <section id="oportunidades">
     <div class="secao-conteudo-principal">
+    <div class="empresa-acompanhamento"><label for="op-empresa">Acompanhar oportunidades para<select id="op-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">A escolha define a empresa ao marcar o status de uma licitação encontrada.</p></div>
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Encontrar Licitações</h2>
@@ -2177,6 +2184,7 @@
       <button type="button" class="btn-imprimir" id="kanban-ir-boletim"><svg class='icone-ph'><use href='#ph-newspaper'></use></svg> Abrir Boletim</button>
     </div>
     <div class="secao-conteudo-principal">
+    <div class="empresa-acompanhamento"><label for="kanban-empresa">Acompanhamento da empresa<select id="kanban-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">Cada empresa tem seu próprio quadro. O mesmo edital pode ter decisões diferentes em empresas diferentes.</p></div>
     <div id="kanban-quadro" class="kanban-quadro"></div>
     </div>
   </section>
@@ -3571,14 +3579,15 @@
     document.getElementById("modal-ia-cartoes-topo").innerHTML = "";
 
     const idEdital = idOportunidade(edital);
+    const empresaIdConsideracoes = empresaOperacionalId;
     const considera = document.getElementById("modal-ia-consideracoes");
     considera.value = (lerMapa("anotacoes-licitacao")[idEdital]) || "";
     let temporizadorConsidera = null;
     considera.oninput = () => {
       clearTimeout(temporizadorConsidera);
-      temporizadorConsidera = setTimeout(() => definirNoMapa("anotacoes-licitacao", idEdital, considera.value.trim()), 500);
+      temporizadorConsidera = setTimeout(() => definirNoMapa("anotacoes-licitacao", idEdital, considera.value.trim(), empresaIdConsideracoes), 500);
     };
-    considera.onblur = () => definirNoMapa("anotacoes-licitacao", idEdital, considera.value.trim());
+    considera.onblur = () => definirNoMapa("anotacoes-licitacao", idEdital, considera.value.trim(), empresaIdConsideracoes);
 
     document.getElementById("modal-ia-baixar").onclick = () => baixarEditalDireto(edital, document.getElementById("modal-ia-baixar"));
     document.getElementById("modal-ia-checklist-email").onclick = () => {
@@ -4298,27 +4307,36 @@
   }
 
   // ---- Mapas persistidos (status de acompanhamento e anotações por licitação) ----
-  function lerMapa(nome) {
+  let empresaOperacionalId = null;
+  let empresaAcompanhamentoPronta = false;
+  const MAPAS_POR_EMPRESA = new Set(["status-licitacao", "kanban-editais", "anotacoes-licitacao"]);
+  function chaveMapa(nome, empresaId = empresaOperacionalId) {
+    return MAPAS_POR_EMPRESA.has(nome) ? (empresaId ? `${chaveArmazenamento(nome)}:${empresaId}` : null) : chaveArmazenamento(nome);
+  }
+  function lerMapa(nome, empresaId = empresaOperacionalId) {
     try {
-      const bruto = localStorage.getItem(chaveArmazenamento(nome));
+      const chave = chaveMapa(nome, empresaId);
+      if (!chave) return {};
+      const bruto = localStorage.getItem(chave);
       const obj = bruto ? JSON.parse(bruto) : {};
       return obj && typeof obj === "object" ? obj : {};
     } catch (e) {
       return {};
     }
   }
-  function salvarMapa(nome, mapa) {
+  function salvarMapa(nome, mapa, empresaId = empresaOperacionalId) {
     try {
-      localStorage.setItem(chaveArmazenamento(nome), JSON.stringify(mapa));
+      const chave = chaveMapa(nome, empresaId);
+      if (chave) localStorage.setItem(chave, JSON.stringify(mapa));
     } catch (e) {
       // localStorage indisponível — segue sem persistir
     }
   }
-  function definirNoMapa(nome, id, valor) {
-    const mapa = lerMapa(nome);
+  function definirNoMapa(nome, id, valor, empresaId = empresaOperacionalId) {
+    const mapa = lerMapa(nome, empresaId);
     if (valor === "" || valor === null || valor === undefined) delete mapa[id];
     else mapa[id] = valor;
-    salvarMapa(nome, mapa);
+    salvarMapa(nome, mapa, empresaId);
   }
 
   // Sem ícone de propósito: esses textos viram <option> de <select> em vários lugares
@@ -4345,9 +4363,9 @@
   // Guarda os dados necessários pra desenhar o card no Kanban mesmo depois que a licitação
   // sair do boletim do dia (o boletim só mostra as últimas 24-48h, mas o acompanhamento
   // precisa continuar existindo até o usuário decidir tirar).
-  function salvarSnapshotKanban(id, edital) {
+  function salvarSnapshotKanban(id, edital, empresaId = empresaOperacionalId) {
     if (!edital) return;
-    const mapa = lerMapa("kanban-editais");
+    const mapa = lerMapa("kanban-editais", empresaId);
     mapa[id] = {
       objeto: edital.objeto || "",
       orgao: edital.orgao || "",
@@ -4366,7 +4384,7 @@
       codigoUnidade: edital.codigoUnidade || null,
       dataSessao: edital.dataSessao || edital.data_sessao || null,
     };
-    salvarMapa("kanban-editais", mapa);
+    salvarMapa("kanban-editais", mapa, empresaId);
   }
 
   // Um status no Boletim não deve obrigar o usuário a redigitar o que já veio do
@@ -4414,7 +4432,7 @@
     clearTimeout(aviso.temporizador);
     aviso.temporizador = setTimeout(() => { aviso.textContent = ""; }, erro ? 12000 : 5000);
   }
-  async function empresaOperacionalParaDossie() {
+  async function empresaOperacionalParaDossie(empresaId = null) {
     if (!contextoOperacionalPromise) {
       contextoOperacionalPromise = (async () => {
         await aguardarSupabaseAutenticado();
@@ -4429,14 +4447,14 @@
     }
     const { organizacaoId, empresas } = await contextoOperacionalPromise;
     const preferida = localStorage.getItem("licitaplena_empresa_operacional_id");
-    const empresa = empresas.find(e => e.id === preferida) || empresas[0];
-    if (!empresa) throw new Error("Cadastre uma empresa na Central Operacional antes de criar o dossiê.");
-    return { organizacaoId, empresa };
+    const empresa = empresaId ? empresas.find(e => e.id === empresaId) : empresas.find(e => e.id === preferida) || empresas[0];
+    if (!empresa) throw new Error(empresaId ? "A empresa selecionada não está mais disponível. Atualize a lista e tente novamente." : "Cadastre uma empresa na Central Operacional antes de criar o dossiê.");
+    return { organizacaoId, empresa, empresas };
   }
-  async function sincronizarDossieOperacional(id, edital, status) {
+  async function sincronizarDossieOperacional(id, edital, status, empresaId = null) {
     const dadosStatus = dadosStatusOperacional(status);
     if (!dadosStatus || !edital) return null;
-    const { organizacaoId, empresa } = await empresaOperacionalParaDossie();
+    const { organizacaoId, empresa } = await empresaOperacionalParaDossie(empresaId);
     const sb = window.__sbClient;
     const { data: existente, error: erroBusca } = await sb.from("operacao_processos")
       .select("*").eq("organizacao_id", organizacaoId).eq("empresa_id", empresa.id)
@@ -4508,18 +4526,150 @@
     }
     return { id: processo.id, empresa: empresa.razao_social };
   }
-  function agendarSincronizacaoDossie(id, edital, status, silencioso = false) {
-    if (!id || !edital || !dadosStatusOperacional(status)) return;
-    const anterior = sincronizacoesOperacionais.get(id) || Promise.resolve();
-    const tarefa = anterior.catch(() => {}).then(() => sincronizarDossieOperacional(id, edital, status));
-    sincronizacoesOperacionais.set(id, tarefa);
+  function agendarSincronizacaoDossie(id, edital, status, silencioso = false, empresaId = empresaOperacionalId) {
+    if (!id || !edital || !dadosStatusOperacional(status)) return Promise.resolve(null);
+    const chave = `${empresaId}:${id}`;
+    const anterior = sincronizacoesOperacionais.get(chave) || Promise.resolve();
+    const tarefa = anterior.catch(() => {}).then(() => sincronizarDossieOperacional(id, edital, status, empresaId));
+    sincronizacoesOperacionais.set(chave, tarefa);
     void tarefa.then(resultado => {
       if (!silencioso) avisarSincronizacaoOperacional(`Dossiê atualizado para ${resultado.empresa || "a empresa ativa"}.`);
     }).catch(erro => {
       console.warn("Não foi possível sincronizar o dossiê automaticamente:", erro);
-      avisarSincronizacaoOperacional("Status salvo neste navegador, mas o dossiê não foi atualizado. Confira a empresa ativa na Central Operacional e tente novamente.", true);
-    }).finally(() => { if (sincronizacoesOperacionais.get(id) === tarefa) sincronizacoesOperacionais.delete(id); });
+      avisarSincronizacaoOperacional("Não foi possível salvar o acompanhamento. Tente novamente.", true);
+    }).finally(() => { if (sincronizacoesOperacionais.get(chave) === tarefa) sincronizacoesOperacionais.delete(chave); });
     return tarefa;
+  }
+  function statusDoProcessoAcompanhamento(processo) {
+    if (processo.status === "arquivado" || processo.decisao === "nao_participar") return null;
+    if (["vitoria_sem_detalhamento", "vitoria_parcial", "vitoria_total"].includes(processo.situacao_resultado) || ["homologado", "contratado"].includes(processo.status)) return "ganhei";
+    if (processo.situacao_resultado === "sem_vitoria" || processo.status === "perdido") return "perdi";
+    if (processo.decisao === "participar" || !["triagem"].includes(processo.status)) return "participando";
+    return "interesse";
+  }
+  function atualizarStatusAcompanhamentoNaTela() {
+    const status = lerMapa("status-licitacao");
+    const anotacoes = lerMapa("anotacoes-licitacao");
+    document.querySelectorAll(".boletim-card").forEach(card => {
+      const seletor = card.querySelector(".select-status-licitacao");
+      const anotacao = card.querySelector(".anotacao-licitacao");
+      if (seletor) { seletor.value = status[card.dataset.id] || ""; seletor.disabled = !empresaAcompanhamentoPronta; }
+      if (anotacao) anotacao.value = anotacoes[card.dataset.id] || "";
+    });
+    renderizarKanban();
+    if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
+  }
+  function atualizarSeletoresEmpresa(empresas) {
+    for (const seletor of document.querySelectorAll(".seletor-empresa-acompanhamento")) {
+      seletor.innerHTML = empresas.length
+        ? empresas.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.razao_social)}</option>`).join("")
+        : '<option value="">Cadastre uma empresa na Central Operacional</option>';
+      seletor.value = empresaOperacionalId || "";
+      seletor.disabled = !empresas.length || !empresaAcompanhamentoPronta;
+    }
+  }
+  async function carregarAcompanhamentosEmpresa(organizacaoId, empresaId) {
+    const sb = window.__sbClient;
+    const processos = [];
+    for (let inicio = 0; ; inicio += 1000) {
+      const { data, error } = await sb.from("operacao_processos").select("*")
+        .eq("organizacao_id", organizacaoId).eq("empresa_id", empresaId).range(inicio, inicio + 999);
+      if (error) throw error;
+      processos.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
+    const status = {};
+    const snapshots = {};
+    const anteriores = lerMapa("kanban-editais", empresaId);
+    for (const processo of processos) {
+      const id = processo.origem_externa_id;
+      const valor = id && statusDoProcessoAcompanhamento(processo);
+      if (!valor) continue;
+      status[id] = valor;
+      snapshots[id] = {
+        ...(anteriores[id] || {}), objeto: processo.objeto || "", orgao: processo.orgao || "",
+        numeroControlePNCP: /^\d{14}-\d-\d+\/\d{4}$/.test(id) ? id : (anteriores[id]?.numeroControlePNCP || null),
+        link: processo.url_origem || anteriores[id]?.link || null,
+        modalidade: processo.modalidade || null, fonte: processo.sistema || null,
+        publicacao: processo.data_publicacao || null, dataSessao: processo.data_sessao || null,
+        valorTotalEstimado: processo.valor_estimado ?? null
+      };
+    }
+    const idsProcesso = processos.filter(p => status[p.origem_externa_id]).map(p => p.id);
+    for (let inicio = 0; inicio < idsProcesso.length; inicio += 100) {
+      const { data, error } = await sb.from("operacao_prazos_processo")
+        .select("processo_id,vencimento,titulo").eq("organizacao_id", organizacaoId)
+        .eq("categoria", "proposta").in("processo_id", idsProcesso.slice(inicio, inicio + 100));
+      if (error) throw error;
+      for (const prazo of data || []) {
+        const processo = processos.find(p => p.id === prazo.processo_id);
+        if (processo && snapshots[processo.origem_externa_id] && prazo.titulo === "Prazo de propostas (Boletim)") {
+          snapshots[processo.origem_externa_id].encerramento = prazo.vencimento;
+        }
+      }
+    }
+    // O banco decide quais cartões pertencem à empresa; o navegador só guarda
+    // detalhes de apresentação e anotações separados pelo ID da empresa.
+    salvarMapa("status-licitacao", status, empresaId);
+    salvarMapa("kanban-editais", snapshots, empresaId);
+  }
+  async function carregarEmpresasAcompanhamento() {
+    empresaAcompanhamentoPronta = false;
+    contextoOperacionalPromise = null;
+    try {
+      const { organizacaoId, empresas } = await empresaOperacionalParaDossie();
+      const anterior = empresaOperacionalId;
+      const preferida = localStorage.getItem("licitaplena_empresa_operacional_id");
+      empresaOperacionalId = empresas.find(e => e.id === preferida)?.id || empresas.find(e => e.id === anterior)?.id || empresas[0]?.id || null;
+      atualizarSeletoresEmpresa(empresas);
+      if (!empresaOperacionalId) throw new Error("Cadastre uma empresa na Central Operacional para acompanhar oportunidades.");
+      await carregarAcompanhamentosEmpresa(organizacaoId, empresaOperacionalId);
+      empresaAcompanhamentoPronta = true;
+      atualizarSeletoresEmpresa(empresas);
+      atualizarStatusAcompanhamentoNaTela();
+    } catch (erro) {
+      if (!empresaOperacionalId) atualizarSeletoresEmpresa([]);
+      atualizarStatusAcompanhamentoNaTela();
+      avisarSincronizacaoOperacional("Não foi possível carregar as empresas e seus acompanhamentos: " + erro.message, true);
+    }
+  }
+  async function selecionarEmpresaAcompanhamento(id) {
+    if (!id || id === empresaOperacionalId) return;
+    empresaAcompanhamentoPronta = false;
+    empresaOperacionalId = id;
+    localStorage.setItem("licitaplena_empresa_operacional_id", id);
+    try {
+      const { organizacaoId, empresas } = await contextoOperacionalPromise;
+      atualizarSeletoresEmpresa(empresas);
+      atualizarStatusAcompanhamentoNaTela();
+      await carregarAcompanhamentosEmpresa(organizacaoId, id);
+      if (empresaOperacionalId !== id) return;
+      empresaAcompanhamentoPronta = true;
+      atualizarSeletoresEmpresa(empresas);
+      atualizarStatusAcompanhamentoNaTela();
+    } catch (erro) {
+      avisarSincronizacaoOperacional("Não foi possível abrir o acompanhamento desta empresa: " + erro.message, true);
+    }
+  }
+  async function salvarStatusAcompanhamento(id, edital, status) {
+    if (!empresaAcompanhamentoPronta || !empresaOperacionalId) throw new Error("Escolha uma empresa antes de acompanhar o edital.");
+    const empresaId = empresaOperacionalId;
+    let empresaNome = "a empresa selecionada";
+    if (status) {
+      const resultado = await agendarSincronizacaoDossie(id, edital, status, true, empresaId);
+      empresaNome = resultado?.empresa || empresaNome;
+      definirNoMapa("status-licitacao", id, status, empresaId);
+      salvarSnapshotKanban(id, edital, empresaId);
+    } else {
+      const { organizacaoId } = await empresaOperacionalParaDossie(empresaId);
+      const { error } = await window.__sbClient.from("operacao_processos").update({ status: "arquivado", atualizado_em: new Date().toISOString() })
+        .eq("organizacao_id", organizacaoId).eq("empresa_id", empresaId).eq("origem_externa_id", id);
+      if (error) throw error;
+      definirNoMapa("status-licitacao", id, null, empresaId);
+      definirNoMapa("kanban-editais", id, null, empresaId);
+    }
+    if (empresaOperacionalId === empresaId) atualizarStatusAcompanhamentoNaTela();
+    return empresaNome;
   }
   function classePrazoKanban(iso) {
     if (!iso) return null;
@@ -4530,6 +4680,17 @@
     if (diasRestantes <= 3) return "perto";
     return "ok";
   }
+  document.querySelectorAll(".seletor-empresa-acompanhamento").forEach(seletor => {
+    seletor.addEventListener("change", () => { void selecionarEmpresaAcompanhamento(seletor.value); });
+  });
+  void carregarEmpresasAcompanhamento();
+  let ultimaVerificacaoEmpresas = Date.now();
+  window.addEventListener("focus", () => {
+    const preferida = localStorage.getItem("licitaplena_empresa_operacional_id");
+    if (preferida === empresaOperacionalId && Date.now() - ultimaVerificacaoEmpresas < 15000) return;
+    ultimaVerificacaoEmpresas = Date.now();
+    void carregarEmpresasAcompanhamento();
+  });
 
   function montarCardKanban(id, edital, valorStatus, anotacaoAtual) {
     const classePrazo = classePrazoKanban(edital.encerramento);
@@ -4565,6 +4726,10 @@
   function renderizarKanban() {
     const alvo = document.getElementById("kanban-quadro");
     if (!alvo) return;
+    if (!empresaAcompanhamentoPronta) {
+      alvo.innerHTML = '<div class="kanban-vazio">Selecione uma empresa e aguarde o carregamento do acompanhamento.</div>';
+      return;
+    }
     const statusMapa = lerMapa("status-licitacao");
     const editaisMapa = lerMapa("kanban-editais");
     const anotacoesMapa = lerMapa("anotacoes-licitacao");
@@ -4609,64 +4774,66 @@
       });
       coluna.addEventListener("dragenter", (ev) => ev.preventDefault());
       coluna.addEventListener("dragleave", () => coluna.classList.remove("arraste-sobre"));
-      coluna.addEventListener("drop", (ev) => {
+      coluna.addEventListener("drop", async (ev) => {
         ev.preventDefault();
         coluna.classList.remove("arraste-sobre");
         const id = ev.dataTransfer.getData("text/plain");
         const novoStatus = coluna.dataset.status;
         if (!id || !novoStatus) return;
-        definirNoMapa("status-licitacao", id, novoStatus);
-        agendarSincronizacaoDossie(id, lerMapa("kanban-editais")[id], novoStatus);
-        renderizarKanban();
+        try { await salvarStatusAcompanhamento(id, lerMapa("kanban-editais")[id], novoStatus); }
+        catch (erro) { avisarSincronizacaoOperacional("Não foi possível mover o edital: " + erro.message, true); }
       });
     });
 
     // Alternativa confiável ao arrastar: seletor "Mover para" em cada cartão.
     alvo.querySelectorAll(".kanban-card-mover").forEach((sel) => {
       sel.addEventListener("click", (ev) => ev.stopPropagation());
-      sel.addEventListener("change", () => {
-        definirNoMapa("status-licitacao", sel.dataset.id, sel.value);
-        agendarSincronizacaoDossie(sel.dataset.id, lerMapa("kanban-editais")[sel.dataset.id], sel.value);
-        renderizarKanban();
+      sel.addEventListener("change", async () => {
+        sel.disabled = true;
+        try { await salvarStatusAcompanhamento(sel.dataset.id, lerMapa("kanban-editais")[sel.dataset.id], sel.value); }
+        catch (erro) { avisarSincronizacaoOperacional("Não foi possível mover o edital: " + erro.message, true); renderizarKanban(); }
       });
     });
 
     // Anotações direto no cartão: salva com um pequeno atraso enquanto digita, e também ao sair do campo.
     alvo.querySelectorAll(".kanban-card-anotacao").forEach((campo) => {
       let temporizadorAnotacaoKanban = null;
+      const empresaIdAnotacao = empresaOperacionalId;
       campo.addEventListener("click", (ev) => ev.stopPropagation());
       campo.addEventListener("input", () => {
         clearTimeout(temporizadorAnotacaoKanban);
         temporizadorAnotacaoKanban = setTimeout(() => {
-          definirNoMapa("anotacoes-licitacao", campo.dataset.id, campo.value);
+          definirNoMapa("anotacoes-licitacao", campo.dataset.id, campo.value, empresaIdAnotacao);
         }, 600);
       });
       campo.addEventListener("blur", () => {
         clearTimeout(temporizadorAnotacaoKanban);
-        definirNoMapa("anotacoes-licitacao", campo.dataset.id, campo.value);
+        definirNoMapa("anotacoes-licitacao", campo.dataset.id, campo.value, empresaIdAnotacao);
       });
     });
 
     alvo.querySelectorAll(".kanban-card-remover").forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", async () => {
         const id = btn.dataset.id;
         if (!confirm("Tirar essa licitação do quadro de acompanhamento?")) return;
-        definirNoMapa("status-licitacao", id, null);
-        definirNoMapa("kanban-editais", id, null);
-        renderizarKanban();
+        btn.disabled = true;
+        try { await salvarStatusAcompanhamento(id, null, ""); }
+        catch (erro) { btn.disabled = false; avisarSincronizacaoOperacional("Não foi possível arquivar o acompanhamento: " + erro.message, true); }
       });
     });
 
     alvo.querySelectorAll(".kanban-btn-dossie").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = btn.dataset.id;
+        const empresaId = empresaOperacionalId;
         const edital = lerMapa("kanban-editais")[id];
         const status = lerMapa("status-licitacao")[id];
         btn.disabled = true;
         try {
-          const pendente = sincronizacoesOperacionais.get(id);
+          const pendente = sincronizacoesOperacionais.get(`${empresaId}:${id}`);
           if (pendente) await pendente;
-          else await agendarSincronizacaoDossie(id, edital, status, true);
+          else await agendarSincronizacaoDossie(id, edital, status, true, empresaId);
+          if (empresaOperacionalId !== empresaId) return;
           window.location.href = `processos?origem=${encodeURIComponent(id)}`;
         } catch (erro) {
           btn.disabled = false;
@@ -5373,7 +5540,7 @@
             <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
           <div class="boletim-gerenciar">
-            <select class="select-status-licitacao" title="Status de acompanhamento">${opcoesStatusHtml}</select>
+            <select class="select-status-licitacao" title="Status de acompanhamento da empresa selecionada"${empresaAcompanhamentoPronta ? "" : " disabled"}>${opcoesStatusHtml}</select>
             <textarea class="anotacao-licitacao" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual)}</textarea>
           </div>
           <div class="boletim-rodape">
@@ -5636,31 +5803,35 @@
       const selectStatus = card.querySelector(".select-status-licitacao");
       if (selectStatus) {
         selectStatus.addEventListener("click", (ev) => ev.stopPropagation());
-        selectStatus.addEventListener("change", () => {
-          definirNoMapa("status-licitacao", id, selectStatus.value);
-          // Salva (ou remove) o snapshot usado pelo quadro Kanban — assim a licitação
-          // continua aparecendo lá mesmo depois de sair do boletim do dia.
+        selectStatus.addEventListener("change", async () => {
+          const statusAnterior = lerMapa("status-licitacao")[id] || "";
           const idx = Number(card.dataset.idx);
-          if (selectStatus.value) {
-            salvarSnapshotKanban(id, resultados[idx]);
-            agendarSincronizacaoDossie(id, resultados[idx], selectStatus.value);
+          selectStatus.disabled = true;
+          try {
+            const empresaNome = await salvarStatusAcompanhamento(id, resultados[idx], selectStatus.value);
+            avisarSincronizacaoOperacional(`Acompanhamento salvo para ${empresaNome}.`);
+          } catch (erro) {
+            selectStatus.value = statusAnterior;
+            avisarSincronizacaoOperacional("Não foi possível salvar o acompanhamento: " + erro.message, true);
+          } finally {
+            selectStatus.disabled = !empresaAcompanhamentoPronta;
           }
-          else definirNoMapa("kanban-editais", id, null);
         });
       }
       const anotacao = card.querySelector(".anotacao-licitacao");
       if (anotacao) {
         anotacao.addEventListener("click", (ev) => ev.stopPropagation());
         let temporizadorAnotacao = null;
+        const empresaIdAnotacao = empresaOperacionalId;
         anotacao.addEventListener("input", () => {
           clearTimeout(temporizadorAnotacao);
           temporizadorAnotacao = setTimeout(() => {
-            definirNoMapa("anotacoes-licitacao", id, anotacao.value.trim());
+            definirNoMapa("anotacoes-licitacao", id, anotacao.value.trim(), empresaIdAnotacao);
           }, 500);
         });
         anotacao.addEventListener("blur", () => {
           clearTimeout(temporizadorAnotacao);
-          definirNoMapa("anotacoes-licitacao", id, anotacao.value.trim());
+          definirNoMapa("anotacoes-licitacao", id, anotacao.value.trim(), empresaIdAnotacao);
         });
       }
     });

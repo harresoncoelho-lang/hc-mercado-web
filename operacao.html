@@ -18,9 +18,9 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
 </style>
 </head>
 <body>
-<header><a class="marca" href="painel.html" title="Voltar ao painel principal"><img src="logo-icone-branco.svg" alt="LicitaPlena">Central Operacional</a><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button><a class="btn" href="processos.html">Dossiê de processos</a><a class="btn" href="painel.html">Voltar ao painel</a><button class="btn" id="btn-nova-empresa">+ Empresa</button><button class="btn primario" id="btn-novo-documento">+ Documento</button></div></header>
+<header><a class="marca" href="painel.html" title="Voltar ao painel principal"><img src="logo-icone-branco.svg" alt="LicitaPlena">Central Operacional</a><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button><a class="btn" href="processos.html">Acompanhamento de licitações</a><a class="btn" href="painel.html">Voltar ao painel</a><button class="btn" id="btn-nova-empresa">+ Empresa</button><button class="btn primario" id="btn-novo-documento">+ Documento</button></div></header>
 <main>
-  <div class="topo"><div><h1>Documentos, prazos e prontidão</h1><p>Controle privado por empresa, com certidões, responsáveis e alertas de vencimento.</p></div><div class="empresa-select"><label for="empresa-atual">Empresa ativa</label><select id="empresa-atual"></select></div></div>
+  <div class="topo"><div><h1>Documentos, prazos e prontidão</h1><p>Controle privado por empresa, com certidões, responsáveis e alertas de vencimento.</p><p class="nota" id="cota-empresas">Verificando empresas disponíveis...</p></div><div class="empresa-select"><label for="empresa-atual">Empresa ativa</label><select id="empresa-atual"></select></div></div>
   <div id="aviso" class="aviso"></div>
   <section class="metricas"><div class="metrica ok"><span>Documentos válidos</span><b id="m-validos">—</b><span>com validade regular</span></div><div class="metrica alerta"><span>Vencem em até 30 dias</span><b id="m-proximos">—</b><span>alerta configurável: 30, 15, 7, 3 e 1 dia</span></div><div class="metrica vencido"><span>Documentos vencidos</span><b id="m-vencidos">—</b><span>pedem renovação</span></div><div class="metrica"><span>Prontidão da empresa</span><b id="m-prontidao">—</b><span>documentos essenciais válidos</span></div></section>
   <div class="abas"><button class="aba ativa" data-aba="documentos">Documentos e certidões</button><button class="aba" data-aba="agenda">Agenda operacional</button><button class="aba" data-aba="relatorio">Prontidão e relatório</button></div>
@@ -29,7 +29,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   <section id="aba-relatorio" class="painel"><div class="grade"><div class="card"><h2>Checklist de habilitação</h2><p class="nota">Os documentos abaixo são indicadores operacionais. O edital de cada processo continua sendo a referência final.</p><div id="checklist"></div></div><div class="card"><h2>Exportação</h2><p>Exporte o recorte atual para conferência e prestação de contas.</p><button class="btn primario" id="btn-exportar">Baixar CSV de documentos</button><p class="nota">A exportação inclui somente a empresa ativa e não torna dados públicos.</p></div><div class="card"><h2>Histórico de renovações</h2><p class="nota">Nesta primeira fase, a troca de vencimento e arquivo preserva o registro do documento. A trilha detalhada de renovação será ativada junto à edição na próxima fatia.</p></div></div></section>
 </main>
 
-<div id="modal-empresa" class="modal"><form id="form-empresa" class="modal-corpo"><h2>Adicionar empresa</h2><div class="form-grade"><div class="inteiro"><label>Razão social</label><input name="razao_social" required maxlength="180"></div><div><label>CNPJ</label><input name="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18"></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-empresa">Cancelar</button><button class="btn primario">Salvar empresa</button></div></form></div>
+<div id="modal-empresa" class="modal"><form id="form-empresa" class="modal-corpo"><h2>Adicionar empresa</h2><p class="nota" id="cota-empresas-modal"></p><div class="form-grade"><div class="inteiro"><label>Razão social</label><input name="razao_social" required maxlength="180"></div><div><label>CNPJ</label><input name="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18"></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-empresa">Cancelar</button><button class="btn primario">Salvar empresa</button></div></form></div>
 <div id="modal-documento" class="modal"><form id="form-documento" class="modal-corpo"><h2>Novo documento</h2><div class="form-grade"><div><label>Tipo</label><select name="tipo" id="doc-tipo"><option>Certidão Federal</option><option>Certidão Estadual</option><option>Certidão Municipal</option><option>FGTS</option><option>CNDT</option><option>Balanço patrimonial</option><option>Contrato social</option><option>Alvará / licença</option><option>Registro profissional</option><option>Atestado de capacidade técnica</option><option value="personalizado">Tipo personalizado</option></select></div><div id="campo-tipo-personalizado" style="display:none"><label>Nome do tipo</label><input name="tipo_personalizado" maxlength="100"></div><div><label>Emissão</label><input name="emissao" type="date"></div><div><label>Vencimento</label><input name="vencimento" type="date"></div><div><label>Órgão emissor</label><input name="orgao_emissor" maxlength="150"></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div><div class="inteiro"><label>Título complementar</label><input name="titulo" maxlength="180" placeholder="Ex.: Certidão negativa estadual — SEFAZ/AM"></div><div class="inteiro"><label>Arquivo</label><input name="arquivo" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"><p class="nota">O arquivo é enviado ao armazenamento privado da sua organização.</p></div><div class="inteiro"><label>Observações</label><textarea name="observacoes" rows="3" maxlength="2000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-documento">Cancelar</button><button class="btn primario" id="btn-salvar-documento">Salvar documento</button></div></form></div>
 <div id="modal-evento" class="modal"><form id="form-evento" class="modal-corpo"><h2>Novo compromisso</h2><div class="form-grade"><div><label>Categoria</label><select name="categoria"><option value="sessao">Sessão</option><option value="esclarecimento">Esclarecimento</option><option value="impugnacao">Impugnação</option><option value="proposta">Proposta</option><option value="diligencia">Diligência</option><option value="recurso">Recurso</option><option value="entrega">Entrega</option><option value="vigencia">Vigência</option><option value="reajuste">Reajuste</option><option value="repactuacao">Repactuação</option><option value="renovacao">Renovação</option><option value="outro">Outro</option></select></div><div><label>Quando vence</label><input name="vencimento" type="datetime-local" required></div><div class="inteiro"><label>Título</label><input name="titulo" required maxlength="180"></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div><div class="inteiro"><label>Observações</label><textarea name="observacoes" rows="3" maxlength="2000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-evento">Cancelar</button><button class="btn primario">Salvar compromisso</button></div></form></div>
 
@@ -37,7 +37,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
 (() => {
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const TIPOS_ESSENCIAIS = ["Certidão Federal", "Certidão Estadual", "Certidão Municipal", "FGTS", "CNDT", "Balanço patrimonial", "Contrato social"];
-  const estado = { orgId: null, empresas: [], empresaId: null, documentos: [] };
+  const estado = { orgId: null, empresas: [], empresaId: null, documentos: [], limiteCnpjs: undefined };
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const hoje = () => new Date(new Date().toDateString());
@@ -47,6 +47,20 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   function abrirModal(id) { $(id).classList.add("aberto"); }
   function fecharModal(id) { $(id).classList.remove("aberto"); }
   function normalizarCnpj(v) { const n = String(v || "").replace(/\D/g, ""); return n || null; }
+  function atualizarCotaEmpresas() {
+    const usadas = estado.empresas.length;
+    const texto = estado.limiteCnpjs === null ? `${usadas} empresa${usadas === 1 ? "" : "s"} ativa${usadas === 1 ? "" : "s"} · acesso administrativo sem limite` :
+      Number.isInteger(estado.limiteCnpjs) ? `${usadas} de ${estado.limiteCnpjs} empresa${estado.limiteCnpjs === 1 ? "" : "s"} ativa${estado.limiteCnpjs === 1 ? "" : "s"}` :
+      `${usadas} empresa${usadas === 1 ? "" : "s"} ativa${usadas === 1 ? "" : "s"} · cota indisponível`;
+    $("cota-empresas").textContent = texto;
+    $("cota-empresas-modal").textContent = texto;
+  }
+  async function carregarLimiteCnpjs() {
+    const { data, error } = await sb.rpc("limite_cnpjs_operacao");
+    if (error) { estado.limiteCnpjs = undefined; atualizarCotaEmpresas(); return; }
+    estado.limiteCnpjs = data === null ? null : Number(data);
+    atualizarCotaEmpresas();
+  }
   function statusDoc(d) { if (!d.vencimento) return ["pendente", "Sem vencimento"]; const dias = Math.ceil((new Date(`${d.vencimento}T12:00:00`) - hoje()) / 86400000); if (dias < 0) return ["vencido", "Vencido"]; if (dias <= 30) return ["proximo", `Vence em ${dias} dia${dias === 1 ? "" : "s"}`]; return ["valido", "Válido"]; }
   async function autenticar() {
     const { data: { session } } = await sb.auth.getSession();
@@ -59,14 +73,16 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
     if (!await autenticar()) return;
     const { data: orgId, error } = await sb.rpc("bootstrap_operacao");
     if (error) { aviso("A Central Operacional ainda precisa da migração do Supabase. Execute o arquivo supabase/operacao_licitacoes.sql no SQL Editor e recarregue esta página.", "erro"); return; }
-    estado.orgId = orgId; await carregarEmpresas();
+    estado.orgId = orgId; await carregarEmpresas(); await carregarLimiteCnpjs();
   }
   async function carregarEmpresas() {
     const { data, error } = await sb.from("operacao_empresas").select("id,razao_social,cnpj,responsavel").eq("organizacao_id", estado.orgId).eq("ativo", true).order("razao_social");
     if (error) { aviso("Não foi possível carregar as empresas: " + error.message, "erro"); return; }
     estado.empresas = data || []; const select = $("empresa-atual");
     select.innerHTML = estado.empresas.map(e => `<option value="${e.id}">${esc(e.razao_social)}${e.cnpj ? ` · ${esc(e.cnpj)}` : ""}</option>`).join("");
-    estado.empresaId = estado.empresas.some(e => e.id === estado.empresaId) ? estado.empresaId : estado.empresas[0]?.id;
+    atualizarCotaEmpresas();
+    let preferida = ""; try { preferida = localStorage.getItem("licitaplena_empresa_operacional_id") || ""; } catch (_) {}
+    estado.empresaId = estado.empresas.some(e => e.id === estado.empresaId) ? estado.empresaId : estado.empresas.some(e => e.id === preferida) ? preferida : estado.empresas[0]?.id;
     select.value = estado.empresaId || ""; await carregarDados();
   }
   async function carregarDados() { if (!estado.empresaId) return; fecharAviso(); await Promise.all([carregarDocumentos(), carregarAgenda()]); }
@@ -126,7 +142,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
     catch (e) { aviso("Documento salvo, mas não foi possível atualizar a lista: " + e.message, "erro"); }
     finally { btn.disabled = false; }
   }
-  async function selecionarEmpresaExistente(empresa, form) { estado.empresaId = empresa.id; form.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); $("empresa-atual").value = empresa.id; await carregarDados(); aviso("Esta empresa já estava cadastrada e foi aberta para você.", "info"); }
+  async function selecionarEmpresaExistente(empresa, form) { estado.empresaId = empresa.id; localStorage.setItem("licitaplena_empresa_operacional_id", empresa.id); form.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); $("empresa-atual").value = empresa.id; await carregarDados(); aviso("Esta empresa já estava cadastrada e foi aberta para você.", "info"); }
   async function salvarEmpresa(ev) {
     ev.preventDefault();
     const form = ev.currentTarget, dados = new FormData(form), cnpj = normalizarCnpj(dados.get("cnpj"));
@@ -142,6 +158,9 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
         if (erroConsulta) throw erroConsulta;
         if (existente) { await selecionarEmpresaExistente(existente, form); return; }
       }
+      if (Number.isInteger(estado.limiteCnpjs) && estado.empresas.length >= estado.limiteCnpjs) {
+        throw new Error(`O limite de ${estado.limiteCnpjs} empresas ativas foi atingido. Peça uma alteração ao administrador.`);
+      }
       const { data: criada, error } = await sb.from("operacao_empresas").insert({ organizacao_id: estado.orgId, razao_social: razaoSocial, cnpj, responsavel }).select("id").single();
       if (error) {
         // Protege também contra dois envios simultâneos em abas diferentes.
@@ -151,7 +170,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
         }
         throw error;
       }
-      estado.empresaId = criada.id; form.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); aviso("Empresa cadastrada com sucesso.", "info");
+      estado.empresaId = criada.id; localStorage.setItem("licitaplena_empresa_operacional_id", criada.id); form.reset(); fecharModal("modal-empresa"); await carregarEmpresas(); aviso("Empresa cadastrada com sucesso.", "info");
     } catch (e) { aviso("Não foi possível salvar a empresa agora. " + (e.message || "Tente novamente."), "erro"); }
     finally { btn.disabled = false; }
   }

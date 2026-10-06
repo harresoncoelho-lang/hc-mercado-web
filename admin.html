@@ -410,8 +410,33 @@
       campoSelect("edit-faturamento", "Faturamento anual", OPCOES_FATURAMENTO, c.faturamento_anual) +
       campoSelect("edit-como-usar", "Como pretende usar", OPCOES_COMO_USAR, c.como_pretende_usar) +
       campoTexto("edit-plano", "Plano", c.plano) +
+      (adminAtual?.role === "owner" ? `<div class="campo-form"><label for="edit-limite-cnpjs">Limite de CNPJs gerenciados</label><select id="edit-limite-cnpjs" disabled><option>Carregando...</option></select><p style="color:var(--texto-fraco);font-size:12px;">Padrão: 3. Seu acesso de proprietário não tem limite. Reduzir a cota não apaga empresas já cadastradas.</p><button type="button" id="btn-salvar-limite-cnpjs" disabled>Salvar limite de CNPJs</button><span id="resultado-limite-cnpjs" role="status"></span></div>` : "") +
       campoTextarea("edit-observacoes", "Observações internas (só a equipe vê)", c.observacoes_admin);
     document.getElementById("modal-detalhe-fundo").classList.add("aberto");
+    if (adminAtual?.role === "owner") void carregarLimiteCliente(c.id);
+  }
+
+  async function carregarLimiteCliente(id) {
+    const select = document.getElementById("edit-limite-cnpjs");
+    const botao = document.getElementById("btn-salvar-limite-cnpjs");
+    const resultado = document.getElementById("resultado-limite-cnpjs");
+    const { data, error } = await sb.rpc("consultar_limite_cnpjs_cliente", { p_usuario_id: id });
+    if (clienteEmEdicao?.id !== id || !select) return;
+    if (error) { resultado.textContent = " Cota indisponível: aplique a migração de limite de CNPJs."; return; }
+    if (data === null) { select.innerHTML = "<option>Sem limite (proprietário)</option>"; return; }
+    select.innerHTML = [1, 2, 3].map(n => `<option value="${n}">${n} CNPJ${n === 1 ? "" : "s"}</option>`).join("");
+    select.value = String(data);
+    select.disabled = false;
+    botao.disabled = false;
+    botao.addEventListener("click", async () => {
+      botao.disabled = true;
+      resultado.textContent = " Salvando...";
+      const { error: erroSalvar } = await sb.rpc("configurar_limite_cnpjs_cliente", {
+        p_usuario_id: id, p_limite: Number(select.value),
+      });
+      resultado.textContent = erroSalvar ? " Erro: " + erroSalvar.message : " Limite salvo.";
+      botao.disabled = false;
+    });
   }
 
   const modalDetalheFundo = document.getElementById("modal-detalhe-fundo");
