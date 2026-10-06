@@ -55,6 +55,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   const estado = { orgId:null, empresaId:null, empresas:[], processos:[], documentos:[], prazos:[], empenhos:[], itens:[], ocorrencias:[], contratos:[], anexos:[], detalhesCarregados:false, erroDetalhes:false };
   const consultasChecklist = new Set();
   const checklistIndisponivel = new Set();
+  const motivosChecklist = new Map();
   const itensOficiais = new Map();
   const consultasItens = new Set();
   const falhasItens = new Set();
@@ -103,7 +104,12 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
         if(!concluido)throw new Error("A análise do edital ainda está em andamento. Abra o processo novamente mais tarde.");
         requisitos=LicitaOperacaoEdital.requisitosDaEstrutura({...dados.estrutura,fonteLida:!!dados.fonteLida,modoDegradado:!!dados.modoDegradado});
       }
-      if(!requisitos.length){checklistIndisponivel.add(processo.id);return;}
+      if(!requisitos.length){
+        const cobertura=dados.cobertura||dados.estrutura?.coberturaLeitura;
+        const principalNaoLido=cobertura?.documentosNaoLidos?.find(item=>/\b(edital|termo de refer[eê]ncia)\b/i.test(item));
+        motivosChecklist.set(processo.id,principalNaoLido?`O documento principal não pôde ser lido (${principalNaoLido}).`:"O material lido não trouxe requisitos de habilitação verificáveis.");
+        checklistIndisponivel.add(processo.id);return;
+      }
       const geradoEm=dados.geradoEm||new Date().toISOString();
       const {data,error}=await sb.from("operacao_processos").update({documentos_exigidos:requisitos,checklist_fonte:"resumo",checklist_gerado_em:geradoEm,atualizado_em:new Date().toISOString()})
         .eq("id",processo.id).eq("organizacao_id",estado.orgId).eq("empresa_id",processo.empresa_id)
@@ -111,7 +117,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
       if(error)throw error;
       if(data?.length){processo.documentos_exigidos=requisitos;processo.checklist_fonte="resumo";processo.checklist_gerado_em=geradoEm;processo.atualizado_em=data[0].atualizado_em;}
       else checklistIndisponivel.add(processo.id);
-    }catch(erro){console.warn("Checklist automático indisponível:",erro);checklistIndisponivel.add(processo.id);}
+    }catch(erro){console.warn("Checklist automático indisponível:",erro);motivosChecklist.set(processo.id,`A consulta automática falhou: ${erro.message||"erro não identificado"}.`);checklistIndisponivel.add(processo.id);}
     finally{consultasChecklist.delete(processo.id);if($("modal-dossie").classList.contains("aberto")&&$("modal-dossie").dataset.processoId===processo.id)abrirDossie(processo.id);}
   }
   function renderizarItensOficiais(processo){
@@ -211,7 +217,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   function abrirDossie(id){
     const p=estado.processos.find(x=>x.id===id);if(!p)return;
     const exigidos=p.documentos_exigidos||[], validos=docsValidos(), origem=linkSeguro(p.url_origem);
-    const checklist=exigidos.length?exigidos.map((d,indice)=>`<div class="check"><span>${esc(d)}</span><span><span class="tag ${validos.includes(String(d).toLocaleLowerCase("pt-BR"))?"homologado":""}">${validos.includes(String(d).toLocaleLowerCase("pt-BR"))?"Documento válido":"Conferir"}</span> <button class="btn" type="button" data-excluir-requisito="${indice}" title="Remover este requisito do checklist">Excluir</button></span></div>`).join(""):`<p class="nota">${p.checklist_editado_manualmente?"Checklist esvaziado manualmente. Use Editar checklist para incluir requisitos.":consultasChecklist.has(id)?"Lendo o edital e preparando os requisitos automaticamente. Isso pode levar alguns minutos; você pode continuar usando a carteira.":!LicitaOperacaoEdital.idPncp(p)?"Esta oportunidade não tem identificador PNCP para consulta automática. Confira a fonte oficial e edite o checklist se necessário.":checklistIndisponivel.has(id)?`Não foi possível concluir o checklist automático agora. Confira a fonte oficial ou <button class="btn" type="button" data-retry-checklist="${id}">Tentar novamente</button>.`:"Os requisitos do edital serão consultados automaticamente. Confira o documento oficial antes de enviar a proposta."}</p>`;
+    const checklist=exigidos.length?exigidos.map((d,indice)=>`<div class="check"><span>${esc(d)}</span><span><span class="tag ${validos.includes(String(d).toLocaleLowerCase("pt-BR"))?"homologado":""}">${validos.includes(String(d).toLocaleLowerCase("pt-BR"))?"Documento válido":"Conferir"}</span> <button class="btn" type="button" data-excluir-requisito="${indice}" title="Remover este requisito do checklist">Excluir</button></span></div>`).join(""):`<p class="nota">${p.checklist_editado_manualmente?"Checklist esvaziado manualmente. Use Editar checklist para incluir requisitos.":consultasChecklist.has(id)?"Lendo o edital e preparando os requisitos automaticamente. Isso pode levar alguns minutos; você pode continuar usando a carteira.":!LicitaOperacaoEdital.idPncp(p)?"Esta oportunidade não tem identificador PNCP para consulta automática. Confira a fonte oficial e edite o checklist se necessário.":checklistIndisponivel.has(id)?`${esc(motivosChecklist.get(id)||"Não foi possível concluir o checklist automático agora.")} Confira a fonte oficial ou <button class="btn" type="button" data-retry-checklist="${id}">Tentar novamente</button>.`:"Os requisitos do edital serão consultados automaticamente. Confira o documento oficial antes de enviar a proposta."}</p>`;
     $("d-titulo").textContent=p.objeto;
     $("d-subtitulo").textContent=[p.numero,p.orgao,p.modalidade,p.sistema,p.uasg?`UASG ${p.uasg}`:""].filter(Boolean).join(" · ")||"Dossiê privado";
     $("d-conteudo").innerHTML=`<div class="dossie-grid"><div class="dado"><span>Decisão inicial</span><b>${esc(p.decisao.replaceAll("_"," "))}</b></div><div class="dado"><span>Estágio operacional</span><b>${esc(rotuloStatus(p.status))}</b></div><div class="dado"><span>Sessão</span><b>${dataHora(p.data_sessao)}</b></div><div class="dado"><span>Preço mínimo</span><b>${p.preco_minimo?dinheiro(p.preco_minimo):"Não calculado"}</b></div><div class="dado"><span>Proposta</span><b>${p.preco_proposta?dinheiro(p.preco_proposta):"Não registrada"}</b></div><div class="dado"><span>Responsável</span><b>${esc(p.responsavel||"Não definido")}</b></div></div><div class="card"><div class="cabecalho-card"><h3>Checklist de habilitação</h3><button class="btn" type="button" data-editar-checklist="${p.id}">Editar checklist</button></div><p class="nota">${p.checklist_fonte==="resumo"?`Extraído do Resumo do Edital${p.checklist_gerado_em?` em ${dataHora(p.checklist_gerado_em)}`:""}.`:"Requisitos da carteira."} Confira exigências e documentos oficiais.</p>${checklist}</div><div class="card" id="d-itens-edital"></div><div id="d-acompanhamento"></div><div class="acoes-dossie"><select id="d-status" aria-label="Estágio do processo"><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option><option value="arquivado">Arquivado</option></select><button class="btn" data-atualizar-status="${p.id}">Atualizar estágio</button><button class="btn" data-relatorio="${p.id}">Visualizar relatório</button>${origem?`<a class="btn" href="${esc(origem)}" target="_blank" rel="noopener">Abrir fonte oficial</a>`:""}</div>`;
@@ -300,6 +306,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     if(!processo)return;
     if(e.target.closest("[data-retry-checklist]")){
       checklistIndisponivel.delete(id);
+      motivosChecklist.delete(id);
       void preencherChecklistDoResumo(processo);
       abrirDossie(id);
       return;

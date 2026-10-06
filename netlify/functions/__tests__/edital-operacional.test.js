@@ -2,6 +2,30 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto } = require("../_edital_operacional");
 
+test("leitura prioriza edital e termo de referência mesmo após anexos com tipo genérico", () => {
+  const { selecionarDocumentosParaLeitura } = require("../lib/ia-edital").__test;
+  const lista = [
+    { sequencialDocumento: 1, titulo: "Anexo II - Projeto Basico.pdf", tipoDocumentoNome: "Edital" },
+    { sequencialDocumento: 2, titulo: "BDI com desoneracao.pdf", tipoDocumentoNome: "Edital" },
+    { sequencialDocumento: 3, titulo: "Termo de Referencia.pdf", tipoDocumentoNome: "Edital" },
+    { sequencialDocumento: 15, titulo: "Edital.pdf", tipoDocumentoNome: "Edital" },
+  ];
+  assert.deepEqual(selecionarDocumentosParaLeitura(lista).map(doc => doc.sequencialDocumento), [15, 3, 1]);
+});
+
+test("releitura pontual só alcança cache antigo sem checklist cujo edital foi ignorado", () => {
+  const { precisaReleituraPrioritaria } = require("../lib/ia-edital").__test;
+  const cache = { estrutura: { documentosHabilitacao: [], declaracoesExigidas: [], coberturaLeitura: {
+    parcial: true, documentosNaoLidos: ["Edital.pdf (#15): limite de documentos"],
+  } } };
+  assert.equal(precisaReleituraPrioritaria(cache), true);
+  cache.estrutura.coberturaLeitura.prioridadeDocumentoPrincipal = true;
+  assert.equal(precisaReleituraPrioritaria(cache), false);
+  delete cache.estrutura.coberturaLeitura.prioridadeDocumentoPrincipal;
+  cache.estrutura.documentosHabilitacao = ["Documento exigido no edital"];
+  assert.equal(precisaReleituraPrioritaria(cache), false);
+});
+
 test("narrativa contratual corrige página pela cláusula única e recupera condições reais", () => {
   const { validarFatosDaFonte } = require("../_edital_operacional");
   const fonte = `--- Edital (#2) ---

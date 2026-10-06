@@ -128,6 +128,33 @@ async function buscarFichaCanonica(numeroControlePNCP) {
 // convite, dispensa, inexigibilidade, chamamento público, RDC etc.) — cada portal/órgão
 // nomeia o documento principal de um jeito diferente, então a lista é ampla de propósito.
 const PALAVRAS_DOCUMENTO_PRINCIPAL = /edital|aviso|instrumento convocat[oó]rio|termo de refer[eê]ncia|projeto b[aá]sico|carta[- ]convite|credenciamento|dispensa|inexigibilidade|chamamento|contrata[çc][ãa]o direta/i;
+function prioridadeDocumento(doc) {
+  const titulo = String(doc.titulo || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/^edital(?:\b|[._ -])/.test(titulo)) return 0;
+  if (/\btermo de referencia\b/.test(titulo)) return 1;
+  if (/\b(aviso de licitacao|aviso de contratacao|instrumento convocatorio)\b/.test(titulo)) return 2;
+  if (/\bprojeto basico\b/.test(titulo)) return 3;
+  if (PALAVRAS_DOCUMENTO_PRINCIPAL.test(titulo)) return 4;
+  return PALAVRAS_DOCUMENTO_PRINCIPAL.test(`${doc.tipoDocumentoNome || ""} ${doc.tipoDocumentoDescricao || ""}`) ? 5 : 6;
+}
+function selecionarDocumentosParaLeitura(lista, limite = MAX_DOCUMENTOS_PARA_LEITURA) {
+  const vistos = new Set();
+  return lista.map((doc, indice) => ({ doc, indice }))
+    .sort((a, b) => prioridadeDocumento(a.doc) - prioridadeDocumento(b.doc) || a.indice - b.indice)
+    .map(({ doc }) => doc)
+    .filter((doc) => {
+      if (vistos.has(doc.sequencialDocumento)) return false;
+      vistos.add(doc.sequencialDocumento);
+      return true;
+    }).slice(0, limite);
+}
+function precisaReleituraPrioritaria(cache) {
+  const estrutura = cache?.estrutura;
+  const cobertura = estrutura?.coberturaLeitura;
+  return Boolean(cobertura?.parcial && !cobertura.prioridadeDocumentoPrincipal &&
+    !estrutura.documentosHabilitacao?.length && !estrutura.declaracoesExigidas?.length &&
+    cobertura.documentosNaoLidos?.some((documento) => /\bedital(?:\.pdf)?\b.*limite de documentos/i.test(documento)));
+}
 
 // Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
 async function buscarTextoEdital(numeroControlePNCP) {
@@ -152,15 +179,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
     // nome, prioriza por palavra-chave conhecida (cobrindo todas as modalidades) e, na
     // falta dela, tenta os documentos na ordem em que aparecem — a validação real de "é um
     // PDF" acontece depois, olhando a assinatura binária do arquivo baixado.
-    const prioritarios = lista.filter((a) => PALAVRAS_DOCUMENTO_PRINCIPAL.test(a.tipoDocumentoNome || a.tipoDocumentoDescricao || a.titulo || ""));
-    const vistos = new Set();
-    const candidatos = [...prioritarios, ...lista]
-      .filter((a) => {
-        if (vistos.has(a.sequencialDocumento)) return false;
-        vistos.add(a.sequencialDocumento);
-        return true;
-      })
-      .slice(0, MAX_DOCUMENTOS_PARA_LEITURA);
+    const candidatos = selecionarDocumentosParaLeitura(lista);
     if (candidatos.length === 0) return { texto: null, escaneado: false };
 
     // Cada require isolado no seu próprio try/catch: se adm-zip ou mammoth falharem por
@@ -304,7 +323,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
     const textoCompleto = pedacos.join("").trim();
     if (textoCompleto.length > MAX_CARACTERES_TEXTO) documentosNaoLidos.push("Texto excedeu o limite de leitura; conteúdo final não analisado");
     return { texto: textoCompleto.slice(0, MAX_CARACTERES_TEXTO), escaneado: false,
-      coberturaLeitura: { documentosLidos, documentosNaoLidos, parcial: documentosNaoLidos.length > 0 } };
+      coberturaLeitura: { documentosLidos, documentosNaoLidos, parcial: documentosNaoLidos.length > 0, prioridadeDocumentoPrincipal: true } };
   } catch (e) {
     return { texto: null, escaneado: false };
   }
@@ -575,7 +594,7 @@ async function chamarSinteseEdital(apiKey, mensagens) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, selecionarDocumentosParaLeitura, precisaReleituraPrioritaria, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -1068,7 +1087,7 @@ exports.handler = async (event) => {
         cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO && cache.estrutura;
       let cache = storeResumos && await storeResumos.get(numero, { type: "json" });
       if (!valido(cache)) cache = await buscarDossiePersistido(numero);
-      if (!valido(cache)) return { statusCode: 200, headers, body: JSON.stringify({ disponivel: false, requisitos: [] }) };
+      if (!valido(cache) || precisaReleituraPrioritaria(cache)) return { statusCode: 200, headers, body: JSON.stringify({ disponivel: false, requisitos: [] }) };
       const estrutura = sanitizarListasDoDossie({ ...cache.estrutura });
       const requisitos = [...estrutura.documentosHabilitacao, ...estrutura.declaracoesExigidas];
       return { statusCode: 200, headers, body: JSON.stringify({ disponivel: true, requisitos,
@@ -1120,7 +1139,7 @@ exports.handler = async (event) => {
       if (cache && !cache.revisaoPrazos && cache.textoEdital && cache.estrutura) {
         cache.revisaoPrazos = require("../_resumo_gateway").ancorasPrazos(cache.textoEdital, cache.estrutura).datasAusentes.length === 0;
       }
-      const cachePodeResponder = cache && cache.revisaoPrazos && !cache.modoDegradado && !cache.metadadosIndisponiveis && cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
+      const cachePodeResponder = cache && !precisaReleituraPrioritaria(cache) && cache.revisaoPrazos && !cache.modoDegradado && !cache.metadadosIndisponiveis && cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
         (cache.estrutura || (cache.resposta && !reprocessarEstrutura));
       if (cachePodeResponder) {
         // Dossiês concluídos só no Blob (antes da gravação pelo Gateway) entram no Supabase
