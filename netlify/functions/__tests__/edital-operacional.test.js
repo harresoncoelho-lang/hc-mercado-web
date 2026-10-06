@@ -14,16 +14,19 @@ test("leitura prioriza edital e termo de referência mesmo após anexos com tipo
 });
 
 test("releitura pontual só alcança cache antigo sem checklist cujo edital foi ignorado", () => {
-  const { precisaReleituraPrioritaria } = require("../lib/ia-edital").__test;
+  const { leituraPrioritariaPendente, precisaReleituraPrioritaria } = require("../lib/ia-edital").__test;
   const cache = { estrutura: { documentosHabilitacao: [], declaracoesExigidas: [], coberturaLeitura: {
     parcial: true, documentosNaoLidos: ["Edital.pdf (#15): limite de documentos"],
   } } };
   assert.equal(precisaReleituraPrioritaria(cache), true);
+  assert.equal(leituraPrioritariaPendente(cache.estrutura.coberturaLeitura), true);
+  assert.equal(leituraPrioritariaPendente({ parcial: false, documentosNaoLidos: [] }), false);
   cache.estrutura.documentosHabilitacao = ["Não informado"];
   assert.equal(precisaReleituraPrioritaria(cache), true);
   cache.estrutura.documentosHabilitacao = [];
   cache.estrutura.coberturaLeitura.prioridadeDocumentoPrincipal = true;
   assert.equal(precisaReleituraPrioritaria(cache), false);
+  assert.equal(leituraPrioritariaPendente(cache.estrutura.coberturaLeitura), false);
   delete cache.estrutura.coberturaLeitura.prioridadeDocumentoPrincipal;
   cache.estrutura.documentosHabilitacao = ["Documento exigido no edital"];
   assert.equal(precisaReleituraPrioritaria(cache), true);

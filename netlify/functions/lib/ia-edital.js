@@ -148,11 +148,12 @@ function selecionarDocumentosParaLeitura(lista, limite = MAX_DOCUMENTOS_PARA_LEI
       return true;
     }).slice(0, limite);
 }
-function precisaReleituraPrioritaria(cache) {
-  const estrutura = cache?.estrutura;
-  const cobertura = estrutura?.coberturaLeitura;
+function leituraPrioritariaPendente(cobertura) {
   return Boolean(cobertura?.parcial && !cobertura.prioridadeDocumentoPrincipal &&
     cobertura.documentosNaoLidos?.some((documento) => /\bedital(?:\.pdf)?\b.*limite de documentos/i.test(documento)));
+}
+function precisaReleituraPrioritaria(cache) {
+  return leituraPrioritariaPendente(cache?.estrutura?.coberturaLeitura);
 }
 
 // Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
@@ -593,7 +594,7 @@ async function chamarSinteseEdital(apiKey, mensagens) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, selecionarDocumentosParaLeitura, precisaReleituraPrioritaria, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, selecionarDocumentosParaLeitura, leituraPrioritariaPendente, precisaReleituraPrioritaria, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -1106,7 +1107,8 @@ exports.handler = async (event) => {
       analiseEmAndamento = await storeResumos.get(`fonte-oficial:v16:${edital.numeroControlePNCP}`, { type: "json", consistency: "strong" });
       if (!analiseEmAndamento) analiseEmAndamento = await storeResumos.get(`progresso:v14:schema120b1:${edital.numeroControlePNCP}`, { type: "json", consistency: "strong" });
     } catch (_) { /* Tentará a fonte oficial. */ }
-    if (analiseEmAndamento && analiseEmAndamento.expiraEm > Date.now()) {
+    if (analiseEmAndamento && analiseEmAndamento.expiraEm > Date.now() &&
+      !leituraPrioritariaPendente(analiseEmAndamento.coberturaLeitura)) {
       textoEdital = analiseEmAndamento.texto;
       coberturaLeitura = analiseEmAndamento.coberturaLeitura;
       fonteLida = true;
