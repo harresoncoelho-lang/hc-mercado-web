@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 process.env.MAX_TENTATIVAS_DOSSIE = "2";
-const { ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
+const { ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
 const contrato = require("../netlify/functions/_resumo_gateway_contrato");
 const { estruturaValida } = require("../netlify/functions/_resumo_gateway");
 
@@ -56,7 +56,8 @@ test("data da fonte ausente no resumo vira pendência em vez de derrubar o dossi
   const agora = Date.parse("2026-10-08T12:00:00Z");
   const resultado = montarResultado({ estrutura: { resumoGeral: "Resumo." } }, "Sessão em 20/10/2026 às 9h.", { documentosLidos: ["Edital.pdf"] }, agora);
   assert.equal(resultado.versao, VERSAO_DOSSIE);
-  assert.equal(resultado.revisaoPrazos, true);
+  assert.equal(resultado.revisaoPrazos, false);
+  assert.equal(resultado.prazosEmConferencia, true);
   assert.equal(resultado.metodoResumo, "sintese_gemini");
   assert.deepEqual(resultado.estrutura.documentosConsultados, ["Edital.pdf"]);
   assert.match(resultado.estrutura.pendenciasParaConferencia.at(-1), /20\/10\/2026/);
@@ -84,4 +85,17 @@ test("seleção respeita o teto restante do dia", () => {
   const base = { fila: [], boletim, dossiesProntos: new Set(), tentativas: new Map() };
   assert.equal(selecionarCandidatos({ ...base, limite: 2 }).length, 2);
   assert.equal(selecionarCandidatos({ ...base, limite: -5 }).length, 0);
+});
+
+test("prazos só contam como revisados quando todas as datas da fonte estão no resumo", () => {
+  const resultado = montarResultado({ estrutura: { resumoGeral: "Sessão em 20/10/2026.", identificacao: { dataSessao: "20/10/2026" } } }, "Sessão em 20/10/2026 às 9h.", { documentosLidos: [] }, Date.parse("2026-10-08T12:00:00Z"));
+  assert.equal(resultado.revisaoPrazos, true);
+  assert.equal(resultado.prazosEmConferencia, false);
+});
+
+test("dossiê só sai da fila quando é da versão atual e leu todos os documentos", () => {
+  assert.equal(dossieCompleto({ versao: VERSAO_DOSSIE, status: "pronto" }), true);
+  assert.equal(dossieCompleto({ versao: VERSAO_DOSSIE, status: "parcial" }), false);
+  assert.equal(dossieCompleto({ versao: VERSAO_DOSSIE - 1, status: "pronto" }), false);
+  assert.equal(dossieCompleto(undefined), false);
 });

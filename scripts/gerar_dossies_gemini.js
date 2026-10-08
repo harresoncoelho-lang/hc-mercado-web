@@ -93,14 +93,16 @@ function montarResultado(saida, fonte, cobertura, agora = Date.now()) {
   estrutura.coberturaLeitura = cobertura;
   estrutura.documentosConsultados = cobertura?.documentosLidos || [];
   // Antes, uma data da fonte ausente no resumo derrubava o dossiê e uma revisão paga
-  // era repetida a cada dia. Agora o dossiê é entregue e a data fica para conferência.
+  // era repetida a cada dia. Agora o dossiê é entregue com a data em conferência, mas
+  // sem a marca de prazos revisados: quem lê sabe que esses prazos não foram conferidos.
   const { datasAusentes } = ancorasPrazos(fonte, estrutura, agora);
   if (datasAusentes.length) {
     estrutura.pendenciasParaConferencia = [...estrutura.pendenciasParaConferencia,
       `Conferir no edital o evento correspondente às datas: ${datasAusentes.slice(0, 10).join(", ")}.`];
   }
   return { estrutura, resposta: estrutura.resumoGeral, textoEdital: fonte, fonteLida: true, modoDegradado: false,
-    metodoResumo: "sintese_gemini", versao: VERSAO_DOSSIE, versaoValidacao: VERSAO_DOSSIE, revisaoPrazos: true,
+    metodoResumo: "sintese_gemini", versao: VERSAO_DOSSIE, versaoValidacao: VERSAO_DOSSIE,
+    revisaoPrazos: datasAusentes.length === 0, prazosEmConferencia: datasAusentes.length > 0,
     geradoEm: new Date(agora).toISOString(), erro: null };
 }
 
@@ -141,13 +143,18 @@ async function carregarCandidatos(agora = Date.now()) {
   const boletim = (await consultarEmLotes("oportunidades_abertas", "numero_controle_pncp", enviados, "numero_controle_pncp,publicacao,encerramento", `&publicacao=gte.${desde}`))
     .filter((linha) => !linha.encerramento || linha.encerramento >= hoje);
   const numeros = [...new Set([...fila, ...boletim].map((linha) => linha.numero_controle_pncp))];
-  const dossies = await consultarEmLotes("dossies_editais", "numero_controle_pncp", numeros, "numero_controle_pncp,versao");
+  const dossies = await consultarEmLotes("dossies_editais", "numero_controle_pncp", numeros, "numero_controle_pncp,versao,status");
   const registros = await consultarEmLotes("fila_dossies", "numero_controle_pncp", numeros, "numero_controle_pncp,tentativas");
   return {
     fila, boletim,
-    dossiesProntos: new Set(dossies.filter((linha) => Number(linha.versao) === VERSAO_DOSSIE).map((linha) => linha.numero_controle_pncp)),
+    dossiesProntos: new Set(dossies.filter(dossieCompleto).map((linha) => linha.numero_controle_pncp)),
     tentativas: new Map(registros.map((linha) => [linha.numero_controle_pncp, Number(linha.tentativas) || 0])),
   };
+}
+
+// Parcial = algum documento do edital não foi lido; volta para a fila até esgotar as tentativas.
+function dossieCompleto(linha) {
+  return Number(linha?.versao) === VERSAO_DOSSIE && linha?.status === "pronto";
 }
 
 async function tentativasHoje(agora = Date.now()) {
@@ -175,9 +182,9 @@ async function gerarDossie(numero, { apiKey, fetchFn } = {}) {
   await salvarDossiePersistido(numero, resultado);
   // salvarDossiePersistido só registra a falha no log; sem esta conferência um dossiê
   // não gravado sairia da fila como concluído e o cliente ficaria só com a ficha.
-  const gravado = await (await restFetch(`dossies_editais?numero_controle_pncp=eq.${encodeURIComponent(numero)}&select=versao`)).json();
+  const gravado = await (await restFetch(`dossies_editais?numero_controle_pncp=eq.${encodeURIComponent(numero)}&select=versao,status`)).json();
   if (Number(gravado[0]?.versao) !== VERSAO_DOSSIE) throw new Error("gravacao_falhou");
-  return { modelo, uso };
+  return { modelo, uso, completo: dossieCompleto(gravado[0]) };
 }
 
 async function main() {
@@ -204,9 +211,10 @@ async function main() {
         console.log(`[dossiês] ${resultado.motivo}: ${candidato.numero}`);
         continue;
       }
-      await registrarTentativa(candidato, anteriores, { concluido: true });
+      // O dossiê parcial já fica visível ao cliente, mas o edital segue na fila para nova leitura.
+      await registrarTentativa(candidato, anteriores, resultado.completo ? { concluido: true } : { erro: "leitura_parcial" });
       contagem.gerado += 1;
-      console.log(`[dossiês] gerado (${resultado.modelo}, ${resultado.uso?.totalTokenCount || "?"} tokens): ${candidato.numero}`);
+      console.log(`[dossiês] gerado ${resultado.completo ? "completo" : "parcial"} (${resultado.modelo}, ${resultado.uso?.totalTokenCount || "?"} tokens): ${candidato.numero}`);
     } catch (erro) {
       if (erro instanceof CotaEsgotada) {
         console.warn("[dossiês] cota do Gemini esgotada; o restante fica para a próxima execução.");
@@ -224,4 +232,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { VERSAO_DOSSIE, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, CotaEsgotada };
+module.exports = { VERSAO_DOSSIE, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, CotaEsgotada };

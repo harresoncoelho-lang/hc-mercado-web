@@ -57,3 +57,38 @@ test("sem dossiê pronto, o endpoint enfileira o pedido e devolve a ficha oficia
     for (const chave of variaveis) { if (anteriores[chave] === undefined) delete process.env[chave]; else process.env[chave] = anteriores[chave]; }
   }
 });
+
+test("dossiê do Gemini com prazo em conferência é entregue ao cliente sem marca de prazos revisados", async () => {
+  const originalFetch = global.fetch;
+  const variaveis = ["NETLIFY_BLOBS_CONTEXT", "SUPABASE_SERVICE_ROLE_KEY"];
+  const anteriores = Object.fromEntries(variaveis.map((chave) => [chave, process.env[chave]]));
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "servico-teste";
+  delete process.env.NETLIFY_BLOBS_CONTEXT;
+  const { montarResultado } = require("../../../scripts/gerar_dossies_gemini");
+  const dossie = montarResultado({ estrutura: { resumoGeral: "Pregão de papel A4." } }, "Sessão pública em 20/10/2026 às 9h.",
+    { documentosLidos: ["Edital.pdf"], documentosNaoLidos: [], parcial: false }, Date.parse("2026-10-08T12:00:00Z"));
+  const pedidosFila = [];
+  const responder = (corpo, status = 200) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status });
+  global.fetch = async (url, opcoes = {}) => {
+    if (url.includes("/auth/v1/user")) return responder({ id: "usuario-teste" });
+    if (url.includes("/rest/v1/fila_dossies")) { pedidosFila.push(opcoes.body); return responder("", 201); }
+    if (url.includes("/rest/v1/dossies_editais")) return responder([{ dossie, versao: dossie.versao }]);
+    return responder({});
+  };
+  try {
+    const modulo = await import(pathToFileURL(require.resolve("../ia-edital.mjs")).href);
+    const resposta = await modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer usuario-teste" },
+      body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000006/2026" } }),
+    }), { requestId: "qa-prazos" });
+    const corpo = await resposta.json();
+    assert.equal(corpo.doCache, true);
+    assert.equal(corpo.revisaoPrazos, false);
+    assert.equal(corpo.prazosEmConferencia, true);
+    assert.match(corpo.estrutura.pendenciasParaConferencia.at(-1), /20\/10\/2026/);
+    assert.deepEqual(pedidosFila, []);
+  } finally {
+    global.fetch = originalFetch;
+    for (const chave of variaveis) { if (anteriores[chave] === undefined) delete process.env[chave]; else process.env[chave] = anteriores[chave]; }
+  }
+});

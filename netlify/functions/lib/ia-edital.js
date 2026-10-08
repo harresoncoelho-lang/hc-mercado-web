@@ -1140,10 +1140,12 @@ exports.handler = async (event) => {
       // próprio cache (texto + estrutura), sem reler o PDF: só os que realmente deixaram
       // datas de fora vão para a revisão pontual do gateway.
       const podeResponder = (candidato) => {
-        if (candidato && !candidato.revisaoPrazos && candidato.textoEdital && candidato.estrutura) {
+        // prazosEmConferencia: o robô Gemini já listou as datas ausentes como pendência; derivar
+        // de novo acharia essas datas na própria pendência e marcaria os prazos como revisados.
+        if (candidato && !candidato.revisaoPrazos && !candidato.prazosEmConferencia && candidato.textoEdital && candidato.estrutura) {
           candidato.revisaoPrazos = require("../_resumo_gateway").ancorasPrazos(candidato.textoEdital, candidato.estrutura).datasAusentes.length === 0;
         }
-        return Boolean(candidato && !precisaReleituraPrioritaria(candidato) && candidato.revisaoPrazos && !candidato.modoDegradado && !candidato.metadadosIndisponiveis && candidato.versao === VERSAO_RESUMO && candidato.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
+        return Boolean(candidato && !precisaReleituraPrioritaria(candidato) && (candidato.revisaoPrazos || candidato.prazosEmConferencia) && !candidato.modoDegradado && !candidato.metadadosIndisponiveis && candidato.versao === VERSAO_RESUMO && candidato.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
           (candidato.estrutura || (candidato.resposta && !reprocessarEstrutura)));
       };
       // O robô de dossiês grava só no Supabase. Um Blob antigo ou incompleto não pode
@@ -1172,6 +1174,7 @@ exports.handler = async (event) => {
             metadadosIndisponiveis: Boolean(cache.metadadosIndisponiveis),
             versao: cache.versao,
             revisaoPrazos: Boolean(cache.revisaoPrazos),
+            prazosEmConferencia: Boolean(cache.prazosEmConferencia),
             doCache: true,
             erro: null,
           }),

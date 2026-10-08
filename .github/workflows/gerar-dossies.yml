@@ -10,8 +10,10 @@ concurrency:
 
 on:
   schedule:
-    # A cada 30 min: o clique do cliente entra na fila e fica pronto na rodada seguinte.
-    - cron: "*/30 * * * *"
+    # A cada 10 min: o clique do cliente entra na fila e fica pronto na rodada seguinte.
+    # Repositório público, então as execuções não custam nada. O GitHub pode atrasar o
+    # agendamento em horários de pico; o painel mostra a ficha do PNCP enquanto isso.
+    - cron: "*/10 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -20,7 +22,7 @@ permissions:
 jobs:
   gerar:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,5 +33,5 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          LIMITE_MINUTOS_DOSSIES: "20"
+          LIMITE_MINUTOS_DOSSIES: "8"
         run: node scripts/gerar_dossies_gemini.js
