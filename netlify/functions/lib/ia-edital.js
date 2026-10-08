@@ -54,7 +54,7 @@ const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require
 const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-const { buscarDossiePersistido, salvarDossiePersistido } = require("../_dossies_persistidos");
+const { buscarDossiePersistido, salvarDossiePersistido, enfileirarDossie } = require("../_dossies_persistidos");
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -992,7 +992,9 @@ function montarEstruturaBasica(edital, motivoFonteNaoLida) {
     penalidades: naoInformado,
     multas: naoInformado,
     documentosConsultados: [],
-    pendenciasParaConferencia: [motivoFonteNaoLida === "escaneado" ? "O documento publicado é escaneado e não pôde ser lido automaticamente. Abra o edital oficial para conferir habilitação, pagamentos, penalidades e anexos." : "A análise completa do documento oficial está temporariamente indisponível. Os campos abaixo mostram apenas dados públicos já recebidos do PNCP."],
+    pendenciasParaConferencia: [motivoFonteNaoLida === "escaneado" ? "O documento publicado é escaneado e não pôde ser lido automaticamente. Abra o edital oficial para conferir habilitação, pagamentos, penalidades e anexos."
+      : motivoFonteNaoLida === "em_preparacao" ? "A leitura completa do edital está em preparação. Os campos abaixo mostram os dados oficiais do PNCP e serão complementados quando o resumo ficar pronto."
+        : "A análise completa do documento oficial está temporariamente indisponível. Os campos abaixo mostram apenas dados públicos já recebidos do PNCP."],
     questionamentosSugeridos: [],
     possiveisQuestionamentos: [],
     outrasInformacoesRelevantes: [],
@@ -1119,8 +1121,7 @@ exports.handler = async (event) => {
   if (modo === "resumo" && edital.numeroControlePNCP) {
     try {
       let cache = storeResumos ? await storeResumos.get(edital.numeroControlePNCP, { type: "json" }) : null;
-      const cacheDoBlob = Boolean(cache);
-      if (!cache) cache = await buscarDossiePersistido(edital.numeroControlePNCP);
+      let cacheDoBlob = Boolean(cache);
       // Aceita tanto o cache do resumo ESTRUTURADO (JSON, caminho ideal) quanto do resumo
       // em TEXTO CORRIDO (fallback, quando a extração em JSON não deu certo) — os dois têm
       // custo de IA pra gerar, então os dois precisam ficar em cache. Sem isso, todo edital
@@ -1138,11 +1139,20 @@ exports.handler = async (event) => {
       // Dossiês gravados antes da revisão de prazos não têm a marca. Deriva dela do
       // próprio cache (texto + estrutura), sem reler o PDF: só os que realmente deixaram
       // datas de fora vão para a revisão pontual do gateway.
-      if (cache && !cache.revisaoPrazos && cache.textoEdital && cache.estrutura) {
-        cache.revisaoPrazos = require("../_resumo_gateway").ancorasPrazos(cache.textoEdital, cache.estrutura).datasAusentes.length === 0;
+      const podeResponder = (candidato) => {
+        if (candidato && !candidato.revisaoPrazos && candidato.textoEdital && candidato.estrutura) {
+          candidato.revisaoPrazos = require("../_resumo_gateway").ancorasPrazos(candidato.textoEdital, candidato.estrutura).datasAusentes.length === 0;
+        }
+        return Boolean(candidato && !precisaReleituraPrioritaria(candidato) && candidato.revisaoPrazos && !candidato.modoDegradado && !candidato.metadadosIndisponiveis && candidato.versao === VERSAO_RESUMO && candidato.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
+          (candidato.estrutura || (candidato.resposta && !reprocessarEstrutura)));
+      };
+      // O robô de dossiês grava só no Supabase. Um Blob antigo ou incompleto não pode
+      // esconder o dossiê novo de lá.
+      if (!podeResponder(cache)) {
+        const persistido = await buscarDossiePersistido(edital.numeroControlePNCP);
+        if (persistido) { cache = persistido; cacheDoBlob = false; }
       }
-      const cachePodeResponder = cache && !precisaReleituraPrioritaria(cache) && cache.revisaoPrazos && !cache.modoDegradado && !cache.metadadosIndisponiveis && cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO &&
-        (cache.estrutura || (cache.resposta && !reprocessarEstrutura));
+      const cachePodeResponder = podeResponder(cache);
       if (cachePodeResponder) {
         // Dossiês concluídos só no Blob (antes da gravação pelo Gateway) entram no Supabase
         // quando o robô passa por eles; é o Supabase que o robô consulta para saber o que falta.
@@ -1170,6 +1180,18 @@ exports.handler = async (event) => {
     } catch (e) {
       // cache indisponível ou corrompido — segue pro fluxo normal (lê/analisa de novo)
     }
+  }
+
+  // Desde 08/10/2026 o dossiê é gerado fora da Netlify, por scripts/gerar_dossies_gemini.js:
+  // o GPT-5.1 no AI Gateway custava ~40 créditos por edital e suspendeu a conta. Sem
+  // dossiê pronto, o pedido entra na fila e o cliente vê na hora a ficha oficial do PNCP.
+  if (modo === "resumo" && edital.numeroControlePNCP) {
+    if (!ehRoboInterno) await enfileirarDossie(edital.numeroControlePNCP);
+    const contingencia = respostaDeContingencia(edital, "em_preparacao", "A leitura completa do edital entrou na fila e fica pronta em alguns minutos. Enquanto isso, estes são os dados oficiais do PNCP.");
+    contingencia.body.dossieEmPreparacao = true;
+    contingencia.headers = headers;
+    contingencia.body = JSON.stringify(contingencia.body);
+    return contingencia;
   }
 
   // Só tenta buscar o PDF na primeira chamada (resumo) — perguntas seguintes reaproveitam
@@ -1201,22 +1223,6 @@ exports.handler = async (event) => {
     return contingencia;
   }
 
-  // O robô gera o dossiê completo pelo mesmo Gateway do cliente (é o que torna o resumo
-  // "pré-carregado"); o orçamento dele é o limite por execução do job, não a cota diária.
-  if (modo === "resumo" && fonteLida) {
-    if (!storeResumos) return { statusCode: 503, headers, body: JSON.stringify({ erro: "O armazenamento do resumo está indisponível. A geração não foi iniciada.", estrutura: null }) };
-    try {
-      const { solicitarResumo } = require("../_resumo_gateway");
-      const resultado = await solicitarResumo({ store: storeResumos, fonte: textoEdital, ficha: edital, cobertura: coberturaLeitura,
-        retomar: body.retomarAnalise === true,
-        usuario: sessao.userId, authorization: cabecalhosRecebidos.authorization || cabecalhosRecebidos.Authorization || "",
-        chaveRobo: ehRoboInterno ? chaveRobo : null,
-        autorizar: () => ehRoboInterno ? { ok: true } : verificarLimiteDiario(sessao.userId, "ia-edital", 40) });
-      return { statusCode: resultado.statusCode, headers, body: JSON.stringify(resultado.body) };
-    } catch (_) {
-      return { statusCode: 503, headers, body: JSON.stringify({ erro: "Não foi possível iniciar o resumo com segurança. Tente novamente mais tarde.", estrutura: null, emProcessamento: false }) };
-    }
-  }
 
   // Só usa a cota de IA quando de fato há uma análise a executar. Antes desta
   // ordem, uma oportunidade sem arquivo acessível ainda gastava a cota com um

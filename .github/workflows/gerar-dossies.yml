@@ -1,0 +1,35 @@
+name: Gerar dossiês dos editais (Gemini)
+
+# Substitui o preparar-dossies.yml, que chamava o GPT-5.1 pelo AI Gateway da Netlify
+# (~40 créditos por edital). Aqui o robô chama o Gemini direto na cota gratuita e só
+# processa editais pedidos no painel (fila_dossies) ou enviados nos boletins. Não
+# escreve no repositório: grava em dossies_editais no Supabase.
+concurrency:
+  group: gerar-dossies
+  cancel-in-progress: false
+
+on:
+  schedule:
+    # A cada 30 min: o clique do cliente entra na fila e fica pronto na rodada seguinte.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Gerar dossiês da fila e dos boletins
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LIMITE_MINUTOS_DOSSIES: "20"
+        run: node scripts/gerar_dossies_gemini.js
