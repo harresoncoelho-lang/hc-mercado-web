@@ -54,9 +54,18 @@ function schemaParaGemini(schema) {
     .map(([chave, valor]) => [chave, schemaParaGemini(valor)]));
 }
 
+// Na comparação de 08/10/2026 com o GPT-5.1, o Gemini acertou datas, valor e itens,
+// mas deixou prazos e garantias como "Não informado" e agrupou documentos de habilitação.
+const REFORCO_GEMINI = [
+  "Antes de usar \"Não informado\", procure o dado no texto integral, inclusive Termo de Referência, minuta do contrato e anexos.",
+  "Prazos de esclarecimento, impugnação, recurso e contrarrazões costumam estar em capítulos próprios do edital: transcreva-os com a referência do item.",
+  "Liste cada documento de habilitação em uma entrada própria, sem agrupar exigências distintas.",
+  "A data da sessão pública é a abertura da disputa; não a confunda com o início ou o fim do envio de propostas.",
+].join(" ");
+
 function corpoGemini(ficha, fonte, comSchema = true) {
   return {
-    systemInstruction: { parts: [{ text: contrato.prompt }] },
+    systemInstruction: { parts: [{ text: `${contrato.prompt}\n\n${REFORCO_GEMINI}` }] },
     contents: [{ role: "user", parts: [{ text: `DADOS OFICIAIS: ${JSON.stringify(ficha)}\nFONTE OFICIAL INTEGRAL:\n${fonte}` }] }],
     generationConfig: { responseMimeType: "application/json", maxOutputTokens: 32768, ...(comSchema ? { responseJsonSchema: schemaParaGemini(contrato.schema) } : {}) },
   };
