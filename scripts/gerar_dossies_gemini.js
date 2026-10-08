@@ -69,7 +69,7 @@ function lerSaida(dados) {
 }
 
 async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = MODELOS } = {}) {
-  let comSchema = true;
+  let comSchema = true, sobrecarga = false;
   for (let indice = 0; indice < modelos.length;) {
     const resposta = await fetchFn(`${URL_GEMINI}/${modelos[indice]}:generateContent`, {
       method: "POST",
@@ -79,12 +79,16 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
     });
     if (resposta.status === 429) throw new CotaEsgotada("cota do Gemini esgotada");
     if (resposta.status === 404) { indice += 1; continue; }
+    // 500/503 = modelo sobrecarregado no Google (comum na cota gratuita): tenta o próximo
+    // modelo e, se todos estiverem assim, para a rodada sem gastar tentativa do edital.
+    if (resposta.status >= 500) { sobrecarga = true; indice += 1; continue; }
     const dados = await resposta.json().catch(() => ({}));
     // Schema recusado pela API: repete uma vez pedindo só JSON; o ajuste local garante o formato.
     if (resposta.status === 400 && comSchema && /schema/i.test(dados.error?.message || "")) { comSchema = false; continue; }
     if (!resposta.ok) throw new Error(`gemini_http_${resposta.status}`);
     return { saida: lerSaida(dados), modelo: modelos[indice], uso: dados.usageMetadata || null };
   }
+  if (sobrecarga) throw new CotaEsgotada("Gemini sobrecarregado em todos os modelos");
   throw new Error("nenhum_modelo_gemini_disponivel");
 }
 
@@ -217,7 +221,7 @@ async function main() {
       console.log(`[dossiês] gerado ${resultado.completo ? "completo" : "parcial"} (${resultado.modelo}, ${resultado.uso?.totalTokenCount || "?"} tokens): ${candidato.numero}`);
     } catch (erro) {
       if (erro instanceof CotaEsgotada) {
-        console.warn("[dossiês] cota do Gemini esgotada; o restante fica para a próxima execução.");
+        console.warn(`[dossiês] ${erro.message}; o restante fica para a próxima execução.`);
         break;
       }
       await registrarTentativa(candidato, anteriores, { erro: String(erro.message).slice(0, 200) });

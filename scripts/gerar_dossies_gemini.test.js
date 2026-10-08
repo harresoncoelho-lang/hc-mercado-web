@@ -99,3 +99,13 @@ test("dossiê só sai da fila quando é da versão atual e leu todos os document
   assert.equal(dossieCompleto({ versao: VERSAO_DOSSIE - 1, status: "pronto" }), false);
   assert.equal(dossieCompleto(undefined), false);
 });
+
+test("modelo sobrecarregado passa ao próximo e, se todos estiverem, para sem gastar tentativa", async () => {
+  const urls = [];
+  const sobrecarregado = async (url) => { urls.push(url); return respostaGemini(503, {}); };
+  await assert.rejects(chamarGemini({}, "fonte", { apiKey: "k", fetchFn: sobrecarregado, modelos: ["a", "b"] }), CotaEsgotada);
+  assert.equal(urls.length, 2);
+  let chamadas = 0;
+  const segundoResponde = async () => (++chamadas === 1 ? respostaGemini(503, {}) : saidaModelo('{"estrutura":{}}'));
+  assert.equal((await chamarGemini({}, "fonte", { apiKey: "k", fetchFn: segundoResponde, modelos: ["a", "b"] })).modelo, "b");
+});
