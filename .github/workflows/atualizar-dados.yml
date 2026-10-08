@@ -41,7 +41,11 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/atualizar_dados.js
 
+      # Pausado em 08/10/2026: cada dossiê chama o GPT-5.1 pelo AI Gateway da Netlify (~40
+      # créditos por edital) e o robô resumia editais fora dos boletins. Remover este `if`
+      # só depois que a geração tiver teto de gasto e fila restrita aos boletins.
       - name: Preparar dossiês dos editais novos
+        if: ${{ false }}
         env:
           LICITAPLENA_URL: "https://licitaplena.com.br"
           # O lote anterior de 12 deixava a maior parte das oportunidades novas sem
