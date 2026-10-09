@@ -249,3 +249,6 @@ exports.handler = async (event) => {
 };
 
 exports.__test = { emailValido, normalizarDestinatarios, linkPncpValido, montarHtml, montarConteudoEstruturado, mensagemErroZepto, normalizarTokenZepto, formatarDataHoraBR };
+
+// Reaproveitado por enviar-duvida.js: mesmo remetente verificado e mesma normalização do token.
+exports.compartilhado = { ZEPTOMAIL_URL, REMETENTE_PADRAO, NOME_REMETENTE, emailValido, normalizarTokenZepto, mensagemErroZepto };

@@ -828,7 +828,7 @@
         const { data: { session } } = await sb.auth.getSession();
         if (!session) throw new Error("Sessão expirada. Entre novamente.");
         async function solicitar(acao, confirmarEmail) {
-          const response = await fetch("/.netlify/functions/admin-excluir-cliente", {
+          const response = await fetch("/api/admin-excluir-cliente", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
             body: JSON.stringify({ id: cliente.id, acao, confirmarEmail }),

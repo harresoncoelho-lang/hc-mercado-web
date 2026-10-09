@@ -53,6 +53,12 @@
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
 
+# O front-end chama /api/* (Cloudflare Pages); aqui o Netlify encaminha para as mesmas funções.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 # O pacote exporta ranks diferentes para import/require; o handler usa CommonJS.
 [functions."ia-edital"]
   included_files = ["node_modules/js-tiktoken/dist/ranks/o200k_base.cjs"]
