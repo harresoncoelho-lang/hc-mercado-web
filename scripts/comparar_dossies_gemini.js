@@ -2,7 +2,7 @@
 // do GPT-5.1 e grava os dois lado a lado em comparacao/, SEM gravar no Supabase.
 // Uso: EDITAIS="n1,n2" node scripts/comparar_dossies_gemini.js
 // Env obrigatórias: GEMINI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, EDITAIS.
-// Env opcionais: PAUSA_MS_COMPARACAO (20000), entre chamadas, para respeitar o limite por minuto.
+// Env opcionais: PAUSA_MS_COMPARACAO (60000), entre chamadas, para respeitar o limite por minuto.
 
 const fs = require("node:fs");
 const { ancorasPrazos } = require("../netlify/functions/_resumo_gateway");
@@ -10,7 +10,7 @@ const { __test: iaEdital } = require("../netlify/functions/lib/ia-edital");
 const { restFetch } = require("./supabase_dados");
 const { chamarGemini, montarResultado, CotaEsgotada } = require("./gerar_dossies_gemini");
 
-const PAUSA_MS = Number(process.env.PAUSA_MS_COMPARACAO || 20000);
+const PAUSA_MS = Number(process.env.PAUSA_MS_COMPARACAO || 60000);
 
 function contarNaoInformado(valor) {
   if (typeof valor === "string") return valor === "Não informado" ? 1 : 0;
