@@ -21,7 +21,9 @@ const { restFetch, buscarBlob } = require("./supabase_dados");
 // A mesma VERSAO_RESUMO que a Function grava e exige no cache.
 const { VERSAO_DOSSIE } = require("./preparar_dossies_editais");
 
-const MODELOS = [...new Set([process.env.GEMINI_MODELO || "gemini-3.8-flash", "gemini-3.7-flash", "gemini-2.5-flash"])];
+// Desde 09/10/2026 o Google responde 404 ao gemini-2.5-flash para chaves novas. Na cota
+// gratuita, cada modelo tem o próprio limite diário de pedidos.
+const MODELOS = [...new Set([process.env.GEMINI_MODELO || "gemini-3.8-flash", "gemini-3.7-flash"])];
 const MAX_POR_EXECUCAO = Math.max(1, Number(process.env.MAX_DOSSIES_POR_EXECUCAO || 10));
 const MAX_DIA = Math.max(1, Number(process.env.MAX_DOSSIES_DIA || 60));
 const MAX_TENTATIVAS = Math.max(1, Number(process.env.MAX_TENTATIVAS_DOSSIE || 2));
