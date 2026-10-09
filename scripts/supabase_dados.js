@@ -100,4 +100,4 @@ async function salvarBlob(tabela, chave, dado) {
   });
 }
 
-module.exports = { upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue, chaveServico, buscarBlob, salvarBlob };
+module.exports = { restFetch, upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue, chaveServico, buscarBlob, salvarBlob };

@@ -3017,6 +3017,26 @@
     aviso.appendChild(botao);
   }
 
+  // O dossiê completo é gerado fora do painel (scripts/gerar_dossies_gemini.js, a cada
+  // 30 min). Enquanto o modal segue aberto, confere direto no Supabase, sem custo de
+  // Function, se um dossiê novo foi gravado e só então pede o resumo completo.
+  function aguardarDossiePronto(edital, geracao, desde = new Date().toISOString(), tentativa = 0) {
+    if (tentativa >= 40 || !edital?.numeroControlePNCP) return;
+    iaTemporizadorResumo = setTimeout(async () => {
+      iaTemporizadorResumo = null;
+      if (geracao !== iaGeracaoModal) return;
+      let pronto = false;
+      try {
+        const { data } = await window.__sbClient.from("dossies_editais").select("numero_controle_pncp")
+          .eq("numero_controle_pncp", edital.numeroControlePNCP).gt("atualizado_em", desde).maybeSingle();
+        pronto = Boolean(data);
+      } catch (_) { /* Tenta de novo no próximo ciclo. */ }
+      if (geracao !== iaGeracaoModal) return;
+      if (pronto) void chamarIA("resumo", null);
+      else aguardarDossiePronto(edital, geracao, desde, tentativa + 1);
+    }, 60000);
+  }
+
   async function chamarIA(modo, pergunta, opcoes = {}) {
     if (iaCarregando || !iaEditalAtual || (modo === "pergunta" && iaResumoPendente)) return;
     const geracao = iaGeracaoModal;
@@ -3097,6 +3117,7 @@
         estruturaRecebida.metodoResumo = dados.metodoResumo || estruturaRecebida.metodoResumo;
         estruturaRecebida.aviso = dados.aviso || estruturaRecebida.aviso;
         renderizarEstruturaIA(estruturaRecebida);
+        if (dados.dossieEmPreparacao) aguardarDossiePronto(edital, geracao);
         if (dados.modoDegradado) {
           escreverMensagemIA(dados.aviso || "A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
         } else if (!dados.fonteLida) {

@@ -1,6 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
 
 test("adaptador preserva preflight 204 sem corpo e cabeçalhos CORS", async () => {
@@ -14,80 +13,82 @@ test("adaptador preserva preflight 204 sem corpo e cabeçalhos CORS", async () =
   assert.match(resposta.headers.get("access-control-allow-methods"), /POST/);
 });
 
-test("endpoint requer armazenamento e despacha Gateway sem usar dados adulterados ou Groq", async () => {
+test("sem dossiê pronto, o endpoint enfileira o pedido e devolve a ficha oficial sem chamar IA nem baixar documento", async () => {
   const originalFetch = global.fetch;
   const variaveis = ["GROQ_API_KEY", "DOSSIES_EDITAIS_CHAVE", "NETLIFY_BLOBS_CONTEXT", "SUPABASE_SERVICE_ROLE_KEY"];
   const anteriores = Object.fromEntries(variaveis.map((chave) => [chave, process.env[chave]]));
-  const caminhoPdf = require.resolve("pdf-parse"), pdfOriginal = require.cache[caminhoPdf];
-  const texto = process.env.QA_FONTE_REAL ? JSON.parse(fs.readFileSync(process.env.QA_FONTE_REAL, "utf8")).texto
-    : Array.from({ length: 8 }, (_, i) => `[Página ${i + 1}]\n7. HABILITAÇÃO\n7.1. Apresentar certidão de regularidade fiscal em 3 dias se solicitado.\n`).join("");
-  require.cache[caminhoPdf] = { exports: async () => ({ text: texto, numpages: 8 }) };
   process.env.GROQ_API_KEY = "chave-teste";
   process.env.DOSSIES_EDITAIS_CHAVE = "robo-teste";
-  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "servico-teste";
   delete process.env.NETLIFY_BLOBS_CONTEXT;
-  const blobs = new Map(), chamadasIA = [], rotasBlob = [], despachos = [];
-  let versao = 0, usarFonteSalva = false;
-  const responder = (corpo, status = 200, headers = {}) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status, headers });
+  const pedidosFila = [], proibidas = [];
+  const responder = (corpo, status = 200) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status });
   global.fetch = async (url, opcoes = {}) => {
-    if (/^https:\/\/blobs-(?:forte-)?teste\.invalid/.test(url)) {
-      rotasBlob.push({ url, metodo: opcoes.method });
-      const caminho = new globalThis.URL(url).pathname;
-      const registro = blobs.get(caminho);
-      if (usarFonteSalva && decodeURIComponent(caminho).includes("progresso:v14:schema120b1:")) return responder({ texto, coberturaLeitura: { parcial: true }, expiraEm: Date.now() + 60000, resultados: [{ detalhes: { valorEstimado: "INVENTADO" } }], proximaEtapaEm: Date.now() + 60000 });
-      if (opcoes.method === "put") {
-        if ((opcoes.headers["if-none-match"] && registro) || (opcoes.headers["if-match"] && opcoes.headers["if-match"] !== registro?.etag)) return responder("", 412);
-        const etag = String(++versao); blobs.set(caminho, { dado: JSON.parse(opcoes.body), etag });
-        return responder("", 200, { etag });
-      }
-      return registro ? responder(registro.dado, 200, { etag: registro.etag }) : responder("", 404);
-    }
     if (url.includes("/auth/v1/user")) return responder({ id: "usuario-teste" });
-    if (url.endsWith("/.netlify/functions/ia-resumo-background")) { despachos.push(JSON.parse(opcoes.body)); return responder("", 202); }
-    if (url.includes("incrementar_uso")) throw new Error("Resumo documental não deve cobrar quota IA");
-    if (url.includes("api.groq.com")) {
-      const corpo = JSON.parse(opcoes.body); chamadasIA.push(corpo);
-      const ids = new Map([...corpo.messages.at(-1).content.matchAll(/(R\d{4}) (documentosHabilitacao|documentosCredenciamento|requisitosProposta|declaracoesExigidas)/g)].map((item) => [item[1], item[2]]));
-      const requisitos = [...ids].map(([id, categoria]) => ({ acao: "Apresentar", documento: "Documentos exigidos", condicoes: "", prazo: "", ids: [id], categoria }));
-      return responder({ choices: [{ message: { content: JSON.stringify({ requisitos, fatos: [{ campo: "resumoGeral", valor: "Documentos analisados", referencia: "Edital oficial" }] }) } }] });
-    }
+    if (url.includes("/rest/v1/fila_dossies")) { pedidosFila.push(JSON.parse(opcoes.body)); return responder("", 201); }
+    if (url.includes("/rest/v1/dossies_editais")) return responder([]);
     if (url.includes("/api/consulta/")) return responder({ objetoCompra: "Objeto oficial" });
-    if (url.endsWith("/arquivos")) return responder([{ sequencialDocumento: 1, titulo: "Edital" }]);
-    return responder("%PDF-fonte");
+    // Download de arquivo, Groq, Gateway ou cota: nada disso pode acontecer no clique.
+    proibidas.push(url);
+    return responder("", 500);
   };
   try {
     const modulo = await import(pathToFileURL(require.resolve("../ia-edital.mjs")).href);
-    const solicitar = () => modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", {
-      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer usuario-teste" },
+    const pedir = (headers) => modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", {
+      method: "POST", headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026", objeto: "OBJETO ADULTERADO", orgao: "ORGAO ADULTERADO" } }),
     }), { requestId: "qa-runtime" });
-    const primeira = await solicitar();
-    assert.equal(primeira.status, 503);
-    const dossie = await primeira.json();
-    assert.equal(dossie.estrutura, null);
-    assert.doesNotMatch(JSON.stringify(dossie.estrutura), /ADULTERADO/);
-    assert.equal(chamadasIA.length, 0);
-    process.env.NETLIFY_BLOBS_CONTEXT = Buffer.from(JSON.stringify({ siteID: "site-teste", token: "token-escopo-blobs", edgeURL: "https://blobs-teste.invalid/", uncachedEdgeURL: "https://blobs-forte-teste.invalid/" })).toString("base64");
-    usarFonteSalva = true;
-    const comFonteSalva = await solicitar();
-    assert.equal(comFonteSalva.status, 202);
-    const salva = await comFonteSalva.json();
-    assert.equal(salva.metodoResumo, "sintese_em_andamento");
-    assert.equal(salva.estrutura, null);
-    assert.doesNotMatch(JSON.stringify(salva), /validacaoCatalogoPrivada|idsEsperados|candidato/);
-    assert.doesNotMatch(JSON.stringify(salva.estrutura), /INVENTADO/);
-    assert.ok([...blobs.values()].some(item => item.dado.hashFonte));
-    assert.equal(chamadasIA.length, 0);
-    assert.equal(despachos.length, 1);
-    assert.doesNotMatch(JSON.stringify([...blobs.values()]), /ADULTERADO/);
-    const robo = await modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", { method: "POST", headers: { "content-type": "application/json", "x-licitaplena-dossies-chave": "robo-teste" }, body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000005/2026" } }) }), { requestId: "qa-robo" });
-    // O robô entra no mesmo job do Gateway já em andamento em vez de só preparar a fonte.
-    assert.equal((await robo.json()).emProcessamento, true);
-    assert.equal(despachos.length, 1);
-    assert.ok(rotasBlob.filter(rota => rota.metodo === "get").every(rota => rota.url.startsWith("https://blobs-forte-teste.invalid/")));
+    const resposta = await pedir({ authorization: "Bearer usuario-teste" });
+    assert.equal(resposta.status, 200);
+    const corpo = await resposta.json();
+    assert.equal(corpo.dossieEmPreparacao, true);
+    assert.equal(corpo.modoDegradado, true);
+    assert.equal(corpo.estrutura.identificacao.objeto, "Objeto oficial");
+    assert.doesNotMatch(JSON.stringify(corpo), /ADULTERADO/);
+    assert.match(corpo.estrutura.pendenciasParaConferencia[0], /em preparação/);
+    assert.deepEqual(pedidosFila, [[{ numero_controle_pncp: "01171012000141-1-000005/2026", concluido_em: null }]]);
+    // O robô antigo não pode encher a fila com a base inteira.
+    const robo = await pedir({ "x-licitaplena-dossies-chave": "robo-teste" });
+    assert.equal((await robo.json()).dossieEmPreparacao, true);
+    assert.equal(pedidosFila.length, 1);
+    assert.deepEqual(proibidas, []);
   } finally {
     global.fetch = originalFetch;
-    if (pdfOriginal) require.cache[caminhoPdf] = pdfOriginal; else delete require.cache[caminhoPdf];
+    for (const chave of variaveis) { if (anteriores[chave] === undefined) delete process.env[chave]; else process.env[chave] = anteriores[chave]; }
+  }
+});
+
+test("dossiê do Gemini com prazo em conferência é entregue ao cliente sem marca de prazos revisados", async () => {
+  const originalFetch = global.fetch;
+  const variaveis = ["NETLIFY_BLOBS_CONTEXT", "SUPABASE_SERVICE_ROLE_KEY"];
+  const anteriores = Object.fromEntries(variaveis.map((chave) => [chave, process.env[chave]]));
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "servico-teste";
+  delete process.env.NETLIFY_BLOBS_CONTEXT;
+  const { montarResultado } = require("../../../scripts/gerar_dossies_gemini");
+  const dossie = montarResultado({ estrutura: { resumoGeral: "Pregão de papel A4." } }, "Sessão pública em 20/10/2026 às 9h.",
+    { documentosLidos: ["Edital.pdf"], documentosNaoLidos: [], parcial: false }, Date.parse("2026-10-08T12:00:00Z"));
+  const pedidosFila = [];
+  const responder = (corpo, status = 200) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status });
+  global.fetch = async (url, opcoes = {}) => {
+    if (url.includes("/auth/v1/user")) return responder({ id: "usuario-teste" });
+    if (url.includes("/rest/v1/fila_dossies")) { pedidosFila.push(opcoes.body); return responder("", 201); }
+    if (url.includes("/rest/v1/dossies_editais")) return responder([{ dossie, versao: dossie.versao }]);
+    return responder({});
+  };
+  try {
+    const modulo = await import(pathToFileURL(require.resolve("../ia-edital.mjs")).href);
+    const resposta = await modulo.default(new globalThis.Request("https://licitaplena.com.br/.netlify/functions/ia-edital", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer usuario-teste" },
+      body: JSON.stringify({ modo: "resumo", edital: { numeroControlePNCP: "01171012000141-1-000006/2026" } }),
+    }), { requestId: "qa-prazos" });
+    const corpo = await resposta.json();
+    assert.equal(corpo.doCache, true);
+    assert.equal(corpo.revisaoPrazos, false);
+    assert.equal(corpo.prazosEmConferencia, true);
+    assert.match(corpo.estrutura.pendenciasParaConferencia.at(-1), /20\/10\/2026/);
+    assert.deepEqual(pedidosFila, []);
+  } finally {
+    global.fetch = originalFetch;
     for (const chave of variaveis) { if (anteriores[chave] === undefined) delete process.env[chave]; else process.env[chave] = anteriores[chave]; }
   }
 });

@@ -8,10 +8,8 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  # A coleta diária (atualizar-dados.yml) só sobra ~10 min para dossiês. Este cron
-  # mantém a fila andando o dia todo para o resumo já estar pronto quando o cliente abrir.
-  schedule:
-    - cron: "30 */2 * * *"
+  # Agendamento removido em 08/10/2026: cada dossiê aqui custa ~40 créditos Netlify
+  # (GPT-5.1 pelo AI Gateway). A geração passou para gerar-dossies.yml (Gemini gratuito).
   workflow_dispatch:
     inputs:
       max_dossies:
