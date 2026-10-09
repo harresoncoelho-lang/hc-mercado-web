@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 process.env.MAX_TENTATIVAS_DOSSIE = "2";
-const { ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
+const { ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, GeminiSobrecarregado, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
 const contrato = require("../netlify/functions/_resumo_gateway_contrato");
 const { estruturaValida } = require("../netlify/functions/_resumo_gateway");
 
@@ -108,4 +108,31 @@ test("modelo sobrecarregado passa ao próximo e, se todos estiverem, para sem ga
   let chamadas = 0;
   const segundoResponde = async () => (++chamadas === 1 ? respostaGemini(503, {}) : saidaModelo('{"estrutura":{}}'));
   assert.equal((await chamarGemini({}, "fonte", { apiKey: "k", fetchFn: segundoResponde, modelos: ["a", "b"] })).modelo, "b");
+});
+
+test("sobrecarga espera e repete o mesmo edital; cota esgotada encerra sem esperar", async () => {
+  const prazoFinal = Date.now() + 3600000;
+  const esperas = [];
+  const esperar = async (ms) => { esperas.push(ms); };
+  let chamadas = 0;
+  const gerarDepoisDeDuas = async () => {
+    chamadas += 1;
+    if (chamadas <= 2) throw new GeminiSobrecarregado("sobrecarga");
+    return { modelo: "a" };
+  };
+  assert.deepEqual(await gerarComEspera("n", { prazoFinal, gerar: gerarDepoisDeDuas, esperar }), { modelo: "a" });
+  assert.equal(esperas.length, 2);
+
+  esperas.length = 0;
+  await assert.rejects(gerarComEspera("n", { prazoFinal, gerar: async () => { throw new CotaEsgotada("429"); }, esperar }), CotaEsgotada);
+  assert.equal(esperas.length, 0);
+
+  await assert.rejects(gerarComEspera("n", { prazoFinal, gerar: async () => { throw new GeminiSobrecarregado("sempre"); }, esperar }), GeminiSobrecarregado);
+  assert.equal(esperas.length, 3);
+});
+
+test("sobrecarga não espera além do tempo da rodada", async () => {
+  const esperas = [];
+  await assert.rejects(gerarComEspera("n", { prazoFinal: Date.now() + 1000, gerar: async () => { throw new GeminiSobrecarregado("x"); }, esperar: async (ms) => esperas.push(ms) }), GeminiSobrecarregado);
+  assert.equal(esperas.length, 0);
 });

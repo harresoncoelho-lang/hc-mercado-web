@@ -4,7 +4,7 @@
 // Env obrigatórias: GEMINI_API_KEY e SUPABASE_SERVICE_ROLE_KEY.
 // Env opcionais: GEMINI_MODELO (gemini-3.8-flash), MAX_DOSSIES_POR_EXECUCAO (10),
 // MAX_DOSSIES_DIA (60), MAX_TENTATIVAS_DOSSIE (2), DIAS_BOLETIM_DOSSIE (30),
-// LIMITE_MINUTOS_DOSSIES (20).
+// LIMITE_MINUTOS_DOSSIES (20), ESPERAS_SOBRECARGA (3), ESPERA_SOBRECARGA_SEGUNDOS (60).
 //
 // Até 08/10/2026 o dossiê era gerado pelo GPT-5.1 no AI Gateway da Netlify (~40
 // créditos por edital) e o robô resumia toda a base nova, não só o que os clientes
@@ -27,10 +27,14 @@ const MAX_DIA = Math.max(1, Number(process.env.MAX_DOSSIES_DIA || 60));
 const MAX_TENTATIVAS = Math.max(1, Number(process.env.MAX_TENTATIVAS_DOSSIE || 2));
 const DIAS_BOLETIM = Math.max(1, Number(process.env.DIAS_BOLETIM_DOSSIE || 30));
 const LIMITE_MS = Math.max(1, Number(process.env.LIMITE_MINUTOS_DOSSIES || 20)) * 60 * 1000;
+const ESPERAS_SOBRECARGA = Math.max(0, Number(process.env.ESPERAS_SOBRECARGA ?? 3));
+const ESPERA_SOBRECARGA_MS = Math.max(0, Number(process.env.ESPERA_SOBRECARGA_SEGUNDOS ?? 60)) * 1000;
 const NAO_INFORMADO = "Não informado";
 const URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 
 class CotaEsgotada extends Error {}
+// Sobrecarga do Google costuma passar em um ou dois minutos; a cota esgotada (429) não.
+class GeminiSobrecarregado extends CotaEsgotada {}
 
 // O modelo às vezes devolve campos a mais, a menos ou fora do tipo. Em vez de
 // descartar o dossiê inteiro (o que antes gerava nova cobrança no dia seguinte),
@@ -97,7 +101,7 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
     if (!resposta.ok) throw new Error(`gemini_http_${resposta.status}`);
     return { saida: lerSaida(dados), modelo: modelos[indice], uso: dados.usageMetadata || null };
   }
-  if (sobrecarga) throw new CotaEsgotada("Gemini sobrecarregado em todos os modelos");
+  if (sobrecarga) throw new GeminiSobrecarregado("Gemini sobrecarregado em todos os modelos");
   throw new Error("nenhum_modelo_gemini_disponivel");
 }
 
@@ -200,6 +204,22 @@ async function gerarDossie(numero, { apiKey, fetchFn } = {}) {
   return { modelo, uso, completo: dossieCompleto(gravado[0]) };
 }
 
+// Na primeira execução em produção (09/10/2026) o Google respondeu "sobrecarregado" e a
+// rodada terminou em segundos sem gerar nada. Esperar um pouco e repetir o mesmo edital
+// aproveita a janela da rodada; cota esgotada (429) continua encerrando de imediato.
+async function gerarComEspera(numero, { apiKey, prazoFinal, gerar = gerarDossie, esperar = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+  for (let espera = 0; ; espera += 1) {
+    try {
+      return await gerar(numero, { apiKey });
+    } catch (erro) {
+      const cabeEspera = Date.now() + ESPERA_SOBRECARGA_MS < prazoFinal;
+      if (!(erro instanceof GeminiSobrecarregado) || espera >= ESPERAS_SOBRECARGA || !cabeEspera) throw erro;
+      console.log(`[dossiês] Gemini sobrecarregado; nova tentativa em ${ESPERA_SOBRECARGA_MS / 1000} s.`);
+      await esperar(ESPERA_SOBRECARGA_MS);
+    }
+  }
+}
+
 async function main() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -216,7 +236,7 @@ async function main() {
     if (Date.now() - inicio > LIMITE_MS) break;
     const anteriores = dados.tentativas.get(candidato.numero) || 0;
     try {
-      const resultado = await gerarDossie(candidato.numero, { apiKey });
+      const resultado = await gerarComEspera(candidato.numero, { apiKey, prazoFinal: inicio + LIMITE_MS });
       if (resultado.semDocumento) {
         // Sem documento legível não há o que a IA ler: não volta para a fila.
         await registrarTentativa(candidato, anteriores, { erro: resultado.motivo, esgotar: true });
@@ -245,4 +265,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { VERSAO_DOSSIE, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, CotaEsgotada };
+module.exports = { VERSAO_DOSSIE, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
