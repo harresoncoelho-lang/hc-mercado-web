@@ -81,8 +81,15 @@ function lerSaida(dados) {
   return JSON.parse((candidato.content?.parts || []).map((parte) => parte.text || "").join(""));
 }
 
+// Status e mensagem do Google no log: sem eles não dá para separar sobrecarga, cota por
+// minuto e cota diária, e as primeiras rodadas pararam sem dizer qual foi.
+async function registrarRecusa(modelo, resposta) {
+  const detalhe = await resposta.text().catch(() => "");
+  console.log(`[dossiês] ${modelo}: HTTP ${resposta.status} ${detalhe.replace(/\s+/g, " ").slice(0, 300)}`);
+}
+
 async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = MODELOS } = {}) {
-  let comSchema = true, sobrecarga = false;
+  let comSchema = true, sobrecarga = false, cotaEsgotada = false;
   for (let indice = 0; indice < modelos.length;) {
     const resposta = await fetchFn(`${URL_GEMINI}/${modelos[indice]}:generateContent`, {
       method: "POST",
@@ -90,15 +97,17 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
       body: JSON.stringify(corpoGemini(ficha, fonte, comSchema)),
       signal: AbortSignal.timeout(300000),
     });
-    if (resposta.status === 429) throw new CotaEsgotada("cota do Gemini esgotada");
     if (resposta.status === 404) { indice += 1; continue; }
+    // Na cota gratuita cada modelo tem a própria cota: um 429 no primeiro modelo não
+    // impede o segundo de responder.
+    if (resposta.status === 429) {
+      await registrarRecusa(modelos[indice], resposta);
+      cotaEsgotada = true; indice += 1; continue;
+    }
     // 500/503 = modelo sobrecarregado no Google (comum na cota gratuita): tenta o próximo
     // modelo e, se todos estiverem assim, para a rodada sem gastar tentativa do edital.
     if (resposta.status >= 500) {
-      // Registra o motivo: duas rodadas seguidas pararam no mesmo edital com "sobrecarga",
-      // e sem o status/mensagem do Google não dá para separar sobrecarga de erro do pedido.
-      const detalhe = await resposta.text().catch(() => "");
-      console.log(`[dossiês] ${modelos[indice]}: HTTP ${resposta.status} ${detalhe.replace(/\s+/g, " ").slice(0, 300)}`);
+      await registrarRecusa(modelos[indice], resposta);
       sobrecarga = true; indice += 1; continue;
     }
     const dados = await resposta.json().catch(() => ({}));
@@ -108,6 +117,7 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
     return { saida: lerSaida(dados), modelo: modelos[indice], uso: dados.usageMetadata || null };
   }
   if (sobrecarga) throw new GeminiSobrecarregado("Gemini sobrecarregado em todos os modelos");
+  if (cotaEsgotada) throw new CotaEsgotada("cota do Gemini esgotada em todos os modelos");
   throw new Error("nenhum_modelo_gemini_disponivel");
 }
 

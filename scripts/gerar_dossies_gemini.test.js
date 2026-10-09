@@ -34,6 +34,12 @@ test("cota esgotada interrompe sem consumir tentativa", async () => {
   await assert.rejects(chamarGemini({}, "fonte", { apiKey: "k", fetchFn: async () => respostaGemini(429, {}) }), CotaEsgotada);
 });
 
+test("cota esgotada em um modelo passa ao próximo, que tem cota própria", async () => {
+  let chamadas = 0;
+  const primeiroSemCota = async () => (++chamadas === 1 ? respostaGemini(429, {}) : saidaModelo('{"estrutura":{}}'));
+  assert.equal((await chamarGemini({}, "fonte", { apiKey: "k", fetchFn: primeiroSemCota, modelos: ["a", "b"] })).modelo, "b");
+});
+
 test("modelo indisponível passa ao próximo e schema recusado repete só com JSON", async () => {
   const chamadas = [];
   const fetchFn = async (url, opcoes) => {
