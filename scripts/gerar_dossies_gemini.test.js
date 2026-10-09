@@ -7,7 +7,7 @@ const contrato = require("../netlify/functions/_resumo_gateway_contrato");
 const { estruturaValida } = require("../netlify/functions/_resumo_gateway");
 
 function respostaGemini(status, corpo) {
-  return { status, ok: status >= 200 && status < 300, json: async () => corpo };
+  return { status, ok: status >= 200 && status < 300, json: async () => corpo, text: async () => JSON.stringify(corpo) };
 }
 
 function saidaModelo(texto = "{}") {

@@ -94,7 +94,13 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
     if (resposta.status === 404) { indice += 1; continue; }
     // 500/503 = modelo sobrecarregado no Google (comum na cota gratuita): tenta o próximo
     // modelo e, se todos estiverem assim, para a rodada sem gastar tentativa do edital.
-    if (resposta.status >= 500) { sobrecarga = true; indice += 1; continue; }
+    if (resposta.status >= 500) {
+      // Registra o motivo: duas rodadas seguidas pararam no mesmo edital com "sobrecarga",
+      // e sem o status/mensagem do Google não dá para separar sobrecarga de erro do pedido.
+      const detalhe = await resposta.text().catch(() => "");
+      console.log(`[dossiês] ${modelos[indice]}: HTTP ${resposta.status} ${detalhe.replace(/\s+/g, " ").slice(0, 300)}`);
+      sobrecarga = true; indice += 1; continue;
+    }
     const dados = await resposta.json().catch(() => ({}));
     // Schema recusado pela API: repete uma vez pedindo só JSON; o ajuste local garante o formato.
     if (resposta.status === 400 && comSchema && /schema/i.test(dados.error?.message || "")) { comSchema = false; continue; }
