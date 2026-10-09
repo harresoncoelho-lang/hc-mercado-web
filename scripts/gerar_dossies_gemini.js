@@ -84,8 +84,14 @@ function lerSaida(dados) {
 // Status e mensagem do Google no log: sem eles não dá para separar sobrecarga, cota por
 // minuto e cota diária, e as primeiras rodadas pararam sem dizer qual foi.
 async function registrarRecusa(modelo, resposta) {
-  const detalhe = await resposta.text().catch(() => "");
-  console.log(`[dossiês] ${modelo}: HTTP ${resposta.status} ${detalhe.replace(/\s+/g, " ").slice(0, 300)}`);
+  const texto = await resposta.text().catch(() => "");
+  let detalhes = [];
+  try { detalhes = JSON.parse(texto).error?.details || []; } catch (_) { /* corpo não-JSON: vai o texto */ }
+  // O 429 só diz qual cota acabou (por minuto ou por dia) e quando volta nestes campos.
+  const cotas = detalhes.flatMap((d) => d.violations || []).map((v) => v.quotaId).filter(Boolean);
+  const espera = detalhes.find((d) => d.retryDelay)?.retryDelay;
+  const resumo = cotas.length ? `cota ${[...new Set(cotas)].join(", ")}${espera ? `, volta em ${espera}` : ""}` : texto.replace(/\s+/g, " ").slice(0, 300);
+  console.log(`[dossiês] ${modelo}: HTTP ${resposta.status} ${resumo}`);
 }
 
 async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = MODELOS } = {}) {
@@ -97,7 +103,7 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
       body: JSON.stringify(corpoGemini(ficha, fonte, comSchema)),
       signal: AbortSignal.timeout(300000),
     });
-    if (resposta.status === 404) { indice += 1; continue; }
+    if (resposta.status === 404) { await registrarRecusa(modelos[indice], resposta); indice += 1; continue; }
     // Na cota gratuita cada modelo tem a própria cota: um 429 no primeiro modelo não
     // impede o segundo de responder.
     if (resposta.status === 429) {
