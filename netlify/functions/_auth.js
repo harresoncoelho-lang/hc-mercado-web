@@ -20,6 +20,7 @@ const ORIGENS_PERMITIDAS = [
   "https://licitaplena.com.br",
   "https://www.licitaplena.com.br",
   "https://hc-mercado-web.netlify.app",
+  "https://licitaplena.pages.dev",
 ];
 
 function origemPermitida(event) {

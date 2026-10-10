@@ -1,0 +1,10 @@
+# Cloudflare Pages (plano gratuito). Projeto: licitaplena. Deploy: npm run build:cloudflare e
+# depois `wrangler pages deploy` (ou build automático do Pages com esse comando e saída "publico").
+name = "licitaplena"
+pages_build_output_dir = "publico"
+compatibility_date = "2025-09-01"
+# nodejs_compat: Buffer, node:crypto etc. usados por adm-zip/pdf-parse/handlers. Com data >= 2025-04-01
+# o process.env também é populado; mesmo assim functions/api/[nome].js copia context.env antes de
+# cada chamada. Segredos (SUPABASE_SERVICE_ROLE_KEY, TRANSPARENCIA_TOKEN, ZEPTOMAIL_TOKEN,
+# GROQ_API_KEY, DOSSIES_EDITAIS_CHAVE) vão no painel do Pages, nunca aqui.
+compatibility_flags = ["nodejs_compat"]

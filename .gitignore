@@ -33,3 +33,7 @@ vault-obsidian/.obsidian/
 .claude/scripts/node_modules/
 .claude/scripts/package.json
 .claude/scripts/package-lock.json
+
+# Saída do build para o Cloudflare Pages (scripts/montar_publico.js)
+publico/
+.wrangler/

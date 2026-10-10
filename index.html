@@ -402,7 +402,7 @@
         // CDN seja interrompida antes de a função responder.
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 12000);
-        const resp = await fetch("/.netlify/functions/convenios-publico", { signal: controller.signal });
+        const resp = await fetch("/api/convenios-publico", { signal: controller.signal });
         clearTimeout(timeout);
         if (!resp.ok) throw new Error("resposta não-ok");
         const dados = await resp.json();

@@ -2200,8 +2200,7 @@
     <h2 style="margin-top:0;">Envie sua Dúvida</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Descreva sua dúvida sobre um edital, cadastro ou processo — o Harreson responde direto no seu e-mail.</p>
     <div class="secao-conteudo-principal">
-    <form id="duvida-form" name="duvida-cliente" method="POST" data-netlify="true" netlify-honeypot="duvida-empresa" class="painel-filtros" style="align-items:flex-start;">
-      <input type="hidden" name="form-name" value="duvida-cliente">
+    <form id="duvida-form" name="duvida-cliente" method="POST" class="painel-filtros" style="align-items:flex-start;">
       <p style="display:none;"><label>Não preencha isso: <input name="duvida-empresa"></label></p>
       <div class="campo">
         <label>Seu nome</label>
@@ -2421,8 +2420,8 @@
   }
   renderizarArtigosJuridicos();
 
-  // Envio da dúvida via Netlify Forms (sem backend próprio) — intercepta o submit pra evitar
-  // recarregar a página e mostrar uma confirmação simples no lugar.
+  // Envio da dúvida por e-mail via /api/enviar-duvida (exige sessão, como as demais ferramentas
+  // autenticadas) — intercepta o submit pra evitar recarregar a página.
   const formDuvida = document.getElementById("duvida-form");
   if (formDuvida) {
     formDuvida.addEventListener("submit", async (ev) => {
@@ -2432,13 +2431,12 @@
       btn.disabled = true;
       btn.textContent = "Enviando...";
       try {
-        const dados = new FormData(formDuvida);
-        const corpo = new URLSearchParams();
-        for (const [chave, valor] of dados.entries()) corpo.append(chave, valor);
-        const resp = await fetch("/", {
+        const corpo = Object.fromEntries(new FormData(formDuvida).entries());
+        const token = await obterTokenSessao();
+        const resp = await fetch("/api/enviar-duvida", {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: corpo.toString(),
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(corpo),
         });
         if (!resp.ok) throw new Error("falha no envio");
         aviso.textContent = "Dúvida enviada! Você recebe a resposta no e-mail informado.";
@@ -3050,7 +3048,7 @@
     try {
       const token = await obterTokenSessao();
       if (geracao !== iaGeracaoModal) return;
-      const enviar = (credencial) => fetch("/.netlify/functions/ia-edital", {
+      const enviar = (credencial) => fetch("/api/ia-edital", {
         signal: controlador.signal,
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${credencial}` },
@@ -3163,7 +3161,7 @@
     if (!partes) return [];
     iaItensPncpCarregando = (async () => {
       try {
-        const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+        const resp = await fetch(`/api/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
         const dados = await resp.json();
         const itens = Array.isArray(dados.itens) ? dados.itens : [];
         if (!itens.length) return [];
@@ -3214,7 +3212,7 @@
 
   function montarUrlBaixarDoc(partes, doc) {
     const nome = encodeURIComponent(doc.titulo || "documento");
-    return `/.netlify/functions/pncp-baixar?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}&documento=${doc.sequencialDocumento}&nome=${nome}`;
+    return `/api/pncp-baixar?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}&documento=${doc.sequencialDocumento}&nome=${nome}`;
   }
 
   function abrirModalArquivos(partes, lista) {
@@ -3313,7 +3311,7 @@
     painelLista.innerHTML = `<p class="itens-vazio">Carregando...</p>`;
     document.getElementById("modal-verarquivos-fundo").classList.add("aberto");
     try {
-      const resp = await fetch(`/.netlify/functions/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const resp = await fetch(`/api/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
       const dados = await resp.json();
       // situacaoCompraId 1 = "Divulgada no PNCP" (normal). Qualquer outro valor é sinal de
       // que algo mudou no processo — revogação, suspensão, anulação etc. — vale destacar.
@@ -3399,7 +3397,7 @@
     botao.disabled = true;
     botao.textContent = "Buscando arquivos...";
     try {
-      const resp = await fetch(`/.netlify/functions/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const resp = await fetch(`/api/pncp-arquivos?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
       const dados = await resp.json();
       const lista = dados.arquivos || [];
       if (lista.length === 0) {
@@ -3543,7 +3541,7 @@
       await aguardarSupabaseAutenticado();
       const { data: { session } } = await window.__sbClient.auth.getSession();
       if (!session?.access_token) throw new Error("Sessão expirada. Faça login novamente.");
-      const resposta = await fetch("/.netlify/functions/gerar-checklist", {
+      const resposta = await fetch("/api/gerar-checklist", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ edital, resumoEstruturado: { ...(est || {}), consideracoes: document.getElementById("modal-ia-consideracoes")?.value || "" } }),
@@ -3732,7 +3730,7 @@
         itensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp : [],
       } : null;
       const token = await obterTokenSessao();
-      const resp = await fetch("/.netlify/functions/enviar-resumo-edital", {
+      const resp = await fetch("/api/enviar-resumo-edital", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ destinos, nomeDestino, assunto, texto, linkEdital, resumoEstruturado, edital: editalResumo }),
@@ -4196,7 +4194,7 @@
   async function carregarSancoes(cnpj) {
     try {
       const token = await obterTokenSessao();
-      const resp = await fetch(`/.netlify/functions/sancoes?cnpj=${cnpj}`, {
+      const resp = await fetch(`/api/sancoes?cnpj=${cnpj}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) return null;
@@ -4540,7 +4538,7 @@
         try {
           const { data: { session } } = await sb.auth.getSession();
           if (session) {
-            const resposta = await fetch("/.netlify/functions/ia-edital", {
+            const resposta = await fetch("/api/ia-edital", {
               method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
               body: JSON.stringify({ modo: "consulta_requisitos", edital: { numeroControlePNCP: edital.numeroControlePNCP } }),
             });
@@ -5360,7 +5358,7 @@
       if (ufConsulta) p.set("ufs", ufConsulta);
       if (termo) p.set("q", termo);
       p.set("pagina", String(pagina));
-      return `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${p.toString()}`)}`;
+      return `/api/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${p.toString()}`)}`;
     }
 
     function processarPagina(dados) {
@@ -5460,7 +5458,7 @@
 
     while (pagina <= totalPaginas) {
       if (Date.now() - inicioMs > tempoLimiteMs) { parcial = true; break; }
-      const url = `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`)}`;
+      const url = `/api/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`)}`;
       let resp;
       try {
         resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
@@ -5495,7 +5493,7 @@
 
     while (pagina <= totalPaginas) {
       if (Date.now() - inicioMs > tempoLimiteMs) { parcial = true; break; }
-      const url = `/.netlify/functions/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`)}`;
+      const url = `/api/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/consulta/v1/contratos?dataInicial=${dataInicial}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=100`)}`;
       let resp;
       try {
         resp = await fetchComTimeout(url, { headers: { Accept: "application/json" } }, 18000);
@@ -5653,7 +5651,7 @@
     const partes = partesNumeroControleCliente(edital.numeroControlePNCP);
     if (!partes) return edital;
     try {
-      const resp = await fetch(`/.netlify/functions/pncp-detalhe?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const resp = await fetch(`/api/pncp-detalhe?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
       if (!resp.ok) return edital;
       const dados = await resp.json();
       const detalhe = dados && dados.detalhe;
@@ -5757,7 +5755,7 @@
     botao.textContent = " Carregando...";
     botao.disabled = true;
     try {
-      const resp = await fetch(`/.netlify/functions/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
+      const resp = await fetch(`/api/pncp-itens?cnpj=${partes.cnpj}&ano=${partes.ano}&sequencial=${partes.sequencial}`);
       const dados = await resp.json();
       const itens = Array.isArray(dados.itens) ? dados.itens : [];
       painel.innerHTML = montarHtmlItens(itens);
@@ -7684,7 +7682,7 @@
     try {
       const parametros = new URLSearchParams({ termo });
       if (uf) parametros.set("uf", uf);
-      const resposta = await fetch(`/.netlify/functions/comprasgov-marcas-produto?${parametros}`);
+      const resposta = await fetch(`/api/comprasgov-marcas-produto?${parametros}`);
       const dados = await resposta.json();
       if (!resposta.ok || !dados.ok) return { erro: true, itens: [] };
       return { erro: false, itens: Array.isArray(dados.itens) ? dados.itens : [], fonte: dados.fonte || "Compras.gov", consultasComFalha: dados.consultasComFalha || 0 };
@@ -8075,7 +8073,7 @@
             botaoMarca.textContent = "Consultando...";
             try {
               const params = new URLSearchParams({ catalogo: item.catalogoCodigo, compra: compra.id, item: item.id });
-              const resposta = await fetch(`/.netlify/functions/comprasgov-marca?${params}`);
+              const resposta = await fetch(`/api/comprasgov-marca?${params}`);
               const dados = await resposta.json();
               if (!resposta.ok || !dados.ok) throw new Error(dados.erro || "Consulta indisponível.");
               destinoMarca.textContent = dados.encontrada ? `${dados.marca} — marca declarada na ${dados.fonte}.` : "A fonte oficial não informou uma marca utilizável para este item.";
@@ -8223,7 +8221,7 @@
       botaoMarca.disabled = true; botaoMarca.textContent = "Consultando...";
       try {
         const params = new URLSearchParams({ catalogo: item.catalogoCodigo, compra: compra.id, item: item.id });
-        const resposta = await fetch(`/.netlify/functions/comprasgov-marca?${params}`);
+        const resposta = await fetch(`/api/comprasgov-marca?${params}`);
         const dados = await resposta.json();
         if (!resposta.ok || !dados.ok) throw new Error(dados.erro || "Consulta indisponível.");
         destinoMarca.textContent = dados.encontrada ? `${dados.marca} — marca declarada na ${dados.fonte}.` : "A fonte oficial não informou uma marca utilizável para este item.";
@@ -8708,7 +8706,7 @@
     alvo.innerHTML = '<div class="carregando">Consultando pagamentos no Portal da Transparência...</div>';
     try {
       const token = await obterTokenSessao();
-      const resp = await fetch(`/.netlify/functions/despesas-fornecedor?cnpj=${cnpj}`, {
+      const resp = await fetch(`/api/despesas-fornecedor?cnpj=${cnpj}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const dados = await resp.json();
@@ -8726,7 +8724,7 @@
   // As fontes do Compras.gov são públicas, porém a chamada direta pelo navegador
   // oscila por CORS. O proxy próprio mantém categorias, especificações e preços
   // no mesmo fluxo confiável já aplicado à pesquisa de marcas.
-  const PP_API_URL = "/.netlify/functions/comprasgov-precos";
+  const PP_API_URL = "/api/comprasgov-precos";
 
   let ppItens = [];
   let ppUnidades = [];
