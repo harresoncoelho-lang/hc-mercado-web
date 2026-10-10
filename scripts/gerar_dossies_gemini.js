@@ -4,7 +4,7 @@
 // Env obrigatórias: GEMINI_API_KEY e SUPABASE_SERVICE_ROLE_KEY.
 // Env opcionais: GEMINI_MODELO (gemini-3.8-flash), MAX_DOSSIES_POR_EXECUCAO (10),
 // MAX_DOSSIES_DIA (60), MAX_TENTATIVAS_DOSSIE (2), DIAS_BOLETIM_DOSSIE (30),
-// LIMITE_MINUTOS_DOSSIES (20).
+// LIMITE_MINUTOS_DOSSIES (20), ESPERAS_SOBRECARGA (3), ESPERA_SOBRECARGA_SEGUNDOS (60).
 //
 // Até 08/10/2026 o dossiê era gerado pelo GPT-5.1 no AI Gateway da Netlify (~40
 // créditos por edital) e o robô resumia toda a base nova, não só o que os clientes
@@ -21,16 +21,22 @@ const { restFetch, buscarBlob } = require("./supabase_dados");
 // A mesma VERSAO_RESUMO que a Function grava e exige no cache.
 const { VERSAO_DOSSIE } = require("./preparar_dossies_editais");
 
-const MODELOS = [...new Set([process.env.GEMINI_MODELO || "gemini-3.8-flash", "gemini-3.7-flash", "gemini-2.5-flash"])];
+// Desde 09/10/2026 o Google responde 404 ao gemini-2.5-flash para chaves novas. Na cota
+// gratuita, cada modelo tem o próprio limite diário de pedidos.
+const MODELOS = [...new Set([process.env.GEMINI_MODELO || "gemini-3.8-flash", "gemini-3.7-flash"])];
 const MAX_POR_EXECUCAO = Math.max(1, Number(process.env.MAX_DOSSIES_POR_EXECUCAO || 10));
 const MAX_DIA = Math.max(1, Number(process.env.MAX_DOSSIES_DIA || 60));
 const MAX_TENTATIVAS = Math.max(1, Number(process.env.MAX_TENTATIVAS_DOSSIE || 2));
 const DIAS_BOLETIM = Math.max(1, Number(process.env.DIAS_BOLETIM_DOSSIE || 30));
 const LIMITE_MS = Math.max(1, Number(process.env.LIMITE_MINUTOS_DOSSIES || 20)) * 60 * 1000;
+const ESPERAS_SOBRECARGA = Math.max(0, Number(process.env.ESPERAS_SOBRECARGA ?? 3));
+const ESPERA_SOBRECARGA_MS = Math.max(0, Number(process.env.ESPERA_SOBRECARGA_SEGUNDOS ?? 60)) * 1000;
 const NAO_INFORMADO = "Não informado";
 const URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 
 class CotaEsgotada extends Error {}
+// Sobrecarga do Google costuma passar em um ou dois minutos; a cota esgotada (429) não.
+class GeminiSobrecarregado extends CotaEsgotada {}
 
 // O modelo às vezes devolve campos a mais, a menos ou fora do tipo. Em vez de
 // descartar o dossiê inteiro (o que antes gerava nova cobrança no dia seguinte),
@@ -77,8 +83,21 @@ function lerSaida(dados) {
   return JSON.parse((candidato.content?.parts || []).map((parte) => parte.text || "").join(""));
 }
 
+// Status e mensagem do Google no log: sem eles não dá para separar sobrecarga, cota por
+// minuto e cota diária, e as primeiras rodadas pararam sem dizer qual foi.
+async function registrarRecusa(modelo, resposta) {
+  const texto = await resposta.text().catch(() => "");
+  let detalhes = [];
+  try { detalhes = JSON.parse(texto).error?.details || []; } catch (_) { /* corpo não-JSON: vai o texto */ }
+  // O 429 só diz qual cota acabou (por minuto ou por dia) e quando volta nestes campos.
+  const cotas = detalhes.flatMap((d) => d.violations || []).map((v) => v.quotaId).filter(Boolean);
+  const espera = detalhes.find((d) => d.retryDelay)?.retryDelay;
+  const resumo = cotas.length ? `cota ${[...new Set(cotas)].join(", ")}${espera ? `, volta em ${espera}` : ""}` : texto.replace(/\s+/g, " ").slice(0, 300);
+  console.log(`[dossiês] ${modelo}: HTTP ${resposta.status} ${resumo}`);
+}
+
 async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = MODELOS } = {}) {
-  let comSchema = true, sobrecarga = false;
+  let comSchema = true, sobrecarga = false, cotaEsgotada = false;
   for (let indice = 0; indice < modelos.length;) {
     const resposta = await fetchFn(`${URL_GEMINI}/${modelos[indice]}:generateContent`, {
       method: "POST",
@@ -86,18 +105,27 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
       body: JSON.stringify(corpoGemini(ficha, fonte, comSchema)),
       signal: AbortSignal.timeout(300000),
     });
-    if (resposta.status === 429) throw new CotaEsgotada("cota do Gemini esgotada");
-    if (resposta.status === 404) { indice += 1; continue; }
+    if (resposta.status === 404) { await registrarRecusa(modelos[indice], resposta); indice += 1; continue; }
+    // Na cota gratuita cada modelo tem a própria cota: um 429 no primeiro modelo não
+    // impede o segundo de responder.
+    if (resposta.status === 429) {
+      await registrarRecusa(modelos[indice], resposta);
+      cotaEsgotada = true; indice += 1; continue;
+    }
     // 500/503 = modelo sobrecarregado no Google (comum na cota gratuita): tenta o próximo
     // modelo e, se todos estiverem assim, para a rodada sem gastar tentativa do edital.
-    if (resposta.status >= 500) { sobrecarga = true; indice += 1; continue; }
+    if (resposta.status >= 500) {
+      await registrarRecusa(modelos[indice], resposta);
+      sobrecarga = true; indice += 1; continue;
+    }
     const dados = await resposta.json().catch(() => ({}));
     // Schema recusado pela API: repete uma vez pedindo só JSON; o ajuste local garante o formato.
     if (resposta.status === 400 && comSchema && /schema/i.test(dados.error?.message || "")) { comSchema = false; continue; }
     if (!resposta.ok) throw new Error(`gemini_http_${resposta.status}`);
     return { saida: lerSaida(dados), modelo: modelos[indice], uso: dados.usageMetadata || null };
   }
-  if (sobrecarga) throw new CotaEsgotada("Gemini sobrecarregado em todos os modelos");
+  if (sobrecarga) throw new GeminiSobrecarregado("Gemini sobrecarregado em todos os modelos");
+  if (cotaEsgotada) throw new CotaEsgotada("cota do Gemini esgotada em todos os modelos");
   throw new Error("nenhum_modelo_gemini_disponivel");
 }
 
@@ -200,6 +228,22 @@ async function gerarDossie(numero, { apiKey, fetchFn } = {}) {
   return { modelo, uso, completo: dossieCompleto(gravado[0]) };
 }
 
+// Na primeira execução em produção (09/10/2026) o Google respondeu "sobrecarregado" e a
+// rodada terminou em segundos sem gerar nada. Esperar um pouco e repetir o mesmo edital
+// aproveita a janela da rodada; cota esgotada (429) continua encerrando de imediato.
+async function gerarComEspera(numero, { apiKey, prazoFinal, gerar = gerarDossie, esperar = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+  for (let espera = 0; ; espera += 1) {
+    try {
+      return await gerar(numero, { apiKey });
+    } catch (erro) {
+      const cabeEspera = Date.now() + ESPERA_SOBRECARGA_MS < prazoFinal;
+      if (!(erro instanceof GeminiSobrecarregado) || espera >= ESPERAS_SOBRECARGA || !cabeEspera) throw erro;
+      console.log(`[dossiês] Gemini sobrecarregado; nova tentativa em ${ESPERA_SOBRECARGA_MS / 1000} s.`);
+      await esperar(ESPERA_SOBRECARGA_MS);
+    }
+  }
+}
+
 async function main() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -216,7 +260,7 @@ async function main() {
     if (Date.now() - inicio > LIMITE_MS) break;
     const anteriores = dados.tentativas.get(candidato.numero) || 0;
     try {
-      const resultado = await gerarDossie(candidato.numero, { apiKey });
+      const resultado = await gerarComEspera(candidato.numero, { apiKey, prazoFinal: inicio + LIMITE_MS });
       if (resultado.semDocumento) {
         // Sem documento legível não há o que a IA ler: não volta para a fila.
         await registrarTentativa(candidato, anteriores, { erro: resultado.motivo, esgotar: true });
@@ -245,4 +289,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { VERSAO_DOSSIE, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, CotaEsgotada };
+module.exports = { VERSAO_DOSSIE, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
