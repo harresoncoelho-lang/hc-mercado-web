@@ -31,7 +31,13 @@ jobs:
       - run: npm ci
       - name: Gerar dossiês da fila e dos boletins
         env:
+          # Cadeia de provedores de IA com troca automática (ver cabeçalho do script).
+          # Chave ausente = provedor desligado.
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MISTRAL_MODELOS: ${{ vars.MISTRAL_MODELOS }}
+          OPENROUTER_MODELOS: ${{ vars.OPENROUTER_MODELOS }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LIMITE_MINUTOS_DOSSIES: "8"
         run: node scripts/gerar_dossies_gemini.js
