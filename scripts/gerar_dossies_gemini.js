@@ -358,6 +358,7 @@ async function registrarTentativa(candidato, tentativasAnteriores, { erro = null
 async function gerarDossie(numero, { provedores, fetchFn, esgotados } = {}) {
   const ficha = await iaEdital.buscarFichaCanonica(numero) || { numeroControlePNCP: numero, fonte: "PNCP" };
   const leitura = await iaEdital.buscarTextoEdital(numero);
+  if (!leitura.texto && leitura.indisponivel) return { pncpIndisponivel: true };
   if (!leitura.texto) return { semDocumento: true, motivo: leitura.escaneado ? "escaneado" : "sem_documento" };
   const { saida, modelo, provedor, uso } = await chamarCadeia(ficha, leitura.texto, { provedores, fetchFn, esgotados });
   const resultado = montarResultado(saida, leitura.texto, leitura.coberturaLeitura, Date.now(), { provedor, modelo });
@@ -404,6 +405,11 @@ async function main() {
     const anteriores = dados.tentativas.get(candidato.numero) || 0;
     try {
       const resultado = await gerarComEspera(candidato.numero, { provedores, esgotados, prazoFinal: inicio + LIMITE_MS });
+      if (resultado.pncpIndisponivel) {
+        // PNCP fora do ar: o edital continua na fila sem gastar tentativa.
+        console.warn(`[dossiês] PNCP não respondeu ao baixar ${candidato.numero}; o restante fica para a próxima execução.`);
+        break;
+      }
       if (resultado.semDocumento) {
         // Sem documento legível não há o que a IA ler: não volta para a fila.
         await registrarTentativa(candidato, anteriores, { erro: resultado.motivo, esgotar: true });

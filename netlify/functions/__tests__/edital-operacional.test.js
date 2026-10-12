@@ -438,3 +438,35 @@ test("CRC não desaparece quando síntese atribui chave e senha ao ID do cadastr
   assert.equal(estrutura.coberturaSintese.requisitosSintetizados, 0);
   assert.match(estrutura.documentosCredenciamento.join(" "), /emissão, renovação e alteração.*CRC/);
 });
+
+// Em 10–12/10/2026 o PNCP passou o fim de semana em 503 e o robô descartou editais como
+// "sem documento"; PNCP fora do ar precisa ser distinguível de edital sem arquivo.
+test("PNCP fora do ar ou lento é indisponível; lista vazia ou 404 é edital sem documento", async () => {
+  const { buscarTextoEdital } = require("../lib/ia-edital").__test;
+  const fetchOriginal = global.fetch;
+  const numero = "12345678000199-1-000406/2026";
+  const casos = [
+    { nome: "lista 503", fetch: async () => ({ ok: false, status: 503 }), indisponivel: true },
+    { nome: "lista 429", fetch: async () => ({ ok: false, status: 429 }), indisponivel: true },
+    { nome: "timeout", fetch: async () => { throw Object.assign(new Error("abort"), { name: "AbortError" }); }, indisponivel: true },
+    { nome: "rede", fetch: async () => { throw new TypeError("fetch failed"); }, indisponivel: true },
+    { nome: "lista 404", fetch: async () => ({ ok: false, status: 404 }), indisponivel: false },
+    { nome: "lista vazia", fetch: async () => ({ ok: true, status: 200, json: async () => [] }), indisponivel: false },
+    { nome: "download 503", fetch: async (url) => url.endsWith("/arquivos")
+      ? { ok: true, status: 200, json: async () => [{ sequencialDocumento: 1, titulo: "Edital.pdf", tipoDocumentoNome: "Edital" }] }
+      : { ok: false, status: 503 }, indisponivel: true },
+    { nome: "download 404", fetch: async (url) => url.endsWith("/arquivos")
+      ? { ok: true, status: 200, json: async () => [{ sequencialDocumento: 1, titulo: "Edital.pdf", tipoDocumentoNome: "Edital" }] }
+      : { ok: false, status: 404 }, indisponivel: false },
+  ];
+  try {
+    for (const caso of casos) {
+      global.fetch = caso.fetch;
+      const fonte = await buscarTextoEdital(numero);
+      assert.equal(fonte.texto, null, caso.nome);
+      assert.equal(Boolean(fonte.indisponivel), caso.indisponivel, caso.nome);
+    }
+  } finally {
+    global.fetch = fetchOriginal;
+  }
+});

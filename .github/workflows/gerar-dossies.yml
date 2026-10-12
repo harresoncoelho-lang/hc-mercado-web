@@ -40,4 +40,7 @@ jobs:
           OPENROUTER_MODELOS: ${{ vars.OPENROUTER_MODELOS }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LIMITE_MINUTOS_DOSSIES: "8"
+          # Prazos de download do PNCP do robô (a Function no site usa 4 s / 3,5 s).
+          TIMEOUT_LISTA_PNCP_MS: "20000"
+          TIMEOUT_ARQUIVO_PNCP_MS: "60000"
         run: node scripts/gerar_dossies_gemini.js
