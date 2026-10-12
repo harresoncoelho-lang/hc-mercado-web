@@ -41,8 +41,11 @@ const MAX_BYTES_REQUISICAO_RESUMO = 48000;
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
 const MAX_DOCUMENTOS_PARA_LEITURA = 3;
-const TIMEOUT_LISTA_PNCP_MS = 4000;
-const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
+// O robô de dossiês (GitHub Actions) não tem essa janela curta e roda longe do PNCP: com
+// 3,5 s, de 10/10 a 12/10/2026 85% dos editais (40 de 47) caíram em "sem documento" só
+// porque o PDF não terminava de baixar. O workflow define prazos maiores por env.
+const TIMEOUT_LISTA_PNCP_MS = Number(process.env.TIMEOUT_LISTA_PNCP_MS) || 4000;
+const TIMEOUT_ARQUIVO_PNCP_MS = Number(process.env.TIMEOUT_ARQUIVO_PNCP_MS) || 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
 const VERSAO_RESUMO = 17;
