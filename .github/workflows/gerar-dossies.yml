@@ -29,7 +29,20 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
+      - name: Diagnóstico temporário do PNCP
+        run: |
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+          for path in "04477782000105/compras/2026/12" "07602404000102/compras/2026/11" "00394429000100/compras/2026/2311"; do
+            for base in "https://pncp.gov.br/api/pncp/v1/orgaos" "https://pncp.gov.br/pncp-api/v1/orgaos"; do
+              echo "== $base/$path/arquivos"
+              curl -sS -o /tmp/r.json -w "http=%{http_code} t=%{time_total}s bytes=%{size_download} ip=%{remote_ip}\n" -A "$UA" -H "Accept: application/json" --max-time 40 "$base/$path/arquivos" || true
+              head -c 400 /tmp/r.json 2>/dev/null; echo
+            done
+          done
+          echo "== consulta api"
+          curl -sS -o /dev/null -w "http=%{http_code} t=%{time_total}s\n" -A "$UA" --max-time 40 "https://pncp.gov.br/api/consulta/v1/orgaos/04477782000105/compras/2026/12" || true
       - name: Gerar dossiês da fila e dos boletins
+        if: false
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
