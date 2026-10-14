@@ -1,0 +1,20 @@
+# Cabeçalhos do Cloudflare Pages (equivalente aos blocos [[headers]] do netlify.toml; manter os dois
+# em sincronia). Não se aplicam a respostas de Functions (/api/*): lá os cabeçalhos vêm do handler.
+# Regras que casam juntas são combinadas (valores repetidos viram lista separada por vírgula), por
+# isso /data/* desanexa o Cache-Control herdado de /* com "!" antes de definir o seu.
+# CSP: 'unsafe-inline' em script/style é deliberado (páginas HTML únicas); hCaptcha liberado no
+# site inteiro porque não há como restringir à cadastro.html sem duplicar a regra.
+
+/*
+  Cache-Control: no-cache
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br https://*.hcaptcha.com; frame-src 'self' about: https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# Dados do robô (data/*.json): cache de 5 min com revalidação em segundo plano por até 1h.
+/data/*
+  ! Cache-Control
+  Cache-Control: public, max-age=300, stale-while-revalidate=3600

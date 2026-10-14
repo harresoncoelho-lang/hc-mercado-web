@@ -61,7 +61,7 @@ test("exportações do edital usam DOCX real e a marca visual oficial", () => {
   const path = require("node:path");
   const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
   assert.match(html, /Gerar Checklist \.docx/);
-  assert.match(html, /\/.netlify\/functions\/gerar-checklist/);
+  assert.match(html, /\/api\/gerar-checklist/);
   assert.match(html, /<strong>LicitaPlena<\/strong>/);
   assert.doesNotMatch(html.slice(html.indexOf("function montarHtmlImpressaoResumo"), html.indexOf("function montarResumoParaCliente")), /marca-sinal/);
 });

@@ -7,6 +7,7 @@
     "test:python": "python -m pytest",
     "lint": "eslint . && biome check netlify/functions scripts eslint.config.js --diagnostic-level=error",
     "lint:fix": "eslint . --fix && biome check netlify/functions scripts eslint.config.js --write",
+    "build:cloudflare": "node scripts/montar_publico.js",
     "verify": "npm test && npm run lint"
   },
   "dependencies": {

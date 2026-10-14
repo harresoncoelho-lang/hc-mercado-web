@@ -26,6 +26,7 @@ module.exports = [
       "supabase-config.js",
       "scripts/install-plugins.mjs",
       "*.html",
+      "publico/**",
     ],
   },
   js.configs.recommended,
@@ -63,6 +64,11 @@ module.exports = [
         AbortController: "readonly",
         TextEncoder: "readonly",
         TextDecoder: "readonly",
+        // Usados pelo adaptador do Cloudflare Pages (netlify/functions/_adaptador_cloudflare.js).
+        Response: "readonly",
+        Headers: "readonly",
+        Request: "readonly",
+        atob: "readonly",
       },
     },
     rules: {
@@ -89,6 +95,15 @@ module.exports = [
       // tipo silenciosa) — já causou bug real neste projeto em comparação de UF/CNPJ
       // vindos de fontes heterogêneas.
       eqeqeq: ["error", "smart"],
+    },
+  },
+  {
+    // Rota do Cloudflare Pages Functions (ESM, runtime Workers) — única fora de CommonJS.
+    files: ["functions/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: { process: "readonly", Response: "readonly" },
     },
   },
   {

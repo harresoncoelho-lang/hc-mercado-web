@@ -98,7 +98,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     try{
       const [cnpj,,sequenciaAno]=pncp.split("-");
       const [sequencial,ano]=sequenciaAno.split("/");
-      const resposta=await fetch(`/.netlify/functions/pncp-itens?cnpj=${cnpj}&ano=${ano}&sequencial=${sequencial}&pagina=${pagina}`);
+      const resposta=await fetch(`/api/pncp-itens?cnpj=${cnpj}&ano=${ano}&sequencial=${sequencial}&pagina=${pagina}`);
       if(!resposta.ok)throw new Error(`PNCP indisponível (${resposta.status})`);
       const dados=await resposta.json();
       if(dados.erro||!Array.isArray(dados.itens))throw new Error(dados.erro||"Resposta de itens inválida");
