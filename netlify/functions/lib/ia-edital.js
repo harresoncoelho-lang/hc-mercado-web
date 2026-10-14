@@ -41,8 +41,10 @@ const MAX_BYTES_REQUISICAO_RESUMO = 48000;
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
 const MAX_DOCUMENTOS_PARA_LEITURA = 3;
-const TIMEOUT_LISTA_PNCP_MS = 4000;
-const TIMEOUT_ARQUIVO_PNCP_MS = 3500;
+// O robô de dossiês (GitHub Actions) não tem essa janela curta: o workflow define
+// prazos maiores por env, sem mudar o comportamento da Function no site.
+const TIMEOUT_LISTA_PNCP_MS = Number(process.env.TIMEOUT_LISTA_PNCP_MS) || 4000;
+const TIMEOUT_ARQUIVO_PNCP_MS = Number(process.env.TIMEOUT_ARQUIVO_PNCP_MS) || 3500;
 // Incrementada quando a normalização estrutural muda, para que um dossiê antigo
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
 const VERSAO_RESUMO = 17;
@@ -168,7 +170,10 @@ async function buscarTextoEdital(numeroControlePNCP) {
       signal: ctrl1.signal,
     });
     clearTimeout(t1);
-    if (!respLista.ok) return { texto: null, escaneado: false };
+    // indisponivel = o PNCP não respondeu (fora do ar ou lento), não que o edital não tenha
+    // documento. Em 10–12/10/2026 o serviço de arquivos do PNCP passou o fim de semana em 503
+    // e o robô descartou 40 editais como "sem documento"; quem chama deve tentar de novo depois.
+    if (!respLista.ok) return { texto: null, escaneado: false, indisponivel: respLista.status >= 500 || respLista.status === 429 };
     const lista = await respLista.json();
     if (!Array.isArray(lista) || lista.length === 0) return { texto: null, escaneado: false };
 
@@ -289,6 +294,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
     const documentosLidos = [];
     const documentosNaoLidos = lista.filter((doc) => !candidatos.includes(doc)).map((doc) => `${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de documentos`);
     let totalCaracteres = 0;
+    let downloadsIndisponiveis = 0;
     for (const doc of candidatos) {
       if (totalCaracteres >= MAX_CARACTERES_TEXTO) {
         documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de texto`);
@@ -302,6 +308,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
           signal: ctrl2.signal,
         });
         clearTimeout(t2);
+        if (respArquivo.status >= 500 || respArquivo.status === 429) downloadsIndisponiveis += 1;
         if (!respArquivo.ok) throw new Error(`HTTP ${respArquivo.status}`);
         const buffer = Buffer.from(await respArquivo.arrayBuffer());
         paginasPoucoTexto = [];
@@ -315,17 +322,19 @@ async function buscarTextoEdital(numeroControlePNCP) {
           totalCaracteres += texto.length;
         }
       } catch (e) {
+        if (e?.name === "AbortError" || e?.name === "TypeError") downloadsIndisponiveis += 1;
         documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): não foi possível ler`);
       }
     }
 
-    if (pedacos.length === 0) return { texto: null, escaneado: algumPdfPareceEscaneado };
+    if (pedacos.length === 0) return { texto: null, escaneado: algumPdfPareceEscaneado, indisponivel: downloadsIndisponiveis === candidatos.length };
     const textoCompleto = pedacos.join("").trim();
     if (textoCompleto.length > MAX_CARACTERES_TEXTO) documentosNaoLidos.push("Texto excedeu o limite de leitura; conteúdo final não analisado");
     return { texto: textoCompleto.slice(0, MAX_CARACTERES_TEXTO), escaneado: false,
       coberturaLeitura: { documentosLidos, documentosNaoLidos, parcial: documentosNaoLidos.length > 0, prioridadeDocumentoPrincipal: true } };
   } catch (e) {
-    return { texto: null, escaneado: false };
+    // Timeout ou erro de rede na lista de arquivos: PNCP indisponível, não edital sem documento.
+    return { texto: null, escaneado: false, indisponivel: e?.name === "AbortError" || e?.name === "TypeError" };
   }
 }
 
