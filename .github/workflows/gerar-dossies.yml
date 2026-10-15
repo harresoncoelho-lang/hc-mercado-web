@@ -36,6 +36,11 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # Último recurso da cadeia: 10.000 neurons/dia grátis (~300 mil tokens de entrada do
+          # gpt-oss-120b, só alguns editais), para quando Gemini e OpenRouter esgotam a cota.
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_AI_TOKEN: ${{ secrets.CLOUDFLARE_AI_TOKEN }}
+          CLOUDFLARE_AI_MODELOS: ${{ vars.CLOUDFLARE_AI_MODELOS }}
           MISTRAL_MODELOS: ${{ vars.MISTRAL_MODELOS }}
           OPENROUTER_MODELOS: ${{ vars.OPENROUTER_MODELOS }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
