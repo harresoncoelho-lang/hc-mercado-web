@@ -152,7 +152,7 @@ function respostaCompat(texto = '{"estrutura":{}}', finish = "stop") {
 // Roteia por host e registra o que foi chamado; `regras` mapeia "gemini"|"mistral"|"openrouter" para uma função(modelo, corpo).
 function fetchPorProvedor(regras, chamadas = []) {
   return async (url, opcoes) => {
-    const provedor = url.includes("googleapis") ? "gemini" : url.includes("mistral") ? "mistral" : "openrouter";
+    const provedor = url.includes("googleapis") ? "gemini" : url.includes("mistral") ? "mistral" : url.includes("cloudflare") ? "cloudflare" : "openrouter";
     const modelo = provedor === "gemini" ? url.split("/models/")[1].split(":")[0] : JSON.parse(opcoes.body).model;
     chamadas.push(`${provedor}/${modelo}`);
     return regras[provedor](modelo, JSON.parse(opcoes.body));
@@ -242,4 +242,16 @@ test("saída em bloco ```json é aceita e o edital grande é cortado para caber 
   const corpo = corpoCompat({}, "a".repeat(500000), "m");
   assert.ok(corpo.messages[1].content.length < 210000);
   assert.ok(corpo.messages[0].content.includes("JSON Schema"));
+});
+
+test("Cloudflare Workers AI só entra na cadeia com ID da conta e token, como último provedor", async () => {
+  const nomes = (env) => montarProvedores(env).map((p) => p.nome);
+  assert.deepEqual(nomes({ GEMINI_API_KEY: "g", CLOUDFLARE_AI_TOKEN: "t" }), ["gemini"]);
+  assert.deepEqual(nomes({ GEMINI_API_KEY: "g", CLOUDFLARE_ACCOUNT_ID: "conta" }), ["gemini"]);
+  const completo = { ...ENV_TODOS, CLOUDFLARE_ACCOUNT_ID: "conta", CLOUDFLARE_AI_TOKEN: "t" };
+  assert.deepEqual(nomes(completo), ["gemini", "mistral", "openrouter", "cloudflare"]);
+  const chamadas = [];
+  const fetchFn = fetchPorProvedor({ gemini: () => respostaGemini(429, {}), mistral: () => respostaGemini(429, {}), openrouter: () => respostaGemini(429, {}), cloudflare: () => respostaCompat() }, chamadas);
+  const r = await chamarCadeia({}, "fonte", { provedores: montarProvedores(completo), fetchFn });
+  assert.deepEqual([r.provedor, r.modelo], ["cloudflare", "@cf/openai/gpt-oss-120b"]);
 });

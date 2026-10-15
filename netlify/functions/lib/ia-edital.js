@@ -50,6 +50,7 @@ const TIMEOUT_ARQUIVO_PNCP_MS = Number(process.env.TIMEOUT_ARQUIVO_PNCP_MS) || 3
 const VERSAO_RESUMO = 17;
 const VERSAO_VALIDACAO_CATALOGO = 17;
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
+const { responderComFallback, haProvedorConfigurado } = require("../_ia_provedores");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
 // navegador. Manda em todo fetch pro PNCP por segurança.
@@ -1254,8 +1255,8 @@ exports.handler = async (event) => {
   if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
 
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey && modo !== "resumo") {
-    return { statusCode: 500, headers, body: JSON.stringify({ erro: "GROQ_API_KEY não configurado no Netlify." }) };
+  if (modo !== "resumo" && !haProvedorConfigurado(process.env)) {
+    return { statusCode: 500, headers, body: JSON.stringify({ erro: "Nenhum provedor de IA configurado (GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY ou CLOUDFLARE_AI_TOKEN)." }) };
   }
 
   if (modo === "pergunta") {
@@ -1274,7 +1275,8 @@ exports.handler = async (event) => {
       }
     }
     mensagens.push({ role: "user", content: `${contextoTexto}Dados da oportunidade:\n${ficha}\n\nPergunta: ${pergunta.trim()}` });
-    const r = await chamarGroq(apiKey, mensagens, { maxTokens: 2500, timeoutMs: 20000, reasoningEffort: "low" });
+    // Groq primeiro; se ela falhar, Gemini → OpenRouter → Cloudflare (ver _ia_provedores.js).
+    const r = await responderComFallback(mensagens, { maxTokens: 2500, timeoutMs: 20000, reasoningEffort: "low" }, { groq: chamarGroq });
     if (!r.ok) return { statusCode: 502, headers, body: JSON.stringify({ erro: r.erro }) };
     return { statusCode: 200, headers, body: JSON.stringify({ resposta: r.texto, estrutura: null, textoEdital: textoEdital || null, fonteLida, motivoFonteNaoLida, erro: null }) };
   }

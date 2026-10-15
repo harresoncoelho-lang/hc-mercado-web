@@ -7,6 +7,12 @@
 //   1. Gemini     GEMINI_API_KEY      modelos GEMINI_MODELO (gemini-3.8-flash) e gemini-3.7-flash
 //   2. Mistral    MISTRAL_API_KEY     modelos MISTRAL_MODELOS (mistral-medium-latest,mistral-small-latest)
 //   3. OpenRouter OPENROUTER_API_KEY  modelos OPENROUTER_MODELOS (sem padrão: sem lista, não é usado)
+//   4. Cloudflare Workers AI  CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_AI_TOKEN (ambos obrigatórios)
+//                                     modelos CLOUDFLARE_AI_MODELOS (@cf/openai/gpt-oss-120b)
+//      Último recurso: o plano gratuito dá 10.000 neurons/dia (~300 mil tokens de entrada do
+//      gpt-oss-120b, ou seja, só alguns editais), mas cobre a rodada quando as cotas do Gemini e
+//      do OpenRouter acabaram. Groq não entra aqui: o plano gratuito limita 8 mil tokens/minuto,
+//      menos que um edital completo.
 // Env opcionais: MAX_DOSSIES_POR_EXECUCAO (10),
 // MAX_DOSSIES_DIA (60), MAX_TENTATIVAS_DOSSIE (2), DIAS_BOLETIM_DOSSIE (30),
 // LIMITE_MINUTOS_DOSSIES (20), ESPERAS_SOBRECARGA (3), ESPERA_SOBRECARGA_SEGUNDOS (60).
@@ -55,6 +61,7 @@ const MODELOS_MISTRAL_PADRAO = "mistral-medium-latest,mistral-small-latest";
 // Sem padrão: a lista de modelos :free do OpenRouter muda toda semana e não foi possível conferi-la
 // ao escrever isto. Defina OPENROUTER_MODELOS (vírgulas) com modelos ":free" de contexto >= 128k.
 const MODELOS_OPENROUTER_PADRAO = "";
+const MODELOS_CLOUDFLARE_PADRAO = "@cf/openai/gpt-oss-120b";
 const NAO_INFORMADO = "Não informado";
 const URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 const TIMEOUT_CHAMADA_MS = 300000;
@@ -242,9 +249,11 @@ function montarProvedores(env = process.env) {
   for (const [nome, url, chave, modelos] of [
     ["mistral", URL_MISTRAL, env.MISTRAL_API_KEY, lista(env.MISTRAL_MODELOS, MODELOS_MISTRAL_PADRAO)],
     ["openrouter", URL_OPENROUTER, env.OPENROUTER_API_KEY, lista(env.OPENROUTER_MODELOS, MODELOS_OPENROUTER_PADRAO)],
+    // Precisa da conta e do token: sem o ID da conta a URL nem existe.
+    ["cloudflare", `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions`, env.CLOUDFLARE_ACCOUNT_ID && env.CLOUDFLARE_AI_TOKEN, lista(env.CLOUDFLARE_AI_MODELOS, MODELOS_CLOUDFLARE_PADRAO)],
   ]) {
     if (!chave || !modelos.length) continue;
-    const provedor = { nome, url, apiKey: chave, modelos };
+    const provedor = { nome, url, apiKey: nome === "cloudflare" ? env.CLOUDFLARE_AI_TOKEN : chave, modelos };
     provedores.push({ nome, modelos, chamar: (ficha, fonte, opcoes) => chamarCompat(provedor, ficha, fonte, opcoes) });
   }
   return provedores;
