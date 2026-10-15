@@ -40,7 +40,7 @@ test("pula provedores sem chave e segue modelo a modelo até o sucesso", async (
     fetchFn: fetchPorHost({ [HOST_GEMINI]: resp(503), [HOST_OR]: (m) => (m === "m1" ? resp(429) : ok("do openrouter")) }, chamadas),
   });
   assert.equal(r.provedor, "openrouter");
-  assert.deepEqual(chamadas, ["generativelanguage/gemini-3.8-flash", "generativelanguage/gemini-3.7-flash", "openrouter/m1", "openrouter/m2"]);
+  assert.deepEqual(chamadas, ["generativelanguage/gemini-3.8-flash", "openrouter/m1", "openrouter/m2"]);
 });
 
 test("timeout, resposta vazia e 401 passam ao Cloudflare, o último da cadeia", async () => {
@@ -65,7 +65,7 @@ test("todos falham: devolve o erro da Groq; sem Groq, mensagem genérica", async
 test("não inicia novo provedor depois do orçamento total de tempo", async () => {
   let relogio = 0;
   const chamadas = [];
-  const fetchFn = async (url, opcoes) => { chamadas.push(JSON.parse(opcoes.body).model); relogio += 41000; return resp(503); };
+  const fetchFn = async (url, opcoes) => { chamadas.push(JSON.parse(opcoes.body).model); relogio += 46000; return resp(503); };
   const r = await responderComFallback(MENSAGENS, OPCOES, { env: { GEMINI_API_KEY: "k" }, fetchFn, agora: () => relogio });
   assert.equal(r.ok, false);
   assert.equal(chamadas.length, 1);
@@ -76,4 +76,29 @@ test("haProvedorConfigurado e Cloudflare exigem as variáveis certas", () => {
   assert.equal(haProvedorConfigurado({ GROQ_API_KEY: "g" }), true);
   assert.equal(haProvedorConfigurado({ CLOUDFLARE_AI_TOKEN: "t" }), false);
   assert.deepEqual(montarProvedoresCompat({ CLOUDFLARE_ACCOUNT_ID: "c", CLOUDFLARE_AI_TOKEN: "t", CLOUDFLARE_AI_MODELO: "@cf/x" })[0].modelos, ["@cf/x"]);
+});
+
+test("Groq e Gemini lentos (timeout) ainda deixam tempo para OpenRouter e Cloudflare", async () => {
+  let relogio = 0;
+  const prazosGroq = [];
+  const prazos = [];
+  const chamadas = [];
+  // Cada provedor lento consome o prazo inteiro que recebeu e então expira.
+  const groq = async (_chave, _mensagens, opcoes) => { prazosGroq.push(opcoes.timeoutMs); relogio += opcoes.timeoutMs; return { ok: false, erro: "Erro ao consultar a IA: timeout" }; };
+  const fetchFn = async (url, opcoes) => {
+    const host = new URL(url).host;
+    chamadas.push(host.split(".")[0]);
+    if (host === HOST_CF) return ok("do cloudflare");
+    const prazo = 12000;
+    prazos.push(prazo);
+    relogio += prazo;
+    throw Object.assign(new Error("x"), { name: "AbortError" });
+  };
+  const r = await responderComFallback(MENSAGENS, { ...OPCOES, timeoutMs: 20000 }, {
+    env: { GROQ_API_KEY: "g", GEMINI_API_KEY: "k", OPENROUTER_API_KEY: "o", OPENROUTER_MODELOS: "m1", CLOUDFLARE_ACCOUNT_ID: "c", CLOUDFLARE_AI_TOKEN: "t" },
+    groq, fetchFn, agora: () => relogio,
+  });
+  assert.deepEqual(prazosGroq, [12000]);
+  assert.deepEqual(chamadas, ["generativelanguage", "openrouter", "api"]);
+  assert.deepEqual([r.ok, r.provedor], [true, "cloudflare"]);
 });

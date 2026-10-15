@@ -8,12 +8,17 @@
 
 const URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const URL_OPENROUTER = "https://openrouter.ai/api/v1/chat/completions";
-const MODELOS_GEMINI_PADRAO = "gemini-3.8-flash,gemini-3.7-flash";
+// Um modelo só: uma segunda tentativa no Gemini gastaria o tempo que é das reservas seguintes
+// (GEMINI_MODELOS_PERGUNTA permite acrescentar outro).
+const MODELOS_GEMINI_PADRAO = "gemini-3.8-flash";
 const MODELO_CLOUDFLARE_PADRAO = "@cf/openai/gpt-oss-120b";
-// Evita a requisição pendurada: cada chamada tem prazo próprio e, passado o orçamento total,
-// nenhum provedor novo é iniciado (a Function tem um limite de tempo total).
-const TIMEOUT_CHAMADA_MS = 15000;
-const ORCAMENTO_TOTAL_MS = 40000;
+// Um prazo único vale para a cadeia inteira, Groq incluída: cada tentativa recebe no máximo
+// 12 s e nunca mais que o tempo que resta. Sem isso, Groq e Gemini lentos (timeout, não 429)
+// consumiam o orçamento todo e OpenRouter/Cloudflare nunca eram tentados.
+const TIMEOUT_CHAMADA_MS = 12000;
+const ORCAMENTO_TOTAL_MS = 48000;
+// Abaixo disso uma nova tentativa só atrasaria a resposta de erro.
+const MINIMO_POR_TENTATIVA_MS = 3000;
 const ERRO_TODOS_FALHARAM = "Os provedores de IA estão indisponíveis agora. Tente novamente mais tarde; os dados básicos da licitação continuam acessíveis.";
 
 const lista = (valor, padrao = "") => String(valor || padrao).split(",").map((m) => m.trim()).filter(Boolean);
@@ -39,9 +44,9 @@ function haProvedorConfigurado(env = process.env) {
   return Boolean(env.GROQ_API_KEY) || montarProvedoresCompat(env).length > 0;
 }
 
-async function chamarCompat(provedor, modelo, mensagens, opcoes, fetchFn) {
+async function chamarCompat(provedor, modelo, mensagens, opcoes, fetchFn, timeoutMs) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_CHAMADA_MS);
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const resp = await fetchFn(provedor.url, {
       method: "POST",
@@ -68,20 +73,21 @@ async function chamarCompat(provedor, modelo, mensagens, opcoes, fetchFn) {
 // Retorna { ok, texto, provedor, modelo } ou { ok:false, erro } (erro da Groq quando ela falhou,
 // para manter a mensagem ao usuário de antes).
 async function responderComFallback(mensagens, opcoes, { env = process.env, fetchFn = fetch, groq, agora = Date.now } = {}) {
-  const inicio = agora();
+  const prazo = agora() + ORCAMENTO_TOTAL_MS;
   let erroGroq = null;
-  const dentroDoOrcamento = () => agora() - inicio <= ORCAMENTO_TOTAL_MS;
+  const tempoDaTentativa = () => Math.min(TIMEOUT_CHAMADA_MS, prazo - agora());
 
   if (env.GROQ_API_KEY && groq) {
-    const r = await groq(env.GROQ_API_KEY, mensagens, opcoes);
+    const r = await groq(env.GROQ_API_KEY, mensagens, { ...opcoes, timeoutMs: Math.min(opcoes.timeoutMs || TIMEOUT_CHAMADA_MS, tempoDaTentativa()) });
     if (r?.ok && r.texto) return { ok: true, texto: r.texto, provedor: "groq", modelo: r.modelo || null };
     erroGroq = r?.erro || null;
     console.warn("ia-provedores: groq falhou, tentando o próximo provedor");
   }
   for (const provedor of montarProvedoresCompat(env)) {
     for (const modelo of provedor.modelos) {
-      if (!dentroDoOrcamento()) return { ok: false, erro: erroGroq || ERRO_TODOS_FALHARAM };
-      const texto = await chamarCompat(provedor, modelo, mensagens, opcoes, fetchFn);
+      const timeoutMs = tempoDaTentativa();
+      if (timeoutMs < MINIMO_POR_TENTATIVA_MS) return { ok: false, erro: erroGroq || ERRO_TODOS_FALHARAM };
+      const texto = await chamarCompat(provedor, modelo, mensagens, opcoes, fetchFn, timeoutMs);
       if (texto) return { ok: true, texto, provedor: provedor.nome, modelo };
     }
   }
