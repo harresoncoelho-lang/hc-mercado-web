@@ -297,34 +297,72 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
     const documentosNaoLidos = lista.filter((doc) => !candidatos.includes(doc)).map((doc) => `${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de documentos`);
     let totalCaracteres = 0;
     let downloadsIndisponiveis = 0;
+    async function baixarDocumento(doc, limiteBytes = 64 * 1024 * 1024) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), TIMEOUT_ARQUIVO_PNCP_MS);
+      try {
+        const resposta = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
+          headers: { "User-Agent": USER_AGENT_NAVEGADOR }, signal: ctrl.signal,
+        });
+        if (resposta.status >= 500 || resposta.status === 429) downloadsIndisponiveis += 1;
+        if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
+        if (limiteBytes <= 0 || Number(resposta.headers?.get?.("content-length")) > limiteBytes) throw new Error("limite de bytes dos anexos");
+        let buffer;
+        if (resposta.body?.getReader) {
+          const leitor = resposta.body.getReader();
+          const blocos = [];
+          let tamanho = 0;
+          try {
+            while (true) {
+              const { done, value } = await leitor.read();
+              if (done) break;
+              tamanho += value.length;
+              if (tamanho > limiteBytes) throw new Error("limite de bytes dos anexos");
+              blocos.push(Buffer.from(value));
+            }
+            buffer = Buffer.concat(blocos);
+          } finally { await leitor.cancel().catch(() => {}); }
+        } else buffer = Buffer.from(await resposta.arrayBuffer());
+        if (buffer.length > limiteBytes) throw new Error("limite de bytes dos anexos");
+        const disposicao = resposta.headers?.get?.("content-disposition") || "";
+        const cabecalho = disposicao.match(/filename\*?=(?:UTF-8'')?["']?([^"';\r\n]+)/i)?.[1];
+        const tipo = resposta.headers?.get?.("content-type") || "";
+        const nome = doc.nomeArquivo || cabecalho
+          || (/\.[a-z0-9]{1,8}$/i.test(doc.titulo || "") ? doc.titulo : null)
+          || (/\.[a-z0-9]{1,8}$/i.test(doc.url || "") ? doc.url : null)
+          || (/text\/csv/i.test(tipo) ? "anexo.csv" : /text\/plain/i.test(tipo) ? "anexo.txt" : "anexo");
+        return { buffer, nome };
+      } finally { clearTimeout(timer); }
+    }
+    const baixados = new Map();
+    let bytesBaixados = 0;
+    if (extrairArquivo) for (const doc of candidatos) {
+      try {
+        const arquivo = await baixarDocumento(doc, 64 * 1024 * 1024 - bytesBaixados);
+        bytesBaixados += arquivo.buffer.length;
+        if (bytesBaixados > 64 * 1024 * 1024) throw new Error("limite de bytes do conjunto de anexos");
+        baixados.set(doc, arquivo);
+      } catch (erro) { baixados.set(doc, { erro }); }
+    }
+    const companheiros = [...baixados.values()].filter(a => !a.erro);
     for (const doc of candidatos) {
       if (totalCaracteres >= MAX_CARACTERES_TEXTO) {
         documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de texto`);
         continue;
       }
       try {
-        const ctrl2 = new AbortController();
-        const t2 = setTimeout(() => ctrl2.abort(), TIMEOUT_ARQUIVO_PNCP_MS);
-        const respArquivo = await fetch(`${PNCP_ARQUIVO_URL}/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/arquivos/${doc.sequencialDocumento}`, {
-          headers: { "User-Agent": USER_AGENT_NAVEGADOR },
-          signal: ctrl2.signal,
-        });
-        clearTimeout(t2);
-        if (respArquivo.status >= 500 || respArquivo.status === 429) downloadsIndisponiveis += 1;
-        if (!respArquivo.ok) throw new Error(`HTTP ${respArquivo.status}`);
-        const buffer = Buffer.from(await respArquivo.arrayBuffer());
+        const arquivo = extrairArquivo ? baixados.get(doc) : await baixarDocumento(doc);
+        if (arquivo.erro) throw arquivo.erro;
+        const { buffer, nome } = arquivo;
         paginasPoucoTexto = [];
         let textos;
         if (extrairArquivo) {
           try {
-            const disposicao = respArquivo.headers?.get?.("content-disposition") || "";
-            const nomeCabecalho = disposicao.match(/filename\*?=(?:UTF-8'')?["']?([^"';\r\n]+)/i)?.[1];
-            const tipo = respArquivo.headers?.get?.("content-type") || "";
-            const nome = doc.nomeArquivo || nomeCabecalho
-              || (/\.[a-z0-9]{1,8}$/i.test(doc.titulo || "") ? doc.titulo : null)
-              || (/\.[a-z0-9]{1,8}$/i.test(doc.url || "") ? doc.url : null)
-              || (/text\/csv/i.test(tipo) ? "anexo.csv" : /text\/plain/i.test(tipo) ? "anexo.txt" : "anexo");
-            const extraido = await extrairArquivo(buffer, nome);
+            const extraido = await extrairArquivo(buffer, nome, { companheiros });
+            if (extraido.volumeDe) {
+              documentosLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): volume reunido em ${extraido.volumeDe}`);
+              continue;
+            }
             textos = extraido.texto?.trim() ? [extraido.texto] : [];
             for (const pendencia of extraido.pendencias || []) documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): ${pendencia}`);
           } catch (erroExtracao) {
