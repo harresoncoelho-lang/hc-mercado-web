@@ -118,6 +118,32 @@ test("resumo local expira após 24 horas e mantém a cópia recente", () => {
   assert.equal(contexto.lerCacheLocalResumo(edital).estrutura.resumoGeral, "Recente");
 });
 
+test("cache parcial não esconde resumo corrigido no servidor", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const inicio = html.indexOf("const VERSAO_CACHE_LOCAL_RESUMO =");
+  const fim = html.indexOf("function escreverMensagemIA(", inicio);
+  const registros = new Map();
+  const contexto = vm.createContext({ localStorage: {
+    getItem: chave => registros.get(chave),
+    setItem: (chave, valor) => registros.set(chave, valor),
+    removeItem: chave => registros.delete(chave),
+  }, idOportunidade: () => "apui", lerMapa: () => ({}), empresaOperacionalId: null });
+  vm.runInContext(html.slice(inicio, fim), contexto);
+  const edital = { numeroControlePNCP: "22812960000199-1-000075/2026" };
+  const chave = contexto.chaveCacheLocalResumo(edital);
+  const parcial = { fonteLida: true, estrutura: { resumoGeral: "100/114", coberturaLeitura: { parcial: true } } };
+  registros.set(chave, JSON.stringify({ ...parcial, salvoEm: Date.now() }));
+  assert.equal(contexto.lerCacheLocalResumo(edital), null);
+  assert.equal(registros.has(chave), false);
+  contexto.salvarCacheLocalResumo(edital, parcial);
+  assert.equal(registros.has(chave), false);
+  contexto.salvarCacheLocalResumo(edital, { fonteLida: true, estrutura: { resumoGeral: "114/114", coberturaLeitura: { parcial: false } } });
+  assert.equal(contexto.lerCacheLocalResumo(edital).estrutura.resumoGeral, "114/114");
+});
+
 test("boletim abre pela coleta do robô e só consulta PNCP por atualização explícita", () => {
   const fs = require("node:fs");
   const path = require("node:path");
