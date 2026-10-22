@@ -39,6 +39,7 @@
 const contrato = require("../netlify/functions/_resumo_gateway_contrato");
 const { ancorasPrazos } = require("../netlify/functions/_resumo_gateway");
 const { salvarDossiePersistido } = require("../netlify/functions/_dossies_persistidos");
+const { conferirEvidenciasDoResumo } = require("../netlify/functions/_resumo_evidencias");
 const { __test: iaEdital } = require("../netlify/functions/lib/ia-edital");
 const { restFetch, buscarBlob } = require("./supabase_dados");
 // A mesma VERSAO_RESUMO que a Function grava e exige no cache.
@@ -106,6 +107,8 @@ const REFORCO_GEMINI = [
   "Antes de usar \"Não informado\", procure o dado no texto integral, inclusive Termo de Referência, minuta do contrato e anexos.",
   "Prazos de esclarecimento, impugnação, recurso e contrarrazões costumam estar em capítulos próprios do edital: transcreva-os com a referência do item.",
   "Liste cada documento de habilitação em uma entrada própria, sem agrupar exigências distintas.",
+  "Não acrescente certificado digital, certidão de falência ou recuperação judicial só porque são usuais: exija trecho explícito da fonte para cada condição. Referência a SICAF não comprova essas exigências específicas.",
+  "Se os anexos contiverem somente aviso/extrato de publicação, declare isso em pendenciasParaConferencia; aviso lido não é edital completo. Não use datas e exigências de outras licitações na mesma página de diário oficial.",
   "A data da sessão pública é a abertura da disputa; não a confunda com o início ou o fim do envio de propostas.",
 ].join(" ");
 
@@ -290,11 +293,11 @@ function montarResultado(saida, fonte, cobertura, agora = Date.now(), origem = {
     estrutura.pendenciasParaConferencia = [...estrutura.pendenciasParaConferencia,
       `Conferir no edital o evento correspondente às datas: ${datasAusentes.slice(0, 10).join(", ")}.`];
   }
-  return { estrutura, resposta: estrutura.resumoGeral, textoEdital: fonte, fonteLida: true, modoDegradado: false,
+  return conferirEvidenciasDoResumo({ estrutura, resposta: estrutura.resumoGeral, textoEdital: fonte, fonteLida: true, modoDegradado: false,
     metodoResumo: "sintese_gemini", versao: VERSAO_DOSSIE, versaoValidacao: VERSAO_DOSSIE,
     revisaoPrazos: datasAusentes.length === 0, prazosEmConferencia: datasAusentes.length > 0,
     geradoEm: new Date(agora).toISOString(), erro: null,
-    ...(origem.provedor ? { provedorIA: origem.provedor, modeloIA: origem.modelo } : {}) };
+    ...(origem.provedor ? { provedorIA: origem.provedor, modeloIA: origem.modelo } : {}) });
 }
 
 // Cliques primeiro (alguém está esperando), depois boletins do mais novo ao mais antigo.
