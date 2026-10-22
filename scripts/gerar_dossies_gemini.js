@@ -384,7 +384,8 @@ async function registrarTentativa(candidato, tentativasAnteriores, { erro = null
 async function gerarDossie(numero, { provedores, fetchFn, esgotados } = {}) {
   const ficha = await iaEdital.buscarFichaCanonica(numero) || { numeroControlePNCP: numero, fonte: "PNCP" };
   // A preparação em segundo plano pode ler os anexos que não cabem no limite interativo.
-  const leitura = await iaEdital.buscarTextoEdital(numero, { limiteDocumentos: 12 });
+  const leitura = await iaEdital.buscarTextoEdital(numero, { limiteDocumentos: 12,
+    extrairArquivo: process.env.LEITURA_MULTIFORMATO === "1" ? require("./extrair_anexo_local").extrairAnexoLocal : null });
   if (!leitura.texto && leitura.indisponivel) return { pncpIndisponivel: true };
   if (!leitura.texto) return { semDocumento: true, motivo: leitura.escaneado ? "escaneado" : "sem_documento" };
   const { saida, modelo, provedor, uso } = await chamarCadeia(ficha, leitura.texto, { provedores, fetchFn, esgotados });
