@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import subprocess
+import zlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -95,6 +96,31 @@ class AnexosTest(unittest.TestCase):
         self.assertIn('Objeto contratado', r['texto'])
         self.assertTrue(any('altChunk' in p for p in r['pendencias']))
 
+    def test_grupo_rar_nao_oculta_arquivo_independente(self):
+        pasta = tempfile.TemporaryDirectory()
+        self.addCleanup(pasta.cleanup)
+        arquivos = [(Path(pasta.name) / n, n) for n in ['edital.rar', 'edital']]
+        for p, _ in arquivos:
+            p.write_bytes(b'teste')
+        leitor = anexo.Leitor()
+        lidos = []
+        leitor.ler = lambda caminho, nome, nivel: lidos.append(nome)
+        leitor.ler_pasta(arquivos, 1)
+        self.assertEqual(2, len(lidos))
+
+    def test_indices_rar_ambiguos_nao_sao_descartados(self):
+        pasta = tempfile.TemporaryDirectory()
+        self.addCleanup(pasta.cleanup)
+        arquivos = [(Path(pasta.name) / n, n) for n in ['edital.part1.rar', 'edital.part01.rar']]
+        for p, _ in arquivos:
+            p.write_bytes(b'teste')
+        leitor = anexo.Leitor()
+        lidos = []
+        leitor.ler = lambda caminho, nome, nivel: lidos.append(nome)
+        leitor.ler_pasta(arquivos, 1)
+        self.assertFalse(lidos)
+        self.assertTrue(any('duplicado' in p for p in leitor.pendencias))
+
     def test_nao_executa_programa(self):
         r = anexo.extrair(self.arquivo('anexo.exe', b'MZfake'))
         self.assertFalse(r['texto'])
@@ -179,6 +205,39 @@ class ConversoresTest(unittest.TestCase):
             else:
                 self.assertTrue(r['texto'], r)
                 self.assertEqual([], r['pendencias'])
+
+    def test_volumes_rar_dentro_de_zip_e_7z(self):
+        fixtures = json.loads((Path(__file__).parent / 'fixtures/anexos-rar-volumes.json').read_text())['files']
+        for prefixo in ['rar3-vols.', 'rar5-vols.', 'rar3-old.']:
+            pasta = tempfile.TemporaryDirectory()
+            self.addCleanup(pasta.cleanup)
+            pacote = Path(pasta.name) / 'pacote.zip'
+            with zipfile.ZipFile(pacote, 'w') as z:
+                for n, v in fixtures.items():
+                    if n.startswith(prefixo):
+                        z.writestr('Anexos/' + n, zlib.decompress(base64.b64decode(v)))
+            r = anexo.extrair(pacote)
+            self.assertEqual([], r['pendencias'], r)
+            self.assertEqual(1, r['texto'].count('bigfile.txt'))
+            self.assertIn('smallfile.txt', r['texto'])
+            with zipfile.ZipFile(pacote) as z:
+                nomes = []
+                for item in z.infolist():
+                    arquivo = Path(pasta.name) / Path(item.filename).name
+                    arquivo.write_bytes(z.read(item))
+                    nomes.append(str(arquivo))
+            externo = Path(pasta.name) / 'externo.7z'
+            subprocess.run(['7z', 'a', str(externo), *nomes], check=True, capture_output=True)
+            r = anexo.extrair(externo)
+            self.assertEqual([], r['pendencias'])
+            self.assertEqual(1, r['texto'].count('bigfile.txt'))
+            self.assertIn('smallfile.txt', r['texto'])
+        primeiro = next(n for n in fixtures if n == 'rar5-vols.part1.rar')
+        with zipfile.ZipFile(pacote, 'w') as z:
+            z.writestr(primeiro, zlib.decompress(base64.b64decode(fixtures[primeiro])))
+        r = anexo.extrair(pacote)
+        self.assertTrue(r['pendencias'])
+        self.assertFalse(r['texto'])
 
     def test_7z_com_zip_dentro_e_corrompido(self):
         pasta = tempfile.TemporaryDirectory()
