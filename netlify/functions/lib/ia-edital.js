@@ -161,7 +161,7 @@ function precisaReleituraPrioritaria(cache) {
 }
 
 // Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
-async function buscarTextoEdital(numeroControlePNCP) {
+async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DOCUMENTOS_PARA_LEITURA } = {}) {
   const partes = partesNumeroControle(numeroControlePNCP);
   if (!partes) return { texto: null, escaneado: false };
   try {
@@ -186,7 +186,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
     // nome, prioriza por palavra-chave conhecida (cobrindo todas as modalidades) e, na
     // falta dela, tenta os documentos na ordem em que aparecem — a validação real de "é um
     // PDF" acontece depois, olhando a assinatura binária do arquivo baixado.
-    const candidatos = selecionarDocumentosParaLeitura(lista);
+    const candidatos = selecionarDocumentosParaLeitura(lista, limiteDocumentos);
     if (candidatos.length === 0) return { texto: null, escaneado: false };
 
     // Cada require isolado no seu próprio try/catch: se adm-zip ou mammoth falharem por
