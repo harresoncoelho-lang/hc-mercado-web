@@ -2877,8 +2877,8 @@
       prazos: { limiteEnvioPropostas: prazo },
       itens: { descricaoGeral: edital && edital.objeto || naoInformado },
       documentosHabilitacao: [], declaracoesExigidas: [],
-      pendenciasParaConferencia: ["A análise automática completa está indisponível agora. Esta ficha mostra somente dados oficiais já coletados; consulte o edital para exigências e anexos."],
-      resumoGeral: `Ficha oficial inicial da oportunidade: ${edital && edital.objeto || "objeto não informado"}. A análise detalhada do documento poderá ser tentada novamente quando o serviço estiver disponível.`,
+      pendenciasParaConferencia: [],
+      resumoGeral: edital && edital.objeto || "Objeto não informado",
     };
   }
 
@@ -2887,8 +2887,6 @@
   // pela IA substitui esta ficha no mesmo lugar quando terminar.
   function montarFichaImediata(edital) {
     const estrutura = montarEstruturaContingenciaLocal(edital);
-    estrutura.pendenciasParaConferencia = ["Ficha com os dados oficiais do PNCP. A leitura completa do edital está em preparação e aparece aqui automaticamente."];
-    estrutura.resumoGeral = `Ficha oficial da oportunidade: ${edital && edital.objeto || "objeto não informado"}. A análise detalhada do edital está sendo preparada.`;
     return estrutura;
   }
 
@@ -2899,7 +2897,6 @@
     const estrutura = montarEstruturaContingenciaLocal(edital);
     const texto = String(resposta || "").trim();
     if (texto) estrutura.resumoGeral = texto;
-    estrutura.pendenciasParaConferencia = ["Resumo recuperado do histórico. Os detalhes exibidos abaixo usam os dados públicos oficiais disponíveis."];
     return estrutura;
   }
 
@@ -2907,7 +2904,7 @@
     if (!iaEditalAtual) return;
     const estrutura = montarEstruturaContingenciaLocal(iaEditalAtual);
     renderizarEstruturaIA(estrutura);
-    escreverMensagemIA(mensagem || "A análise automática está indisponível neste momento. Exibimos a ficha com os dados oficiais disponíveis; tente abrir o resumo novamente em instantes.", "msg-carregando");
+    if (mensagem) console.warn("Resumo: contingência", mensagem);
   }
 
   function renderizarEstruturaIA(est) {
@@ -2930,11 +2927,6 @@
     const wrap = document.createElement("div");
     wrap.className = "msg-ia";
     wrap.dataset.resumoEstrutura = "1";
-
-    const avisoLeitura = document.createElement("p");
-    avisoLeitura.className = "aviso";
-    avisoLeitura.textContent = avisoCoberturaLeitura(est);
-    wrap.appendChild(avisoLeitura);
 
     const modelo = ResumoModelo.montar(est, iaEditalAtual || {});
     for (const def of modelo.secoes.slice(0, 17)) {
@@ -3005,8 +2997,9 @@
     document.getElementById("modal-ia-fundo").classList.remove("aberto");
   }
 
-  function oferecerNovaAnalise(mensagem) {
-    const aviso = escreverMensagemIA(mensagem, "msg-erro");
+  function oferecerNovaAnalise(mensagem, orientarSessao = false) {
+    console.warn("Resumo: nova tentativa necessária", mensagem);
+    const aviso = escreverMensagemIA(orientarSessao ? mensagem : "", "msg-erro");
     const botao = document.createElement("button");
     botao.type = "button";
     botao.textContent = "Tentar novamente";
@@ -3045,7 +3038,7 @@
     iaRequisicaoAtual = controlador;
     iaCarregando = true;
     if (modo === "resumo") bloquearAcoesResumo(true);
-    const mensagemEspera = modo === "resumo" ? "Lendo o edital e gerando o resumo... (pode levar alguns segundos)" : "Pensando...";
+    const mensagemEspera = modo === "resumo" ? "Carregando..." : "Pensando...";
     const carregando = escreverMensagemIA(mensagemEspera, "msg-carregando");
     try {
       const token = await obterTokenSessao();
@@ -3082,9 +3075,7 @@
       }
       if (modo === "resumo" && resp.status === 202 && dados.emProcessamento) {
         const progresso = dados.progresso || {};
-        const total = Math.max(1, Number(progresso.total) || 1);
-        const etapa = Math.min(total, Math.max(1, (Number(progresso.concluidas) || 0) + 1));
-        carregando.textContent = dados.aviso || `Preparando resumo: etapa ${etapa} de ${total}. Você pode fechar e retomar depois.`;
+        carregando.textContent = "Carregando...";
         iaTemporizadorResumo = setTimeout(() => {
           iaTemporizadorResumo = null;
           if (geracao !== iaGeracaoModal) return;
@@ -3104,12 +3095,6 @@
       }
       if (modo === "resumo" && !dados.modoDegradado) salvarCacheLocalResumo(edital, dados);
       if (dados.textoEdital) iaTextoEdital = dados.textoEdital;
-      const mensagemFonteNaoLida = (motivo) => {
-        if (motivo === "escaneado") {
-          return "O documento desse edital é escaneado (imagem, sem texto pesquisável) — não deu pra ler o conteúdo completo automaticamente. Resumo abaixo baseado só nos dados já coletados; recomendamos abrir o edital original pra conferir os detalhes completos.";
-        }
-        return "Não consegui localizar/baixar o documento desse edital agora (pode ser de um portal que não é o PNCP, ou o arquivo pode estar indisponível) — resumo baseado só nos dados já coletados.";
-      };
       if (modo === "resumo" && (dados.estrutura || dados.resposta)) {
         const estruturaRecebida = dados.estrutura || estruturarResumoTextualLocal(iaEditalAtual, dados.resposta);
         if (typeof dados.fonteLida === "boolean") estruturaRecebida.fonteLida = dados.fonteLida;
@@ -3118,16 +3103,8 @@
         estruturaRecebida.aviso = dados.aviso || estruturaRecebida.aviso;
         renderizarEstruturaIA(estruturaRecebida);
         if (dados.dossieEmPreparacao) aguardarDossiePronto(edital, geracao);
-        if (dados.modoDegradado) {
-          escreverMensagemIA(dados.aviso || "A análise completa por IA está temporariamente limitada. Exibimos uma ficha estruturada com os dados públicos disponíveis; tente novamente mais tarde para complementar a leitura automática do edital.", "msg-carregando");
-        } else if (!dados.fonteLida) {
-          escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
-        }
       } else {
         escreverMensagemIA((dados.resposta || "").replace(/\*\*(.+?)\*\*/g, "$1"), "");
-        if (modo === "resumo" && !dados.fonteLida) {
-          escreverMensagemIA(mensagemFonteNaoLida(dados.motivoFonteNaoLida), "msg-carregando");
-        }
       }
       if (modo === "resumo") bloquearAcoesResumo(false);
       iaHistorico.push({ role: "user", content: pergunta || "(resumo inicial)" });
@@ -3136,7 +3113,7 @@
       if (geracao !== iaGeracaoModal) return;
       carregando.remove();
       if (modo === "resumo") {
-        oferecerNovaAnalise(e.message === "SESSAO_AUSENTE" ? "Sessão expirada. Faça login novamente para retomar a análise." : e.message === "SESSAO_INDISPONIVEL" ? "Não foi possível validar sua sessão agora. Tente novamente em instantes." : "Não foi possível concluir a análise agora. Tente novamente para retomar a leitura dos documentos.");
+        oferecerNovaAnalise(e.message === "SESSAO_AUSENTE" ? "Sessão expirada. Faça login novamente para retomar a análise." : e.message === "SESSAO_INDISPONIVEL" ? "Não foi possível validar sua sessão agora. Tente novamente em instantes." : "Não foi possível concluir a análise agora. Tente novamente para retomar a leitura dos documentos.", e.message === "SESSAO_AUSENTE" || e.message === "SESSAO_INDISPONIVEL");
       } else {
         escreverMensagemIA("Não deu pra conectar com a IA agora — tenta de novo em instantes.", "msg-erro");
       }
@@ -3668,7 +3645,6 @@
         bloquearAcoesResumo(false);
         iaHistorico.push({ role: "user", content: "(resumo inicial)" });
         iaHistorico.push({ role: "assistant", content: resumoLocal.resposta || "Resumo recuperado." });
-        escreverMensagemIA("Resumo recuperado do seu histórico, sem usar crédito de IA.", "msg-carregando");
         return;
       }
       renderizarEstruturaIA(montarFichaImediata(edital));
