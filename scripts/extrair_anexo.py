@@ -185,29 +185,29 @@ class Leitor:
                     elif '[Content_Types].xml' in nomes or 'mimetype' in nomes:
                         self.office(caminho, nome)
                     else:
-                        for item in z.infolist():
-                            if item.is_dir():
-                                continue
-                            if self.entradas >= MAX_ENTRADAS:
-                                self.pendencias.append(f'{nome}: limite de entradas')
-                                break
-                            seguro = PurePosixPath(item.filename.replace('\\', '/'))
-                            if seguro.is_absolute() or ':' in item.filename or '..' in seguro.parts or (item.external_attr >> 16) & 0o170000 == 0o120000 or item.file_size > self.restante or item.flag_bits & 1:
-                                self.pendencias.append(f'{nome}/{item.filename}: caminho inseguro, senha ou limite de bytes')
-                                continue
-                            try:
-                                with tempfile.TemporaryDirectory(prefix='anexo-zip-') as pasta:
-                                    filho = Path(pasta) / ('arquivo' + seguro.suffix)
-                                    with z.open(item) as origem, filho.open('wb') as destino:
-                                        escrito = 0
-                                        while bloco := origem.read(65536):
-                                            escrito += len(bloco)
-                                            if escrito > self.restante:
-                                                raise ValueError('limite de bytes expandidos')
-                                            destino.write(bloco)
-                                    self.ler(filho, nome + '/' + item.filename, nivel + 1)
-                            except (ValueError, OSError, RuntimeError, zipfile.BadZipFile):
-                                self.pendencias.append(f'{nome}/{item.filename}: entrada não recuperada')
+                        with tempfile.TemporaryDirectory(prefix='anexo-zip-') as pasta:
+                            arquivos = []
+                            for item in z.infolist():
+                                if item.is_dir():
+                                    continue
+                                seguro = PurePosixPath(item.filename.replace('\\', '/').lower())
+                                if seguro.is_absolute() or ':' in item.filename or '..' in seguro.parts or (item.external_attr >> 16) & 0o170000 == 0o120000 or item.flag_bits & 1:
+                                    self.pendencias.append(f'{nome}/{item.filename}: caminho inseguro ou senha')
+                                    continue
+                                filho = Path(pasta).joinpath(*seguro.parts)
+                                if filho.exists():
+                                    self.pendencias.append(f'{nome}/{item.filename}: nome duplicado ambíguo')
+                                    continue
+                                filho.parent.mkdir(parents=True, exist_ok=True)
+                                with z.open(item) as origem, filho.open('wb') as destino:
+                                    escrito = 0
+                                    while bloco := origem.read(65536):
+                                        escrito += len(bloco)
+                                        if escrito > self.restante:
+                                            raise ValueError('limite de bytes expandidos')
+                                        destino.write(bloco)
+                                arquivos.append((filho, nome + '/' + item.filename))
+                            self.ler_pasta(arquivos, nivel + 1)
             elif assinatura.startswith(b'Rar!') or assinatura.startswith(b'7z\xbc\xaf\x27\x1c'):
                 self.compactado(caminho, nome, nivel)
             elif ext in OFFICE:
@@ -225,6 +225,40 @@ class Leitor:
                 raise ValueError('formato não suportado')
         except (ValueError, OSError, RuntimeError, subprocess.SubprocessError, zipfile.BadZipFile, ET.ParseError, UnicodeError) as erro:
             self.pendencias.append(f'{nome}: {type(erro).__name__}: {erro}')
+
+    def ler_pasta(self, arquivos, nivel):
+        grupos = set()
+        indices = set()
+        ambiguos = set()
+        for caminho, _ in arquivos:
+            parte = re.match(r'^(.+)\.part(\d+)\.rar$', caminho.name, re.I)
+            if parte:
+                grupo = ('part', str(caminho.parent), parte[1])
+                indice = (*grupo, int(parte[2]))
+                if indice in indices:
+                    ambiguos.add(grupo)
+                indices.add(indice)
+        for caminho, nome in arquivos:
+            parte = re.match(r'^(.+)\.part(\d+)\.rar$', caminho.name, re.I)
+            antigo = re.match(r'^(.+)\.(rar|[r-z]\d{2})$', caminho.name, re.I)
+            primeiro = caminho
+            chave = ('file', str(caminho))
+            if parte:
+                chave = ('part', str(caminho.parent), parte[1])
+                primeiro = caminho.parent / (parte[1] + '.part' + '1'.zfill(len(parte[2])) + '.rar')
+            elif antigo:
+                chave = ('old', str(caminho.parent), antigo[1])
+                primeiro = caminho.parent / (antigo[1] + '.rar')
+            if chave in grupos:
+                continue
+            grupos.add(chave)
+            if chave in ambiguos:
+                self.pendencias.append(f'{nome}: índice de volume RAR duplicado; grupo ambíguo')
+                continue
+            if not primeiro.is_file():
+                self.pendencias.append(f'{nome}: primeiro volume RAR ausente')
+                continue
+            self.ler(primeiro, str(PurePosixPath(nome).parent / primeiro.name), nivel)
 
     def incorporado(self, pacote, entrada, nome, nivel=0):
         if entrada.file_size > self.restante:
@@ -314,27 +348,37 @@ class Leitor:
         programa = shutil.which('7zz') or shutil.which('7z')
         if not programa:
             raise ValueError('conversor RAR/7z indisponível')
+        self.comando([programa, 't', '-p-', str(caminho)])
         listagem = self.comando([programa, 'l', '-slt', '-p-', str(caminho)]).decode('utf-8', 'replace').replace('\r\n', '\n')
         blocos = listagem.split('----------\n')
         if len(blocos) < 2:
             raise ValueError('listagem de arquivo indisponível')
+        entradas = []
         for bloco in blocos[-1].split('\n\n'):
             props = dict(l.split(' = ', 1) for l in bloco.splitlines() if ' = ' in l)
             entrada = props.get('Path')
             if not entrada or props.get('Folder') == '+':
                 continue
-            if self.entradas >= MAX_ENTRADAS:
-                self.pendencias.append(f'{nome}: limite de entradas')
-                break
-            seguro = PurePosixPath(entrada.replace('\\', '/'))
-            tamanho = int(props.get('Size', self.max_bytes + 1))
-            if seguro.is_absolute() or ':' in entrada or '..' in seguro.parts or props.get('Symbolic Link') or props.get('Hard Link') or tamanho > self.restante or props.get('Encrypted') == '+':
-                self.pendencias.append(f'{nome}/{entrada}: caminho inseguro, senha ou limite de bytes')
-                continue
-            with tempfile.TemporaryDirectory(prefix='anexo-7z-') as pasta:
-                filho = Path(pasta) / ('arquivo' + seguro.suffix)
+            entradas.append(props)
+        if len(entradas) + self.entradas > MAX_ENTRADAS or sum(int(p.get('Size', self.max_bytes + 1)) for p in entradas) > self.restante:
+            raise ValueError('limite de expansão do arquivo compactado')
+        with tempfile.TemporaryDirectory(prefix='anexo-7z-') as pasta:
+            arquivos = []
+            for props in entradas:
+                entrada = props['Path']
+                seguro = PurePosixPath(entrada.replace('\\', '/').lower())
+                if seguro.is_absolute() or ':' in entrada or '..' in seguro.parts or entrada.startswith(('-', '@')) or props.get('Symbolic Link') or props.get('Hard Link') or props.get('Encrypted') == '+':
+                    self.pendencias.append(f'{nome}/{entrada}: caminho inseguro ou senha')
+                    continue
+                filho = Path(pasta).joinpath(*seguro.parts)
+                if filho.exists():
+                    self.pendencias.append(f'{nome}/{entrada}: nome duplicado ambíguo')
+                    continue
+                filho.parent.mkdir(parents=True, exist_ok=True)
                 filho.write_bytes(self.comando([programa, 'x', '-so', '-spd', '-p-', str(caminho), entrada]))
-                self.ler(filho, nome + '/' + entrada, nivel + 1)
+                arquivos.append((filho, nome + '/' + entrada))
+            self.ler_pasta(arquivos, nivel + 1)
+
 
 
 def extrair(caminho, max_bytes=MAX_BYTES, segundos=90):

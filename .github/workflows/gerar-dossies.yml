@@ -46,6 +46,10 @@ jobs:
           --tmpfs=/tmp:rw,size=268435456,mode=1777 --env=HOME=/tmp --env=TESTAR_CONVERSORES=1
           --mount type=bind,source=${{ github.workspace }},target=/repo,readonly
           --entrypoint python3 licitaplena-anexos:local /repo/scripts/test_extrair_anexo.py
+      - name: Validar agrupamento de volumes sem IA
+        env:
+          IMAGEM_EXTRATOR_ANEXOS: licitaplena-anexos:local
+        run: node --test scripts/extrair_anexo_local.test.js netlify/functions/__tests__/edital-operacional.test.js
       - name: Gerar dossiês da fila e dos boletins
         env:
           # Cadeia de provedores de IA com troca automática (ver cabeçalho do script).

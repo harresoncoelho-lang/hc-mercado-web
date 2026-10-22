@@ -535,3 +535,37 @@ test("extrator recebe extensão pelo MIME quando URL e título não a informam",
     assert.equal(r.coberturaLeitura.parcial, false);
   } finally { global.fetch = original; }
 });
+
+test("leitura ampliada baixa os volumes antes de extrair e não duplica o texto", async () => {
+  const original = global.fetch;
+  let downloads = 0;
+  global.fetch = async (url) => url.endsWith("/arquivos")
+    ? { ok: true, json: async () => [1,2,3].map(n => ({ sequencialDocumento: n, titulo: `edital.part${n}.rar` })) }
+    : { ok: true, arrayBuffer: async () => { downloads++; return Buffer.from("Rar!" + url); } };
+  try {
+    const { buscarTextoEdital } = require("../lib/ia-edital").__test;
+    const r = await buscarTextoEdital("12345678000199-1-000406/2026", { extrairArquivo: async (_, nome, { companheiros }) => {
+      assert.equal(downloads, 3);
+      assert.equal(companheiros.length, 3);
+      return nome.endsWith('part1.rar') ? { texto: 'Exigir proposta em 15 dias', pendencias: [] } : { texto: '', pendencias: [], volumeDe: 'edital.part1.rar' };
+    } });
+    assert.equal(r.coberturaLeitura.parcial, false);
+    assert.equal(r.coberturaLeitura.documentosLidos.length, 3);
+    assert.equal(r.texto.split('Exigir proposta').length - 1, 1);
+  } finally { global.fetch = original; }
+});
+
+
+test("download ampliado cancela fluxo antes de exceder orçamento dos anexos", async () => {
+  const original = global.fetch;
+  let cancelou = false;
+  global.fetch = async (url) => url.endsWith("/arquivos")
+    ? { ok: true, json: async () => [{ sequencialDocumento: 1, titulo: "edital.part1.rar" }] }
+    : { ok: true, body: { getReader: () => ({ read: async () => ({ done: false, value: { length: 64 * 1024 * 1024 + 1 } }), cancel: async () => { cancelou = true; } }) } };
+  try {
+    const { buscarTextoEdital } = require("../lib/ia-edital").__test;
+    const r = await buscarTextoEdital("12345678000199-1-000406/2026", { extrairArquivo: async () => { throw new Error('Não deve extrair bytes acima do limite'); } });
+    assert.equal(cancelou, true);
+    assert.equal(r.texto, null);
+  } finally { global.fetch = original; }
+});
