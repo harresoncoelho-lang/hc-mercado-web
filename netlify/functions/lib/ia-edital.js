@@ -59,6 +59,7 @@ const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 const { buscarDossiePersistido, salvarDossiePersistido, enfileirarDossie } = require("../_dossies_persistidos");
+const { conferirEvidenciasDoResumo } = require("../_resumo_evidencias");
 
 function montarFichaEdital(edital) {
   const campos = [
@@ -1221,6 +1222,7 @@ exports.handler = async (event) => {
         const persistido = await buscarDossiePersistido(edital.numeroControlePNCP);
         if (persistido) { cache = persistido; cacheDoBlob = false; }
       }
+      cache = conferirEvidenciasDoResumo(cache);
       const cachePodeResponder = podeResponder(cache);
       if (cachePodeResponder) {
         // Dossiês concluídos só no Blob (antes da gravação pelo Gateway) entram no Supabase
