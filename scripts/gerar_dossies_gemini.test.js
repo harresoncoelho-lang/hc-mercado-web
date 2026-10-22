@@ -93,6 +93,21 @@ test("seleção respeita o teto restante do dia", () => {
   assert.equal(selecionarCandidatos({ ...base, limite: -5 }).length, 0);
 });
 
+test("preparação inclui edital do filtro sem clique nem envio e preserva prioridades e teto", () => {
+  const candidatos = selecionarCandidatos({
+    fila: [{ numero_controle_pncp: "pedido", origem: "clique", pedido_em: "2026-10-21" }],
+    boletim: [{ numero_controle_pncp: "ja-enviado", publicacao: "2026-10-20" }],
+    antecipados: [
+      { numero_controle_pncp: "ainda-nao-enviado", publicacao: "2026-10-21" },
+      { numero_controle_pncp: "pedido", publicacao: "2026-10-21" },
+      { numero_controle_pncp: "pronto", publicacao: "2026-10-21" },
+      { numero_controle_pncp: "esgotado", publicacao: "2026-10-21" },
+    ],
+    dossiesProntos: new Set(["pronto"]), tentativas: new Map([["esgotado", 2]]), limite: 2,
+  });
+  assert.deepEqual(candidatos, [{ numero: "pedido", origem: "clique" }, { numero: "ainda-nao-enviado", origem: "boletim" }]);
+});
+
 test("prazos só contam como revisados quando todas as datas da fonte estão no resumo", () => {
   const resultado = montarResultado({ estrutura: { resumoGeral: "Sessão em 20/10/2026.", identificacao: { dataSessao: "20/10/2026" } } }, "Sessão em 20/10/2026 às 9h.", { documentosLidos: [] }, Date.parse("2026-10-08T12:00:00Z"));
   assert.equal(resultado.revisaoPrazos, true);
