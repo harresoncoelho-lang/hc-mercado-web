@@ -10,10 +10,17 @@ concurrency:
 
 on:
   schedule:
-    # A cada 10 min: o clique do cliente entra na fila e fica pronto na rodada seguinte.
-    # Repositório público, então as execuções não custam nada. O GitHub pode atrasar o
-    # agendamento em horários de pico; o painel mostra a ficha do PNCP enquanto isso.
-    - cron: "*/10 * * * *"
+    # Reserva a cada 10 min, fora dos minutos redondos; o GitHub ainda pode atrasar cron.
+    - cron: "7,17,27,37,47,57 * * * *"
+  # Preparar logo após a chegada dos dados, sem depender do cron nem do primeiro clique.
+  workflow_run:
+    workflows: ["Atualizar dados do PNCP", "Recuperar UFs pendentes do PNCP"]
+    types: [completed]
+    branches: [main]
+  # Mudança no próprio agendamento valida uma rodada automática imediatamente.
+  push:
+    branches: [main]
+    paths: [".github/workflows/gerar-dossies.yml"]
   workflow_dispatch: {}
 
 permissions:
@@ -21,6 +28,7 @@ permissions:
 
 jobs:
   gerar:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
