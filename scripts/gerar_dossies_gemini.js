@@ -429,6 +429,13 @@ async function gerarComEspera(numero, { prazoFinal, gerar = gerarDossie, esperar
   }
 }
 
+// Reserva pelo menos uma chamada de IA e acompanha o edital mais lento da rodada.
+// shortcut: estima a leitura seguinte; arquivos excepcionalmente lentos ainda têm seus próprios limites.
+function cabeNovoDossie({ inicio, agora, limite = LIMITE_MS, maiorDuracao = 0 }) {
+  const reserva = Math.min(limite, Math.max(TIMEOUT_CHAMADA_MS, maiorDuracao + 30000));
+  return agora - inicio < limite && limite - (agora - inicio) >= reserva;
+}
+
 async function main() {
   const provedores = montarProvedores();
   if (!provedores.length) {
@@ -443,8 +450,13 @@ async function main() {
   const candidatos = selecionarCandidatos({ ...dados, limite: Math.min(MAX_POR_EXECUCAO, restanteDia) });
   console.log(`[dossiês] ${dados.fila.length} pedido(s) na fila, ${dados.boletim.length} edital(is) enviados, ${dados.antecipados.length} antecipado(s) pelos filtros; ${candidatos.length} a gerar (teto do dia: ${Math.max(0, restanteDia)} restante(s)).`);
   const contagem = { gerado: 0, sem_documento: 0, falha: 0 };
+  let maiorDuracao = 0;
   for (const candidato of candidatos) {
-    if (Date.now() - inicio > LIMITE_MS) break;
+    if (!cabeNovoDossie({ inicio, agora: Date.now(), maiorDuracao })) {
+      console.log("[dossiês] tempo reservado insuficiente para outro edital; restantes preservados para a próxima rodada, sem consumir tentativa.");
+      break;
+    }
+    const inicioEdital = Date.now();
     const anteriores = dados.tentativas.get(candidato.numero) || 0;
     try {
       const resultado = await gerarComEspera(candidato.numero, { provedores, esgotados, prazoFinal: inicio + LIMITE_MS });
@@ -472,6 +484,8 @@ async function main() {
       await registrarTentativa(candidato, anteriores, { erro: String(erro.message).slice(0, 200) });
       contagem.falha += 1;
       console.warn(`[dossiês] falhou ${candidato.numero}: ${erro.message}`);
+    } finally {
+      maiorDuracao = Math.max(maiorDuracao, Date.now() - inicioEdital);
     }
   }
   console.log(`[dossiês] concluído: ${contagem.gerado} gerado(s), ${contagem.sem_documento} sem documento legível, ${contagem.falha} falha(s).`);
@@ -481,4 +495,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, carregarAntecipados, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
+module.exports = { cabeNovoDossie, VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, carregarAntecipados, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
