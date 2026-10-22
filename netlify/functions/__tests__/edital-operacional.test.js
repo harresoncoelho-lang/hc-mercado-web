@@ -500,3 +500,38 @@ test("PNCP fora do ar ou lento é indisponível; lista vazia ou 404 é edital se
     global.fetch = fetchOriginal;
   }
 });
+
+
+test("extrator ampliado mantém cobertura parcial de anexo composto", async () => {
+  const original = global.fetch;
+  global.fetch = async (url) => url.endsWith("/arquivos")
+    ? { ok: true, json: async () => [{ sequencialDocumento: 1, titulo: "Edital e anexos.rar" }] }
+    : { ok: true, arrayBuffer: async () => Buffer.from("Rar!fake") };
+  try {
+    const { buscarTextoEdital } = require("../lib/ia-edital").__test;
+    const r = await buscarTextoEdital("12345678000199-1-000406/2026", { extrairArquivo: async () => ({
+      texto: "O edital exige proposta comercial e capacidade técnica. ".repeat(8),
+      pendencias: ["anexos.rar/planilha.xls: senha necessária"],
+    }) });
+    assert.match(r.texto, /capacidade técnica/);
+    assert.equal(r.coberturaLeitura.parcial, true);
+    assert.match(r.coberturaLeitura.documentosNaoLidos.join(" "), /planilha.xls.*senha/);
+  } finally { global.fetch = original; }
+});
+
+
+test("extrator recebe extensão pelo MIME quando URL e título não a informam", async () => {
+  const original = global.fetch;
+  global.fetch = async (url) => url.endsWith("/arquivos")
+    ? { ok: true, json: async () => [{ sequencialDocumento: 1, titulo: "Planilha", url: "https://pncp.gov.br/arquivos/1" }] }
+    : { ok: true, headers: { get: (nome) => nome === "content-type" ? "text/csv" : null }, arrayBuffer: async () => Buffer.from("Item;Quantidade\nCimento;20") };
+  try {
+    const { buscarTextoEdital } = require("../lib/ia-edital").__test;
+    let recebido;
+    const r = await buscarTextoEdital("12345678000199-1-000406/2026", { extrairArquivo: async (_, nome) => {
+      recebido = nome; return { texto: "Item cimento quantidade 20", pendencias: [] };
+    } });
+    assert.equal(recebido, "anexo.csv");
+    assert.equal(r.coberturaLeitura.parcial, false);
+  } finally { global.fetch = original; }
+});
