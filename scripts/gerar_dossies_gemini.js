@@ -238,7 +238,13 @@ async function chamarCompat(provedor, ficha, fonte, { fetchFn = fetch, esgotados
     if ([400, 422].includes(resposta.status) && comFormato) { esgotados.add(chaveSemFormato); continue; }
     if (!resposta.ok) throw new Error(`${nome}_http_${resposta.status}`);
     const dados = await resposta.json().catch(() => ({}));
-    return { saida: lerSaidaCompat(dados), modelo: modelos[indice], uso: dados.usage ? { totalTokenCount: dados.usage.total_tokens } : null };
+    try {
+      return { saida: lerSaidaCompat(dados), modelo: modelos[indice], uso: dados.usage ? { totalTokenCount: dados.usage.total_tokens } : null };
+    } catch (erro) {
+      if (!(erro instanceof SyntaxError) && !/^resposta_(incompleta_|sem_estrutura)/.test(erro.message)) throw erro;
+      console.warn(`[dossiês] ${rotulo}: resposta inválida; tentando próximo modelo configurado.`);
+      indice += 1;
+    }
   }
   if (sobrecarga) throw new GeminiSobrecarregado(`${nome} sobrecarregado em todos os modelos`);
   if (cotaEsgotada) throw new CotaEsgotada(`${nome} sem cota em todos os modelos`);
@@ -300,11 +306,17 @@ function montarResultado(saida, fonte, cobertura, agora = Date.now(), origem = {
     ...(origem.provedor ? { provedorIA: origem.provedor, modeloIA: origem.modelo } : {}) });
 }
 
-// Cliques primeiro (alguém está esperando), depois boletins do mais novo ao mais antigo.
+// Primeiro atendimento e antecipação nova antes de repetir leituras antigas.
 function selecionarCandidatos({ fila, boletim, antecipados = [], dossiesProntos, tentativas, limite }) {
   const vistos = new Set();
   const candidatos = [];
   const pode = (numero) => numero && !vistos.has(numero) && !dossiesProntos.has(numero) && (tentativas.get(numero) || 0) < MAX_TENTATIVAS;
+  for (const item of [...fila].filter((i) => (i.origem || "clique") === "clique" && !tentativas.get(i.numero_controle_pncp)).sort((a, b) => String(a.pedido_em).localeCompare(String(b.pedido_em)))) {
+    if (pode(item.numero_controle_pncp)) { vistos.add(item.numero_controle_pncp); candidatos.push({ numero: item.numero_controle_pncp, origem: "clique" }); }
+  }
+  for (const item of [...antecipados].filter((i) => !tentativas.get(i.numero_controle_pncp)).sort((a, b) => String(b.publicacao).localeCompare(String(a.publicacao)))) {
+    if (pode(item.numero_controle_pncp)) { vistos.add(item.numero_controle_pncp); candidatos.push({ numero: item.numero_controle_pncp, origem: "boletim" }); }
+  }
   for (const item of [...fila].sort((a, b) => String(a.pedido_em).localeCompare(String(b.pedido_em)))) {
     if (pode(item.numero_controle_pncp)) { vistos.add(item.numero_controle_pncp); candidatos.push({ numero: item.numero_controle_pncp, origem: item.origem || "clique" }); }
   }

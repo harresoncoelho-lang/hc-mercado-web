@@ -45,7 +45,9 @@ test("sem dossiê pronto, o endpoint enfileira o pedido e devolve a ficha oficia
     assert.equal(corpo.modoDegradado, true);
     assert.equal(corpo.estrutura.identificacao.objeto, "Objeto oficial");
     assert.doesNotMatch(JSON.stringify(corpo), /ADULTERADO/);
-    assert.match(corpo.estrutura.pendenciasParaConferencia[0], /em preparação/);
+    assert.deepEqual(corpo.estrutura.pendenciasParaConferencia, []);
+    assert.equal(corpo.motivoFonteNaoLida, "em_preparacao");
+    assert.equal(corpo.fonteLida, false);
     assert.deepEqual(pedidosFila, [[{ numero_controle_pncp: "01171012000141-1-000005/2026", concluido_em: null }]]);
     // O robô antigo não pode encher a fila com a base inteira.
     const robo = await pedir({ "x-licitaplena-dossies-chave": "robo-teste" });

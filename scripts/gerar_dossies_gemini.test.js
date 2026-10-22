@@ -14,6 +14,17 @@ function saidaModelo(texto = "{}") {
   return respostaGemini(200, { candidates: [{ finishReason: "STOP", content: { parts: [{ text: texto }] } }], usageMetadata: { totalTokenCount: 10 } });
 }
 
+test("resposta vazia do modelo gratuito não impede o próximo modelo já configurado", async () => {
+  const provedores = montarProvedores({ OPENROUTER_API_KEY: "teste", OPENROUTER_MODELOS: "a:free,b:free" });
+  let chamadas = 0;
+  const fetchFn = async () => respostaGemini(200, ++chamadas === 1
+    ? { choices: [{ finish_reason: "stop", message: { content: "" } }] }
+    : { choices: [{ finish_reason: "stop", message: { content: '{"estrutura":{}}' } }] });
+  const resultado = await chamarCadeia({}, "fonte", { provedores, fetchFn });
+  assert.equal(resultado.modelo, "b:free");
+  assert.equal(chamadas, 2);
+});
+
 test("ajuste ao schema descarta chaves extras, preenche ausentes e passa na validação do contrato", () => {
   const ajustado = ajustarAoSchema({ estrutura: { resumoGeral: "Pregão de papel.", campoInventado: "x", documentosHabilitacao: [{ categoria: "Inexistente" }] } }, contrato.schema);
   assert.equal(ajustado.estrutura.resumoGeral, "Pregão de papel.");
@@ -91,6 +102,19 @@ test("seleção respeita o teto restante do dia", () => {
   const base = { fila: [], boletim, dossiesProntos: new Set(), tentativas: new Map() };
   assert.equal(selecionarCandidatos({ ...base, limite: 2 }).length, 2);
   assert.equal(selecionarCandidatos({ ...base, limite: -5 }).length, 0);
+});
+
+test("edital novo dos filtros não fica atrás de novas tentativas antigas", () => {
+  const candidatos = selecionarCandidatos({
+    fila: [
+      { numero_controle_pncp: "antigo", origem: "boletim", pedido_em: "2026-10-20" },
+      { numero_controle_pncp: "pedido-novo", origem: "clique", pedido_em: "2026-10-22" },
+    ],
+    boletim: [],
+    antecipados: [{ numero_controle_pncp: "edital-hoje", publicacao: "2026-10-22" }],
+    dossiesProntos: new Set(), tentativas: new Map([["antigo", 1]]), limite: 2,
+  });
+  assert.deepEqual(candidatos.map((c) => c.numero), ["pedido-novo", "edital-hoje"]);
 });
 
 test("preparação inclui edital do filtro sem clique nem envio e preserva prioridades e teto", () => {

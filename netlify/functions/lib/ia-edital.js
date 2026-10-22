@@ -1060,9 +1060,9 @@ function montarEstruturaBasica(edital, motivoFonteNaoLida) {
     penalidades: naoInformado,
     multas: naoInformado,
     documentosConsultados: [],
-    pendenciasParaConferencia: [motivoFonteNaoLida === "escaneado" ? "O documento publicado é escaneado e não pôde ser lido automaticamente. Abra o edital oficial para conferir habilitação, pagamentos, penalidades e anexos."
-      : motivoFonteNaoLida === "em_preparacao" ? "A leitura completa do edital está em preparação. Os campos abaixo mostram os dados oficiais do PNCP e serão complementados quando o resumo ficar pronto."
-        : "A análise completa do documento oficial está temporariamente indisponível. Os campos abaixo mostram apenas dados públicos já recebidos do PNCP."],
+    // O estado da fila permanece em motivoFonteNaoLida; não é uma exigência do edital.
+    pendenciasParaConferencia: motivoFonteNaoLida === "em_preparacao" ? [] : [motivoFonteNaoLida === "escaneado" ? "O documento publicado é escaneado e não pôde ser lido automaticamente. Abra o edital oficial para conferir habilitação, pagamentos, penalidades e anexos."
+      : "A análise completa do documento oficial está temporariamente indisponível. Os campos abaixo mostram apenas dados públicos já recebidos do PNCP."],
     questionamentosSugeridos: [],
     possiveisQuestionamentos: [],
     outrasInformacoesRelevantes: [],
