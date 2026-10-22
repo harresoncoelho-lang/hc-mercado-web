@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 process.env.MAX_TENTATIVAS_DOSSIE = "2";
-const { ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, montarProvedores, chamarCadeia, corpoCompat, GeminiSobrecarregado, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
+const { cabeNovoDossie, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, montarProvedores, chamarCadeia, corpoCompat, GeminiSobrecarregado, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
 const contrato = require("../netlify/functions/_resumo_gateway_contrato");
 const { estruturaValida } = require("../netlify/functions/_resumo_gateway");
 
@@ -293,4 +293,19 @@ test("Cloudflare Workers AI só entra na cadeia com ID da conta e token, como ú
   const fetchFn = fetchPorProvedor({ gemini: () => respostaGemini(429, {}), mistral: () => respostaGemini(429, {}), openrouter: () => respostaGemini(429, {}), cloudflare: () => respostaCompat() }, chamadas);
   const r = await chamarCadeia({}, "fonte", { provedores: montarProvedores(completo), fetchFn });
   assert.deepEqual([r.provedor, r.modelo], ["cloudflare", "@cf/openai/gpt-oss-120b"]);
+});
+
+
+test("rodada de oito minutos não inicia outro edital com só 39 segundos", () => {
+  const minuto = 60000;
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 441000, limite: 8 * minuto, maiorDuracao: 441000 }), false);
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 2 * minuto, limite: 8 * minuto, maiorDuracao: 2 * minuto }), true);
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 4 * minuto, limite: 8 * minuto, maiorDuracao: 2 * minuto }), false);
+});
+
+test("reserva inclui margem e adapta-se a um edital lento sem impedir o primeiro", () => {
+  const minuto = 60000;
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 0, limite: 8 * minuto }), true);
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 6 * minuto, limite: 12 * minuto, maiorDuracao: 6 * minuto }), false);
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 8 * minuto, limite: 8 * minuto }), false);
 });
