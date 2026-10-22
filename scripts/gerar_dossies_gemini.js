@@ -298,14 +298,14 @@ function montarResultado(saida, fonte, cobertura, agora = Date.now(), origem = {
 }
 
 // Cliques primeiro (alguém está esperando), depois boletins do mais novo ao mais antigo.
-function selecionarCandidatos({ fila, boletim, dossiesProntos, tentativas, limite }) {
+function selecionarCandidatos({ fila, boletim, antecipados = [], dossiesProntos, tentativas, limite }) {
   const vistos = new Set();
   const candidatos = [];
   const pode = (numero) => numero && !vistos.has(numero) && !dossiesProntos.has(numero) && (tentativas.get(numero) || 0) < MAX_TENTATIVAS;
   for (const item of [...fila].sort((a, b) => String(a.pedido_em).localeCompare(String(b.pedido_em)))) {
     if (pode(item.numero_controle_pncp)) { vistos.add(item.numero_controle_pncp); candidatos.push({ numero: item.numero_controle_pncp, origem: item.origem || "clique" }); }
   }
-  for (const item of [...boletim].sort((a, b) => String(b.publicacao).localeCompare(String(a.publicacao)))) {
+  for (const item of [...boletim, ...antecipados].sort((a, b) => String(b.publicacao).localeCompare(String(a.publicacao)))) {
     if (pode(item.numero_controle_pncp)) { vistos.add(item.numero_controle_pncp); candidatos.push({ numero: item.numero_controle_pncp, origem: "boletim" }); }
   }
   return candidatos.slice(0, Math.max(0, limite));
@@ -325,19 +325,36 @@ async function consultarEmLotes(tabela, coluna, numeros, selecao, filtros = "") 
   return linhas;
 }
 
+async function carregarAntecipados(desde, hoje, fetchFn = restFetch) {
+  try {
+    const resposta = await fetchFn("rpc/oportunidades_para_dossies", { method: "POST", body: JSON.stringify({
+      p_versao: VERSAO_DOSSIE, p_max_tentativas: MAX_TENTATIVAS,
+      p_desde: desde, p_hoje: hoje, p_limite: 200,
+    }) });
+    const linhas = await resposta.json();
+    if (!Array.isArray(linhas)) throw new Error("resposta inválida");
+    return linhas;
+  } catch (erro) {
+    // Migração ainda ausente ou falha temporária não interrompe os cliques/boletins existentes.
+    console.warn(`[dossiês] seleção antecipada indisponível: ${erro.message}`);
+    return [];
+  }
+}
+
 async function carregarCandidatos(agora = Date.now()) {
-  const fila = await (await restFetch("fila_dossies?concluido_em=is.null&select=numero_controle_pncp,origem,pedido_em&order=pedido_em.asc&limit=200")).json();
+  const fila = await (await restFetch(`fila_dossies?concluido_em=is.null&tentativas=lt.${MAX_TENTATIVAS}&select=numero_controle_pncp,origem,pedido_em&order=pedido_em.asc&limit=200`)).json();
   const historico = await buscarBlob("dados_robo", "editais_vistos");
   const enviados = [...new Set(Object.values(historico && typeof historico === "object" ? historico : {}).flat().filter(Boolean))];
   const desde = new Date(agora - DIAS_BOLETIM * 86400000).toISOString().slice(0, 10);
   const hoje = new Date(agora).toISOString().slice(0, 10);
+  const antecipados = await carregarAntecipados(desde, hoje);
   const boletim = (await consultarEmLotes("oportunidades_abertas", "numero_controle_pncp", enviados, "numero_controle_pncp,publicacao,encerramento", `&publicacao=gte.${desde}`))
     .filter((linha) => !linha.encerramento || linha.encerramento >= hoje);
-  const numeros = [...new Set([...fila, ...boletim].map((linha) => linha.numero_controle_pncp))];
+  const numeros = [...new Set([...fila, ...boletim, ...antecipados].map((linha) => linha.numero_controle_pncp))];
   const dossies = await consultarEmLotes("dossies_editais", "numero_controle_pncp", numeros, "numero_controle_pncp,versao,status");
   const registros = await consultarEmLotes("fila_dossies", "numero_controle_pncp", numeros, "numero_controle_pncp,tentativas");
   return {
-    fila, boletim,
+    fila, boletim, antecipados,
     dossiesProntos: new Set(dossies.filter(dossieCompleto).map((linha) => linha.numero_controle_pncp)),
     tentativas: new Map(registros.map((linha) => [linha.numero_controle_pncp, Number(linha.tentativas) || 0])),
   };
@@ -407,7 +424,7 @@ async function main() {
   const restanteDia = MAX_DIA - await tentativasHoje();
   const dados = await carregarCandidatos();
   const candidatos = selecionarCandidatos({ ...dados, limite: Math.min(MAX_POR_EXECUCAO, restanteDia) });
-  console.log(`[dossiês] ${dados.fila.length} pedido(s) na fila, ${dados.boletim.length} edital(is) de boletim recentes; ${candidatos.length} a gerar (teto do dia: ${Math.max(0, restanteDia)} restante(s)).`);
+  console.log(`[dossiês] ${dados.fila.length} pedido(s) na fila, ${dados.boletim.length} edital(is) enviados, ${dados.antecipados.length} antecipado(s) pelos filtros; ${candidatos.length} a gerar (teto do dia: ${Math.max(0, restanteDia)} restante(s)).`);
   const contagem = { gerado: 0, sem_documento: 0, falha: 0 };
   for (const candidato of candidatos) {
     if (Date.now() - inicio > LIMITE_MS) break;
@@ -447,4 +464,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
+module.exports = { VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, carregarAntecipados, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
