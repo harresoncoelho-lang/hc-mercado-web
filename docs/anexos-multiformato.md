@@ -16,7 +16,7 @@ O worker de dossiês usa conversores locais em contêiner isolado. A leitura int
 | ZIP/RAR3/RAR5/7z | Entradas verificadas individualmente; compactados aninhados até 4 níveis |
 | Senha, corrupção, volume faltante | Pendência interna; não executa nem adivinha o conteúdo |
 | DOCX com altChunk | Pendência interna explícita: fragmento ainda não interpretado |
-| Multipartes em anexos separados | Não combina volumes nesta versão; mantém pendência |
+| RAR multipartes separados ou dentro de ZIP/7z/RAR | Reúne nomes do mesmo grupo na pasta isolada; suporta part1/part2 e .rar/.r00/.r01; verifica integridade antes de ler |
 | Fonte original ausente | OCR de uma retificação não substitui o edital original |
 
 Limites: 64 MiB de orçamento, 200 entradas, 100 páginas, 200 mil células, 600 mil caracteres e 90 segundos por anexo. Limite atingido mantém cobertura parcial. Não marca um pacote completo só porque uma entrada pôde ser lida. OCR pode errar caracteres; não representa garantia de correção jurídica nem leitura de 100% dos formatos existentes.
@@ -24,3 +24,5 @@ Limites: 64 MiB de orçamento, 200 entradas, 100 páginas, 200 mil células, 600
 Segurança: contêiner sem rede, sem credenciais, sem privilégios, código-fonte e entrada somente leitura, 1 GiB de memória, 1 CPU e temporários limitados a 256 MiB. Macros desabilitadas. Nunca executa os anexos. Falha do conversor preserva a leitura nativa e registra cobertura parcial.
 
 Validação reproduzível: construir scripts/Dockerfile.anexos; executar scripts/test_extrair_anexo.py dentro da imagem com TESTAR_CONVERSORES=1 e os mesmos limites do workflow. Fixtures sintéticas e RAR com licença ficam em scripts/fixtures. O workflow testa os conversores antes de gerar dossiês. Reversão: remover LEITURA_MULTIFORMATO=1 do workflow, preservando leitores e dados existentes.
+
+Os volumes são baixados antes de extrair, com orçamento agregado de 64 MiB. Nomes conflitantes ou primeiro volume ausente não são adivinhados. Cada grupo é lido uma única vez. Arquivos reais RAR3/RAR5 multipartes do corpus rarfile ficam em fixtures/anexos-rar-volumes.json, comprimidos com zlib apenas para transporte dos testes; licença ISC preservada.
