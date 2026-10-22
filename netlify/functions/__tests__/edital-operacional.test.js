@@ -335,6 +335,36 @@ test("horário de abertura não é substituído pelo limite de envio das propost
   assert.equal(estrutura.prazos.limiteEnvioPropostas, "22/09/2026 às 09:15");
 });
 
+test("preparação lê seis anexos sem alterar o limite interativo nem esconder anexos além do teto", async () => {
+  const caminhoPdf = require.resolve("pdf-parse");
+  const cachePdf = require.cache[caminhoPdf];
+  const fetchOriginal = global.fetch;
+  let quantidade = 6;
+  require.cache[caminhoPdf] = { exports: async () => ({ text: "Cláusula pesquisável do documento. ".repeat(30), numpages: 1 }) };
+  global.fetch = async (url) => url.endsWith("/arquivos")
+    ? { ok: true, json: async () => Array.from({ length: quantidade }, (_, i) => ({ sequencialDocumento: i + 1, titulo: `Anexo ${i + 1}` })) }
+    : { ok: true, arrayBuffer: async () => Buffer.from("%PDF-documento") };
+  try {
+    const { buscarTextoEdital } = require("../lib/ia-edital").__test;
+    const numero = "12345678000199-1-000406/2026";
+    const interativo = await buscarTextoEdital(numero);
+    assert.equal(interativo.coberturaLeitura.documentosLidos.length, 3);
+    assert.equal(interativo.coberturaLeitura.parcial, true);
+    const completo = await buscarTextoEdital(numero, { limiteDocumentos: 12 });
+    assert.equal(completo.coberturaLeitura.documentosLidos.length, 6);
+    assert.equal(completo.coberturaLeitura.parcial, false);
+    quantidade = 13;
+    const limitado = await buscarTextoEdital(numero, { limiteDocumentos: 12 });
+    assert.equal(limitado.coberturaLeitura.documentosLidos.length, 12);
+    assert.equal(limitado.coberturaLeitura.parcial, true);
+    assert.match(limitado.coberturaLeitura.documentosNaoLidos.join("\n"), /Anexo 13.*limite de documentos/);
+  } finally {
+    global.fetch = fetchOriginal;
+    if (cachePdf) require.cache[caminhoPdf] = cachePdf;
+    else delete require.cache[caminhoPdf];
+  }
+});
+
 test("leitura agrega edital e TR e sinaliza página com imagem em documento parcialmente legível", async () => {
   const caminhoPdf = require.resolve("pdf-parse");
   const cachePdf = require.cache[caminhoPdf];
