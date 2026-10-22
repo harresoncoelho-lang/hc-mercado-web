@@ -47,6 +47,7 @@
                       return;
             }
             window.__clienteAtual = cliente;
+            window.__clienteIdAtual = session.user.id;
             window.__clienteEmailAtual = session.user.email || "";
             if (typeof window.__resolverClientePronto === "function") window.__resolverClientePronto(cliente);
             if (typeof window.__preencherIdentidadeUsuario === "function") window.__preencherIdentidadeUsuario();
@@ -1712,8 +1713,9 @@
         <label>Palavras-chave (separadas por vírgula)</label>
         <input id="bol-palavras" placeholder="Ex: hospitalar, limpeza, informatica">
       </div>
-      <button class="btn-buscar" id="bol-salvar">Salvar filtro do boletim</button>
+      <button class="btn-buscar" id="bol-salvar">Salvar filtro na minha conta</button>
     </div>
+    <p id="bol-filtro-status" role="status" aria-live="polite"></p>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
     <div id="bol-calendario" class="caixa-interna"></div>
     <div id="bol-resultado"></div>
@@ -5954,18 +5956,41 @@
 
   // ---- Boletim (painel automático, baseado num filtro salvo — igual ao conceito de
   // "edição do dia" do ConLicitação, só que sem precisar clicar em nada toda vez) ----
+  function chaveFiltroBoletimConta() {
+    return window.__clienteIdAtual ? `hc_boletim_filtro:${window.__clienteIdAtual}` : null;
+  }
   function lerFiltroBoletim() {
+    const chave = chaveFiltroBoletimConta();
+    if (!chave) return null;
+    if (window.__filtroBoletimAtual?.id === window.__clienteIdAtual) return window.__filtroBoletimAtual.filtro;
     try {
-      const bruto = localStorage.getItem("hc_boletim_filtro");
+      const bruto = localStorage.getItem(chave);
       return bruto ? JSON.parse(bruto) : null;
     } catch (e) {
       return null;
     }
   }
-  function salvarFiltroBoletim(ufs, palavrasRaw) {
+  async function carregarFiltroBoletimConta() {
+    const cliente = await window.__clientePronto;
+    if (!cliente || !window.__clienteIdAtual) return;
+    const { data, error } = await window.__sbClient.from("clientes").select("boletim_filtro").eq("id", window.__clienteIdAtual).maybeSingle();
+    if (error) throw new Error(error.message || "Não foi possível recuperar o filtro da conta.");
+    window.__filtroBoletimAtual = { id: window.__clienteIdAtual, filtro: data?.boletim_filtro || null };
     try {
-      const lista = normalizarUfs(ufs);
-      localStorage.setItem("hc_boletim_filtro", JSON.stringify({ ufs: lista, uf: lista[0] || "", palavrasRaw }));
+      localStorage.setItem(chaveFiltroBoletimConta(), JSON.stringify(data?.boletim_filtro || null));
+    } catch (e) { /* a preferência da conta funciona mesmo sem cache local */ }
+  }
+  async function salvarFiltroBoletim(ufs, palavrasRaw) {
+    await window.__clientePronto;
+    if (!window.__clienteIdAtual) throw new Error("Entre novamente para salvar o filtro.");
+    const lista = normalizarUfs(ufs);
+    const filtro = { ufs: lista, uf: lista[0] || "", palavrasRaw: String(palavrasRaw || "").trim() };
+    if (!filtro.palavrasRaw || filtro.palavrasRaw.length > 1000) throw new Error("Informe palavras-chave com até 1.000 caracteres.");
+    const { data, error } = await window.__sbClient.from("clientes").update({ boletim_filtro: filtro }).eq("id", window.__clienteIdAtual).select("boletim_filtro").maybeSingle();
+    if (error || !data) throw new Error(error?.message || "O filtro não foi salvo na conta. Tente novamente.");
+    window.__filtroBoletimAtual = { id: window.__clienteIdAtual, filtro };
+    try {
+      localStorage.setItem(chaveFiltroBoletimConta(), JSON.stringify(filtro));
     } catch (e) { /* localStorage indisponível */ }
   }
 
@@ -6351,38 +6376,61 @@
     }
   }
 
-  document.querySelector('nav button[data-alvo="boletim"]').addEventListener("click", () => {
+  document.querySelector('nav button[data-alvo="boletim"]').addEventListener("click", async () => {
+    await window.__filtroBoletimPronto;
     if (!bolJaGerado || Date.now() - bolAtualizacao.ultimaLeitura >= BOL_REVALIDACAO_MS) gerarBoletim();
   });
 
-  document.getElementById("bol-atualizar").addEventListener("click", () => gerarBoletim({ atualizarAoVivo: true }));
+  document.getElementById("bol-atualizar").addEventListener("click", async () => {
+    await window.__filtroBoletimPronto;
+    gerarBoletim({ atualizarAoVivo: true });
+  });
 
-  document.getElementById("bol-config-toggle").addEventListener("click", () => {
+  document.getElementById("bol-config-toggle").addEventListener("click", async () => {
+    await window.__filtroBoletimPronto;
     const painel = document.getElementById("bol-config-painel");
     const visivel = painel.style.display !== "none";
     if (!visivel) {
-      const filtro = lerFiltroBoletim();
+      let filtro = lerFiltroBoletim();
+      // O filtro antigo não tinha dono: só é importado para a conta após clicar Salvar.
+      if (!filtro) {
+        try { filtro = JSON.parse(localStorage.getItem("hc_boletim_filtro")); } catch (e) { /* sem filtro antigo */ }
+      }
       definirUfsNoSelect(document.getElementById("bol-uf"), filtro && (filtro.ufs || filtro.uf));
       document.getElementById("bol-palavras").value = (filtro && filtro.palavrasRaw) || "";
     }
     painel.style.display = visivel ? "none" : "flex";
   });
 
-  document.getElementById("bol-salvar").addEventListener("click", () => {
+  document.getElementById("bol-salvar").addEventListener("click", async () => {
     const ufs = ufsDoSelect(document.getElementById("bol-uf"));
     const palavrasRaw = document.getElementById("bol-palavras").value.trim();
     if (!palavrasRaw) {
       alert("Informe ao menos uma palavra-chave pro filtro do boletim.");
       return;
     }
-    salvarFiltroBoletim(ufs, palavrasRaw);
-    document.getElementById("bol-config-painel").style.display = "none";
-    gerarBoletim();
+    const botao = document.getElementById("bol-salvar");
+    const status = document.getElementById("bol-filtro-status");
+    botao.disabled = true;
+    status.textContent = "Salvando na sua conta...";
+    try {
+      await salvarFiltroBoletim(ufs, palavrasRaw);
+      status.textContent = "Filtro salvo na conta. Disponível nos outros navegadores.";
+      document.getElementById("bol-config-painel").style.display = "none";
+      gerarBoletim();
+    } catch (erro) {
+      status.textContent = `Não foi possível salvar: ${erro.message}`;
+    } finally {
+      botao.disabled = false;
+    }
   });
 
   // Gera o boletim automaticamente já na primeira carga da página (aba inicial),
   // igual ao ConLicitação abrir direto na tela de boletins.
-  gerarBoletim();
+  window.__filtroBoletimPronto = carregarFiltroBoletimConta().catch(() => {
+    document.getElementById("bol-filtro-status").textContent = "Não foi possível recuperar o filtro da conta. Usando o cache deste login; tente novamente ao recarregar.";
+  });
+  window.__filtroBoletimPronto.then(() => gerarBoletim());
 
   // ---------- Oportunidades ----------
   // Classifica a esfera (federal/estadual/municipal) de uma oportunidade. Preferência total
