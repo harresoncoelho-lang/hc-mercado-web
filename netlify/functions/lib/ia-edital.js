@@ -161,7 +161,7 @@ function precisaReleituraPrioritaria(cache) {
 }
 
 // Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
-async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DOCUMENTOS_PARA_LEITURA } = {}) {
+async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DOCUMENTOS_PARA_LEITURA, extrairArquivo = null } = {}) {
   const partes = partesNumeroControle(numeroControlePNCP);
   if (!partes) return { texto: null, escaneado: false };
   try {
@@ -314,7 +314,25 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
         if (!respArquivo.ok) throw new Error(`HTTP ${respArquivo.status}`);
         const buffer = Buffer.from(await respArquivo.arrayBuffer());
         paginasPoucoTexto = [];
-        const textos = await textosDoArquivo(buffer);
+        let textos;
+        if (extrairArquivo) {
+          try {
+            const disposicao = respArquivo.headers?.get?.("content-disposition") || "";
+            const nomeCabecalho = disposicao.match(/filename\*?=(?:UTF-8'')?["']?([^"';\r\n]+)/i)?.[1];
+            const tipo = respArquivo.headers?.get?.("content-type") || "";
+            const nome = doc.nomeArquivo || nomeCabecalho
+              || (/\.[a-z0-9]{1,8}$/i.test(doc.titulo || "") ? doc.titulo : null)
+              || (/\.[a-z0-9]{1,8}$/i.test(doc.url || "") ? doc.url : null)
+              || (/text\/csv/i.test(tipo) ? "anexo.csv" : /text\/plain/i.test(tipo) ? "anexo.txt" : "anexo");
+            const extraido = await extrairArquivo(buffer, nome);
+            textos = extraido.texto?.trim() ? [extraido.texto] : [];
+            for (const pendencia of extraido.pendencias || []) documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): ${pendencia}`);
+          } catch (erroExtracao) {
+            // Falha do conversor não pode quebrar a leitura nativa nem parecer cobertura completa.
+            documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): conversor ampliado indisponível`);
+            textos = await textosDoArquivo(buffer);
+          }
+        } else textos = await textosDoArquivo(buffer);
         if (!textos.length) throw new Error("Formato ilegível ou documento sem texto");
         documentosLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento})`);
         if (paginasPoucoTexto.length) documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}), páginas ${paginasPoucoTexto.join(", ")}: pouco texto extraível; conferir imagens e tabelas`);

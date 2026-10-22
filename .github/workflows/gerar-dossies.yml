@@ -37,6 +37,15 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
+      - name: Preparar leitor isolado de anexos
+        run: docker build -t licitaplena-anexos:local -f scripts/Dockerfile.anexos .
+      - name: Validar conversores sem IA nem rede
+        run: >-
+          docker run --rm --network=none --read-only --cap-drop=ALL
+          --security-opt=no-new-privileges --memory=1g --cpus=1 --pids-limit=128
+          --tmpfs=/tmp:rw,size=268435456,mode=1777 --env=HOME=/tmp --env=TESTAR_CONVERSORES=1
+          --mount type=bind,source=${{ github.workspace }},target=/repo,readonly
+          --entrypoint python3 licitaplena-anexos:local /repo/scripts/test_extrair_anexo.py
       - name: Gerar dossiês da fila e dos boletins
         env:
           # Cadeia de provedores de IA com troca automática (ver cabeçalho do script).
@@ -53,6 +62,8 @@ jobs:
           OPENROUTER_MODELOS: ${{ vars.OPENROUTER_MODELOS }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LIMITE_MINUTOS_DOSSIES: "8"
+          LEITURA_MULTIFORMATO: "1"
+          IMAGEM_EXTRATOR_ANEXOS: licitaplena-anexos:local
           # Prazos de download do PNCP do robô (a Function no site usa 4 s / 3,5 s).
           TIMEOUT_LISTA_PNCP_MS: "20000"
           TIMEOUT_ARQUIVO_PNCP_MS: "60000"
