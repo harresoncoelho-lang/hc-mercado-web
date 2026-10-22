@@ -52,7 +52,9 @@ async function extrairAnexoLocal(buffer, nome, { python = process.env.PYTHON_EXT
     const arquivo = path.join(pasta, entrada);
     const env = Object.fromEntries(Object.entries(process.env).filter(([chave]) => /^(PATH|SYSTEMROOT|WINDIR|TEMP|TMP|HOME|LANG|TESSDATA_PREFIX)$/i.test(chave)));
     const programa = imagem ? 'docker' : python;
-    const argumentos = imagem ? ['run', '--rm', '--network=none', '--read-only', '--cap-drop=ALL',
+    // O mesmo UID do executor pode ler o mkdtemp(0700) sem ampliar suas permissões.
+    const usuario = typeof process.getuid === 'function' && process.getuid() !== 0 ? ['--user', `${process.getuid()}:${process.getgid()}`] : [];
+    const argumentos = imagem ? ['run', '--rm', ...usuario, '--network=none', '--read-only', '--cap-drop=ALL',
       '--security-opt=no-new-privileges', '--memory=1g', '--cpus=1', '--pids-limit=128',
       '--tmpfs=/tmp:rw,size=268435456,mode=1777', '--env=HOME=/tmp',
       '--mount', `type=bind,source=${pasta},target=/dados,readonly`, imagem, '/dados/' + path.basename(arquivo)]
