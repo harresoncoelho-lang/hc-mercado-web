@@ -11,16 +11,12 @@ concurrency:
 on:
   schedule:
     # Reserva a cada 10 min, fora dos minutos redondos; o GitHub ainda pode atrasar cron.
-    - cron: "7,17,27,37,47,57 * * * *"
+    - cron: "9,19,29,39,49,59 * * * *"
   # Preparar logo após a chegada dos dados, sem depender do cron nem do primeiro clique.
   workflow_run:
     workflows: ["Atualizar dados do PNCP", "Recuperar UFs pendentes do PNCP"]
     types: [completed]
     branches: [main]
-  # Mudança no próprio agendamento valida uma rodada automática imediatamente.
-  push:
-    branches: [main]
-    paths: [".github/workflows/gerar-dossies.yml"]
   workflow_dispatch: {}
 
 permissions:
