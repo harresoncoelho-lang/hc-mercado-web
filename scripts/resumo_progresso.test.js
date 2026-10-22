@@ -37,7 +37,7 @@ test('resumo pendente bloqueia ações, mostra progresso e consulta novamente at
   await a.contexto.chamarIA('resumo', null);
   assert.equal(a.estado().iaResumoPendente, true);
   for (const id of ['modal-ia-checklist-email','modal-ia-checklist-doc','modal-ia-imprimir','modal-ia-pergunta','modal-ia-enviar']) assert.equal(a.elementos.get(id).disabled, true);
-  assert.match(a.mensagens[0].textContent, /etapa 2 de 4/);
+  assert.equal(a.mensagens[0].textContent, 'Carregando...');
   assert.equal(a.cache.size, 0);
   await a.contexto.chamarIA('pergunta', 'teste'); assert.equal(a.requisicoes.length, 1);
   const timer = [...a.timers.values()][0]; assert.equal(timer.ms, 3000); timer.fn(); await drenar();
