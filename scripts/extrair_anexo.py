@@ -16,7 +16,6 @@ import xml.etree.ElementTree as ET
 
 MAX_BYTES = 64 * 1024 * 1024
 MAX_ENTRADAS = 200
-MAX_PAGINAS = 100
 MAX_TEXTO = 600000
 OFFICE = {'.doc', '.docx', '.rtf', '.odt', '.xls', '.xlsx', '.ods', '.ppt', '.pptx', '.odp'}
 IMAGENS = {'.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp', '.webp'}
@@ -85,9 +84,6 @@ class Leitor:
         if not match:
             raise ValueError('não foi possível contar páginas')
         total = int(match[1])
-        limite = min(total, MAX_PAGINAS - self.paginas)
-        if limite < total:
-            self.pendencias.append(f'{nome}: limite de páginas ({limite}/{total})')
         imagens = self.comando(['pdfimages', '-list', str(caminho)]).decode('utf-8', 'replace')
         paginas_imagem = set()
         for linha in imagens.splitlines():
@@ -96,7 +92,8 @@ class Leitor:
                 if int(campos[3]) >= 300 and int(campos[4]) >= 300:
                     paginas_imagem.add(int(campos[0]))
         with tempfile.TemporaryDirectory(prefix='anexo-pdf-') as pasta:
-            for pagina in range(1, limite + 1):
+            # Tempo, bytes e texto limitam a leitura; não cortar editais pela contagem de páginas.
+            for pagina in range(1, total + 1):
                 self.paginas += 1
                 texto = self.comando(['pdftotext', '-f', str(pagina), '-l', str(pagina), '-layout', str(caminho), '-']).decode('utf-8', 'replace')
                 if len(texto.strip()) < 80 or pagina in paginas_imagem:

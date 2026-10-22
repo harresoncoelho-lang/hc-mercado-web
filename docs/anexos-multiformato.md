@@ -19,7 +19,7 @@ O worker de dossiês usa conversores locais em contêiner isolado. A leitura int
 | RAR multipartes separados ou dentro de ZIP/7z/RAR | Reúne nomes do mesmo grupo na pasta isolada; suporta part1/part2 e .rar/.r00/.r01; verifica integridade antes de ler |
 | Fonte original ausente | OCR de uma retificação não substitui o edital original |
 
-Limites: 64 MiB de orçamento, 200 entradas, 100 páginas, 200 mil células, 600 mil caracteres e 90 segundos por anexo. Limite atingido mantém cobertura parcial. Não marca um pacote completo só porque uma entrada pôde ser lida. OCR pode errar caracteres; não representa garantia de correção jurídica nem leitura de 100% dos formatos existentes.
+Limites: 64 MiB de orçamento, 200 entradas, 200 mil células, 600 mil caracteres e 90 segundos por anexo. PDFs percorrem todas as páginas, sem corte fixo em 100 nem cota de páginas compartilhada entre anexos. Limite de recursos atingido mantém cobertura parcial. Não marca um pacote completo só porque uma entrada pôde ser lida. OCR pode errar caracteres; não representa garantia de correção jurídica nem leitura de 100% dos formatos existentes.
 
 Segurança: contêiner sem rede, sem credenciais, sem privilégios, código-fonte e entrada somente leitura, 1 GiB de memória, 1 CPU e temporários limitados a 256 MiB. Macros desabilitadas. Nunca executa os anexos. Falha do conversor preserva a leitura nativa e registra cobertura parcial.
 
