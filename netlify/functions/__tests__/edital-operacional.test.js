@@ -341,7 +341,7 @@ test("leitura agrega edital e TR e sinaliza página com imagem em documento parc
   const fetchOriginal = global.fetch;
   const chamadas = [];
   require.cache[caminhoPdf] = { exports: async (buffer, opcoes) => {
-    const principal = buffer.toString().endsWith("1");
+    const principal = (buffer.data || buffer).toString().endsWith("1");
     const paginas = principal ? ["Cláusula pesquisável do edital. ".repeat(25), "ANEXO II - imagem"] : ["Comprovante bancário exigido no TR. ".repeat(25)];
     const textos = [];
     for (const [pageIndex, texto] of paginas.entries()) textos.push(await opcoes.pagerender({
