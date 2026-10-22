@@ -23,6 +23,7 @@
 // chamarGroq tenta automaticamente o modelo suportado se o override retornar "model not
 // found". Isso evita uma nova indisponibilidade silenciosa numa próxima migração do provedor.
 const MODELO_PADRAO = "openai/gpt-oss-20b";
+const { paginaCurtaPendente } = require("../_pdf_cobertura");
 // QA real do 20B confundiu prazos e devolveu listas só com IDs. A síntese
 // usa 120B com o mesmo orçamento; perguntas mantêm o modelo anterior.
 const MODELO_RESUMO = "openai/gpt-oss-120b";
@@ -203,7 +204,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
     let paginasPoucoTexto = [];
     async function textoDePdf(buffer) {
       if (buffer.slice(0, 5).toString("latin1") !== "%PDF-") return null;
-      const resultado = await pdfParse(buffer, { pagerender: async (pagina) => {
+      const resultado = await pdfParse({ data: buffer, nativeImageDecoderSupport: "none", disableFontFace: true }, { pagerender: async (pagina) => {
         const conteudo = await pagina.getTextContent({ normalizeWhitespace: false, disableCombineTextItems: false });
         let y = null;
         let textoPagina = '[Página ' + (pagina.pageIndex + 1) + ']\n';
@@ -211,7 +212,7 @@ async function buscarTextoEdital(numeroControlePNCP) {
           textoPagina += (y !== null && y !== item.transform[5] ? '\n' : '') + item.str;
           y = item.transform[5];
         }
-        if (textoPagina.replace(/\s+/g, " ").length < 500) paginasPoucoTexto.push(pagina.pageIndex + 1);
+        if (textoPagina.replace(/\s+/g, " ").length < 500 && await paginaCurtaPendente(pagina)) paginasPoucoTexto.push(pagina.pageIndex + 1);
         return textoPagina;
       } });
       const texto = (resultado.text || "").trim();
