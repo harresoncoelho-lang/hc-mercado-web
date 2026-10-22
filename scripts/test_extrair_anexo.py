@@ -10,12 +10,54 @@ from pathlib import Path
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('anexo', Path(__file__).with_name('extrair_anexo.py'))
 anexo = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(anexo)
 
 class AnexosTest(unittest.TestCase):
+    def pdf_simulado(self, paginas, falhar_apos=None):
+        def comando(args):
+            if args[0] == 'pdfinfo':
+                return f'Pages: {paginas}\n'.encode()
+            if args[0] == 'pdfimages':
+                return b''
+            if args[0] == 'pdftotext':
+                pagina = int(args[2])
+                if falhar_apos and pagina > falhar_apos:
+                    raise ValueError('limite de tempo')
+                return (f'Conteudo integral da pagina {pagina:03d}. ' + 'Texto oficial. ' * 8).encode()
+            self.fail(f'Conversor inesperado: {args[0]}')
+        return comando
+
+    def test_pdf_le_todas_as_114_paginas(self):
+        caminho = self.arquivo('apui.pdf', b'%PDF-')
+        with patch.object(anexo.Leitor, 'comando', side_effect=self.pdf_simulado(114)):
+            r = anexo.extrair(caminho)
+        self.assertEqual(114, r['paginas'])
+        self.assertIn('pagina 114.', r['texto'])
+        self.assertEqual([], r['pendencias'])
+
+    def test_pdfs_no_zip_nao_compartilham_corte_de_100_paginas(self):
+        dados = io.BytesIO()
+        with zipfile.ZipFile(dados, 'w') as z:
+            z.writestr('edital.pdf', b'%PDF-')
+            z.writestr('termo.pdf', b'%PDF-')
+        with patch.object(anexo.Leitor, 'comando', side_effect=self.pdf_simulado(60)):
+            r = anexo.extrair(self.arquivo('anexos.zip', dados.getvalue()))
+        self.assertEqual(120, r['paginas'])
+        self.assertEqual(2, r['texto'].count('pagina 060.'))
+        self.assertEqual([], r['pendencias'])
+
+    def test_pdf_interrompido_continua_parcial(self):
+        caminho = self.arquivo('interrompido.pdf', b'%PDF-')
+        with patch.object(anexo.Leitor, 'comando', side_effect=self.pdf_simulado(114, 101)):
+            r = anexo.extrair(caminho)
+        self.assertIn('pagina 101.', r['texto'])
+        self.assertNotIn('pagina 114.', r['texto'])
+        self.assertTrue(any('limite de tempo' in p for p in r['pendencias']))
+
     def arquivo(self, nome, conteudo):
         pasta = tempfile.TemporaryDirectory()
         self.addCleanup(pasta.cleanup)
