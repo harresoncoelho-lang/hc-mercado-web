@@ -227,3 +227,54 @@ test("consultarOportunidadesSupabase devolve null e não quebra em erro do Supab
   const contexto = contextoOportunidadesSupabase(() => ({ data: null, error: { message: "falhou" } }));
   assert.equal(await contexto.consultarOportunidadesSupabase([]), null);
 });
+
+test("resumo apresenta as seções sem faixa técnica e preserva o diagnóstico interno", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const inicio = html.indexOf("  function renderizarEstruturaIA(");
+  const fim = html.indexOf("  async function obterTokenSessao(", inicio);
+  function elemento(tag) {
+    return { tag, children: [], dataset: {}, style: {}, textContent: "", append(...filhos) { this.children.push(...filhos); }, appendChild(filho) { this.children.push(filho); }, setAttribute() {}, querySelector() { return null; } };
+  }
+  for (const fonteLida of [false, true]) {
+    const conversa = elemento("div");
+    const corpo = elemento("div");
+    const ambiente = vm.createContext({
+      iaEditalAtual: {}, iaItensPncpAtual: [], iaEstruturaAtual: null,
+      aplicarDadosOficiaisNaEstruturaIA: (est) => est,
+      renderizarCartoesTopoIA() {},
+      avisoCoberturaLeitura: () => "Leitura parcial: arquivo.pdf não lido, HTTP 503",
+      ResumoModelo: { montar: () => ({ secoes: [{ titulo: "Resumo dos Itens", campos: [{ rotulo: "Descrição", valor: "Papel A4" }] }] }) },
+      document: { getElementById: () => conversa, querySelector: () => corpo, createElement: elemento, createTextNode: (texto) => ({ textContent: texto }) },
+    });
+    vm.runInContext(html.slice(inicio, fim), ambiente);
+    const entrada = { fonteLida, coberturaLeitura: { parcial: true, documentosNaoLidos: ["arquivo.pdf: HTTP 503"] } };
+    ambiente.renderizarEstruturaIA(entrada);
+    const visivel = JSON.stringify(conversa);
+    assert.match(visivel, /Papel A4/);
+    assert.doesNotMatch(visivel, /HTTP 503|Leitura parcial|arquivo\.pdf/);
+    assert.equal(ambiente.iaEstruturaAtual.coberturaLeitura, entrada.coberturaLeitura);
+  }
+});
+
+test("falha técnica não vaza no resumo, mas sessão expirada orienta novo login", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const inicio = html.indexOf("  function oferecerNovaAnalise(");
+  const fim = html.indexOf("  // O dossiê completo", inicio);
+  const mensagens = [];
+  const ambiente = vm.createContext({
+    console: { warn() {} },
+    escreverMensagemIA: (texto) => { mensagens.push(texto); return { appendChild() {} }; },
+    document: { createElement: () => ({ addEventListener() {} }) },
+  });
+  vm.runInContext(html.slice(inicio, fim), ambiente);
+  ambiente.oferecerNovaAnalise("HTTP 503: documento indisponível");
+  ambiente.oferecerNovaAnalise("Sessão expirada. Faça login novamente.", true);
+  assert.equal(mensagens[0], "");
+  assert.match(mensagens[1], /Faça login novamente/);
+});
