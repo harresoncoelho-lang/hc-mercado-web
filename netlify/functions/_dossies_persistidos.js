@@ -3,6 +3,7 @@
 // Compartilhado entre a rota do resumo e o processamento de segundo plano do Gateway:
 // qualquer caminho que conclua um dossiê precisa gravá-lo aqui.
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
+const { conferirEvidenciasDoResumo } = require("./_resumo_evidencias");
 
 // Dossiê não expira por idade: o edital publicado não muda. Só a versão do formato
 // (conferida por quem lê) ou o status invalidam um dossiê.
@@ -15,7 +16,7 @@ async function buscarDossiePersistido(numeroControlePNCP) {
     if (!resposta.ok) return null;
     const linha = (await resposta.json())[0];
     if (!linha || !linha.dossie) return null;
-    return { ...linha.dossie, versao: linha.versao || linha.dossie.versao };
+    return conferirEvidenciasDoResumo({ ...linha.dossie, versao: linha.versao || linha.dossie.versao });
   } catch (e) {
     return null;
   }
@@ -24,6 +25,7 @@ async function buscarDossiePersistido(numeroControlePNCP) {
 async function salvarDossiePersistido(numeroControlePNCP, dossie) {
   const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!chave || !numeroControlePNCP || !dossie) return;
+  dossie = conferirEvidenciasDoResumo(dossie);
   try {
     const resposta = await fetch(`${SUPABASE_URL}/rest/v1/dossies_editais?on_conflict=numero_controle_pncp`, {
       method: "POST",
