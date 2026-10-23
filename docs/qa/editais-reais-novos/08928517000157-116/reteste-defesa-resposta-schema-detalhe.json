@@ -1,0 +1,36 @@
+{
+  "data": "2026-10-22T21:50:49.900Z",
+  "origem": "handler real / Auth e PostgREST locais",
+  "pedidoHash": "cdef14c012bb67d3f56a78018ad09315519edcde0ebc2723b50dfcb96231e94a",
+  "edital": "08928517000157-1-000116/2026",
+  "chamadas": [
+    {
+      "numero": 1,
+      "entrada": 4685,
+      "saidaMaxima": 2500,
+      "bytes": 18759,
+      "status": 400,
+      "content": null,
+      "finish_reason": null,
+      "usage": {},
+      "erroProvedor": {
+        "code": "json_validate_failed",
+        "type": "invalid_request_error",
+        "message": "Generated JSON does not match the expected schema. Please adjust your prompt. See 'failed_generation' for more details. Error: jsonschema: '/pedido' does not validate with /properties/pedido/pattern: 'Solicitar ao órgão a lista detalhada dos documentos exigidos sob o item 11.1, a confirmação da aplicação da dispensa documental prevista no item 11.2, a indicação das condições de habilitação a serem atendidas e o enquadramento do valor da contratação para verificar se cabe a dispensa.' does not match pattern '^[^0-9:/]*$'",
+        "failed_generation": "{\"diagnostico\":\"A resposta simulada indica que serão requisitados documentos de qualificação técnica e econômico-financeira, caso haja verificação, e que a dispensa documental será avaliada conforme o termo de referência, mas não descreve a lista específica de documentos nem as condições de habilitação que deverão ser atendidas neste contrato.\",\"fatos\":[{\"id\":\"R1\",\"trecho\":\"SIMULAÇÃO FICTÍCIA PARA QA LOCAL — não é resposta autêntica do órgão. Para fins deste cenário de teste, informa-se apenas: os documentos de qualificação técnica e econômico-financeira serão solicitados se necessária a verificação; eventual dispensa documental será examinada nas condições previstas no termo de referência. Esta resposta simulada não apresenta a lista dos documentos, não informa quais condições serão aplicadas nesta contratação, não identifica decisão administrativa sobre dispensa documental e não esclarece o enquadramento do valor.\"},{\"id\":\"F54\",\"trecho\":\"11.1.Se necessária a verificação da qualificação técnica e econômico-financeira do fornecedor, a documentação essencial, suficiente para comprovar as referidas capacidades, será restrita aquela definida nos Arts. 67 e 69, da Lei 14.133/21, respectivamente.\"},{\"id\":\"F55\",\"trecho\":\"11.2.Salienta-se que a documentação relacionada nos Arts. 66 a 69, da Lei 14.133/21, para demonstrar a capacidade do fornecedor de realizar o objeto eventualmente pactuado, dividida em habilitação jurídica; qualificação técnico-profissional e técnico-operacional; habilitações fiscal, social e trabalhista; e habilitação econômico-financeira; poderá ser dispensada, total ou parcialmente, nas contratações em valores inferiores a um quarto do limite para dispensa de licitação para compras em geral, conforme as disposições do Art. 70, do mesmo diploma legal.\"}],\"fundamentos\":[\"lei14133-art69\",\"lei14133-art70-III\",\"lei14133-art67\"],\"argumentoContrario\":\"Pode ser que a exigência de documentos não se aplique a todas as contratações, sobretudo se o valor estiver abaixo do limite para dispensa documental; ainda, a verificação de qualificação pode não ser obrigatória se a administração comprovar capacidade do fornecedor por outro meio.\",\"pedido\":\"Solicitar ao órgão a lista detalhada dos documentos exigidos sob o item 11.1, a confirmação da aplicação da dispensa documental prevista no item 11.2, a indicação das condições de habilitação a serem atendidas e o enquadramento do valor da contratação para verificar se cabe a dispensa.\",\"pendencias\":[\"Confirmar valor da contratação e limite de dispensa.\",\"Esclarecer se há decisão administrativa que autoriza a dispensa documental.\",\"Verificar se a verificação de qualificação será realizada em todas as fases.\",\"Confirmar a natureza das habilitações exigidas (jurídica, técnico‑profissional, fiscal, etc.).\"]}"
+      }
+    }
+  ],
+  "locais": {
+    "auth": 1,
+    "cota": 1,
+    "canonico": 1
+  },
+  "bloqueios": 0,
+  "aprovado": false,
+  "statusHTTP": 502,
+  "resposta": {
+    "erro": "A IA não concluiu uma análise utilizável. Tente depois; nenhum documento foi enviado."
+  },
+  "erro": "Expected values to be strictly equal:\n\n502 !== 200\n"
+}

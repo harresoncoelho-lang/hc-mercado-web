@@ -41,7 +41,7 @@ function coberturaDocumento(resumo) {
   const cobertura = resumo.coberturaLeitura || {};
   const lidos = Array.isArray(cobertura.documentosLidos) ? cobertura.documentosLidos.map(texto).filter(Boolean) : [];
   const naoLidos = Array.isArray(cobertura.documentosNaoLidos) ? cobertura.documentosNaoLidos.map(texto).filter(Boolean) : [];
-  const parcial = cobertura.parcial !== false || naoLidos.length > 0 || resumo.modoDegradado;
+  const parcial = cobertura.parcial !== false || naoLidos.length > 0 || resumo.modoDegradado || resumo.coberturaSintese?.parcial;
   const partes = [parcial ? "Leitura parcial: este checklist não confirma a totalidade das exigências." : "Requisitos extraídos dos documentos analisados. Confira a referência de cada item no edital."];
   if (lidos.length) partes.push(`Documentos lidos: ${lidos.join("; ")}.`);
   if (naoLidos.length) partes.push(`Documentos não lidos: ${naoLidos.join("; ")}.`);
@@ -108,7 +108,7 @@ function conteudoDocumento(edital, resumo) {
   return `${cabecalho}${paragrafo("Resumo do Edital", {negrito:true,tamanho:36,antes:240})}${paragrafo(`${rotuloNumero}: ${numero}`)}${destaque}${paragrafo(coberturaDocumento(resumo), {cor:"637085",tamanho:18})}${secoes}${paragrafo("Resumo elaborado pelo LicitaPlena com base nos documentos disponíveis. Confira as referências e pendências indicadas.", {tamanho:16,cor:"637085"})}`;
 }
 
-function montarDocx(edital, resumo) {
+function montarDocx(edital, resumo, minuta = null) {
   const zip = new AdmZip();
   zip.addFile("[Content_Types].xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`));
   zip.addFile("_rels/.rels", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`));
@@ -116,8 +116,15 @@ function montarDocx(edital, resumo) {
   zip.addFile("word/styles.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>`));
   zip.addFile("docProps/core.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/"><dc:title>Checklist de Licitação</dc:title><dc:creator>LicitaPlena</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`));
   zip.addFile("docProps/app.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>LicitaPlena</Application></Properties>`));
-  zip.addFile("word/document.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${conteudoDocumento(edital, resumo)}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="900" w:right="900" w:bottom="900" w:left="900"/><w:defaultTabStop w:val="720"/></w:sectPr></w:body></w:document>`));
+  zip.addFile("word/document.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${minuta ? paragrafo(minuta.texto) : conteudoDocumento(edital, resumo)}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="900" w:right="900" w:bottom="900" w:left="900"/><w:defaultTabStop w:val="720"/></w:sectPr></w:body></w:document>`));
   return zip.toBuffer();
+}
+
+function textoXmlValido(texto) {
+  return Array.from(texto).every((caractere) => {
+    const codigo = caractere.codePointAt(0);
+    return codigo === 9 || codigo === 10 || codigo === 13 || (codigo >= 0x20 && codigo <= 0xD7FF) || (codigo >= 0xE000 && codigo <= 0xFFFD) || codigo >= 0x10000;
+  });
 }
 
 exports.handler = async (event) => {
@@ -127,13 +134,16 @@ exports.handler = async (event) => {
   if (!usuario.ok) return responder(event, usuario.status, JSON.stringify({ erro: usuario.erro }));
   let dados;
   try { dados = JSON.parse(event.body || "{}"); } catch (e) { return responder(event, 400, JSON.stringify({ erro: "Dados do checklist inválidos." })); }
+  if (!dados || typeof dados !== "object" || Array.isArray(dados)) return responder(event, 400, JSON.stringify({ erro: "Corpo inválido." }));
   const edital = dados.edital && typeof dados.edital === "object" ? dados.edital : {};
   const resumo = dados.resumoEstruturado && typeof dados.resumoEstruturado === "object" ? dados.resumoEstruturado : {};
-  if (!podeGerarChecklist(resumo)) return responder(event, 422, JSON.stringify({ erro: "O checklist requer a leitura do edital e requisitos identificados. Gere o Resumo do Edital antes de exportar." }));
-  const arquivo = montarDocx(edital, resumo);
+  const minuta = dados.minuta;
+  if (minuta && (!["esclarecimento", "impugnacao"].includes(minuta.tipo) || minuta.revisado !== true || typeof minuta.texto !== "string" || !minuta.texto.trim() || minuta.texto.length > 50000 || !textoXmlValido(minuta.texto))) return responder(event, 422, JSON.stringify({ erro: "Revise a minuta e informe um texto válido de até 50000 caracteres e um tipo válido." }));
+  if (!minuta && !podeGerarChecklist(resumo)) return responder(event, 422, JSON.stringify({ erro: "O checklist requer a leitura do edital e requisitos identificados. Gere o Resumo do Edital antes de exportar." }));
+  const arquivo = montarDocx(edital, resumo, minuta);
   return { ...responder(event, 200, arquivo.toString("base64"), {
     "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "Content-Disposition": 'attachment; filename="checklist-licitacao.docx"',
+    "Content-Disposition": `attachment; filename="${minuta ? "minuta-licitacao" : "checklist-licitacao"}.docx"`,
     "Content-Transfer-Encoding": "base64",
   }), isBase64Encoded: true };
 };

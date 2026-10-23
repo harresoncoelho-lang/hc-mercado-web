@@ -1,0 +1,7 @@
+{
+  "caso": "dados-bancarios",
+  "modelo": "openai/gpt-oss-20b",
+  "retorno": "{\"naoLocalizado\":true,\"evidencias\":[]}",
+  "pedido": 1,
+  "respostaAplicacao": "Atenção: a leitura dos documentos é parcial. Confira também o material não lido.\n\nNão localizei a informação nos trechos analisados. Isso não comprova que ela inexista no edital. Confira os documentos oficiais."
+}

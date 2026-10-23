@@ -58,7 +58,7 @@ test("worker usa fonte reservada e CAS impede execução duplicada; cache final 
   const resposta = await gateway.solicitarResumo(x.parametros);
   assert.equal(resposta.statusCode, 200);
   assert.equal(resposta.body.metodoResumo, "sintese_gateway");
-  assert.equal(require("../../../resumo-modelo").montar(resposta.body.estrutura).secoes.length, 18);
+  assert.ok(require("../../../resumo-modelo").montar(resposta.body.estrutura).secoes.some((s) => s.titulo === "Cobertura da análise"));
   assert.doesNotMatch(JSON.stringify(resposta), /usoPrivado|total_tokens|cotaAutorizada|Bearer/);
   assert.deepEqual(x.eventos, ["cota", "disparo"]);
 });

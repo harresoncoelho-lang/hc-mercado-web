@@ -1,0 +1,11 @@
+{
+  "modo": "defesa",
+  "tipo": "esclarecimento",
+  "fase": "questionamento",
+  "edital": {
+    "numeroControlePNCP": "88124961000159-1-000125/2026"
+  },
+  "hashFonte": "78382afb097dc5b2eab6cd1c9c6e9d8cabf55f465ac7f206f440cc43c9ecfb94",
+  "questionamento": "Solicito esclarecer como será organizado o cronograma de pedidos e entregas sob demanda: como serão comunicadas as requisições e contado o prazo de cada ordem de fornecimento prevista na minuta?",
+  "objetivo": "Confirmar a execução das entregas e o canal aplicável, sem confundir parcelamento do objeto em lotes com fornecimentos parcelados ou presumir conflito."
+}

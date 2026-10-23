@@ -25,6 +25,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="resumo-modelo.js"></script>
+<script src="capag.js"></script>
+<script src="defesa-licitante.js"></script>
+<script src="defesa-ui.js"></script>
 <script src="operacao-edital.js"></script>
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
@@ -906,6 +909,34 @@
   #modal-ia-fundo .secao-ia-titulo::-webkit-details-marker { display:none; }
   #modal-ia-fundo .secao-ia-titulo::after { content:'⌄'; margin-left:auto; color:#777; }
   #modal-ia-fundo details[open] > .secao-ia-titulo::after { transform:rotate(180deg); }
+  #modal-ia-fundo .defesa-central { border-radius:var(--raio); border-color:#cbd5e1; }
+  #modal-ia-fundo .defesa-central > .secao-ia-titulo { background:#141f2e; color:#eef3f8; border-left:4px solid var(--laranja); }
+  .defesa-central > p, .defesa-editor { margin:16px; line-height:1.6; }
+  .defesa-status:empty { display:none; }
+  .defesa-status { padding:10px 12px; background:#eef5ff; color:#153e6a; border-radius:var(--raio-pq); }
+  .defesa-ponto { margin:16px; padding:16px; border:1px solid #d7dee7; border-radius:var(--raio); background:#f8fafc; overflow-wrap:anywhere; }
+  .defesa-ponto h4 { margin:0 0 8px; color:#172a41; }
+  .defesa-ponto p { line-height:1.6; }
+  .defesa-ponto summary { cursor:pointer; color:#174b87; padding:8px 0; }
+  .defesa-acoes { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+  .defesa-botao { min-height:44px; padding:11px 16px; border:1px solid #234e7a; border-radius:var(--raio-pq); background:white; color:#173e67; font:inherit; font-size:13px; font-weight:700; line-height:1.4; cursor:pointer; }
+  .defesa-botao-destaque { background:#173e67; color:white; border-color:#173e67; box-shadow:inset 3px 0 var(--laranja); }
+  .defesa-botao:hover:not(:disabled) { background:#e8f0fb; color:#123252; }
+  .defesa-botao-destaque:hover:not(:disabled) { background:#234e7a; color:white; }
+  .defesa-botao:disabled { background:#edf0f4; border-color:#c9d1dc; color:#626c7b; cursor:not-allowed; box-shadow:none; }
+  .defesa-central :is(button,summary,textarea,input):focus-visible { outline:3px solid #b65300; outline-offset:3px; }
+  .defesa-editor { padding-top:18px; border-top:2px solid #d7dee7; }
+  .defesa-editor > label { display:block; font-weight:700; margin-bottom:10px; }
+  .defesa-central textarea { width:100%; box-sizing:border-box; font:inherit; line-height:1.7; padding:16px; resize:vertical; border:1px solid #8796a8; border-radius:var(--raio-pq); background:white; color:#172a41; }
+  .defesa-ponto label { display:block; font-weight:600; margin:14px 0 8px; }
+  .defesa-ponto select { width:100%; min-height:44px; padding:10px; border:1px solid #8796a8; border-radius:var(--raio-pq); background:white; color:#172a41; font:inherit; }
+  .defesa-analise { margin:16px; line-height:1.65; overflow-wrap:anywhere; }
+  .defesa-analise:empty { display:none; }
+  .defesa-analise blockquote { margin:10px 0; padding:10px 14px; background:#f1f5fa; border-left:3px solid #234e7a; }
+  .defesa-revisao { display:flex; align-items:flex-start; gap:10px; margin-top:16px; }
+  .defesa-revisao input { flex-shrink:0; width:20px; height:20px; margin:3px 0; accent-color:#173e67; }
+  .defesa-revisao label { cursor:pointer; }
+  @media(max-width:620px) { .defesa-acoes { flex-direction:column; } .defesa-botao { width:100%; } .defesa-ponto, .defesa-editor, .defesa-central > p { margin:12px; } .defesa-ponto { padding:12px; } }
   #modal-ia-fundo .resumo-campos { display:grid; grid-template-columns:1fr 1fr; column-gap:34px; margin:0; padding:8px 18px 13px; }
   #modal-ia-fundo .resumo-campo { padding:11px 0; min-width:0; }
   #modal-ia-fundo .resumo-campo.longo { grid-column:1/-1; }
@@ -2253,6 +2284,7 @@
     <p class="modal-ia-objeto" id="modal-ia-objeto" style="color:var(--texto-fraco);font-size:13px;margin:0 0 8px;"></p>
     <div class="modal-ia-cartoes-topo" id="modal-ia-cartoes-topo" style="display:none;"></div>
     <div class="modal-ia-conversa" id="modal-ia-conversa"></div>
+    <div id="modal-ia-defesa"></div>
 
     <details class="secao-ia" open>
       <summary class="secao-ia-titulo">Análise e Considerações do Licitante</summary>
@@ -2613,13 +2645,15 @@
   let iaCarregando = false;
   let iaTextoEdital = null;
   let iaEstruturaAtual = null;
+  let iaCapagAtual = null;
+  let baseCapagPromise;
   let iaItensPncpAtual = null;
   let iaItensPncpCarregando = null;
   let iaGeracaoModal = 0;
   let iaTemporizadorResumo = null;
   let iaRequisicaoAtual = null;
   let iaResumoPendente = false;
-  const VERSAO_CACHE_LOCAL_RESUMO = 17;
+  const VERSAO_CACHE_LOCAL_RESUMO = 18;
   const VALIDADE_CACHE_LOCAL_RESUMO_MS = 24 * 60 * 60 * 1000;
 
   function chaveCacheLocalResumo(edital) {
@@ -2684,7 +2718,8 @@
     alvo.innerHTML = modelo.cards.map(([rotulo, valor]) => `<div class="modal-ia-cartao-topo"><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(valor)}</dd></div>`).join("");
     const numeroOficial = iaEditalAtual?.numeroCompra && iaEditalAtual?.anoCompra
       ? `${iaEditalAtual.numeroCompra}/${iaEditalAtual.anoCompra}` : modelo.numero;
-    document.getElementById("modal-ia-titulo").textContent = `Resumo do Edital ${numeroOficial || ""}`.trim();
+    document.getElementById("modal-ia-titulo").textContent = /^\d{14}-\d-\d+\/\d{4}$/.test(numeroOficial || "")
+      ? `Resumo do Edital — PNCP ${numeroOficial}` : `Resumo do Edital ${numeroOficial || ""}`.trim();
   }
 
   // Cria uma seção fixa (sempre aberta, sem seta/clique) — igual ao padrão ConLicitação
@@ -2837,7 +2872,11 @@
     if (oficial.criterioJulgamento && !temDadosOperacionaisDoPortal) estrutura.detalhes.criterioJulgamento = oficial.criterioJulgamento;
     if (oficial.regimeExecucao) estrutura.detalhes.regimeExecucao = oficial.regimeExecucao;
     if (oficial.prazoFinal) {
-      estrutura.prazos = { ...(estrutura.prazos || {}), limiteEnvioPropostas: oficial.prazoFinal };
+      const documental = estrutura.prazosDocumentais?.proposta;
+      estrutura.prazos = { ...(estrutura.prazos || {}), limiteEnvioPropostas: documental || oficial.prazoFinal };
+      const horaDocumento = documental?.match(/\d{1,2}:\d{2}/)?.[0];
+      const horaPncp = String(oficial.prazoFinal).match(/\d{1,2}:\d{2}/)?.[0];
+      if (horaDocumento && horaPncp && horaDocumento !== horaPncp) estrutura.pendenciasParaConferencia = [...new Set([...(estrutura.pendenciasParaConferencia || []), `Prazo de propostas divergente: documento ${documental}; PNCP ${oficial.prazoFinal}. Confira a fonte oficial antes de enviar a proposta.`])];
     }
     if (temDadosOperacionaisDoPortal && !estrutura.detalhes.criterioJulgamento) delete estrutura.dadosOficiais.criterioJulgamento;
     return estrutura;
@@ -2912,6 +2951,7 @@
     const itensPncp = iaItensPncpAtual || estruturaComFonte.itensPncp || [];
     iaEstruturaAtual = {
       ...estruturaComFonte,
+      capag: iaCapagAtual,
       itensPncp,
       // Havendo relação oficial de itens, ela é a referência de contagem também
       // para o card "Resumo dos Itens" — nunca a contagem eventualmente citada
@@ -2928,8 +2968,8 @@
     wrap.className = "msg-ia";
     wrap.dataset.resumoEstrutura = "1";
 
-    const modelo = ResumoModelo.montar(est, iaEditalAtual || {});
-    for (const def of modelo.secoes.slice(0, 17)) {
+    const modelo = ResumoModelo.montar(iaEstruturaAtual, iaEditalAtual || {});
+    for (const def of modelo.secoes.filter((s) => s.titulo !== "Análise e Considerações do Licitante")) {
       const secao = document.createElement("details");
       secao.className = "secao-ia" + (def.titulo === "Penalidades e multas" ? " resumo-penalidades" : def.titulo === "Análise crítica" ? " resumo-critica" : "");
       secao.open = true;
@@ -2951,6 +2991,8 @@
           const ul = document.createElement("ul");
           campo.valor.forEach(valor => { const li = document.createElement("li"); li.textContent = valor; ul.appendChild(li); });
           dd.appendChild(ul);
+        } else if (campo.rotulo === "Fonte CAPAG" && String(campo.valor).startsWith("https://www.tesourotransparente.gov.br/")) {
+          const link = document.createElement("a"); link.href = campo.valor; link.textContent = "Consultar base oficial do Tesouro"; link.target = "_blank"; link.rel = "noopener noreferrer"; dd.append(link);
         } else dd.textContent = campo.valor;
         bloco.append(dt, dd); dl.appendChild(bloco);
       }
@@ -2959,7 +3001,79 @@
 
     if (anterior) anterior.replaceWith(wrap);
     else conversa.appendChild(wrap);
+    atualizarCentralDefesa();
     document.querySelector("#modal-ia-fundo .modal-ia-corpo").scrollTop = 0;
+  }
+
+  function atualizarCentralDefesa() {
+    const host = document.getElementById("modal-ia-defesa");
+    if (!host || !iaEditalAtual) return;
+    const usuarioId = window.__clienteIdAtual;
+    const empresaId = empresaOperacionalId;
+    const numeroEdital = iaEditalAtual.numeroControlePNCP;
+    const geracaoDefesa = iaGeracaoModal;
+    const hashDefesa = iaEstruturaAtual?.hashFonte;
+    const conferirContextoDefesa = () => {
+      if (usuarioId !== window.__clienteIdAtual || empresaId !== empresaOperacionalId || numeroEdital !== iaEditalAtual?.numeroControlePNCP || geracaoDefesa !== iaGeracaoModal || hashDefesa !== iaEstruturaAtual?.hashFonte) throw new Error("O contexto mudou. Reabra a análise no edital e na empresa corretos.");
+    };
+    DefesaUI.renderizar(host, { estrutura: iaEstruturaAtual || {}, edital: iaEditalAtual,
+      usuarioId, empresaId, empresa: document.getElementById("op-empresa")?.selectedOptions?.[0]?.textContent,
+      analisar: async ({ tipo, questionamento, objetivo, fase, respostaOrgao, manifestacaoAnterior }) => {
+        conferirContextoDefesa();
+        const token = await obterTokenSessao();
+        conferirContextoDefesa();
+        const controlador = new AbortController();
+        const limite = setTimeout(() => controlador.abort(), 30000);
+        const enviar = (credencial) => fetch("/api/ia-edital", {
+          method: "POST", signal: controlador.signal,
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${credencial}` },
+          body: JSON.stringify({ modo: "defesa", edital: { numeroControlePNCP: numeroEdital }, hashFonte: hashDefesa, tipo, questionamento, objetivo, fase, respostaOrgao, manifestacaoAnterior }),
+        });
+        try {
+          let resp = await enviar(token);
+          conferirContextoDefesa();
+          if (resp.status === 401) {
+            const renovacao = await window.__sbClient.auth.refreshSession();
+            conferirContextoDefesa();
+            if (renovacao.error || !renovacao.data?.session?.access_token) throw new Error("Sua sessão está indisponível. Entre novamente para analisar.");
+            resp = await enviar(renovacao.data.session.access_token);
+          }
+          const dados = await resp.json().catch(() => ({}));
+          conferirContextoDefesa();
+          if (!resp.ok || dados.erro) throw new Error(dados.erro || "Não foi possível analisar agora. Tente novamente depois.");
+          let empresaLocal;
+          try {
+            const { empresa } = await empresaOperacionalParaDossie(empresaId);
+            conferirContextoDefesa();
+            empresaLocal = { razaoSocial: empresa.razao_social, cnpj: empresa.cnpj };
+          } catch { conferirContextoDefesa(); }
+          return { ...dados, empresaLocal };
+        } catch (erro) {
+          if (erro.name === "AbortError") throw new Error("A análise demorou além do limite. Seu rascunho foi preservado; tente depois.");
+          throw erro;
+        } finally { clearTimeout(limite); }
+      },
+      storage: localStorage, exportar: async (minuta) => {
+        const conferirContexto = () => {
+          if (usuarioId !== window.__clienteIdAtual || empresaId !== empresaOperacionalId || numeroEdital !== iaEditalAtual?.numeroControlePNCP || geracaoDefesa !== iaGeracaoModal) throw new Error("O contexto mudou. Reabra a minuta no edital e na empresa corretos.");
+        };
+        conferirContexto();
+        const token = await obterTokenSessao();
+        conferirContexto();
+        const resp = await fetch("/api/gerar-checklist", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ minuta }) });
+        if (!resp.ok) { const erro = await resp.json().catch(() => ({})); throw new Error(erro.erro || "Não foi possível exportar a minuta."); }
+        const url = URL.createObjectURL(await resp.blob());
+        const link = document.createElement("a"); link.href = url; link.download = `minuta-${minuta.tipo}.docx`; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } });
+  }
+
+  async function carregarCapagNoResumo(edital, geracao) {
+    baseCapagPromise ||= fetch("data/capag-municipios.json").then((r) => r.ok ? r.json() : null).catch(() => null);
+    const base = await baseCapagPromise;
+    if (geracao !== iaGeracaoModal) return;
+    iaCapagAtual = Capag.consultarCapag(base, edital);
+    if (iaEstruturaAtual) renderizarEstruturaIA(iaEstruturaAtual);
   }
 
   // Pega o token da sessão logada pra mandar no cabeçalho Authorization das Netlify Functions
@@ -2984,6 +3098,8 @@
 
   function cancelarConsultaResumo() {
     iaGeracaoModal += 1;
+    const defesa = document.getElementById("modal-ia-defesa");
+    if (defesa) { defesa.innerHTML = ""; defesa._defesa = null; }
     clearTimeout(iaTemporizadorResumo);
     iaTemporizadorResumo = null;
     if (iaRequisicaoAtual) iaRequisicaoAtual.abort();
@@ -3047,13 +3163,13 @@
         signal: controlador.signal,
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${credencial}` },
-        body: JSON.stringify({ modo, edital, pergunta, retomarAnalise: Boolean(opcoes.retomarAnalise), historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
+        body: JSON.stringify({ modo, edital, pergunta, hashFonte: iaEstruturaAtual?.hashFonte, retomarAnalise: Boolean(opcoes.retomarAnalise), historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
       });
       let resp = await enviar(token);
       if (geracao !== iaGeracaoModal || controlador.signal.aborted) return;
       // Uma única renovação natural cobre expiração durante a leitura longa.
       // Indisponibilidade 503 não significa credencial inválida.
-      if (modo === "resumo" && resp.status === 401) {
+      if (resp.status === 401) {
         const renovacao = await window.__sbClient.auth.refreshSession();
         if (geracao !== iaGeracaoModal || controlador.signal.aborted) return;
         if (renovacao.error) throw new Error("SESSAO_INDISPONIVEL");
@@ -3402,7 +3518,7 @@
     const cobertura = est.coberturaLeitura || {};
     const lidos = Array.isArray(cobertura.documentosLidos) ? cobertura.documentosLidos : [];
     const naoLidos = Array.isArray(cobertura.documentosNaoLidos) ? cobertura.documentosNaoLidos : [];
-    const parcial = cobertura.parcial !== false || naoLidos.length > 0 || est.modoDegradado;
+    const parcial = cobertura.parcial !== false || naoLidos.length > 0 || est.modoDegradado || est.coberturaSintese?.parcial;
     const partes = [parcial ? "Leitura parcial: o checklist não confirma a totalidade das exigências." : "Requisitos extraídos do material analisado; confira as referências de cada item no edital."];
     if (lidos.length) partes.push(`Documentos lidos: ${lidos.join("; ")}.`);
     if (naoLidos.length) partes.push(`Documentos não lidos: ${naoLidos.join("; ")}.`);
@@ -3572,6 +3688,7 @@
     iaHistorico = [];
     iaTextoEdital = null;
     iaEstruturaAtual = null;
+    iaCapagAtual = { disponivel: false, motivo: "Consultando a CAPAG do ente responsável..." };
     iaItensPncpAtual = null;
     iaItensPncpCarregando = null;
     document.getElementById("modal-ia-objeto").textContent = edital.objeto || "";
@@ -3634,6 +3751,10 @@
         if (iaEditalAtual && idOportunidade(iaEditalAtual) === idOportunidade(edital) && iaEstruturaAtual) renderizarEstruturaIA(iaEstruturaAtual);
       }).catch(() => {});
       void carregarItensDoResumoIA(edital);
+      const geracaoCapag = iaGeracaoModal;
+      // A ficha e o dossiê em cache não precisam aguardar a disponibilidade do PNCP.
+      void carregarCapagNoResumo(edital, geracaoCapag);
+      void detalhePncp.then(() => carregarCapagNoResumo(edital, geracaoCapag), () => carregarCapagNoResumo(edital, geracaoCapag));
       const resumoLocal = lerCacheLocalResumo(edital);
       if (resumoLocal) {
         if (!resumoLocal.estrutura) {
@@ -4443,7 +4564,7 @@
         const { data: organizacaoId, error: erroOrg } = await sb.rpc("bootstrap_operacao");
         if (erroOrg || !organizacaoId) throw erroOrg || new Error("Organização operacional indisponível.");
         const { data: empresas, error } = await sb.from("operacao_empresas")
-          .select("id,razao_social").eq("organizacao_id", organizacaoId).eq("ativo", true).order("razao_social");
+          .select("id,razao_social,cnpj").eq("organizacao_id", organizacaoId).eq("ativo", true).order("razao_social");
         if (error) throw error;
         return { organizacaoId, empresas: empresas || [] };
       })().catch(erro => { contextoOperacionalPromise = null; throw erro; });
@@ -4667,6 +4788,7 @@
     if (!id || id === empresaOperacionalId) return;
     empresaAcompanhamentoPronta = false;
     empresaOperacionalId = id;
+    atualizarCentralDefesa();
     localStorage.setItem("licitaplena_empresa_operacional_id", id);
     try {
       const { organizacaoId, empresas } = await contextoOperacionalPromise;

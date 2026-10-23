@@ -1,0 +1,176 @@
+{
+  "somenteHomologacao": true,
+  "fonteSintetica": true,
+  "iaExecutada": false,
+  "edital": {
+    "numeroControlePNCP": "11111111000111-1-000101/2026",
+    "orgao": "MUNICIPIO DE MANAUS",
+    "municipio": "Manaus",
+    "uf": "AM",
+    "modalidade": "Dispensa eletrônica",
+    "objeto": "HOMOLOGAÇÃO LOCAL — Aquisição fictícia de papel A4",
+    "numero": "101/2026",
+    "dataEncerramentoProposta": "2026-11-30T09:00:00-03:00",
+    "valor": 1200,
+    "codigoMunicipioIbge": "1302603",
+    "esferaId": "M"
+  },
+  "fonte": "--- Aviso-HOMOLOGACAO-101.pdf ---\n[Página 1]\nHOMOLOGAÇÃO LOCAL — DISPENSA ELETRÔNICA FICTÍCIA 101/2026\n1. OBJETO\n1.1. Aquisição fictícia de papel A4 para homologação local, sem contratação real.\nDATA E HORA FINAL DAS PROPOSTAS: 30/11/2026 ÀS 09:00\n2. HABILITAÇÃO\n2.1. Apresentar comprovante de inscrição no CNPJ.\n2.2. Caso o fornecedor seja pessoa jurídica, apresentar contrato social e documento do representante.\n3. DECLARAÇÕES EXIGIDAS\n3.1. Declarar que não emprega menores em trabalho proibido.\n3.2. Para ME/EPP, apresentar declaração de enquadramento.\n4. PAGAMENTO\n4.1. O pagamento será efetuado em até 15 dias úteis após o atesto da nota fiscal.\n--- TR-HOMOLOGACAO-101.pdf ---\n[Página 2]\n5. PAGAMENTO\n5.1. O pagamento será efetuado em até 30 dias após a liquidação da despesa.\n6. SANÇÕES ADMINISTRATIVAS\n6.1. Atraso injustificado sujeita a contratada à multa de 0,2% por dia, limitada a 10%.\n[Página 3]\nANEXO I - Termo de Referência\nANEXO II - Modelo de declaração de enquadramento",
+  "dossie": {
+    "estrutura": {
+      "identificacao": {
+        "objeto": "HOMOLOGAÇÃO LOCAL — Aquisição fictícia de papel A4",
+        "numero": "101/2026",
+        "uasg": "Não informado",
+        "contratacao": "Não informado",
+        "modalidade": "Dispensa eletrônica",
+        "portalRealizacao": "Não informado",
+        "regulamentacao": "Não informado"
+      },
+      "sessaoPublica": {
+        "data": "Não informado",
+        "horario": "Não informado",
+        "modoDisputa": "Não informado",
+        "intervaloMinimo": "Não informado"
+      },
+      "orgao": {
+        "nome": "Não informado",
+        "email": "Não informado",
+        "endereco": "Não informado",
+        "telefone": "Não informado"
+      },
+      "detalhes": {
+        "valorEstimado": "Não informado",
+        "prazoEntrega": "Não informado",
+        "margemPreferencia": "Não informado",
+        "exigeVisitaTecnica": "Não informado",
+        "exigeAmostra": "Não informado",
+        "garantia": "Não informado",
+        "criterioJulgamento": "Não informado",
+        "tipoAnalise": "Não informado",
+        "regimeExecucao": "Não informado",
+        "preferenciaMeEpp": "Não informado",
+        "restricoesRegionalidade": "Não informado",
+        "provaConceito": "Não informado"
+      },
+      "garantias": {
+        "proposta": "Não informado",
+        "contrato": "Não informado",
+        "adicional": "Não informado",
+        "retomada": "Não informado"
+      },
+      "entregaExecucao": {
+        "prazo": "Não informado",
+        "local": "Não informado",
+        "condicoes": "Não informado"
+      },
+      "prazos": {
+        "limiteEnvioPropostas": "30/11/2026 às 09:00 [Aviso-HOMOLOGACAO-101.pdf, página 1]",
+        "prazoDocumentoComplementar": "Não informado",
+        "prazoDocumentoOriginal": "Não informado",
+        "prazoRecurso": "Não informado",
+        "prazoContrarrazoes": "Não informado",
+        "limiteEsclarecimentos": "Não informado",
+        "limiteImpugnacao": "Não informado",
+        "vigenciaContrato": "Não informado"
+      },
+      "criteriosProposta": {
+        "validadeProposta": "Não informado",
+        "criteriosDesempate": "Não informado",
+        "exigenciasPropostaComercial": "Não informado",
+        "propostasLancesPor": "Não informado",
+        "programaIntegridade": "Não informado"
+      },
+      "itens": {
+        "totalItens": "Não informado",
+        "descricaoGeral": "Não informado",
+        "categoriasPrincipais": "Não informado",
+        "observacoes": "Não informado"
+      },
+      "documentosHabilitacao": [
+        "2.1. Apresentar comprovante de inscrição no CNPJ. [Aviso-HOMOLOGACAO-101.pdf, página 1, cláusula 2.1]",
+        "2.2. Caso o fornecedor seja pessoa jurídica, apresentar contrato social e documento do representante. [Aviso-HOMOLOGACAO-101.pdf, página 1, cláusula 2.2]"
+      ],
+      "documentosCredenciamento": [],
+      "requisitosProposta": [],
+      "atestadoCapacidadeTecnica": "Não informado",
+      "legislacao": "Não informado",
+      "anexosDeclaracoes": "ANEXO I - Termo de Referência [TR-HOMOLOGACAO-101.pdf, página 3]\nANEXO II - Modelo de declaração de enquadramento [TR-HOMOLOGACAO-101.pdf, página 3]",
+      "declaracoesExigidas": [
+        "3.1. Declarar que não emprega menores em trabalho proibido. [Aviso-HOMOLOGACAO-101.pdf, página 1, cláusula 3.1]",
+        "3.2. Para ME/EPP, apresentar declaração de enquadramento. [Aviso-HOMOLOGACAO-101.pdf, página 1, cláusula 3.2]"
+      ],
+      "condicoesPagamento": "4. PAGAMENTO [Aviso-HOMOLOGACAO-101.pdf, página 1, cláusula 4]\n4.1. O pagamento será efetuado em até 15 dias úteis após o atesto da nota fiscal. [Aviso-HOMOLOGACAO-101.pdf, página 1, cláusula 4.1]\n5. PAGAMENTO [TR-HOMOLOGACAO-101.pdf, página 2, cláusula 5]\n5.1. O pagamento será efetuado em até 30 dias após a liquidação da despesa. [TR-HOMOLOGACAO-101.pdf, página 2, cláusula 5.1]",
+      "penalidades": "6.1. Atraso injustificado sujeita a contratada à multa de 0,2% por dia, limitada a 10%. [TR-HOMOLOGACAO-101.pdf, página 2, cláusula 6.1]",
+      "multas": "Não informado",
+      "documentosConsultados": [
+        "Aviso-HOMOLOGACAO-101.pdf",
+        "TR-HOMOLOGACAO-101.pdf"
+      ],
+      "pendenciasParaConferencia": [
+        "Conferir no edital o evento correspondente às datas: 30/11/2026."
+      ],
+      "questionamentosSugeridos": [],
+      "possiveisQuestionamentos": [],
+      "outrasInformacoesRelevantes": [],
+      "analiseCritica": {
+        "conflitoObjetoMinuta": "Não informado",
+        "conflitoPrazoVigenciaArp": "Não informado",
+        "conflitoPrazosEntrega": "Não informado",
+        "permiteSubcontratacao": "Não informado",
+        "previsaoReajuste": "Não informado",
+        "permiteRenovacao": "Não informado",
+        "estabeleceCondicoesPagamento": "Não informado"
+      },
+      "resumoGeral": "HOMOLOGAÇÃO LOCAL: saída de IA simulada, deliberadamente incompleta para testar recuperação documental.",
+      "coberturaLeitura": {
+        "parcial": false,
+        "documentosLidos": [
+          "Aviso-HOMOLOGACAO-101.pdf",
+          "TR-HOMOLOGACAO-101.pdf"
+        ],
+        "documentosNaoLidos": []
+      },
+      "hashFonte": "768df8f32ae748a2795eabbfe9dab31bcf463ae4c9cdce5ff2f43c5cfee4a972",
+      "prazosDocumentais": {
+        "proposta": "30/11/2026 às 09:00 [Aviso-HOMOLOGACAO-101.pdf, página 1]"
+      },
+      "questionamentosDocumentais": [
+        {
+          "id": "pagamento",
+          "tipo": "pagamento",
+          "titulo": "Conferir as regras de pagamento",
+          "descricao": "Há regras de pagamento com prazos ou marcos diferentes. Confirme o alcance de cada uma com o órgão.",
+          "pergunta": "Qual regra de pagamento deve prevalecer e qual é seu marco inicial, considerando os trechos citados?",
+          "evidencias": [
+            {
+              "documento": "Aviso-HOMOLOGACAO-101.pdf",
+              "pagina": "1",
+              "numero": "4.1",
+              "texto": "4.1. O pagamento será efetuado em até 15 dias úteis após o atesto da nota fiscal."
+            },
+            {
+              "documento": "TR-HOMOLOGACAO-101.pdf",
+              "pagina": "2",
+              "numero": "5.1",
+              "texto": "5.1. O pagamento será efetuado em até 30 dias após a liquidação da despesa."
+            }
+          ],
+          "estado": "precisa_conferir"
+        }
+      ]
+    },
+    "resposta": "HOMOLOGAÇÃO LOCAL: saída de IA simulada, deliberadamente incompleta para testar recuperação documental.",
+    "textoEdital": "--- Aviso-HOMOLOGACAO-101.pdf ---\n[Página 1]\nHOMOLOGAÇÃO LOCAL — DISPENSA ELETRÔNICA FICTÍCIA 101/2026\n1. OBJETO\n1.1. Aquisição fictícia de papel A4 para homologação local, sem contratação real.\nDATA E HORA FINAL DAS PROPOSTAS: 30/11/2026 ÀS 09:00\n2. HABILITAÇÃO\n2.1. Apresentar comprovante de inscrição no CNPJ.\n2.2. Caso o fornecedor seja pessoa jurídica, apresentar contrato social e documento do representante.\n3. DECLARAÇÕES EXIGIDAS\n3.1. Declarar que não emprega menores em trabalho proibido.\n3.2. Para ME/EPP, apresentar declaração de enquadramento.\n4. PAGAMENTO\n4.1. O pagamento será efetuado em até 15 dias úteis após o atesto da nota fiscal.\n--- TR-HOMOLOGACAO-101.pdf ---\n[Página 2]\n5. PAGAMENTO\n5.1. O pagamento será efetuado em até 30 dias após a liquidação da despesa.\n6. SANÇÕES ADMINISTRATIVAS\n6.1. Atraso injustificado sujeita a contratada à multa de 0,2% por dia, limitada a 10%.\n[Página 3]\nANEXO I - Termo de Referência\nANEXO II - Modelo de declaração de enquadramento",
+    "fonteLida": true,
+    "modoDegradado": false,
+    "metodoResumo": "sintese_gemini",
+    "versao": 17,
+    "versaoValidacao": 17,
+    "revisaoPrazos": false,
+    "prazosEmConferencia": true,
+    "geradoEm": "2026-10-22T12:00:00.000Z",
+    "erro": null,
+    "hashFonte": "768df8f32ae748a2795eabbfe9dab31bcf463ae4c9cdce5ff2f43c5cfee4a972"
+  }
+}

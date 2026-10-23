@@ -192,7 +192,7 @@ function corpoCompat(ficha, fonte, modelo, comFormato = true) {
     model: modelo, max_tokens: MAX_TOKENS_SAIDA,
     messages: [
       { role: "system", content: instrucao },
-      { role: "user", content: `DADOS OFICIAIS: ${JSON.stringify(ficha)}\nFONTE OFICIAL INTEGRAL:\n${fonte.slice(0, MAX_CARACTERES_FONTE_COMPAT)}` },
+      { role: "user", content: `DADOS OFICIAIS: ${JSON.stringify(ficha)}\nFONTE OFICIAL ${fonte.length > MAX_CARACTERES_FONTE_COMPAT ? "PARCIAL: o conteúdo final não coube; não afirme leitura integral" : "INTEGRAL"}:\n${fonte.slice(0, MAX_CARACTERES_FONTE_COMPAT)}` },
     ],
     ...(comFormato ? { response_format: { type: "json_object" } } : {}),
   };
@@ -410,7 +410,7 @@ async function gerarDossie(numero, { provedores, fetchFn, esgotados } = {}) {
   // não gravado sairia da fila como concluído e o cliente ficaria só com a ficha.
   const gravado = await (await restFetch(`dossies_editais?numero_controle_pncp=eq.${encodeURIComponent(numero)}&select=versao,status`)).json();
   if (Number(gravado[0]?.versao) !== VERSAO_DOSSIE) throw new Error("gravacao_falhou");
-  return { modelo, provedor, uso, completo: dossieCompleto(gravado[0]) };
+  return { modelo, provedor, uso, completo: dossieCompleto(gravado[0]), limiteContexto: Boolean(resultado.estrutura.coberturaSintese?.parcial) };
 }
 
 // Na primeira execução em produção (09/10/2026) o Google respondeu "sobrecarregado" e a
@@ -473,7 +473,7 @@ async function main() {
         continue;
       }
       // O dossiê parcial já fica visível ao cliente, mas o edital segue na fila para nova leitura.
-      await registrarTentativa(candidato, anteriores, resultado.completo ? { concluido: true } : { erro: "leitura_parcial" });
+      await registrarTentativa(candidato, anteriores, resultado.completo ? { concluido: true } : { erro: resultado.limiteContexto ? "sintese_parcial_limite_contexto" : "leitura_parcial", esgotar: resultado.limiteContexto });
       contagem.gerado += 1;
       console.log(`[dossiês] gerado ${resultado.completo ? "completo" : "parcial"} (${resultado.provedor}/${resultado.modelo}, ${resultado.uso?.totalTokenCount || "?"} tokens): ${candidato.numero}`);
     } catch (erro) {

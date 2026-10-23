@@ -130,7 +130,14 @@ const CAMPOS = {
     const secoes = [
       ["Identificação da Licitação", [...livre("Objeto", est.identificacao.objeto), ...campos("identificacao"), ...pncp.identificacao, ...campos("dadosOficiais").filter(c => c.rotulo !== "Modalidade" || c.valor !== est.identificacao.modalidade)]],
       ["Informações da Sessão Pública", campos("sessaoPublica")],
-      ["Órgão Responsável", campos("orgao")],
+      ["Órgão Responsável", [...campos("orgao"), ...(est.capag ? (est.capag.disponivel ? [
+        { rotulo: "Nota CAPAG", valor: est.capag.nota },
+        ...(est.capag.indicadores || []).map((i) => ({ rotulo: `CAPAG — ${i.nome}`, valor: `${i.nota}${typeof i.valor === "number" ? ` · ${new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 2 }).format(i.valor)}` : " · valor não disponível"}` })),
+        { rotulo: "Posição da CAPAG", valor: `${est.capag.posicao} · coletada em ${est.capag.coletadoEm}` },
+        { rotulo: "Origem da nota", valor: est.capag.origemNota || "Prévia da CAPAG" },
+        { rotulo: "Sobre a CAPAG", valor: est.capag.observacao },
+        { rotulo: "Fonte CAPAG", valor: est.capag.fonte },
+      ] : [{ rotulo: "CAPAG", valor: est.capag.motivo }]) : [])]],
       ["Detalhes da Licitação", [...campos("detalhes"), ...livre("Critério por item", pncp.criterioPorItem), ...livre("Conteúdo nacional", pncp.conteudoNacional)]],
       ["Seguro Garantia", campos("garantias")],
       ["Informações sobre entrega e execução", campos("entregaExecucao")],
@@ -145,6 +152,14 @@ const CAMPOS = {
       ["Condições de pagamento", livre("Pagamento", est.condicoesPagamento)],
       ["Penalidades e multas", [...livre("Penalidades", est.penalidades), ...livre("Multas", est.multas)]],
       ["Análise crítica", [...lista("Pontos de atenção (dados oficiais do PNCP)", pncp.atencao), ...campos("analiseCritica"), ...lista("Pendências para conferência", est.pendenciasParaConferencia), ...lista("Possíveis questionamentos", est.possiveisQuestionamentos), ...lista("Perguntas sugeridas ao órgão", est.questionamentosSugeridos)]],
+      ...(est.coberturaSintese || est.coberturaLeitura ? [["Cobertura da análise", [
+        ...(est.coberturaLeitura ? [{ rotulo: "Extração dos documentos", valor: `${est.coberturaLeitura.parcial !== false ? "Extração parcial" : "Documentos selecionados extraídos"}. ${est.coberturaLeitura.documentosLidos?.length || 0} documento(s) lido(s); ${est.coberturaLeitura.documentosNaoLidos?.length || 0} não lido(s).` },
+          ...lista("Documentos não lidos", (est.coberturaLeitura.documentosNaoLidos || []).map((v) => String(v).split(":")[0])),
+          ...lista("Conferência do OCR automático", est.coberturaLeitura.avisosOCR || []),
+          ...lista("Páginas pendentes do OCR", (est.coberturaLeitura.ocrDocumentos || []).flatMap((d) => (d.pendencias || []).map((p) => `${d.documento}: ${p}`)))] : []),
+        ...(est.coberturaSintese ? [{ rotulo: "Síntese dos documentos", valor: Number.isFinite(est.coberturaSintese.caracteresEnviados) && Number.isFinite(est.coberturaSintese.caracteresFonte) ? `${est.coberturaSintese.parcial ? "Síntese parcial" : "Fonte extraída integral enviada à síntese"}: ${est.coberturaSintese.caracteresEnviados} de ${est.coberturaSintese.caracteresFonte} caracteres. Isso não equivale à auditoria de todas as cláusulas.` : "Cobertura da síntese por IA não confirmada. A extração documental não comprova uma síntese integral nem a auditoria de todas as cláusulas." }] : []),
+        { rotulo: "Atualidade", valor: "Análise da versão armazenada. Confira retificações e novos anexos na fonte oficial antes de participar." },
+      ]]] : []),
       ["Análise e Considerações do Licitante", livre("Considerações do licitante", consideracoes)],
     ].map(([titulo, valores]) => ({titulo, campos: valores}));
     return { numero: est.identificacao.numero, objeto: est.identificacao.objeto,

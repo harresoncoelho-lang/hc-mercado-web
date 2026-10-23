@@ -32,6 +32,14 @@ function ambiente(respostas) {
 const pendente = () => ({ ok: true, status: 202, json: async () => ({ emProcessamento: true, progresso: { concluidas: 1, total: 4, aguardarSegundos: 3 }, resposta: 'Analisando', estrutura: null }) });
 const final = () => ({ ok: true, status: 200, json: async () => ({ fonteLida: true, estrutura: { documentosHabilitacao: ['CNPJ'] }, resposta: 'Completo' }) });
 const drenar = async () => { for (let i = 0; i < 8; i += 1) await Promise.resolve(); };
+test('trocar edital limpa imediatamente a central anterior', () => {
+  const a = ambiente([]); a.abrir('A');
+  const host = a.contexto.document.getElementById('modal-ia-defesa');
+  host.innerHTML = 'Minuta A'; host._defesa = {};
+  a.abrir('B');
+  assert.equal(host.innerHTML, '');
+  assert.equal(host._defesa, null);
+});
 test('resumo pendente bloqueia ações, mostra progresso e consulta novamente até resultado final', async () => {
   const a = ambiente([pendente, final]); a.abrir('A');
   await a.contexto.chamarIA('resumo', null);

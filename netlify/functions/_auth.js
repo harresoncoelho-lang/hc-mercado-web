@@ -70,13 +70,14 @@ async function exigirUsuarioLogado(event) {
 
 // Limite diário de uso por usuário e por função (ex: 30 resumos de edital/dia). Guardado no
 // Supabase via a função incrementar_uso (ver supabase/rls_e_limite_de_uso.sql). Se
-// SUPABASE_SERVICE_ROLE_KEY não estiver configurado no Netlify ainda, a checagem é pulada
-// (fail-open) — melhor deixar passar do que derrubar a ferramenta por falta de configuração;
-// mas assim que a chave for adicionada, o limite passa a valer automaticamente.
+// IA só prossegue com contagem válida. Os demais consumidores mantêm o comportamento
+// anterior de contingência para não alterar envios e consultas fora deste fluxo.
 async function verificarLimiteDiario(userId, nomeFuncao, limite) {
+  const ehIA = nomeFuncao === "ia-edital";
+  const indisponivel = ehIA ? { ok: false, status: 503, erro: "Não foi possível verificar o limite de uso da IA agora. Tente novamente em instantes." } : { ok: true };
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
-    return { ok: true };
+    return indisponivel;
   }
   try {
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/incrementar_uso`, {
@@ -87,12 +88,13 @@ async function verificarLimiteDiario(userId, nomeFuncao, limite) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ p_usuario_id: userId, p_funcao: nomeFuncao }),
+      ...(ehIA ? { signal: globalThis.AbortSignal.timeout(5000) } : {}),
     });
     if (!resp.ok) {
-      // Se a tabela/função ainda não existir no banco (migração não rodada), não trava o uso.
-      return { ok: true };
+      return indisponivel;
     }
     const contagem = await resp.json();
+    if (ehIA && (!Number.isSafeInteger(contagem) || contagem < 1)) return indisponivel;
     if (typeof contagem === "number" && contagem > limite) {
       return {
         ok: false,
@@ -102,7 +104,7 @@ async function verificarLimiteDiario(userId, nomeFuncao, limite) {
     }
     return { ok: true };
   } catch (e) {
-    return { ok: true };
+    return indisponivel;
   }
 }
 

@@ -2,6 +2,26 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto } = require("../_edital_operacional");
 
+test("novo anexo ou título contratual encerra cláusula sem perder continuação entre páginas", () => {
+  const { clausulasDaFonte } = require("../_edital_operacional");
+  const fixture = require("../../../docs/qa/novos-editais-fixture.json");
+  const sancao = clausulasDaFonte(fixture.fonte).find((c) => c.numero === "6.1");
+  assert.match(sancao.texto, /0,2%.*10%/);
+  assert.doesNotMatch(sancao.texto, /ANEXO/);
+  assert.equal(sancao.pagina, "2");
+  const clausulas = clausulasDaFonte(`--- Contrato.pdf ---
+[Página 1]
+CLÁUSULA QUINTA - PAGAMENTO
+5.1. O pagamento é condicionado
+[Página 2]
+ao atesto da nota fiscal.
+CLÁUSULA SEXTA - GARANTIA
+6.1. Não será exigida garantia.`);
+  assert.match(clausulas[0].texto, /condicionado ao atesto/);
+  assert.doesNotMatch(clausulas[0].texto, /SEXTA|GARANTIA/);
+  assert.match(clausulas[1].secao, /SEXTA/);
+});
+
 test("leitura prioriza edital e termo de referência mesmo após anexos com tipo genérico", () => {
   const { selecionarDocumentosParaLeitura } = require("../lib/ia-edital").__test;
   const lista = [
@@ -376,6 +396,7 @@ test("leitura agrega edital e TR e sinaliza página com imagem em documento parc
     const textos = [];
     for (const [pageIndex, texto] of paginas.entries()) textos.push(await opcoes.pagerender({
       pageIndex,
+      ...(texto.length >= 500 ? { view: [0, 0, 600, 800], getOperatorList: async () => ({ fnArray: [], argsArray: [] }) } : {}),
       getTextContent: async () => ({ items: [{ str: texto, transform: [1, 0, 0, 1, 0, 100] }] }),
     }));
     return { text: textos.join("\n"), numpages: paginas.length };

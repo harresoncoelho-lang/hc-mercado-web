@@ -22,6 +22,7 @@ const MINIMO_POR_TENTATIVA_MS = 3000;
 const ERRO_TODOS_FALHARAM = "Os provedores de IA estão indisponíveis agora. Tente novamente mais tarde; os dados básicos da licitação continuam acessíveis.";
 
 const lista = (valor, padrao = "") => String(valor || padrao).split(",").map((m) => m.trim()).filter(Boolean);
+const textoResposta = (valor) => typeof valor === "string" ? valor.trim() : "";
 
 // Provedores OpenAI-compatíveis configurados no ambiente, na ordem da cadeia (sem a Groq).
 function montarProvedoresCompat(env = process.env) {
@@ -58,8 +59,8 @@ async function chamarCompat(provedor, modelo, mensagens, opcoes, fetchFn, timeou
     if (!resp.ok) { console.warn(`ia-provedores: ${provedor.nome} HTTP ${resp.status}`); return null; }
     const dados = await resp.json();
     const escolha = dados?.choices?.[0];
-    const texto = String(escolha?.message?.content || "").trim();
-    if (!texto || escolha?.finish_reason === "tool_calls") { console.warn(`ia-provedores: ${provedor.nome} resposta vazia`); return null; }
+    const texto = textoResposta(escolha?.message?.content);
+    if (!texto || ["length", "tool_calls", "function_call", "content_filter"].includes(escolha?.finish_reason)) { console.warn(`ia-provedores: ${provedor.nome} resposta não utilizável`); return null; }
     return texto;
   } catch (e) {
     console.warn(`ia-provedores: ${provedor.nome} interrompido (${e?.name || "erro"})`);
@@ -78,9 +79,10 @@ async function responderComFallback(mensagens, opcoes, { env = process.env, fetc
   const tempoDaTentativa = () => Math.min(TIMEOUT_CHAMADA_MS, prazo - agora());
 
   if (env.GROQ_API_KEY && groq) {
-    const r = await groq(env.GROQ_API_KEY, mensagens, { ...opcoes, timeoutMs: Math.min(opcoes.timeoutMs || TIMEOUT_CHAMADA_MS, tempoDaTentativa()) });
-    if (r?.ok && r.texto) return { ok: true, texto: r.texto, provedor: "groq", modelo: r.modelo || null };
-    erroGroq = r?.erro || null;
+    const r = await groq(env.GROQ_API_KEY, mensagens, { ...opcoes, timeoutMs: Math.min(opcoes.timeoutMs || TIMEOUT_CHAMADA_MS, tempoDaTentativa()) }) || {};
+    const texto = textoResposta(r.texto);
+    if (r.ok && texto) return { ok: true, texto, provedor: "groq", modelo: r.modelo || null };
+    erroGroq = r.erro || null;
     console.warn("ia-provedores: groq falhou, tentando o próximo provedor");
   }
   for (const provedor of montarProvedoresCompat(env)) {

@@ -1,0 +1,215 @@
+{
+  "data": "2026-10-22T22:30:31.754Z",
+  "modelo": "openai/gpt-oss-120b",
+  "numeroControlePNCP": "88124961000159-1-000125/2026",
+  "modalidade": "Pregão - Eletrônico",
+  "fonteSha256": "f838df90c4ea703e14837f10f80a4951fcc94303b36f636756473cf61df0c0ba",
+  "caracteres": 9397,
+  "bytes": 9692,
+  "orcamento": {
+    "entrada": 4870,
+    "saida": 2330
+  },
+  "cabe": true,
+  "chamadas": 1,
+  "schema": "operacional",
+  "cobertura": "Uma etapa com todo o TXT fornecido; não comprova que todos os anexos oficiais integram esse TXT.",
+  "estado": "sintese_recebida_requer_revisao_humana",
+  "transporte": {
+    "formato": "campoId_inteiro_requisitos_IDs",
+    "campos": {
+      "0": "identificacao.objeto",
+      "1": "identificacao.numero",
+      "2": "identificacao.uasg",
+      "3": "identificacao.contratacao",
+      "4": "identificacao.modalidade",
+      "5": "identificacao.portalRealizacao",
+      "6": "identificacao.regulamentacao",
+      "7": "sessaoPublica.data",
+      "8": "sessaoPublica.horario",
+      "9": "sessaoPublica.modoDisputa",
+      "10": "sessaoPublica.intervaloMinimo",
+      "11": "orgao.nome",
+      "12": "orgao.email",
+      "13": "orgao.endereco",
+      "14": "orgao.telefone",
+      "15": "detalhes.valorEstimado",
+      "16": "detalhes.prazoEntrega",
+      "17": "detalhes.margemPreferencia",
+      "18": "detalhes.exigeVisitaTecnica",
+      "19": "detalhes.exigeAmostra",
+      "20": "detalhes.garantia",
+      "21": "detalhes.criterioJulgamento",
+      "22": "detalhes.tipoAnalise",
+      "23": "detalhes.regimeExecucao",
+      "24": "detalhes.preferenciaMeEpp",
+      "25": "detalhes.restricoesRegionalidade",
+      "26": "detalhes.provaConceito",
+      "27": "garantias.proposta",
+      "28": "garantias.contrato",
+      "29": "garantias.adicional",
+      "30": "garantias.retomada",
+      "31": "entregaExecucao.prazo",
+      "32": "entregaExecucao.local",
+      "33": "entregaExecucao.condicoes",
+      "34": "prazos.limiteEnvioPropostas",
+      "35": "prazos.prazoDocumentoComplementar",
+      "36": "prazos.prazoDocumentoOriginal",
+      "37": "prazos.prazoRecurso",
+      "38": "prazos.prazoContrarrazoes",
+      "39": "prazos.limiteEsclarecimentos",
+      "40": "prazos.limiteImpugnacao",
+      "41": "prazos.vigenciaContrato",
+      "42": "criteriosProposta.validadeProposta",
+      "43": "criteriosProposta.criteriosDesempate",
+      "44": "criteriosProposta.exigenciasPropostaComercial",
+      "45": "criteriosProposta.propostasLancesPor",
+      "46": "criteriosProposta.programaIntegridade",
+      "47": "itens.totalItens",
+      "48": "itens.descricaoGeral",
+      "49": "itens.categoriasPrincipais",
+      "50": "itens.observacoes",
+      "51": "atestadoCapacidadeTecnica",
+      "52": "legislacao",
+      "53": "anexosDeclaracoes",
+      "54": "condicoesPagamento",
+      "55": "penalidades",
+      "56": "multas",
+      "57": "documentosConsultados",
+      "58": "pendenciasParaConferencia",
+      "59": "questionamentosSugeridos",
+      "60": "possiveisQuestionamentos",
+      "61": "outrasInformacoesRelevantes",
+      "62": "analiseCritica.conflitoObjetoMinuta",
+      "63": "analiseCritica.conflitoPrazoVigenciaArp",
+      "64": "analiseCritica.conflitoPrazosEntrega",
+      "65": "analiseCritica.permiteSubcontratacao",
+      "66": "analiseCritica.previsaoReajuste",
+      "67": "analiseCritica.permiteRenovacao",
+      "68": "analiseCritica.estabeleceCondicoesPagamento",
+      "69": "resumoGeral"
+    },
+    "requisitos": {
+      "R0009": {
+        "categoria": "requisitosProposta",
+        "textoHash": "02ce2ad45778364b354dea37993416d24dc2f6b15d881aa2adc52e917d94e370"
+      },
+      "R0032": {
+        "categoria": "declaracoesExigidas",
+        "textoHash": "b0ccb653bd10b9c9dacb9e1d3b7d1f94d40dfef81ac80d6d6507f7cb5f82f7ac"
+      },
+      "R0010": {
+        "categoria": "requisitosProposta",
+        "textoHash": "d9be09ae886283472bf8204a83d658a9aaec7fc82b5b1b57737f1370cf2fe8d1"
+      },
+      "R0033": {
+        "categoria": "declaracoesExigidas",
+        "textoHash": "3ab066be1a9c4f45691de951aeb6285984a4c93f822985303c5431ab340dbec1"
+      },
+      "R0011": {
+        "categoria": "requisitosProposta",
+        "textoHash": "5fa0f06a2e778f5c2bb04e54537dc2f5f391e4f707b773c414a6436e8a3e6d57"
+      },
+      "R0012": {
+        "categoria": "requisitosProposta",
+        "textoHash": "3a74622bf0a0676c82603ec409b45a88399d40218c23d102f1f7767f6e9b2d55"
+      },
+      "R0034": {
+        "categoria": "declaracoesExigidas",
+        "textoHash": "0c67dfdc93c093551f792d770d6deaaeff9866fa6f51f22ed817dcf7e361d108"
+      },
+      "R0013": {
+        "categoria": "requisitosProposta",
+        "textoHash": "ee0db0d98193031f537ba2ec9c3777f4d030ec0327c180ddf8c69a2e27b318b7"
+      },
+      "R0014": {
+        "categoria": "requisitosProposta",
+        "textoHash": "baf6ed68c0d0dd15278513a3c852cb2e865ededd2a1f133566d744d9d1bf2ef8"
+      },
+      "R0015": {
+        "categoria": "requisitosProposta",
+        "textoHash": "78b9d963e33793edc05d77449297716c938b7a4864cf18b9a4c6b4640fc919ad"
+      },
+      "R0016": {
+        "categoria": "requisitosProposta",
+        "textoHash": "f7923c63c195193e7f74170cbf1ca594b22470b7d2024b28232dc497d6224596"
+      },
+      "R0017": {
+        "categoria": "requisitosProposta",
+        "textoHash": "5e89d88002ad48a7cff6652e80333a50fde1c62c024d2896f328385b8b2ba0b1"
+      },
+      "R0018": {
+        "categoria": "requisitosProposta",
+        "textoHash": "3d6a1301ba9e7cb0ac21a204927f02499be51291d9d1613e2e9177b59ec6c2f4"
+      },
+      "R0019": {
+        "categoria": "requisitosProposta",
+        "textoHash": "ab9cdc2d1d9398a645910f3d9b818790adad4224d0dee351e5b30d1d8bc0f30a"
+      },
+      "R0020": {
+        "categoria": "requisitosProposta",
+        "textoHash": "b8a375a561c19e036aa1a38d81e958001a7e30b5629b1003fc9cf1460de5de74"
+      },
+      "R0021": {
+        "categoria": "requisitosProposta",
+        "textoHash": "269f0b1a1bc6fb52976f5842eccf9ab8461cf046abb9e62a1d2e3fe4ada7e749"
+      },
+      "R0022": {
+        "categoria": "requisitosProposta",
+        "textoHash": "47515bdfcaf49c6e857f0aa790ff6aac9cb561fdb09525b524274e2fd3fe3bc0"
+      },
+      "R0023": {
+        "categoria": "requisitosProposta",
+        "textoHash": "298d3410738888614ceddec004d338619cacbeb1a78532398362b32f8c15a318"
+      },
+      "R0024": {
+        "categoria": "requisitosProposta",
+        "textoHash": "f0787b0ffc37b40ed41cf14fb59b8025f7da635bbb35701b6a79186ee8bf8b3c"
+      }
+    },
+    "entrada": 4870,
+    "saidaMaxima": 2330,
+    "bytes": 16790
+  },
+  "respostaProvedor": {
+    "status": 200,
+    "cabecalhos": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-requests": "998",
+      "x-ratelimit-remaining-tokens": "2323",
+      "x-ratelimit-reset-requests": "2m52.8s",
+      "x-ratelimit-reset-tokens": "42.577s"
+    },
+    "usage": {
+      "queue_time": 0.312329699,
+      "prompt_tokens": 4496,
+      "prompt_time": 0.24245153,
+      "completion_tokens": 279,
+      "completion_time": 0.582924442,
+      "total_tokens": 4775,
+      "total_time": 0.825375972
+    },
+    "finish_reason": [
+      "stop"
+    ],
+    "conteudoBruto": [
+      "{\"requisitos\":[\"R0009\",\"R0032\",\"R0010\",\"R0033\",\"R0011\",\"R0012\",\"R0034\",\"R0013\",\"R0014\",\"R0015\",\"R0016\",\"R0017\",\"R0018\",\"R0019\",\"R0020\",\"R0021\",\"R0022\",\"R0023\",\"R0024\"],\"fatos\":[]}"
+    ]
+  },
+  "resultado": {
+    "ok": true,
+    "texto": "{\"requisitosProposta\":[\"4.1. Na presente licitação, a fase de habilitação sucederá as fases de apresentação de propostas e lances e de julgamento. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.3. Os licitantes encaminharão, exclusivamente por meio do sistema eletrônico, a proposta com o percentual de desconto até a data e o horário estabelecidos para abertura da sessão pública. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.4.1. no item exclusivo para participação de microempresas e empresas de pequeno porte, a assinalação do campo “não” impedirá o prosseguimento no certame, para aquele item; [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.4.2. nos itens em que a participação não for exclusiva para microempresas e empresas de pequeno porte, a assinalação do campo “não” apenas produzirá o efeito de o licitante não ter direito ao tratamento favorecido previsto na Lei Complementar nº 123, de 2006, mesmo que microempresa, empresa de pequeno porte ou sociedade cooperativa. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.6. Os licitantes poderão retirar ou substituir a proposta até a abertura da sessão pública. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.7. Não haverá ordem de classificação na etapa de apresentação da proposta e dos documentos de habilitação pelo licitante, o que ocorrerá somente após os procedimentos de abertura da sessão pública e da fase de envio de lances. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.8. Caberá ao licitante interessado em participar da licitação acompanhar as operações no sistema eletrônico durante o processo licitatório e se responsabilizar pelo ônus decorrente da perda de negócios diante da inobservância de mensagens emitidas pela Administração ou de sua desconexão. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.9. O licitante deverá comunicar imediatamente ao provedor do sistema qualquer acontecimento que possa comprometer o sigilo ou a segurança, para imediato bloqueio de acesso. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"5.1. O licitante deverá enviar sua proposta mediante o preenchimento, no sistema eletrônico, dos seguintes campos: a) valor unitário e total do item, marca, modelo do fabricante e quantidade do item. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"5.2. A proposta de preço (ajustada) anexa ao sistema deverá: a) estar devidamente identificada e assinada pelo representante legal da empresa; b) conter o valor do item em moeda corrente nacional, com 2 (duas) casas decimais após a vírgula; c) descrever detalhadamente cada item, a quantidade, a marca e fabricante quando couber. d) anexar folder ou catálogo, contendo imagens e descrição detalhada do item. d) O prazo de validade da proposta não será inferior a 90 (noventa) dias, a contar da data de sua apresentação. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"5.3. Nos valores propostos estarão inclusos todos os custos operacionais, encargos previdenciários, trabalhistas, tributários, comerciais e quaisquer outros que incidam direta ou indiretamente na execução do objeto. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"5.4. Os preços ofertados, tanto na proposta inicial, quanto na etapa de lances, serão de exclusiva responsabilidade do licitante, não lhe assistindo o direito de pleitear qualquer alteração, sob alegação de erro, omissão ou qualquer outro pretexto. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"5.5. Os licitantes devem respeitar os preços máximos e o percentual mínimo de desconto estabelecidos no termo de referência. PREFEITURA MUNICIPAL DE SANT’ANA DO LIVRAMENTO CIDADE SIMBOLO DE INTEGRAÇÃO BRASILEIRA COM OS PAISES DO MERCOSUL SECRETARIA MUNICIPAL DA FAZENDA DEPARTAMENTO DE LICITAÇÕES E CONTRATOS Rua Brigadeiro Canabarro, 740 – CEP: 97.573-570 Telefone: (55)99178.1244 E-mail:pmllicitacoes@yahoo.com.br [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"5.6. As propostas que eventualmente contemplem o produto/serviço que não correspondam às descrições contidas no ANEXO I deste Edital serão desconsideradas. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 4]\",\"5.7. Poderão ser admitidos, pelo Agente de Contratação/Pregoeiro, erros de natureza formal, desde que não comprometam o interesse público e da Administração. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 4]\",\"5.8. O upload da proposta no site www.pregaobanrisul.com.br será de total responsabilidade da licitante, o qual deverá se certificar de que a proposta anexada seja visível e legível em sua integridade, em folha de tamanho A4, sem a necessidade de qualquer ação do Pregoeiro que não seja abrir e imprimir o arquivo, sob pena de desclassificação. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 4]\"],\"declaracoesExigidas\":[\"4.2. No cadastramento da proposta inicial o licitante declarará, em campo próprio do sistema, que examinou todos os termos deste edital e seus anexos aceitando irretratavelmente suas exigências por declaração aceita. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.4. O fornecedor enquadrado como microempresa, empresa de pequeno porte ou sociedade cooperativa deverá declarar, ainda, em campo próprio do sistema eletrônico, que cumpre os requisitos estabelecidos no artigo 3° da Lei Complementar nº 123, de 2006, estando apto a usufruir do tratamento favorecido estabelecido em seus arts. 42 a 49, observado o disposto nos §§ 1º ao 3º do art. 4º, da Lei n.º 14.133, de 2021. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\",\"4.5. A falsidade da declaração de que trata os itens 4.2 ou 4.4 sujeitará o licitante às sanções previstas na Lei nº 14.133, de 2021, e neste Edital. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 3]\"],\"documentosHabilitacao\":[],\"documentosCredenciamento\":[],\"pendenciasParaConferencia\":[\"Os requisitos abaixo reproduzem cláusulas literais da fonte; a síntese de requisitos por IA não foi aprovada semanticamente.\"]}",
+    "diagnostico": {
+      "status": 200,
+      "finalizacao": "stop",
+      "caracteres": 179,
+      "prompt_tokens": 4496,
+      "completion_tokens": 279,
+      "total_tokens": 4775,
+      "caracteresRaciocinio": 707
+    },
+    "modelo": "openai/gpt-oss-120b",
+    "erro": null
+  }
+}

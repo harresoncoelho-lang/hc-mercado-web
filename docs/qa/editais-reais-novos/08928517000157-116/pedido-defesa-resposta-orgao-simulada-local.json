@@ -1,0 +1,12 @@
+{
+  "modo": "defesa",
+  "tipo": "esclarecimento",
+  "fase": "resposta_orgao",
+  "edital": {
+    "numeroControlePNCP": "08928517000157-1-000116/2026"
+  },
+  "hashFonte": "e6388d807f18a0de537120db88214566aab76f63f58444f32ef62be564e7cd47",
+  "questionamento": "O item 11.1 condiciona a qualificação técnica e econômica à necessidade de verificação, e o item 11.2 admite dispensa documental em certas hipóteses. Quais documentos e condições de habilitação serão exigidos desta contratação?",
+  "objetivo": "Comparar a resposta SIMULADA com a pergunta anterior, apontar quais documentos e condições ainda não foram esclarecidos e formular pedido complementar objetivo, sem presumir dispensa documental ou necessidade automática de qualificação.",
+  "respostaOrgao": "SIMULAÇÃO FICTÍCIA PARA QA LOCAL — não é resposta autêntica do órgão. Para fins deste cenário de teste, informa-se apenas: os documentos de qualificação técnica e econômico-financeira serão solicitados se necessária a verificação; eventual dispensa documental será examinada nas condições previstas no termo de referência. Esta resposta simulada não apresenta a lista dos documentos, não informa quais condições serão aplicadas nesta contratação, não identifica decisão administrativa sobre dispensa documental e não esclarece o enquadramento do valor."
+}

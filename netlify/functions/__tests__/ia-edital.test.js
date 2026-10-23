@@ -1,6 +1,16 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+test("etapa restringe requisitos aos IDs e categorias explícitas, inclusive bloco sem marcadores", () => {
+  const { __test } = require("../lib/ia-edital");
+  const mensagens = __test.mensagensDaEtapa(__test.INSTRUCOES_ETAPA, "Ficha", "", "--- Aviso ---\n[Página 1]\nPagamento em dez dias.");
+  assert.match(mensagens[1].content, /Sem IDs marcados, requisitos deve ser \[\]/);
+  assert.match(mensagens[1].content, /TODOS os IDs Rnnnn.*exatamente uma vez/);
+  assert.match(mensagens[1].content, /Não gere ações, documentos, condições, prazos nem categorias/);
+  assert.match(mensagens[1].content, /use somente campoId inteiro/);
+  assert.doesNotMatch(mensagens[1].content, /Em fatos\.campo/);
+});
+
 function carregarComModelo(modelo) {
   const caminho = require.resolve("../lib/ia-edital");
   const anterior = process.env.GROQ_MODEL;
@@ -63,7 +73,7 @@ test("síntese longa usa o modelo direto sem probe de ferramentas", async () => 
   const fonte = "Fonte oficial extensa. ".repeat(200);
   global.fetch = async (_url, opcoes) => {
     const corpo = JSON.parse(opcoes.body); chamadas.push(corpo);
-    return { ok: true, json: async () => ({ choices: [{ message: { content: '{"requisitos":[],"fatos":[{"campo":"resumoGeral","valor":"Síntese","referencia":"Fonte oficial"}]}' } }] }) };
+    return { ok: true, json: async () => ({ choices: [{ message: { content: JSON.stringify({ requisitos: [], fatos: [{ campoId: require("../lib/ia-edital").__test.SCHEMA_ETAPA.properties.fatos.items.properties.campo.enum.indexOf("resumoGeral"), valor: "Síntese", referencia: "Fonte oficial" }] }) } }] }) };
   };
   try {
     const resultado = await carregarComModelo(null).__test.chamarSinteseEdital("chave-teste", [{ role: "user", content: fonte }]);
@@ -243,16 +253,17 @@ test("contrato operacional rejeita IDs-only vazios e IDs de outra categoria", ()
   const item = { acao: "Apresentar", documento: "documentação para cadastro provisório", condicoes: "Para licitantes não cadastrados", prazo: "até 2 dias úteis antes do certame", ids: ["R0043"], categoria: "documentosCredenciamento" };
   for (const alteracao of [{ acao: "R0043" }, { documento: "R0043" }, { acao: "Sim" }, { acao: "Edital página 3" }, { ids: ["R0001"] }, { categoria: "documentosHabilitacao" }]) assert.equal(converterEtapaOperacional({ requisitos: [{ ...item, ...alteracao }], fatos: [] }, fonte), null);
   const estrutura = converterEtapaOperacional({ requisitos: [item], fatos: [{ campo: "sessaoPublica.horario", valor: "09:30", referencia: "Edital, página 1, cláusula 2.3" }] }, fonte);
-  assert.match(estrutura.documentosCredenciamento[0], /Apresentar.*documentação.*não cadastrados.*2 dias úteis.*R0043/);
+  assert.match(estrutura.documentosCredenciamento.join("\n"), /4\.5\..*cadastro provisório.*apresentar documentação.*2 dias úteis/);
+  assert.doesNotMatch(estrutura.documentosCredenciamento.join("\n"), /não cadastrados/);
   assert.match(estrutura.sessaoPublica.horario, /09:30/);
 });
 
 test("token budget conta schema estrito além das mensagens", () => {
-  const { tokensEntradaResumo, montarCorpoGroq, SCHEMA_ETAPA } = carregarComModelo(null).__test;
+  const { tokensEntradaResumo, montarCorpoGroq, schemaTransporteDaEtapa, mensagensTransporteDaEtapa } = carregarComModelo(null).__test;
   const { Tiktoken } = require("js-tiktoken/lite");
   const tokenizer = new Tiktoken(require("js-tiktoken/ranks/o200k_base"));
   const mensagens = [{ role: "user", content: "Órgão e condições" }];
-  const corpo = montarCorpoGroq("openai/gpt-oss-120b", mensagens, { maxTokens: 2200, schema: SCHEMA_ETAPA, reasoningEffort: "low" });
+  const corpo = montarCorpoGroq("openai/gpt-oss-120b", mensagensTransporteDaEtapa(mensagens), { maxTokens: 2200, schema: schemaTransporteDaEtapa(mensagens), reasoningEffort: "low" });
   assert.equal(tokensEntradaResumo(mensagens), 256 + tokenizer.encode(JSON.stringify(corpo), [], []).length);
   assert.ok(tokensEntradaResumo(mensagens) > 256 + tokenizer.encode(JSON.stringify(mensagens), [], []).length);
 });
@@ -264,7 +275,7 @@ test("minuta usa schema narrativo contado e não aceita campo escalar fora do co
   assert.equal(t.schemaDaEtapa(mensagens), t.SCHEMA_MINUTA);
   const { Tiktoken } = require("js-tiktoken/lite");
   const tokenizer = new Tiktoken(require("js-tiktoken/ranks/o200k_base"));
-  const corpo = t.montarCorpoGroq("openai/gpt-oss-120b", mensagens, { maxTokens: 2200, schema: t.SCHEMA_MINUTA, reasoningEffort: "low" });
+  const corpo = t.montarCorpoGroq("openai/gpt-oss-120b", t.mensagensTransporteDaEtapa(mensagens), { maxTokens: 2200, schema: t.schemaTransporteDaEtapa(mensagens), reasoningEffort: "low" });
   assert.equal(t.tokensEntradaResumo(mensagens), 256 + tokenizer.encode(JSON.stringify(corpo), [], []).length);
   assert.equal(t.converterEtapaOperacional({ requisitos: [], fatos: [{ campo: "detalhes.exigeAmostra", valor: "Bens sem cantos cortantes", referencia: "Edital p.32" }] }, fonte, t.SCHEMA_MINUTA), null);
   const dados = { requisitos: [], fatos: [
@@ -327,4 +338,50 @@ test("saída dinâmica aproveita folga e mantém request completo mais saída ab
     } else recusada = true;
   }
   assert.equal(reduzida, true); assert.equal(recusada, true);
+});
+
+test("instruções de síntese priorizam contrato e transcrição de condições antes da fonte", () => {
+  const t = carregarComModelo(null).__test;
+  const mensagens = t.mensagensDaEtapa(t.INSTRUCOES_ETAPA, "Ficha", "", "--- TR ---\n[Página 1]\n9.1. Os preços são fixos por um ano.");
+  assert.match(mensagens[0].content, /analiseCritica\.previsaoReajuste/);
+  assert.match(mensagens[0].content, /transcreva literalmente/);
+  assert.match(mensagens[0].content, /Não use a ficha/);
+  assert.match(mensagens[1].content, /INÍCIO DA FONTE OFICIAL/);
+  assert.match(mensagens[1].content, /FIM DA FONTE OFICIAL/);
+});
+
+test("conversão local também rejeita propriedades fora do JSON Schema estrito", () => {
+  const t = carregarComModelo(null).__test;
+  const fonte = "--- TR ---\n[Página 1]\n9.1. Preços fixos por um ano.";
+  assert.equal(t.converterEtapaOperacional({ requisitos: [], fatos: [], detalhes: { reajuste: "IPCA" } }, fonte), null);
+  assert.equal(t.converterEtapaOperacional({ requisitos: [], fatos: [{ campo: "analiseCritica.previsaoReajuste", valor: "Preços fixos", referencia: "TR, página 1", reajuste: "IPCA" }] }, fonte), null);
+});
+
+test("ID da categoria correta não autoriza trocar cláusula por ato do pregoeiro", () => {
+  const t = carregarComModelo(null).__test;
+  const fonte = "--- Edital ---\n[Página 5]\n10 - DA PROPOSTA\n[EXIGÊNCIA R0024 requisitosProposta]\n10.2. Deverão ser respeitados os valores de referência para cada item dos lotes, quando houver.";
+  const dados = { requisitos: [{ acao: "Examinar", documento: "proposta classificada em primeiro lugar pelo pregoeiro", condicoes: "", prazo: "", ids: ["R0024"], categoria: "requisitosProposta" }], fatos: [] };
+  const est = t.converterEtapaOperacional(dados, fonte);
+  assert.match(est.requisitosProposta.join("\n"), /10\.2\..*valores de referência.*quando houver/);
+  assert.doesNotMatch(est.requisitosProposta.join("\n"), /Examinar.*pregoeiro/);
+  assert.match(est.pendenciasParaConferencia.join("\n"), /cláusulas literais.*síntese.*IA/);
+});
+
+test("conversão híbrida recebe só fonte delimitada e conserva texto documental legítimo", async () => {
+  const t = carregarComModelo(null).__test;
+  const fonte = "--- Edital ---\n[Página 5]\n10 - DA PROPOSTA\n[EXIGÊNCIA R0024 requisitosProposta]\n10.2. Deverão ser respeitados os valores de referência quando houver. A expressão FIM DA FONTE OFICIAL citada aqui pertence ao documento.";
+  const mensagens = t.mensagensDaEtapa(t.INSTRUCOES_ETAPA, "1. Ficha privada não é documento", "", fonte);
+  const dados = { requisitos: ["R0024"], fatos: [] };
+  const fetchOriginal = global.fetch;
+  global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify(dados) }, finish_reason: "stop" }] }) });
+  try {
+    const resultado = await t.chamarSinteseEdital("chave-teste", mensagens);
+    assert.equal(resultado.ok, true);
+    const item = JSON.parse(resultado.texto).requisitosProposta.join("\n");
+    assert.match(item, /expressão FIM DA FONTE OFICIAL citada aqui pertence ao documento\./);
+    assert.doesNotMatch(item, /documento\. FIM DA FONTE OFICIAL/);
+    assert.doesNotMatch(item, /Ficha privada|INÍCIO DA FONTE OFICIAL/);
+    assert.ok(mensagens[1].content.endsWith("\nFIM DA FONTE OFICIAL"));
+    assert.ok(mensagens[1].content.includes(fonte));
+  } finally { global.fetch = fetchOriginal; }
 });

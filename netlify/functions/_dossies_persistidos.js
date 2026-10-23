@@ -24,7 +24,7 @@ async function buscarDossiePersistido(numeroControlePNCP) {
 
 async function salvarDossiePersistido(numeroControlePNCP, dossie) {
   const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!chave || !numeroControlePNCP || !dossie) return;
+  if (!chave || !numeroControlePNCP || !dossie) return false;
   dossie = conferirEvidenciasDoResumo(dossie);
   try {
     const resposta = await fetch(`${SUPABASE_URL}/rest/v1/dossies_editais?on_conflict=numero_controle_pncp`, {
@@ -38,7 +38,7 @@ async function salvarDossiePersistido(numeroControlePNCP, dossie) {
       body: JSON.stringify([{
         numero_controle_pncp: numeroControlePNCP,
         versao: dossie.versao,
-        status: dossie.modoDegradado || dossie.metadadosIndisponiveis || dossie.estrutura?.coberturaLeitura?.parcial ? "parcial" : "pronto",
+        status: dossie.modoDegradado || dossie.metadadosIndisponiveis || dossie.estrutura?.coberturaLeitura?.parcial || dossie.estrutura?.coberturaSintese?.parcial ? "parcial" : "pronto",
         fonte_lida: Boolean(dossie.fonteLida),
         dossie,
         atualizado_em: new Date().toISOString(),
@@ -47,9 +47,11 @@ async function salvarDossiePersistido(numeroControlePNCP, dossie) {
     });
     // fetch não lança em 4xx/5xx: sem esta checagem uma gravação recusada passava em silêncio.
     if (!resposta.ok) console.error(`dossies_editais: gravação recusada HTTP ${resposta.status} ${numeroControlePNCP}: ${(await resposta.text().catch(() => "")).slice(0, 300)}`);
+    return resposta.ok;
   } catch (e) {
     // O resumo atual continua válido mesmo se a camada de auditoria estiver indisponível.
     console.error(`dossies_editais: gravação falhou ${numeroControlePNCP}: ${e.message}`);
+    return false;
   }
 }
 

@@ -1,0 +1,424 @@
+{
+  "versao": "0.4-revisao-pendente-2026-10-22",
+  "consultadoEm": "2026-10-22",
+  "estado": "curadoria temática local; revisão profissional pendente; não autoriza conclusão jurídica automática",
+  "coberturaCompleta": false,
+  "jurisprudencia": [],
+  "fontes": [
+    {
+      "id": "lei14133-art63-II-III",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art.63, incisos II e III",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "fase de habilitação das licitações regidas pela Lei 14.133; não aplicar automaticamente à contratação direta",
+      "temas": [
+        "fase de habilitação",
+        "vencedor",
+        "julgamento",
+        "classificado"
+      ],
+      "trechoCurto": "exceto quando a fase de habilitação anteceder a de julgamento",
+      "resumo": "A documentação de habilitação é solicitada ao vencedor, ressalvada a hipótese de a habilitação anteceder o julgamento. A documentação de regularidade fiscal tem apresentação posterior ao julgamento das propostas e se refere ao licitante mais bem classificado.",
+      "alerta": "Conferir a ordem das fases no edital e eventual inversão. Distinguir a regra geral da documentação da regra específica de regularidade fiscal. Estes dispositivos não definem a emissão de documentos em nome de matriz ou filial e não dispensam análise das cláusulas pertinentes. Não transportar automaticamente estas regras para contratação direta.",
+      "vigencia": "texto oficial consolidado consultado em22/10/2026",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "fase de habilitação das licitações regidas pela Lei 14.133; não aplicar automaticamente à contratação direta",
+        "Conferir a ordem das fases no edital e eventual inversão. Distinguir a regra geral da documentação da regra específica de regularidade fiscal. Estes dispositivos não definem a emissão de documentos em nome de matriz ou filial e não dispensam análise das cláusulas pertinentes. Não transportar automaticamente estas regras para contratação direta."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "f73a68a4bc0681a874bf2c84266d1e895e12f9ff9dfdfb9a2c1b34b013b79cfb"
+    },
+    {
+      "id": "lei14133-art69",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art.69, caput, incisos I-II e §§2º,5º,6º",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "qualificação econômico-financeira no regime14.133",
+      "temas": [
+        "balanço",
+        "financeira",
+        "índices",
+        "faturamento",
+        "demonstrações",
+        "recente"
+      ],
+      "trechoCurto": "devidamente justificados no processo licitatório",
+      "resumo": "Índices objetivos justificados; veda faturamento mínimo e rentabilidade/lucratividade. Documentação contábil de empresa constituída há menos de dois anos limita-se ao último exercício.",
+      "alerta": "Não converte índice elevado em ilegalidade automática; conferir justificativa, natureza do índice e documentos exigidos. Empresa criada no exercício tem regra própria no art.65§1º, não confundida com art.69§6º. Não presumir inexistência de demonstrações por ser dispensa.",
+      "vigencia": "texto oficial consolidado consultado em22/10/2026",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "qualificação econômico-financeira no regime14.133",
+        "Não converte índice elevado em ilegalidade automática; conferir justificativa, natureza do índice e documentos exigidos. Empresa criada no exercício tem regra própria no art.65§1º, não confundida com art.69§6º. Não presumir inexistência de demonstrações por ser dispensa."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "442f0fa8c0e3b81dc727365a6ac16270278438a12ff98b20867b1d3140bbdae7"
+    },
+    {
+      "id": "lei14133-art70-III",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art.70, incisoIII",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "possibilidade de dispensa documental nas hipóteses legais do regime14.133",
+      "temas": [
+        "dispensa documental",
+        "entrega imediata",
+        "um quarto do limite",
+        "pesquisa e desenvolvimento"
+      ],
+      "trechoCurto": "dispensada, total ou parcialmente",
+      "resumo": "Possibilidade condicionada de dispensa documental para entrega imediata, valores inferiores a um quarto do limite pertinente e produto para pesquisa/desenvolvimento no limite aplicável.",
+      "alerta": "Não é dispensa documental automática de toda contratação direta. Conferir hipótese, decisão administrativa e valores atualizados por decreto; esta base não fixa valor monetário vigente nem calcula enquadramento.",
+      "vigencia": "texto oficial consolidado consultado em22/10/2026",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "possibilidade de dispensa documental nas hipóteses legais do regime14.133",
+        "Não é dispensa documental automática de toda contratação direta. Conferir hipótese, decisão administrativa e valores atualizados por decreto; esta base não fixa valor monetário vigente nem calcula enquadramento."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "cbe1b9783ee77d73634b6ac2b2afbf7bdf43cf32de4577d939a2b35a0588c534"
+    },
+    {
+      "id": "lei14133-art67",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art.67, caput e §§1º,2º,3º,5º",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "qualificação técnica sob regime14.133",
+      "temas": [
+        "atestado",
+        "técnica",
+        "técnico",
+        "experiência",
+        "quantitativo"
+      ],
+      "trechoCurto": "parcelas de maior relevância ou valor significativo",
+      "resumo": "Atestados e quantitativos têm condições legais; serviços contínuos admitem experiência mínima até três anos na hipótese do§5º.",
+      "alerta": "Não generalizar proibição de tempo sem examinar§5º. Quantidade mínima até50% está vinculada às parcelas do§1º, não automaticamente ao total. Avaliar natureza do objeto e justificativa; alternativa§3º depende de regulamentação e excetua engenharia.",
+      "vigencia": "texto oficial consolidado consultado em22/10/2026",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "qualificação técnica sob regime14.133",
+        "Não generalizar proibição de tempo sem examinar§5º. Quantidade mínima até50% está vinculada às parcelas do§1º, não automaticamente ao total. Avaliar natureza do objeto e justificativa; alternativa§3º depende de regulamentação e excetua engenharia."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "cd5dc1df1fdbb84d6f6fb805c279c9c977c7eeb590ddc3f388f1120b566b5cf5"
+    },
+    {
+      "id": "lei14133-art164",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 164 e parágrafo único",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "edital de licitação regido pela Lei 14.133",
+      "trechoCurto": "Qualquer pessoa é parte legítima",
+      "resumo": "Impugnação e esclarecimento: protocolo até três dias úteis antes da abertura; resposta em até três dias úteis, limitada ao último dia útil anterior.",
+      "alerta": "Não aplicar automaticamente à contratação direta. Verificar calendário, horário, fase, canal e regras do caso.",
+      "vigencia": "dispositivo presente no texto oficial consolidado consultado; requer monitoramento antes do uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "edital de licitação regido pela Lei 14.133",
+        "Não aplicar automaticamente à contratação direta. Verificar calendário, horário, fase, canal e regras do caso."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "ab725b3a74c7a2b4ed38d7cae34f801670b20f79ef9b8fbab565bed46c1c1479"
+    },
+    {
+      "id": "in67-2021-escopo-abertura",
+      "tipo": "instrucao_normativa",
+      "norma": "IN SEGES/ME 67/2021, atualizada pela IN SEGES/MGI 8/2023 na página oficial",
+      "dispositivo": "arts. 1º, 2º e 6º, parágrafo único",
+      "url": "https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-seges-me-no-67-de-8-de-julho-de-2021",
+      "escopo": "Administração federal direta, autárquica e fundacional; aplicação indicada no art.2º para execução de transferências voluntárias da União",
+      "trechoCurto": "não será inferior a 3 (três) dias úteis",
+      "resumo": "Art.6º: intervalo mínimo entre divulgação do aviso e abertura/envio de lances.",
+      "alerta": "Intervalo não estabelece prazo universal de impugnação. Conferir aviso e regulação aplicável ao ente; não presumir incidência em todo município.",
+      "vigencia": "página oficial listada como atualizada, consultada em 22/10/2026; revisão da página em 29/03/2023",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "Administração federal direta, autárquica e fundacional; aplicação indicada no art.2º para execução de transferências voluntárias da União",
+        "Intervalo não estabelece prazo universal de impugnação. Conferir aviso e regulação aplicável ao ente; não presumir incidência em todo município."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Portal de Compras do Governo Federal",
+        "url": "https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-seges-me-no-67-de-8-de-julho-de-2021",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "6b5bfb9b15370c4b098d303e8d95785d9729c30cfbf7a344638dba7fc7ae661f"
+    },
+    {
+      "id": "lei14133-art62",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 62, caput e incisos I-IV",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "licitação sob regime 14.133; dimensões da habilitação",
+      "temas": [
+        "habilitação",
+        "qualificação",
+        "documentos"
+      ],
+      "resumo": "A habilitação verifica a capacidade para executar o objeto em dimensões jurídica, técnica, fiscal/social/trabalhista e econômico-financeira.",
+      "alerta": "Não fornece lista automática de documentos nem determina exigência simultânea. Conferir regras específicas, fase, objeto e cláusula; não transportar o rito de licitação para contratação direta.",
+      "vigencia": "texto oficial consolidado consultado em 22/10/2026; monitoramento necessário antes de uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "licitação sob regime 14.133; dimensões da habilitação",
+        "Não fornece lista automática de documentos nem determina exigência simultânea. Conferir regras específicas, fase, objeto e cláusula; não transportar o rito de licitação para contratação direta."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "d35c6ff8cbd40152d0028128c1d6c2edf16b81c43398f5361f6f98c5a080e973"
+    },
+    {
+      "id": "lei14133-art68",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 68, incisos I-VI e §§1º-2º",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "habilitação fiscal, social e trabalhista em licitação sob regime 14.133",
+      "temas": [
+        "fiscal",
+        "trabalhista",
+        "regularidade",
+        "FGTS",
+        "certidões"
+      ],
+      "resumo": "Os requisitos de regularidade e inscrição fiscal/social/trabalhista possuem hipóteses e formas próprias; admitem meios hábeis de comprovação, inclusive eletrônicos, conforme legislação específica.",
+      "alerta": "Não cria certidão de matriz/filial nem prova de centralização. Pertinência do cadastro, domicílio/sede, formas equivalentes e legislação específica precisam ser conferidos. Não converter categorias gerais em lista obrigatória universal.",
+      "vigencia": "texto oficial consolidado consultado em 22/10/2026; monitoramento necessário antes de uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "habilitação fiscal, social e trabalhista em licitação sob regime 14.133",
+        "Não cria certidão de matriz/filial nem prova de centralização. Pertinência do cadastro, domicílio/sede, formas equivalentes e legislação específica precisam ser conferidos. Não converter categorias gerais em lista obrigatória universal."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "b0f9b5893f0d937daedc710799d7efc05327237ee9a1021e15875c3c3566cc62"
+    },
+    {
+      "id": "lei14133-art40-parcelamento",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 40, inciso V, alínea b, e §§2º-3º",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "planejamento de compras sob regime 14.133; parcelamento do objeto",
+      "temas": [
+        "lotes",
+        "parcelamento do objeto",
+        "divisão do objeto"
+      ],
+      "resumo": "O parcelamento de compras considera viabilidade técnica, vantagem econômica, divisão em lotes e condições de competição e mercado. As exceções incluem economia de escala/gestão/vantagem, sistema integrado com risco ao conjunto e padronização ou marca que leve a fornecedor exclusivo.",
+      "alerta": "Parcelamento do objeto não é cronograma de entregas. Nenhuma divisão ou agregação foi julgada válida ou inválida: conferir estudo, natureza de compra e justificativa, inclusive exceções legais.",
+      "vigencia": "texto oficial consolidado consultado em 22/10/2026; monitoramento necessário antes de uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "planejamento de compras sob regime 14.133; parcelamento do objeto",
+        "Parcelamento do objeto não é cronograma de entregas. Nenhuma divisão ou agregação foi julgada válida ou inválida: conferir estudo, natureza de compra e justificativa, inclusive exceções legais."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "f63734d4c0fa4cafd827663d3e621d888362d18a25568d3693e892a97b3ad370"
+    },
+    {
+      "id": "lei14133-art41-I",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 41, inciso I, alíneas a-d",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "licitação para fornecimento de bens sob regime 14.133",
+      "temas": [
+        "marca",
+        "modelo"
+      ],
+      "resumo": "A indicação excepcional de marca ou modelo requer justificativa formal e hipótese legal: padronização, compatibilidade, atendimento exclusivo por marca/modelo comercializado por mais de um fornecedor, ou referência para compreender o objeto.",
+      "alerta": "Não presumir direcionamento ou ilegalidade da referência. Conferir hipótese, justificativa e condições de equivalência previstas; não aplicar automaticamente à contratação direta, a modelo de documento ou a marcação de segurança.",
+      "vigencia": "texto oficial consolidado consultado em 22/10/2026; monitoramento necessário antes de uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "licitação para fornecimento de bens sob regime 14.133",
+        "Não presumir direcionamento ou ilegalidade da referência. Conferir hipótese, justificativa e condições de equivalência previstas; não aplicar automaticamente à contratação direta, a modelo de documento ou a marcação de segurança."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "cb738951094d1d01f9e071cebad767337d5f6b133fb9efba0bd1d47a5659d771"
+    },
+    {
+      "id": "lei14133-art59-II-IV",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 59, incisos II-IV e §2º",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "julgamento de propostas em licitação sob regime 14.133",
+      "temas": [
+        "exequibilidade",
+        "inexequível",
+        "desclassificação",
+        "aceitabilidade",
+        "especificações"
+      ],
+      "resumo": "O julgamento considera especificações técnicas, orçamento e exequibilidade da proposta. A Administração pode promover diligência ou exigir demonstração da exequibilidade.",
+      "alerta": "Este recorte não contém percentuais de engenharia e não decide desclassificação. Distinguir bens/serviços gerais de obras/engenharia, verificar critério do edital, diligência e demais condições legais; preço baixo não produz conclusão automática nesta base.",
+      "vigencia": "texto oficial consolidado consultado em 22/10/2026; monitoramento necessário antes de uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "julgamento de propostas em licitação sob regime 14.133",
+        "Este recorte não contém percentuais de engenharia e não decide desclassificação. Distinguir bens/serviços gerais de obras/engenharia, verificar critério do edital, diligência e demais condições legais; preço baixo não produz conclusão automática nesta base."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "5172e8f73bf60e8d283029c1cc3be62756947c89c04edb4218f3b1da47d66c8b"
+    },
+    {
+      "id": "lei14133-art92-V-VII",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 92, incisos V-VII; art. 95, §1º",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "condições e marcos contratuais no regime 14.133",
+      "temas": [
+        "pagamento",
+        "liquidação",
+        "entrega",
+        "recebimento",
+        "execução"
+      ],
+      "resumo": "O contrato deve definir condições de preço/pagamento, medição quando cabível, liquidação e pagamento, além dos marcos pertinentes de execução, entrega e recebimento. Na substituição do instrumento contratual, as regras aplicam-se no que couber.",
+      "alerta": "Não fixa prazo universal nem converte prazo de entrega em pagamento, recebimento ou manifestação. Conferir instrumento aplicável, marco inicial, unidade, condições, atualização e regulamentação específica; não calcular tempestividade.",
+      "vigencia": "texto oficial consolidado consultado em 22/10/2026; monitoramento necessário antes de uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "condições e marcos contratuais no regime 14.133",
+        "Não fixa prazo universal nem converte prazo de entrega em pagamento, recebimento ou manifestação. Conferir instrumento aplicável, marco inicial, unidade, condições, atualização e regulamentação específica; não calcular tempestividade."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "ceb9584537d1ae154d8d108822728560d6f7ee567edaebdc8a38a7455583e4a8"
+    },
+    {
+      "id": "lei14133-art140-II",
+      "tipo": "lei",
+      "norma": "Lei 14.133/2021",
+      "dispositivo": "art. 140, inciso II e §§1º-4º",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "escopo": "recebimento de compras no regime 14.133",
+      "temas": [
+        "recebimento",
+        "recebidos",
+        "recebido"
+      ],
+      "resumo": "Compras distinguem recebimento provisório com verificação posterior e definitivo por agente/comissão designada com termo detalhado. Prazos e métodos dependem do regulamento ou contrato; desconformidade permite rejeição total ou parcial.",
+      "alerta": "Não fixa dias universais, aceite tácito ou início automático do pagamento. Recebimento não afasta responsabilidades. Não aplicar o rito de compras automaticamente a obras/serviços; conferir modalidade do objeto e regras próprias.",
+      "vigencia": "texto oficial consolidado consultado em 22/10/2026; monitoramento necessário antes de uso",
+      "revisaoJuridica": "pendente",
+      "consultadoEm": "2026-10-22",
+      "condicoes": [
+        "recebimento de compras no regime 14.133",
+        "Não fixa dias universais, aceite tácito ou início automático do pagamento. Recebimento não afasta responsabilidades. Não aplicar o rito de compras automaticamente a obras/serviços; conferir modalidade do objeto e regras próprias."
+      ],
+      "proveniencia": {
+        "origem": "fonte primária oficial",
+        "publicador": "Presidência da República / Planalto",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+        "consultadoEm": "2026-10-22",
+        "metodo": "conferência do dispositivo na página oficial; síntese própria delimitada",
+        "revisaoProfissional": "pendente"
+      },
+      "hashCuradoriaSha256": "58cee3a3d2211490b806c364abec2e01a0bb0e8f57d861068fc029ed116d1c32"
+    }
+  ],
+  "integridadeCuradoria": {
+    "algoritmo": "SHA-256",
+    "objeto": "JSON UTF-8 dos campos id,norma,dispositivo,url,escopo,resumo,alerta,condicoes,consultadoEm, nesta ordem; não é hash do HTML ou da lei integral"
+  }
+}

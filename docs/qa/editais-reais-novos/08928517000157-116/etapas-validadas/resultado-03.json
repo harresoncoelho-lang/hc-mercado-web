@@ -1,0 +1,56 @@
+{
+  "data": "2026-10-22T21:22:33.507Z",
+  "modelo": "openai/gpt-oss-120b",
+  "numeroControlePNCP": "08928517000157-1-000116/2026",
+  "modalidade": "Dispensa",
+  "fonteSha256": "fccb92101db03e3b03b17302b348b72392dea982ed1cf253e4cf23e163817d8a",
+  "caracteres": 8145,
+  "bytes": 8429,
+  "orcamento": {
+    "entrada": 4796,
+    "saida": 2404
+  },
+  "cabe": true,
+  "chamadas": 1,
+  "schema": "operacional",
+  "cobertura": "Uma etapa com todo o TXT fornecido; não comprova que todos os anexos oficiais integram esse TXT.",
+  "estado": "sintese_recebida_requer_revisao_humana",
+  "respostaProvedor": {
+    "status": 200,
+    "cabecalhos": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-requests": "999",
+      "x-ratelimit-remaining-tokens": "3207",
+      "x-ratelimit-reset-requests": "1m26.4s",
+      "x-ratelimit-reset-tokens": "35.947s"
+    },
+    "usage": {
+      "queue_time": 0.212115982,
+      "prompt_tokens": 4407,
+      "prompt_time": 0.21644026,
+      "completion_tokens": 1319,
+      "completion_time": 2.7419454180000002,
+      "total_tokens": 5726,
+      "total_time": 2.958385678
+    },
+    "finish_reason": [
+      "stop"
+    ]
+  },
+  "resultado": {
+    "ok": true,
+    "texto": "{\"documentosHabilitacao\":[\"apresentar. documentação essencial de qualificação técnica e econômico‑financeira conforme Arts. 67 e 69 da Lei 14.133/21 [R0001]\",\"apresentar. documentação relativa aos Arts. 66 a 69 da Lei 14.133/21 (habilitação jurídica, qualificação técnico‑profissional e técnico‑operacional, habilitações fiscal, social e trabalhista, habilitação econômico‑financeira). pode ser dispensada total ou parcialmente nas contratações em valores inferiores a um quarto do limite para dispensa de licitação, conforme Art. 70 da Lei 14.133/21 [R0002]\"],\"identificacao\":{\"objeto\":\"AQUISIÇÃO DE TUBOS DE CONCRETO DE 100 CM E 1M PRÉ-MOLDADO DE ENCAIXE, DESTINADOS A ATENDER AS DEMANDAS DA SECRETARIA DE INFRAESTRUTURA DO MUNICÍPIO DE BELÉM/PB [Termo de Referência, página 5, cláusula OBJETO]\",\"numero\":\"41 [Termo de Referência, página 5, item 1.0]\",\"modalidade\":\"Dispensa [Termo de Referência, página 5, item 1.0]\"},\"penalidades\":\"Advertência por inexecução parcial; Multa de mora de 0,5% ao dia de atraso; Multa de 10% sobre o valor do contrato por infrações previstas no Art. 155; Impedimento de licitar e contratar por até 3 anos; Declaração de inidoneidade por 3 a 6 anos; Aplicação cumulada de outras sanções previstas na Lei 14.133/21. [Termo de Referência, página 4, cláusula 14.1]\",\"multas\":\"Multa de mora de 0,5% ao dia; Multa de 10% sobre o valor do contrato. [Termo de Referência, página 4, cláusula 14.1]\"}",
+    "diagnostico": {
+      "status": 200,
+      "finalizacao": "stop",
+      "caracteres": 2084,
+      "prompt_tokens": 4407,
+      "completion_tokens": 1319,
+      "total_tokens": 5726,
+      "caracteresRaciocinio": 2692
+    },
+    "modelo": "openai/gpt-oss-120b",
+    "erro": null
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "data": "2026-10-23T00:33:07.148Z",
+  "origem": "handler real / Auth e PostgREST locais",
+  "pedidoHash": "8093f05834b89a4affef4c6ca1b29d3e1ace69598cb53156cf6d9de7a71be9d2",
+  "edital": "08928517000157-1-000116/2026",
+  "chamadas": [
+    {
+      "numero": 1,
+      "entrada": 4339,
+      "saidaMaxima": 2500,
+      "bytes": 16880,
+      "contextoPublico": {
+        "fontes": [
+          {
+            "id": "F1",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "10.1",
+            "texto": "10.1.O pagamento será realizado mediante processo regular e em observância às normas e procedimentos adotados, bem como as disposições dos Arts. 141 a 146 da Lei 14.133/21; da seguinte maneira: Para ocorrer no prazo de trinta dias, contados do período de adimplemento."
+          },
+          {
+            "id": "F2",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "14.2",
+            "texto": "14.2.Se o valor da multa ou indenização devida não for recolhido no prazo de 15 dias após a comunicação ao Contratado, será automaticamente descontado da primeira parcela do pagamento a que o Contratado vier a fazer jus, acrescido de juros moratórios de 1% (um por cento) ao mês, ou, quando for o caso, cobrado judicialmente."
+          },
+          {
+            "id": "F3",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "15.1",
+            "texto": "15.1.Nos casos de eventuais atrasos de pagamento nos termos deste instrumento, e desde que o Contratado não tenha concorrido de alguma forma para o atraso, será admitida a compensação financeira, devida desde a data limite fixada para o pagamento até a data correspondente ao efetivo pagamento da parcela. Os encargos moratórios devidos em razão do atraso no pagamento serão calculados com utilização da seguinte fórmula: EM = N × VP × I, onde: EM = encargos moratórios; N = número de dias entre a data prevista para o pagamento e a do efetivo pagamento; VP = valor da parcela a ser paga; e I = índice de compensação financeira, assim apurado: I = (TX ÷ 100) ÷ 365, sendo TX = percentual do IPCA–IBGE acumulado nos últimos doze meses ou, na sua falta, um novo índice adotado pelo Governo Federal que o substitua. Na hipótese do referido índice estabelecido para a compensação financeira venha a ser extinto ou de qualquer forma não possa mais ser utilizado, será adotado, em substituição, o que vier a ser determinado pela legislação então em vigor. Belém - PB, 15 de Outubro de 2026. _______________________________ JOSÉ SUDENY JUSTINO DA COSTA Secretário de Desenvolvimento Urbano e Infraestrutura ESTADO DA PARAÍBA PREFEITURA MUNICIPAL DE BELÉM GABINETE DA PREFEITA TERMO DE REFERÊNCIA - APROVAÇÃO OBJETO: AQUISIÇÃO DE TUBOS DE CONCRETO DE 100 CM E 1M PRÉ–MOLDADO DE ENCAIXE, DESTINADOS A ATENDER AS DEMANDAS DA SECRETARIA DE INFRAESTRUTURA DO MUNICÍPIO DE BELÉM/PB."
+          },
+          {
+            "id": "F4",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "7.4",
+            "texto": "7.4.Manter, durante a vigência do contrato ou outros instrumentos hábeis, em compatibilidade com as obrigações assumidas, todas as condições de regularidade e qualificação exigidas no respectivo processo de contratação direta por Dispensa de Licitação, conforme o caso, apresentando ao Contratante os documentos necessários, sempre que solicitado."
+          },
+          {
+            "id": "F5",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "7.5",
+            "texto": "7.5.Emitir Nota Fiscal correspondente à sede ou filial da empresa que efetivamente apresentou a documentação de regularidade e qualificação exigidas quando da instrução do referido processo de contratação direta."
+          },
+          {
+            "id": "F6",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "9.9",
+            "texto": "9.9.O prazo para resposta ao pedido de restabelecimento do equilíbrio econômico-financeiro, quando for o caso, será de até um mês, contado da data do fornecimento da documentação comprobatória do fato imprevisível ou previsível de consequência incalculável, observadas as disposições dos Arts. 124 a 136, da Lei 14.133/21."
+          },
+          {
+            "id": "F7",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "11.1",
+            "texto": "11.1.Se necessária a verificação da qualificação técnica e econômico-financeira do fornecedor, a documentação essencial, suficiente para comprovar as referidas capacidades, será restrita aquela definida nos Arts. 67 e 69, da Lei 14.133/21, respectivamente."
+          },
+          {
+            "id": "F8",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "11.2",
+            "texto": "11.2.Salienta-se que a documentação relacionada nos Arts. 66 a 69, da Lei 14.133/21, para demonstrar a capacidade do fornecedor de realizar o objeto eventualmente pactuado, dividida em habilitação jurídica; qualificação técnico-profissional e técnico-operacional; habilitações fiscal, social e trabalhista; e habilitação econômico-financeira; poderá ser dispensada, total ou parcialmente, nas contratações em valores inferiores a um quarto do limite para dispensa de licitação para compras em geral, conforme as disposições do Art. 70, do mesmo diploma legal."
+          },
+          {
+            "id": "F9",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "14.1",
+            "texto": "14.1.O fornecedor ou o Contratado será responsabilizado administrativamente, facultada a defesa no prazo legal do interessado, pelas infrações previstas no Art. 155, da Lei 14.133/21 e serão aplicadas, na forma, condições, regras, prazos e procedimentos definidos nos Arts. 156 a 163, do mesmo diploma legal, as seguintes sanções: a – advertência aplicada exclusivamente pela infração administrativa de dar causa à inexecução parcial do contrato, quando não se justificar a imposição de penalidade mais grave; b – multa de mora de 0,5% (zero vírgula cinco por cento) aplicada sobre o valor do contrato, por dia de atraso injustificado na execução do objeto da contratação; c – multa de 10% (dez por cento) sobre o valor do contrato por qualquer das infrações administrativas previstas no referido Art. 155; d – impedimento de licitar e contratar no âmbito da Administração Pública direta e indireta do ente federativo que tiver aplicado a sanção, pelo prazo máximo de três anos, aplicada ao responsável pelas infrações administrativas previstas nos incisos II, III, IV, V, VI e VII do caput do referido Art. 155, quando não se justificar a imposição de penalidade mais grave; e – declaração de inidoneidade para licitar ou contratar no âmbito da Administração Pública direta e indireta de todos os entes federativos, pelo prazo mínimo de três anos e máximo de seis anos, aplicada ao responsável pelas infrações administrativas previstas nos incisos VIII, IX, X, XI e XII do caput do referido Art. 155, bem como pelas infrações administrativas previstas nos incisos II, III, IV, V, VI e VII do caput do mesmo artigo que justifiquem a imposição de penalidade mais grave que a sanção referida no § 4º do referido Art. 156; f – aplicação cumulada de outras sanções previstas na Lei 14.133/21."
+          },
+          {
+            "id": "F10",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "1",
+            "numero": "4.1",
+            "texto": "4.1.Na referida contratação será concedido tratamento diferenciado e simplificado para as Microempresas e Empresas de Pequeno Porte, nos limites previstos da Lei 123/06, consideradas as hipóteses e condições determinadas no Art. 4º, da Lei 14.133/21; inclusive nos termos das disposições contidas nos Arts. 47 e 48, por estar presente a exceção prevista no inciso IV, do Art. 49, da Lei 123/06: Licitação dispensável - Art. 75, II, da Lei 14.133/21."
+          },
+          {
+            "id": "F11",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "6.1",
+            "texto": "6.1.Efetuar o pagamento relativo ao objeto contratado efetivamente realizado, de acordo com as cláusulas do respectivo contrato ou outros instrumentos hábeis."
+          },
+          {
+            "id": "F12",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "6.3",
+            "texto": "6.3.Notificar o Contratado sobre qualquer irregularidade encontrada quanto à qualidade dos produtos ou serviços, exercendo a mais ampla e completa fiscalização, o que não exime o Contratado de suas responsabilidades pactuadas e preceitos legais."
+          },
+          {
+            "id": "F13",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "7.1",
+            "texto": "7.1.Responsabilizar-se por todos os ônus e obrigações concernentes à legislação fiscal, civil, tributária e trabalhista, bem como por todas as despesas e compromissos assumidos, a qualquer título, perante seus fornecedores ou terceiros em razão da execução do objeto contratado."
+          },
+          {
+            "id": "F14",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "7.2",
+            "texto": "7.2.Substituir, arcando com as despesas decorrentes, os materiais ou serviços que apresentarem defeitos, alterações, imperfeições ou quaisquer irregularidades discrepantes às exigências do instrumento de ajuste pactuado, ainda que constatados somente após o recebimento ou pagamento."
+          },
+          {
+            "id": "F15",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "8.0",
+            "texto": "8.0.DOS PRAZOS E DA VIGÊNCIA"
+          },
+          {
+            "id": "F16",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "8.1",
+            "texto": "8.1.O prazo máximo para a execução do objeto desta contratação e que admite prorrogação nas condições e hipóteses previstas na Lei 14.133/21, está abaixo indicado e será considerado da emissão do Pedido de Compra:"
+          },
+          {
+            "id": "F17",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "2",
+            "numero": "9.1",
+            "texto": "9.1.Os preços inicialmente contratados são fixos e irreajustáveis no prazo de um ano contado da data do orçamento estimado."
+          },
+          {
+            "id": "F18",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "9.6",
+            "texto": "9.6.Caso o índice estabelecido para reajustamento venha a ser extinto ou de qualquer forma não possa mais ser utilizado, será adotado, em substituição, o que vier a ser determinado pela legislação então em vigor."
+          },
+          {
+            "id": "F19",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "10.0",
+            "texto": "10.0.DO PAGAMENTO"
+          },
+          {
+            "id": "F20",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "3",
+            "numero": "11.0",
+            "texto": "11.0.DA VERIFICAÇÃO DA QUALIFICAÇÃO TÉCNICA E ECONÔMICO-FINANCEIRA"
+          },
+          {
+            "id": "F21",
+            "documento": "Termo de Referencia (#2)",
+            "pagina": "4",
+            "texto": "novo índice adotado pelo Governo Federal que o substitua. Na hipótese do referido índice estabelecido para a compensação financeira venha a ser extinto ou de qualquer forma não possa mais ser utilizado, será adotado, em substituição, o que vier a ser determinado pela legislação então em vigor. Belém - PB, 15 de Outubro de 2026. _______________________________ JOSÉ SUDENY JUSTINO DA COSTA Secretário de Desenvolvimento Urbano e Infraestrutura"
+          }
+        ],
+        "normas": [
+          {
+            "id": "lei14133-art92-V-VII",
+            "hash": "4a6004753c685c128b9e36899cc9942115d2b9765594ac9e52e89139e928e6e8"
+          }
+        ],
+        "pontosDisponiveis": [
+          {
+            "tipo": "esclarecer_excecao",
+            "fontesPermitidas": [
+              "F4",
+              "F5",
+              "F6",
+              "F7",
+              "F8"
+            ],
+            "fundamentosPermitidos": []
+          },
+          {
+            "tipo": "especificar_cronograma",
+            "fontesPermitidas": [
+              "F1",
+              "F2",
+              "F3"
+            ],
+            "fundamentosPermitidos": [
+              {
+                "id": "lei14133-art92-V-VII",
+                "fontesDeApoio": [
+                  "F1",
+                  "F2",
+                  "F3"
+                ]
+              }
+            ]
+          }
+        ],
+        "ancorasObrigatorias": [
+          {
+            "numero": "10.1",
+            "fontesPermitidas": [
+              "F1"
+            ]
+          }
+        ],
+        "codigoHashes": {
+          "_defesa_contexto.js": "f1151c764bf34a86553505edcc1768a46d99e5bb3c819073afdbb9bd3431e0ac",
+          "_defesa_handler.js": "d3c775295af637064647945f78148b35379c41ff35a4295333c046f7da95c3a6",
+          "_defesa_pontos.js": "149b92e18054982c57ecc41b1ecc17dfcce8bfa21a8e5e5974a844343c53186f",
+          "knowledge-defesa.json": "4641968ec08047e765b67dc735c73d9c976ee81050f4f3ebed31745f90182210"
+        },
+        "schemaHash": "c28fc0f61345e38d5b020db0250d56021d0031b04c2db5e52b768c78d382fa98",
+        "versaoBase": "0.4-revisao-pendente-2026-10-22"
+      },
+      "status": 400,
+      "content": null,
+      "finish_reason": null,
+      "usage": {},
+      "erroProvedor": {
+        "code": "json_validate_failed",
+        "type": "invalid_request_error",
+        "message": "Failed to generate JSON. Please adjust your prompt. See 'failed_generation' for more details.",
+        "failed_generation": "{\"ancoras\":{\"10.1\":{\"tipo\":\"especificar_cronograma\",\"fontes\":[\"F1\"],\"fundamentos\":[\"lei14133-art92-V-VII\"]},\"\":\"\":\"\":\"\":\"\"},\"pontos\":[]}"
+      }
+    }
+  ],
+  "locais": {
+    "auth": 1,
+    "cota": 1,
+    "canonico": 1
+  },
+  "bloqueios": 0,
+  "aprovado": false,
+  "statusHTTP": 502,
+  "resposta": {
+    "erro": "A IA não concluiu uma análise utilizável. Tente depois; nenhum documento foi enviado."
+  },
+  "erro": "Expected values to be strictly equal:\n\n502 !== 200\n"
+}

@@ -22,6 +22,14 @@ const HOST_OR = "openrouter.ai";
 const HOST_CF = "api.cloudflare.com";
 const groqFalha = async () => ({ ok: false, erro: "limite da Groq" });
 
+test('Groq com espaços e compatível truncado não contam como sucesso', async () => {
+  const r = await responderComFallback(MENSAGENS, OPCOES, { env: { GROQ_API_KEY: 'g', GEMINI_API_KEY: 'k' },
+    groq: async () => ({ ok: true, texto: '   ' }),
+    fetchFn: async () => resp(200, { choices: [{ message: { content: 'Resposta truncada' }, finish_reason: 'length' }] }) });
+  assert.equal(r.ok, false);
+  assert.ok(r.erro?.trim());
+});
+
 test("Groq 429 cai para o Gemini, que responde", async () => {
   const chamadas = [];
   const r = await responderComFallback(MENSAGENS, OPCOES, {

@@ -16,6 +16,11 @@ function categoriaSecao(titulo) {
   return null;
 }
 
+function numeroDaClausula(linha) {
+  if (/^\d{1,2}[./]\d{1,2}[./]\d{4}\b|^\d[\d.]*,\d{2}\b/.test(linha)) return null;
+  return linha.match(/^(\d+(?:\.\d+)*)(?:\.\s*|\s*[-–]\s*|\s+)([A-Za-zÀ-ÿ].*)$/);
+}
+
 function clausulasDaFonte(texto) {
   const clausulas = [];
   let documento = "Documento oficial", pagina = "", atual, secao = "";
@@ -24,9 +29,13 @@ function clausulasDaFonte(texto) {
     if (doc) { documento = doc[1]; pagina = ""; atual = null; secao = ""; continue; }
     const pg = linha.match(/^\[Página (\d+)\]$/);
     if (pg) { pagina = pg[1]; continue; }
-    const numero = linha.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])?\s+\D/);
+    // A quebra de página pode continuar a cláusula; um novo anexo/título não.
+    if (/^(?:(?:ANEXO|AP[EÊ]NDICE)\s+[IVX\d]+\b|CL[AÁ]USULA\s+[^:–-]+[:–-]|MINUTA\s+(?:DE\s+)?CONTRATO\b|TERMO\s+DE\s+REFER[EÊ]NCIA\s*$)/i.test(linha)) {
+      atual = null; secao = linha; continue;
+    }
+    const numero = numeroDaClausula(linha);
     if (numero) {
-      if (!numero[1].includes(".")) secao = linha;
+      if (!numero[1].includes(".") || numero[2].length < 150 && numero[2] === numero[2].toUpperCase()) secao = linha;
       atual = { numero: numero[1], documento, pagina, secao, texto: linha };
       clausulas.push(atual);
     } else if (atual && linha) atual.texto += ` ${linha}`;
@@ -36,34 +45,40 @@ function clausulasDaFonte(texto) {
 
 function completarDossieDaFonte(estrutura, texto) {
   estrutura.pendenciasParaConferencia ||= [];
+  estrutura.entregaExecucao ||= {};
+  const outrasExistentes = estrutura.outrasInformacoesRelevantes || [];
+  const textoItem = (item) => typeof item === "string" ? item : item?.texto || "";
   const clausulas = clausulasDaFonte(texto);
-  const formatar = (item) => `${item.texto} [${item.documento}${item.pagina ? `, página ${item.pagina}` : ""}]`;
+  const formatar = (item) => `${item.texto} [${item.documento}${item.pagina ? `, página ${item.pagina}` : ""}${item.numero ? `, cláusula ${item.numero}` : ""}]`;
   const juntar = (itens) => [...new Set(itens.map(formatar))].join("\n") || "Não informado";
   const categorias = ["documentosCredenciamento", "requisitosProposta", "documentosHabilitacao", "declaracoesExigidas"];
   // A condição do caput acompanha o subitem, sem transformá-la em exigência
   // universal. As cláusulas e suas referências continuam literais.
   for (const categoria of categorias) estrutura[categoria] = (estrutura[categoria] || []).map((item) => {
-    const numero = item.match(/^(\d+(?:\.\d+)+)\./)?.[1];
+    const corpo = textoItem(item);
+    const numero = corpo.match(/^(\d+(?:\.\d+)+)\./)?.[1];
     const pai = numero?.split(".").slice(0, -1).join(".");
-    const documento = item.match(/\[([^,\]]+)/)?.[1];
+    const documento = corpo.match(/\[([^,\]]+)/)?.[1];
     const fontes = clausulas.filter((clausula) => clausula.numero === pai && clausula.documento === documento && /\b(?:se|caso|quando|vencedor|vencedora)\b/i.test(clausula.texto));
-    return fontes.length === 1 && !item.includes(fontes[0].texto) ? `${item} Condição de aplicação: ${formatar(fontes[0])}` : item;
+    if (fontes.length !== 1 || corpo.includes(fontes[0].texto)) return item;
+    const completo = `${corpo} Condição de aplicação: ${formatar(fontes[0])}`;
+    return typeof item === "string" ? completo : { ...item, texto: completo };
   });
-  const temas = /participa[cç][aã]o|cons[oó]rcio|subcontrata|recursos|impugna[cç]|esclarecimento|adjudica|homologa|contrata[cç][aã]o|recebimento|entrega|garantia|pagamento|ficha t[eé]cnica|fichas t[eé]cnicas|parentesco|obriga[cç][oõ]es da contratada/i;
-  const existentes = categorias.flatMap((categoria) => estrutura[categoria] || []);
+  const temas = /quantidades? constantes|quantitativos|ades[aã]o|sess[aã]o p[uú]blica|participa[cç][aã]o|cons[oó]rcio|subcontrata|recursos?|impugna[cç]|esclarecimento|adjudica|homologa|contrata[cç][aã]o|recebimento|entrega|garantia|pagamento|ficha t[eé]cnica|fichas t[eé]cnicas|parentesco|obriga[cç][oõ]es da contratada/i;
+  const existentes = categorias.flatMap((categoria) => (estrutura[categoria] || []).map(textoItem));
   const complementos = clausulas.filter((item) => temas.test(item.secao) || temas.test(item.texto))
     .filter((item) => !existentes.some((existente) => existente.includes(item.texto)));
   estrutura.outrasInformacoesRelevantes = complementos.map(formatar);
   const modelos = paginasDaFonte(texto).filter((pagina) => /parentesco/i.test(pagina.texto) && /estado civil|nacionalidade|graus de parentesco|portador|quadro\s+societ[aá]rio|consangu[ií]neo|afinidade/i.test(pagina.texto));
   if (modelos.length) estrutura.anexosDeclaracoes = modelos.map((pagina) => `Modelo/referência de parentesco: ${pagina.texto.trim()} [${pagina.documento}${pagina.pagina ? `, página ${pagina.pagina}` : ""}]`).join("\n");
   const pagamentos = clausulas.filter((item) => /pagamento/i.test(item.secao) || /pagamento ser[aá] efetuado/i.test(item.texto));
-  estrutura.condicoesPagamento = juntar(pagamentos);
-  const reposicao = clausulas.filter((item) => /substitui|substitu[iíçc]/i.test(item.texto) && /defeit|avari|inadequad|n[aã]o corresponder/i.test(item.texto));
+  if (pagamentos.length) estrutura.condicoesPagamento = juntar(pagamentos);
+  const reposicao = clausulas.filter((item) => /substitui|substitu[iíçc]/i.test(item.texto) && /defeit|avari|inadequad|n[aã]o corresponder/i.test(item.texto) && !estrutura.entregaExecucao.condicoes?.includes(item.texto));
   if (reposicao.length) estrutura.entregaExecucao.condicoes = [estrutura.entregaExecucao.condicoes, juntar(reposicao)].filter((valor) => valor && valor !== "Não informado").join("\n");
   const garantia = clausulas.filter((item) => !/garantia contratual (?:dos? bens|do produto)|fabricante/i.test(item.texto) && /garantia (?:contratual|da contrata[cç][aã]o)|garantia de execu[cç][aã]o/i.test(item.texto));
-  estrutura.garantias = { ...estrutura.garantias, contrato: juntar(garantia) };
+  if (garantia.length) estrutura.garantias = { ...estrutura.garantias, contrato: juntar(garantia) };
   const subcontratacao = clausulas.filter((item) => /subcontrata/i.test(item.secao));
-  estrutura.analiseCritica = { ...estrutura.analiseCritica, permiteSubcontratacao: juntar(subcontratacao.map(reduzirJustificativa).filter(Boolean)) };
+  if (subcontratacao.length) estrutura.analiseCritica = { ...estrutura.analiseCritica, permiteSubcontratacao: juntar(subcontratacao.map(reduzirJustificativa).filter(Boolean)) };
   const prazosIncompletos = clausulas.filter((item) => /XX\s*\/\s*XX|_{2,}\s*\//i.test(item.texto) && /prazo|dia|ficha/i.test(item.texto));
   if (prazosIncompletos.length) estrutura.pendenciasParaConferencia.push(`Há prazo sem preenchimento em documento oficial; não o utilize como data válida. Confronte com o calendário do edital: ${juntar(prazosIncompletos)}`);
   const remissoes = clausulas.filter((item) => /declara[cç][aã]o/i.test(item.texto) && /microempresa|pequeno porte|ME\s*\/\s*EPP/i.test(item.texto));
@@ -72,7 +87,7 @@ function completarDossieDaFonte(estrutura, texto) {
     const destino = clausulas.find((clausula) => clausula.documento === item.documento && clausula.numero === alvo);
     if (destino && /integridade/i.test(destino.texto) && !/microempresa|pequeno porte/i.test(destino.texto)) estrutura.pendenciasParaConferencia.push(`Remissão divergente: ${formatar(item)} O subitem citado trata de integridade: ${formatar(destino)}. Solicite esclarecimento ao órgão.`);
   }
-  const camposExibidos = [estrutura.condicoesPagamento, estrutura.entregaExecucao.condicoes, estrutura.garantias.contrato, estrutura.analiseCritica.permiteSubcontratacao, estrutura.anexosDeclaracoes].filter(Boolean);
+  const camposExibidos = [estrutura.condicoesPagamento, estrutura.entregaExecucao.condicoes, estrutura.garantias?.contrato, estrutura.analiseCritica?.permiteSubcontratacao, estrutura.anexosDeclaracoes].filter(Boolean);
   const unicos = new Map();
   for (const item of complementos.map(reduzirJustificativa).filter(Boolean)) {
     if (camposExibidos.some((campo) => campo.includes(item.texto))) continue;
@@ -81,7 +96,8 @@ function completarDossieDaFonte(estrutura, texto) {
     const referencia = `[${item.documento}${item.pagina ? `, página ${item.pagina}` : ""}, cláusula ${item.numero}]`;
     unicos.set(chave, anterior ? `${anterior} ${referencia}` : formatar(item));
   }
-  estrutura.outrasInformacoesRelevantes = [...unicos.values()];
+  estrutura.outrasInformacoesRelevantes = [...new Set([...outrasExistentes, ...unicos.values()])];
+  estrutura.pendenciasParaConferencia = [...new Set(estrutura.pendenciasParaConferencia)];
   return estrutura;
 }
 
@@ -111,7 +127,7 @@ function paginasDaFonte(texto) {
     if (/^ANEXO\s+[IVX\d]+\b/i.test(limpa)) minuta = /MINUTA\s+(?:DE\s+)?CONTRATO/i.test(limpa);
     else if (/^MINUTA\s+(?:DE\s+)?CONTRATO/i.test(limpa)) minuta = true;
     if (semPaginas.has(documento)) {
-      const numero = limpa.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])?\s+\D/)?.[1];
+      const numero = numeroDaClausula(limpa)?.[1];
       if (numero) { atual = { documento, pagina: "", numero, minuta, texto: "" }; paginas.push(atual); }
       else if (/^(?:ANEXO\s+[IVX\d]+\b|MINUTA\s+(?:DE\s+)?CONTRATO)/i.test(limpa)) atual = null;
     }
@@ -124,7 +140,11 @@ function fontesDoDocumento(referencia, fontes) {
   const normalizar = (valor) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
   const ref = normalizar(referencia);
   const exatos = fontes.filter((pagina) => ref.includes(normalizar(pagina.documento)));
-  return exatos.length ? exatos : fontes.filter((pagina) => (
+  if (exatos.length) return exatos;
+  if (/\(#\d+\)/.test(referencia)) return [];
+  const semSequencial = fontes.filter((pagina) => ref.includes(normalizar(pagina.documento.replace(/\s*\(#\d+\)\s*$/, ""))));
+  if (semSequencial.length) return semSequencial;
+  return fontes.filter((pagina) => (
     (/edital/i.test(pagina.documento) && /edital/i.test(referencia)) ||
     (/termo.?de.?refer[eê]ncia|^TR\d/i.test(pagina.documento) && /termo.?de.?refer[eê]ncia|\bTR\b/i.test(referencia))
   ));
@@ -177,8 +197,10 @@ function validarNarrativasContratuais(estrutura, texto) {
   return estrutura;
 }
 
-function validarFatosDaFonte(estrutura, texto) {
+function validarFatosDaFonte(estrutura, texto, { campos: camposSelecionados } = {}) {
   const paginas = paginasDaFonte(texto);
+  const clausulas = clausulasDaFonte(texto);
+  const normalizarAtomico = valor => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const conceitos = { "detalhes.exigeAmostra": /amostra/i, "detalhes.exigeVisitaTecnica": /visita|vistoria/i,
     "detalhes.garantia": /garantia|cau[cç][aã]o|seguro.?garantia/i, "detalhes.regimeExecucao": /regime|empreitada|pre[cç]o (?:global|unit[aá]rio)/i };
   const narrativas = [];
@@ -189,6 +211,7 @@ function validarFatosDaFonte(estrutura, texto) {
     for (const campo of campos) {
       if (typeof objeto[campo] !== "string") continue;
       const caminho = objeto === estrutura ? campo : `${chave}.${campo}`;
+      if (camposSelecionados && !camposSelecionados.includes(caminho)) continue;
       const partes = objeto[campo].split(/\n(?=Referência \d+:)/).map((parte) => parte.replace(/^Referência \d+:\s*/, ""));
       const validas = partes.filter((parte) => {
         if (/_{3,}|\.{4,}/.test(parte)) return false;
@@ -196,6 +219,21 @@ function validarFatosDaFonte(estrutura, texto) {
         if (!referencia) return !conceitos[caminho];
         const pagina = localizarReferencia(referencia, paginas);
         if (!pagina) return false;
+        const numeroClausula = referencia.match(/(?:cl[aá]usula|item)\s+(\d+(?:\.\d+)*)/i)?.[1];
+        if (numeroClausula && !fontesDoDocumento(referencia, clausulas).some(c => c.numero === numeroClausula && (!pagina.pagina || c.pagina === pagina.pagina))) return false;
+        const atomico = parte.replace(/\[[^\]]+\]/g, "").trim();
+        if (caminho === "detalhes.valorEstimado") {
+          const valor = atomico.replace(/^R\$\s*/, "").replace(/\s/g, "");
+          const numero = n => Number(n.replace(/[.,]+$/, "").replace(/\.(?=\d{3}(?:[.,]|$))/g, "").replace(",", "."));
+          if (!/^\d[\d.,]*$/.test(valor) || !(pagina.texto.match(/\d[\d.,]*/g) || []).some(n => numero(n) === numero(valor))) return false;
+        }
+        if (["identificacao.numero", "identificacao.modalidade"].includes(caminho)) {
+          const valor = normalizarAtomico(atomico), fonte = normalizarAtomico(pagina.texto);
+          if (caminho === "identificacao.modalidade" && !/^(?:(?:pregao|concorrencia|leilao)(?: eletronico| eletronica| presencial)?|dispensa(?: de licitacao| eletronica| presencial)?|inexigibilidade(?: de licitacao)?|credenciamento|concurso|dialogo competitivo|tomada de precos|convite|pre qualificacao|manifestacao de interesse|licitacao dispensada)$/.test(valor)) return false;
+          if (caminho === "identificacao.numero" && !/^[A-Z\d][A-Z\d./_-]*$/i.test(atomico)) return false;
+          const numeroSimples = caminho === "identificacao.numero" && /^\d+$/.test(valor);
+          if (numeroSimples ? !(pagina.texto.match(/\d+/g) || []).some(n => Number(n) === Number(valor)) : !(` ${fonte} `).includes(` ${valor} `)) return false;
+        }
         if (pagina.minuta) { narrativas.push(`Minuta contratual: ${parte}`); return false; }
         return !conceitos[caminho] || (conceitos[caminho].test(parte.replace(/\[[^\]]+\]/g, "")) && conceitos[caminho].test(pagina.texto));
       });
@@ -203,7 +241,7 @@ function validarFatosDaFonte(estrutura, texto) {
     }
   }
   if (narrativas.length) estrutura.outrasInformacoesRelevantes = [...new Set([...(estrutura.outrasInformacoesRelevantes || []), ...narrativas])];
-  validarNarrativasContratuais(estrutura, texto);
+  if (!camposSelecionados) validarNarrativasContratuais(estrutura, texto);
   return estrutura;
 }
 
@@ -213,14 +251,16 @@ function aplicarPrazosDaFonte(estrutura, texto) {
   const juntar = (itens) => [...new Set(itens.map(formatar))].join("\n") || "Não informado";
   const esclarecimentos = clausulas.filter((item) => /solicitar esclarecimentos|pedidos? de esclarecimento/i.test(item.texto) &&
     /\b(?:at[eé]|anteced[eê]ncia|antes)\b.*\b(?:dias?|abertura|sess[aã]o)|\b\d+\s*\([^)]*\)\s*dias?\b/i.test(item.texto) &&
-    !/responder[aá]|resposta aos pedidos|desconsiderar[aá]/i.test(item.texto));
-  estrutura.prazos = { ...estrutura.prazos, limiteEsclarecimentos: juntar(esclarecimentos) };
+    !/responder[aá]|resposta\s+(?:aos?\s+pedidos?|[àa]\s+impugna[cç][aã]o)|desconsiderar[aá]/i.test(item.texto));
+  const impugnacoes = clausulas.filter((item) => /impugnar|impugna[cç][oõ]es dever[aã]o ser enviadas/i.test(item.texto) &&
+    /dias? [uú]teis antes|exclusivamente atrav[eé]s/i.test(item.texto) && !/resposta|decidir/i.test(item.texto));
+  estrutura.prazos = { ...estrutura.prazos, limiteEsclarecimentos: juntar(esclarecimentos), limiteImpugnacao: juntar(impugnacoes) };
   // A entrega contratual tem objeto material/serviço explícito. Fichas, amostras
   // e propostas são etapas do certame, mesmo quando usam a palavra "entrega".
   const entregas = clausulas.filter((item) => /prazo de entrega (?:do objeto|dos materiais|dos bens|dos produtos)|(?:bens|materiais|produtos) (?:dever[aã]o ser|ser[aã]o) entregues|a entrega (?:do objeto|dos materiais|dos bens|dos produtos) (?:ser[aá]|dar-se-[aá])|execu[cç][aã]o dos servi[cç]os (?:ser[aá]|dever[aá])/i.test(item.texto) &&
     !/fichas? t[eé]cnicas?|amostras?|propostas?|infra[cç][oõ]es|retardamento/i.test(item.texto));
   const contexto = clausulas.filter((item) => entregas.some((origem) => item.documento === origem.documento &&
-    (item === origem || item.numero.startsWith(`${origem.numero}.`))));
+    item.secao === origem.secao && (item === origem || item.numero.startsWith(`${origem.numero}.`))));
   const prazo = entregas.filter((item) => /prazo|\bdias?\b|\bmeses\b|assinatura|ordem de/i.test(item.texto));
   const local = contexto.filter((item) => /local de entrega|endere[cç]o|(?:Rua|Avenida|Av\.)\s/i.test(item.texto));
   estrutura.entregaExecucao = { prazo: juntar(prazo), local: juntar(local), condicoes: juntar(contexto) };
@@ -243,7 +283,7 @@ function extrairRequisitosOperacionais(texto, identidadeLegada = false) {
     if (conteudo.length < 6) return;
     const item = `${conteudo} [${bloco.documento}${bloco.pagina ? `, página ${bloco.pagina}` : ""}]`;
     resultado[bloco.categoria].push(item);
-    if (bloco.categoria !== "declaracoesExigidas" && /declara(?:ção|ções|r|m)|\bdeclaro\b/i.test(conteudo)) resultado.declaracoesExigidas.push(item);
+    if (bloco.categoria !== "declaracoesExigidas" && !/^\d+(?:\.\d+)*\.\s*Habilita[cç][aã]o Jur[ií]dica\s*:/i.test(conteudo) && /declara(?:ção|ções|r|m)|\bdeclaro\b/i.test(conteudo)) resultado.declaracoesExigidas.push(item);
   };
   for (const linha of limparLinhas(texto)) {
     const doc = linha.match(/^--- (.+) ---$/);
@@ -254,7 +294,7 @@ function extrairRequisitosOperacionais(texto, identidadeLegada = false) {
     if (tituloSemNumero && categoriaSecao(linha)) {
       guardar(); bloco = null; categoria = categoriaSecao(linha); raiz = ""; continue;
     }
-    const numero = linha.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])\s+(.+)/);
+    const numero = identidadeLegada ? linha.match(/^(\d+(?:\.\d+)*)(?:\.|\s*[-–])\s+(.+)/) : numeroDaClausula(linha);
     const anexo = /^ANEXO\s+[IVX\d]+/i.test(linha);
     const cabecalho = numero && numero[2].length < 150 && numero[2] === numero[2].toUpperCase() && /[A-ZÀ-Ú]/.test(numero[2]);
     if (numero || anexo) {
@@ -377,7 +417,7 @@ function marcarRequisitosNaFonte(texto) {
     if (doc) documento = doc[1];
     const pg = limpa.match(/^\[Página (\d+)\]$/);
     if (pg) pagina = pg[1];
-    if (!/^\d+(?:\.\d+)*(?:\.|\s*[-–])\s+|^ANEXO\s+[IVX\d]+/i.test(limpa)) return linha;
+    if (!numeroDaClausula(limpa) && !/^ANEXO\s+[IVX\d]+/i.test(limpa)) return linha;
     const referencia = `${documento}${pagina ? `, página ${pagina}` : ""}`;
     const correspondentes = (candidatos.get(referencia) || []).filter((item) => item.corpo.startsWith(limpa));
     const marcadores = [...new Set(correspondentes.flatMap((item) => item.marcadores))];
@@ -511,4 +551,4 @@ function selecionarContexto(texto, limite = 22000, pergunta = "") {
   return prepararContextoResumo(texto, limite).texto;
 }
 
-module.exports = { extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte, paginasDaFonte, localizarReferencia, validarFatosDaFonte, completarDossieDaFonte };
+module.exports = { clausulasDaFonte, extrairRequisitosOperacionais, complementarRequisitos, selecionarContexto, selecionarAcoesChecklist, catalogarRequisitos, prepararContextoResumo, marcarRequisitosNaFonte, aplicarPrazosDaFonte, paginasDaFonte, localizarReferencia, validarFatosDaFonte, completarDossieDaFonte };

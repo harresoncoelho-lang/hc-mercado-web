@@ -1,0 +1,7 @@
+{
+  "caso": "horarios",
+  "modelo": "openai/gpt-oss-20b",
+  "retorno": "{\"naoLocalizado\":false,\"evidencias\":[{\"id\":\"F1\",\"trecho\":\"DATA E HORA FINAL DAS PROPOSTAS: 06/11/2026 ÀS 08:00h.\\nDATA DE ABERTURA DAS PROPOSTAS – SESSÃO PÚBLICA: 06/11/2026 ÀS 9:00h – Horário de Brasília/DF.\"}]}",
+  "pedido": 0,
+  "respostaAplicacao": "Atenção: a leitura dos documentos é parcial. Confira também o material não lido.\n\nTrechos localizados para sua pergunta:\n\nDATA E HORA FINAL DAS PROPOSTAS: 06/11/2026 ÀS 08:00h. DATA DE ABERTURA DAS PROPOSTAS – SESSÃO PÚBLICA: 06/11/2026 ÀS 9:00h – Horário de Brasília/DF.\n[Edital.pdf, página 3]"
+}

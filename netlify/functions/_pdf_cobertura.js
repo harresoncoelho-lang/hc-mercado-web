@@ -30,7 +30,7 @@ function caminhoDecorativo(comandos, coordenadas) {
   return pontos.length === 0 && indice === coordenadas.length;
 }
 
-async function paginaCurtaPendente(pagina) {
+async function paginaCurtaPendente(pagina, { somenteImagens = false } = {}) {
   try {
     const [x0, y0, x1, y1] = pagina.view || [];
     if (![x0, y0, x1, y1].every(Number.isFinite) || x1 <= x0 || y1 <= y0) return true;
@@ -44,7 +44,7 @@ async function paginaCurtaPendente(pagina) {
       if (op === OPS.constructPath) {
         caminhoComplexo ||= !caminhoDecorativo(args[0], args[1]);
       } else if (PINTURAS.has(op)) {
-        if (caminhoComplexo) return true;
+        if (caminhoComplexo && !somenteImagens) return true;
         caminhoComplexo = false;
       } else if (op === OPS.endPath) caminhoComplexo = false;
       else if (op === OPS.save || op === OPS.paintFormXObjectBegin) {

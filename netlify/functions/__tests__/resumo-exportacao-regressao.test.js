@@ -20,7 +20,7 @@ test("modelo geral atende DE81 sem transplantar exigências estaduais de PE406",
   const texto = JSON.stringify(ficha);
   for (const fato of ["SICAF", "60 dias", "último exercício", "3 dias", "nota de empenho OU ordem de compra", "12 meses", "Não é exigida garantia contratual", "10 dias úteis após a liquidação"]) assert.ok(texto.includes(fato), fato);
   assert.doesNotMatch(texto, /CCF|certidão municipal/i);
-  assert.deepEqual(ficha.secoes.map(s => s.titulo), ["Identificação da Licitação", "Informações da Sessão Pública", "Órgão Responsável", "Detalhes da Licitação", "Seguro Garantia", "Informações sobre entrega e execução", "Prazos importantes", "Critérios da Proposta e Julgamento", "Resumo dos Itens", "Documentos de habilitação exigidos", "Atestado de capacidade técnica", "Legislação", "Anexos e declarações", "Outras informações relevantes", "Condições de pagamento", "Penalidades e multas", "Análise crítica", "Análise e Considerações do Licitante"]);
+  assert.deepEqual(ficha.secoes.map(s => s.titulo), ["Identificação da Licitação", "Informações da Sessão Pública", "Órgão Responsável", "Detalhes da Licitação", "Seguro Garantia", "Informações sobre entrega e execução", "Prazos importantes", "Critérios da Proposta e Julgamento", "Resumo dos Itens", "Documentos de habilitação exigidos", "Atestado de capacidade técnica", "Legislação", "Anexos e declarações", "Outras informações relevantes", "Condições de pagamento", "Penalidades e multas", "Análise crítica", "Cobertura da análise", "Análise e Considerações do Licitante"]);
 });
 
 test("valor monetário é legível sem alterar zero, valores brasileiros ou condições textuais", () => {

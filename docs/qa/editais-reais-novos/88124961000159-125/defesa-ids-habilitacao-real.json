@@ -1,0 +1,195 @@
+{
+  "data": "2026-10-22T22:28:13.616Z",
+  "origem": "handler real / Auth e PostgREST locais",
+  "pedidoHash": "a352eff632847a252637f5ef97ac7b03bc69c5057b0f93acdb129f5e388dea26",
+  "edital": "88124961000159-1-000125/2026",
+  "chamadas": [
+    {
+      "numero": 1,
+      "entrada": 4629,
+      "saidaMaxima": 2500,
+      "bytes": 18185,
+      "contextoPublico": {
+        "fontes": [
+          {
+            "id": "F1",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "5",
+            "numero": "11.1.1",
+            "texto": "11.1. A habilitação das licitantes vencedoras será verificada mediante apresentação dos seguintes documentos: 11.1.1. Habilitação Jurídica: a) registro comercial, no caso de empresa individual; b) ato constitutivo, estatuto social, contrato social ou sua consolidação e posteriores alterações contratuais, devidamente registradas na junta comercial e, em vigor e, no caso de sociedade por ações, estatuto social, ata do atual capital social acompanhado da ata de eleição de sua atual administração, registrados e publicados; c) decreto de autorização, em se tratando de empresa ou sociedade estrangeira em funcionamento no País, e ato de registro ou autorização para funcionamento expedido pelo órgão competente, quando a atividade assim o exigir; d) prova de inscrição no Cadastro Nacional de Pessoa Jurídica (CNPJ); e) certidão expedida conjuntamente pela Secretaria da Receita Federal do Brasil – RFB e pela Procuradoria- Geral da Fazenda Nacional – PGFN, referente a todos os tributos federais e à Divida Ativa da União – DAU por elas administrados; f) certidão que prove a regularidade para com a Fazenda Estadual e Municipal da jurisdição fiscal do estabelecimento licitante; g) certidão que prove a regularidade relativa ao Fundo de Garantia por Tempo de Serviço (FGTS); h) regularidade relativa a débitos trabalhistas, mediante Certidão Negativa de Débitos Trabalhistas (CNDT), emitida eletronicamente. (http://www.tst.jus.br/certidao); i) certidão negativa de falência, expedida pelo distribuidor da sede da pessoa jurídica com data não superior a 90 (noventa) dias contados da data de expedição do documento; j) apresentar a documentação constante no item 3.9 do edital. A participação do licitante como microempresa (ME), empresa de pequeno porte (EPP) e demais pessoas jurídicas definidas pelo art. 3º da Lei Complementar nº 123/2006 e Lei Complementar nº 147/2014, somente será permitido, se o interessado comprovar tal situação jurídica através de seu instrumento constitutivo registrado na respectiva Junta Comercial ou órgão competente, no qual conste a inclusão no seu nome como ME, EPP ou através da apresentação de enquadramento do licitante na condição de ME, EPP mediante declaração em instrumento próprio para essa finalidade no respectivo órgão e registro de seus atos constitutivos."
+          },
+          {
+            "id": "F2",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "6",
+            "numero": "11.4",
+            "texto": "11.4. Se a licitante for a matriz, todos os documentos deverão estar em nome da matriz, e se a licitante for a filial, todos os documentos deverão estar em nome da filial, exceto aqueles documentos que, pela própria natureza, comprovadamente, forem emitidos somente em nome da matriz."
+          },
+          {
+            "id": "F3",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "5",
+            "numero": "11.1",
+            "texto": "11.1. A habilitação das licitantes vencedoras será verificada mediante apresentação dos seguintes documentos:"
+          },
+          {
+            "id": "F4",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "2",
+            "numero": "3.9",
+            "texto": "3.9. A participação do licitante como microempresa (ME), empresa de pequeno porte (EPP) e demais pessoas jurídicas definidas pelo art. 3º da Lei Complementar nº 123/2006 e Lei Complementar nº 147/2014, somente será permitida, se o interessado comprovar tal situação jurídica através de seu instrumento constitutivo registrado na respectiva Junta Comercial ou órgão competente, no qual conste a inclusão no seu nome como ME, EPP ou através da apresentação de enquadramento do licitante na condição de ME, EPP mediante declaração em instrumento próprio para essa finalidade no respectivo órgão e registro de seus atos constitutivos."
+          },
+          {
+            "id": "F5",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "2",
+            "numero": "3.9.1",
+            "texto": "3.9. A participação do licitante como microempresa (ME), empresa de pequeno porte (EPP) e demais pessoas jurídicas definidas pelo art. 3º da Lei Complementar nº 123/2006 e Lei Complementar nº 147/2014, somente será permitida, se o interessado comprovar tal situação jurídica através de seu instrumento constitutivo registrado na respectiva Junta Comercial ou órgão competente, no qual conste a inclusão no seu nome como ME, EPP ou através da apresentação de enquadramento do licitante na condição de ME, EPP mediante declaração em instrumento próprio para essa finalidade no respectivo órgão e registro de seus atos constitutivos. 3.9.1. A obtenção do benefício a que se refere o item anterior fica limitada às microempresas e às empresas de pequeno porte que, no ano-calendário de realização da licitação, ainda não tenham celebrado contratos com a Administração Pública cujos valores somados extrapolem a receita bruta máxima admitida para fins de enquadramento como empresa de pequeno porte."
+          },
+          {
+            "id": "F6",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "3",
+            "numero": "4.7",
+            "texto": "4.7. Não haverá ordem de classificação na etapa de apresentação da proposta e dos documentos de habilitação pelo licitante, o que ocorrerá somente após os procedimentos de abertura da sessão pública e da fase de envio de lances."
+          },
+          {
+            "id": "F7",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "6",
+            "numero": "11.2",
+            "texto": "11.2. A empresa participante desta licitação leu, aceita e declara sob as penas da lei que cumpre e concorda com todos os Termos de Participação do presente certame abaixo descritos: a) declaração que ateste o cumprimento do disposto no inciso XXXIII do art. 7° da Constituição Federal, (proibição de trabalho noturno, perigoso ou insalubre a menores de 18 anos e de qualquer trabalho a menores de 16 anos, salvo na condição de aprendiz, a partir de 14 anos). b) declaração de que atendem aos requisitos de habilitação, e o declarante responderá pela veracidade das informações prestadas, na forma da lei (art. 63, I, da Lei nº 14.133/2021); c) declaração de que cumpre as exigências de reserva de cargos para pessoa com deficiência e para reabilitado da Previdência Social, previstas em lei e em outras normas específicas (art. 63, IV, da Lei nº 14.133/2021); d) declaração de que suas propostas econômicas compreendem a integralidade dos custos para atendimento dos direitos trabalhistas assegurados na Constituição Federal, nas leis trabalhistas, nas normas infralegais, nas convenções coletivas de trabalho e nos termos de ajustamento de conduta vigentes na data de entrega das propostas. e) declaração de que a licitante assume o compromisso de guardar todos documentos originais/autenticados, anexados eletronicamente pelo prazo de 10(dez) anos, e apresentá-los quando requeridos pela Administração Pública; f) declaração de que os documentos anexados eletronicamente ou apresentados para digitalização no ato da assinatura de contrato ou ata de registro de preços, se for o caso, são fiéis aos originais e válidos para todos os efeitos legais, incorrendo nas sanções previstas na Lei Federal nº 14.133/21, conforme a legislação aplicável, em caso de declaração falsa, sem prejuízo da responsabilidade civil e criminal; g) declaração de que a licitante tem conhecimento acerca das condutas passíveis de penalidades elencadas no edital, de acordo com a modalidade, e aquelas previstas no art. 156 da Lei Federal nº 14.133/21, conforme legislação aplicável; h) declaração de que até a presente data inexistem fatos impeditivos à sua participação, salvo disposição extraordinária prevista em lei específica."
+          },
+          {
+            "id": "F8",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "6",
+            "numero": "11.3",
+            "texto": "11.3. Sob pena de inabilitação, os documentos encaminhados para habilitação deverão estar em nome da licitante e, preferencialmente, com o número do CNPJ e o respectivo endereço."
+          },
+          {
+            "id": "F9",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "6",
+            "numero": "11.7",
+            "texto": "11.7. Todos os documentos emitidos em língua estrangeira deverão ser entregues acompanhados da tradução para língua portuguesa, efetuada por Tradutor Juramentado, e também devidamente consularizados ou registrados no Cartório de Títulos e Documentos."
+          },
+          {
+            "id": "F10",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "7",
+            "numero": "11.8",
+            "texto": "11.8. Os documentos referentes a fase de habilitação que forem inseridos com a proposta inicial e/ou proposta ajustada, não serão objetos de análise, devendo ser inseridos no período destinado para esse fim, a não inserção desses documentos no momento oportuno acarretará a inabilitação da empresa."
+          },
+          {
+            "id": "F11",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "3",
+            "numero": "4.1",
+            "texto": "4.1. Na presente licitação, a fase de habilitação sucederá as fases de apresentação de propostas e lances e de julgamento."
+          },
+          {
+            "id": "F12",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "3",
+            "numero": "4.2",
+            "texto": "4.2. No cadastramento da proposta inicial o licitante declarará, em campo próprio do sistema, que examinou todos os termos deste edital e seus anexos aceitando irretratavelmente suas exigências por declaração aceita."
+          },
+          {
+            "id": "F13",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "5",
+            "numero": "10.6",
+            "texto": "10.6. Havendo aceitação da proposta classificada em primeiro lugar quanto à compatibilidade de preço, o Agente de Contratação/Pregoeiro solicitará da respectiva licitante o encaminhamento da proposta ajustada para análise e julgamento que na hipótese de classificação será aberto prazo para inserção dos documentos de habilitação."
+          },
+          {
+            "id": "F14",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "2",
+            "numero": "3.4",
+            "texto": "3.4. O licitante responsabiliza-se exclusiva e formalmente pelas transações efetuadas em seu nome, assume como firmes e verdadeiras suas propostas e seus lances, inclusive os atos praticados diretamente ou por seu representante, excluída a responsabilidade do provedor do sistema ou do órgão ou entidade promotora da licitação por eventuais danos decorrentes de uso indevido das credenciais de acesso, ainda que por terceiros."
+          },
+          {
+            "id": "F15",
+            "documento": "EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1)",
+            "pagina": "2",
+            "numero": "3.6",
+            "texto": "3.6. A não observância do disposto no item anterior poderá ensejar inabilitação no momento oportuno."
+          }
+        ],
+        "normas": [
+          {
+            "id": "lei14133-art63-II-III",
+            "hash": "3c8a6bcd30d5fea01c3eef11ae930e3168fe924716eb7a5dc76f6d4f0d5f7ad4"
+          },
+          {
+            "id": "lei14133-art164",
+            "hash": "fa49e8cbc31e6cf6d49fd28c4ef07b67c252bc1cec49535665c7180d7311c1fe"
+          }
+        ],
+        "pontosDisponiveis": [
+          {
+            "tipo": "especificar_documentos",
+            "fontesPermitidas": [
+              "F1",
+              "F2",
+              "F3",
+              "F6",
+              "F7",
+              "F8",
+              "F9",
+              "F10",
+              "F11",
+              "F13"
+            ]
+          },
+          {
+            "tipo": "confirmar_fase",
+            "fontesPermitidas": [
+              "F1",
+              "F3",
+              "F6",
+              "F10",
+              "F11",
+              "F13"
+            ]
+          },
+          {
+            "tipo": "esclarecer_excecao",
+            "fontesPermitidas": [
+              "F2"
+            ]
+          }
+        ],
+        "codigoHashes": {
+          "_defesa_contexto.js": "2f3e1f8cc62e6e2a4bee905dcb119266d1c7bca3e2fcd385da635ece41422adb",
+          "_defesa_handler.js": "3e0eb3081dc6b1f5d96a9d33becdaf9251ed2950e50c6191bf8ebf636729cb7f",
+          "_defesa_pontos.js": "e090627bb488aa86e70fb990e3e740dd5674ee357a34f67c7fdefab7228e6408",
+          "knowledge-defesa.json": "198a3dae9c567fb5c0f6f3779e9a7ed6b23589868c57aa59d48e616a61693014"
+        },
+        "schemaHash": "269e39dcc795bc4f65496ec7dc7cb95470ead9c53a68fb3175c23960974d6dd7",
+        "versaoBase": "0.3-revisao-pendente-2026-10-22"
+      },
+      "status": 200,
+      "content": "{\"fatos\":[\"F1\",\"F2\"],\"fundamentos\":[\"lei14133-art63-II-III\"],\"pontos\":[{\"tipo\":\"especificar_documentos\",\"fontes\":[\"F1\"]},{\"tipo\":\"esclarecer_excecao\",\"fontes\":[\"F2\"]}]}",
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 4341,
+        "completion_tokens": 171,
+        "total_tokens": 4512
+      }
+    }
+  ],
+  "locais": {
+    "auth": 1,
+    "cota": 1,
+    "canonico": 1
+  },
+  "bloqueios": 0,
+  "aprovado": false,
+  "statusHTTP": 502,
+  "resposta": {
+    "erro": "A análise não passou na conferência das evidências e fundamentos. Revise os documentos ou tente depois."
+  },
+  "erro": "Expected values to be strictly equal:\n\n502 !== 200\n"
+}

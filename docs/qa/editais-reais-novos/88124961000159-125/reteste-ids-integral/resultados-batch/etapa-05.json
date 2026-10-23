@@ -1,0 +1,143 @@
+{
+  "data": "2026-10-22T22:33:10.280Z",
+  "modelo": "openai/gpt-oss-120b",
+  "numeroControlePNCP": "88124961000159-1-000125/2026",
+  "modalidade": "Pregão - Eletrônico",
+  "fonteSha256": "892e1e9e2b1bb2bbfc842cff51e399144eaf0605a8cf4c9607def759c130ea88",
+  "caracteres": 7116,
+  "bytes": 7404,
+  "orcamento": {
+    "entrada": 4195,
+    "saida": 3005
+  },
+  "cabe": true,
+  "chamadas": 1,
+  "schema": "operacional",
+  "cobertura": "Uma etapa com todo o TXT fornecido; não comprova que todos os anexos oficiais integram esse TXT.",
+  "estado": "sintese_recebida_requer_revisao_humana",
+  "transporte": {
+    "formato": "campoId_inteiro_requisitos_IDs",
+    "campos": {
+      "0": "identificacao.objeto",
+      "1": "identificacao.numero",
+      "2": "identificacao.uasg",
+      "3": "identificacao.contratacao",
+      "4": "identificacao.modalidade",
+      "5": "identificacao.portalRealizacao",
+      "6": "identificacao.regulamentacao",
+      "7": "sessaoPublica.data",
+      "8": "sessaoPublica.horario",
+      "9": "sessaoPublica.modoDisputa",
+      "10": "sessaoPublica.intervaloMinimo",
+      "11": "orgao.nome",
+      "12": "orgao.email",
+      "13": "orgao.endereco",
+      "14": "orgao.telefone",
+      "15": "detalhes.valorEstimado",
+      "16": "detalhes.prazoEntrega",
+      "17": "detalhes.margemPreferencia",
+      "18": "detalhes.exigeVisitaTecnica",
+      "19": "detalhes.exigeAmostra",
+      "20": "detalhes.garantia",
+      "21": "detalhes.criterioJulgamento",
+      "22": "detalhes.tipoAnalise",
+      "23": "detalhes.regimeExecucao",
+      "24": "detalhes.preferenciaMeEpp",
+      "25": "detalhes.restricoesRegionalidade",
+      "26": "detalhes.provaConceito",
+      "27": "garantias.proposta",
+      "28": "garantias.contrato",
+      "29": "garantias.adicional",
+      "30": "garantias.retomada",
+      "31": "entregaExecucao.prazo",
+      "32": "entregaExecucao.local",
+      "33": "entregaExecucao.condicoes",
+      "34": "prazos.limiteEnvioPropostas",
+      "35": "prazos.prazoDocumentoComplementar",
+      "36": "prazos.prazoDocumentoOriginal",
+      "37": "prazos.prazoRecurso",
+      "38": "prazos.prazoContrarrazoes",
+      "39": "prazos.limiteEsclarecimentos",
+      "40": "prazos.limiteImpugnacao",
+      "41": "prazos.vigenciaContrato",
+      "42": "criteriosProposta.validadeProposta",
+      "43": "criteriosProposta.criteriosDesempate",
+      "44": "criteriosProposta.exigenciasPropostaComercial",
+      "45": "criteriosProposta.propostasLancesPor",
+      "46": "criteriosProposta.programaIntegridade",
+      "47": "itens.totalItens",
+      "48": "itens.descricaoGeral",
+      "49": "itens.categoriasPrincipais",
+      "50": "itens.observacoes",
+      "51": "atestadoCapacidadeTecnica",
+      "52": "legislacao",
+      "53": "anexosDeclaracoes",
+      "54": "condicoesPagamento",
+      "55": "penalidades",
+      "56": "multas",
+      "57": "documentosConsultados",
+      "58": "pendenciasParaConferencia",
+      "59": "questionamentosSugeridos",
+      "60": "possiveisQuestionamentos",
+      "61": "outrasInformacoesRelevantes",
+      "62": "analiseCritica.conflitoObjetoMinuta",
+      "63": "analiseCritica.conflitoPrazoVigenciaArp",
+      "64": "analiseCritica.conflitoPrazosEntrega",
+      "65": "analiseCritica.permiteSubcontratacao",
+      "66": "analiseCritica.previsaoReajuste",
+      "67": "analiseCritica.permiteRenovacao",
+      "68": "analiseCritica.estabeleceCondicoesPagamento",
+      "69": "resumoGeral"
+    },
+    "requisitos": {
+      "R0029": {
+        "categoria": "requisitosProposta",
+        "textoHash": "6054f4b569ad1644218f9a0a5d69dc16cd8da97e1309bee6a4a0b4e4a1a4d293"
+      }
+    },
+    "entrada": 4195,
+    "saidaMaxima": 3005,
+    "bytes": 14329
+  },
+  "respostaProvedor": {
+    "status": 200,
+    "cabecalhos": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-requests": "995",
+      "x-ratelimit-remaining-tokens": "2986",
+      "x-ratelimit-reset-requests": "7m12s",
+      "x-ratelimit-reset-tokens": "37.605s"
+    },
+    "usage": {
+      "queue_time": 0.315817963,
+      "prompt_tokens": 3833,
+      "prompt_time": 0.178594517,
+      "completion_tokens": 794,
+      "completion_time": 1.6693496570000002,
+      "total_tokens": 4627,
+      "total_time": 1.847944174
+    },
+    "finish_reason": [
+      "stop"
+    ],
+    "conteudoBruto": [
+      "{\"requisitos\":[\"R0029\"],\"fatos\":[{\"campoId\":55,\"valor\":\"20.1.1. será aplicada advertência, ao licitante ou contratado que dar causa à inexecução parcial do contrato quando não se justificar a imposição de penalidade mais grave, conforme Art. 156, § 2º da Lei 14.133/21; 20.1.2. multa, conforme Art. 156, § 3º da Lei 14.133/21, calculada na forma do edital ou do contrato, em percentual entre 0,5% e 30%, será aplicada ao responsável por qualquer das infrações administrativas previstas no art. 155, da Lei 14.133/21; 20.1.3. afastamento do certame e suspensão do direito de licitar e contratar com a Administração pública direta e indireta, pelo prazo máximo de 03 (três) anos, quando manter comportamento inadequado durante o pregão ou execução contratual, conforme Art. 156, § 4º da Lei 14.133/21; 20.1.4. impedimento de licitar ou contratar com todos os entes Federativos pelo prazo mínimo de 03(três) anos e máximo de 06(seis) ao licitante ou contratado responsável pelas infrações previstas nos incisos II, III, IV, V, VI, VII, VIII, IX, X, XI e XII do caput do Art. 155, da Lei 14.133/21; 20.1.5. executar o contrato com irregularidades, passíveis de correção durante a execução e sem prejuízo ao resultado: advertência;\",\"referencia\":\"Página 9, cláusula 20\"},{\"campoId\":39,\"valor\":\"até 03 (três) dias úteis anteriores à data fixada para a abertura da sessão pública\",\"referencia\":\"Página 9, cláusula 23.6\"},{\"campoId\":40,\"valor\":\"até 3 (três) dias úteis antes da data da abertura do certame\",\"referencia\":\"Página 9, cláusula 23.1\"}]}"
+    ]
+  },
+  "resultado": {
+    "ok": true,
+    "texto": "{\"requisitosProposta\":[\"ANEXO II – Modelo de Proposta; [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 10]\"],\"documentosHabilitacao\":[],\"documentosCredenciamento\":[],\"declaracoesExigidas\":[],\"pendenciasParaConferencia\":[\"Os requisitos abaixo reproduzem cláusulas literais da fonte; a síntese de requisitos por IA não foi aprovada semanticamente.\"]}",
+    "diagnostico": {
+      "status": 200,
+      "finalizacao": "stop",
+      "caracteres": 1540,
+      "prompt_tokens": 3833,
+      "completion_tokens": 794,
+      "total_tokens": 4627,
+      "caracteresRaciocinio": 1257
+    },
+    "modelo": "openai/gpt-oss-120b",
+    "erro": null
+  }
+}

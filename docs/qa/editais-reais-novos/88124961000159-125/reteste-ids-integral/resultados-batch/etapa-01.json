@@ -1,0 +1,143 @@
+{
+  "data": "2026-10-22T22:29:36.333Z",
+  "modelo": "openai/gpt-oss-120b",
+  "numeroControlePNCP": "88124961000159-1-000125/2026",
+  "modalidade": "Pregão - Eletrônico",
+  "fonteSha256": "a414f7aa7670c546670dddb5ed4e9cbbc2fd5ebea3cf484d7c141ee9fe6d45c8",
+  "caracteres": 9049,
+  "bytes": 9385,
+  "orcamento": {
+    "entrada": 4696,
+    "saida": 2504
+  },
+  "cabe": true,
+  "chamadas": 1,
+  "schema": "operacional",
+  "cobertura": "Uma etapa com todo o TXT fornecido; não comprova que todos os anexos oficiais integram esse TXT.",
+  "estado": "sintese_recebida_requer_revisao_humana",
+  "transporte": {
+    "formato": "campoId_inteiro_requisitos_IDs",
+    "campos": {
+      "0": "identificacao.objeto",
+      "1": "identificacao.numero",
+      "2": "identificacao.uasg",
+      "3": "identificacao.contratacao",
+      "4": "identificacao.modalidade",
+      "5": "identificacao.portalRealizacao",
+      "6": "identificacao.regulamentacao",
+      "7": "sessaoPublica.data",
+      "8": "sessaoPublica.horario",
+      "9": "sessaoPublica.modoDisputa",
+      "10": "sessaoPublica.intervaloMinimo",
+      "11": "orgao.nome",
+      "12": "orgao.email",
+      "13": "orgao.endereco",
+      "14": "orgao.telefone",
+      "15": "detalhes.valorEstimado",
+      "16": "detalhes.prazoEntrega",
+      "17": "detalhes.margemPreferencia",
+      "18": "detalhes.exigeVisitaTecnica",
+      "19": "detalhes.exigeAmostra",
+      "20": "detalhes.garantia",
+      "21": "detalhes.criterioJulgamento",
+      "22": "detalhes.tipoAnalise",
+      "23": "detalhes.regimeExecucao",
+      "24": "detalhes.preferenciaMeEpp",
+      "25": "detalhes.restricoesRegionalidade",
+      "26": "detalhes.provaConceito",
+      "27": "garantias.proposta",
+      "28": "garantias.contrato",
+      "29": "garantias.adicional",
+      "30": "garantias.retomada",
+      "31": "entregaExecucao.prazo",
+      "32": "entregaExecucao.local",
+      "33": "entregaExecucao.condicoes",
+      "34": "prazos.limiteEnvioPropostas",
+      "35": "prazos.prazoDocumentoComplementar",
+      "36": "prazos.prazoDocumentoOriginal",
+      "37": "prazos.prazoRecurso",
+      "38": "prazos.prazoContrarrazoes",
+      "39": "prazos.limiteEsclarecimentos",
+      "40": "prazos.limiteImpugnacao",
+      "41": "prazos.vigenciaContrato",
+      "42": "criteriosProposta.validadeProposta",
+      "43": "criteriosProposta.criteriosDesempate",
+      "44": "criteriosProposta.exigenciasPropostaComercial",
+      "45": "criteriosProposta.propostasLancesPor",
+      "46": "criteriosProposta.programaIntegridade",
+      "47": "itens.totalItens",
+      "48": "itens.descricaoGeral",
+      "49": "itens.categoriasPrincipais",
+      "50": "itens.observacoes",
+      "51": "atestadoCapacidadeTecnica",
+      "52": "legislacao",
+      "53": "anexosDeclaracoes",
+      "54": "condicoesPagamento",
+      "55": "penalidades",
+      "56": "multas",
+      "57": "documentosConsultados",
+      "58": "pendenciasParaConferencia",
+      "59": "questionamentosSugeridos",
+      "60": "possiveisQuestionamentos",
+      "61": "outrasInformacoesRelevantes",
+      "62": "analiseCritica.conflitoObjetoMinuta",
+      "63": "analiseCritica.conflitoPrazoVigenciaArp",
+      "64": "analiseCritica.conflitoPrazosEntrega",
+      "65": "analiseCritica.permiteSubcontratacao",
+      "66": "analiseCritica.previsaoReajuste",
+      "67": "analiseCritica.permiteRenovacao",
+      "68": "analiseCritica.estabeleceCondicoesPagamento",
+      "69": "resumoGeral"
+    },
+    "requisitos": {
+      "R0031": {
+        "categoria": "declaracoesExigidas",
+        "textoHash": "c909ddbd5eb37f3d0a2cabd4a2b4d0c97cc6fdd7fd53274d91f7e296c9dc5d57"
+      }
+    },
+    "entrada": 4696,
+    "saidaMaxima": 2504,
+    "bytes": 16324
+  },
+  "respostaProvedor": {
+    "status": 200,
+    "cabecalhos": {
+      "x-ratelimit-limit-requests": "1000",
+      "x-ratelimit-limit-tokens": "8000",
+      "x-ratelimit-remaining-requests": "999",
+      "x-ratelimit-remaining-tokens": "3331",
+      "x-ratelimit-reset-requests": "1m26.4s",
+      "x-ratelimit-reset-tokens": "35.017s"
+    },
+    "usage": {
+      "queue_time": 0.241215779,
+      "prompt_tokens": 4340,
+      "prompt_time": 0.184228433,
+      "completion_tokens": 1181,
+      "completion_time": 2.4794687460000002,
+      "total_tokens": 5521,
+      "total_time": 2.663697179
+    },
+    "finish_reason": [
+      "stop"
+    ],
+    "conteudoBruto": [
+      "{\n  \"requisitos\": [\n    \"R0031\"\n  ],\n  \"fatos\": [\n    {\n      \"campoId\": 0,\n      \"valor\": \"Registro de Preços para aquisição de equipamentos de prevenção contra incêndio.\",\n      \"referencia\": \"Página 1, item 2.1\"\n    },\n    {\n      \"campoId\": 4,\n      \"valor\": \"Pregão Eletrônico\",\n      \"referencia\": \"Cabeçalho\"\n    },\n    {\n      \"campoId\": 5,\n      \"valor\": \"Portal Pregão Banrisul (www.pregaobanrisul.com.br)\",\n      \"referencia\": \"Página 1, item 1.1\"\n    },\n    {\n      \"campoId\": 7,\n      \"valor\": \"04/11/2026\",\n      \"referencia\": \"Página 1, item 1.1\"\n    },\n    {\n      \"campoId\": 8,\n      \"valor\": \"09:01\",\n      \"referencia\": \"Página 1, item 1.1\"\n    },\n    {\n      \"campoId\": 9,\n      \"valor\": \"ABERTO\",\n      \"referencia\": \"Página 1, item 1\"\n    },\n    {\n      \"campoId\": 11,\n      \"valor\": \"PREFEITURA MUNICIPAL DE SANT’ANA DO LIVRAMENTO\",\n      \"referencia\": \"Página 1\"\n    },\n    {\n      \"campoId\": 12,\n      \"valor\": \"pmllicitacoes@yahoo.com.br\",\n      \"referencia\": \"Página 1\"\n    },\n    {\n      \"campoId\": 13,\n      \"valor\": \"Rua Brigadeiro Canabarro, 740 – CEP: 97.573-570\",\n      \"referencia\": \"Página 1\"\n    },\n    {\n      \"campoId\": 14,\n      \"valor\": \"(55)99178.1244\",\n      \"referencia\": \"Página 1\"\n    },\n    {\n      \"campoId\": 15,\n      \"valor\": \"47723.5\",\n      \"referencia\": \"Dados já conhecidos\"\n    },\n    {\n      \"campoId\": 21,\n      \"valor\": \"MENOR PREÇO POR ITEM\",\n      \"referencia\": \"Página 1, critério de julgamento\"\n    }\n  ]\n}"
+    ]
+  },
+  "resultado": {
+    "ok": true,
+    "texto": "{\"declaracoesExigidas\":[\"3.9. A participação do licitante como microempresa (ME), empresa de pequeno porte (EPP) e demais pessoas jurídicas definidas pelo art. 3º da Lei Complementar nº 123/2006 e Lei Complementar nº 147/2014, somente será permitida, se o interessado comprovar tal situação jurídica através de seu instrumento constitutivo registrado na respectiva Junta Comercial ou órgão competente, no qual conste a inclusão no seu nome como ME, EPP ou através da apresentação de enquadramento do licitante na condição de ME, EPP mediante declaração em instrumento próprio para essa finalidade no respectivo órgão e registro de seus atos constitutivos. [EDITAL---Pregao-Eletronico-0064-de-2026---RP-equipamentos-de-prevencao-contra-incendio. (#1), página 2]\"],\"documentosHabilitacao\":[],\"documentosCredenciamento\":[],\"requisitosProposta\":[],\"pendenciasParaConferencia\":[\"Os requisitos abaixo reproduzem cláusulas literais da fonte; a síntese de requisitos por IA não foi aprovada semanticamente.\"]}",
+    "diagnostico": {
+      "status": 200,
+      "finalizacao": "stop",
+      "caracteres": 1467,
+      "prompt_tokens": 4340,
+      "completion_tokens": 1181,
+      "total_tokens": 5521,
+      "caracteresRaciocinio": 2253
+    },
+    "modelo": "openai/gpt-oss-120b",
+    "erro": null
+  }
+}

@@ -108,8 +108,8 @@ test("resumo local expira após 24 horas e mantém a cópia recente", () => {
   vm.runInContext(html.slice(inicio, fim), contexto);
   const edital = { numeroControlePNCP: "01171012000141-1-000005/2026" };
   const chave = contexto.chaveCacheLocalResumo(edital);
-  registros.set(`lp-resumo-edital-v16:${edital.numeroControlePNCP}`, JSON.stringify({ salvoEm: Date.now(), estrutura: { resumoGeral: "Cache antigo recente" } }));
-  assert.match(chave, /^lp-resumo-edital-v17:/);
+  registros.set(`lp-resumo-edital-v17:${edital.numeroControlePNCP}`, JSON.stringify({ salvoEm: Date.now(), estrutura: { resumoGeral: "Cache antigo recente" } }));
+  assert.match(chave, /^lp-resumo-edital-v18:/);
   assert.equal(contexto.lerCacheLocalResumo(edital), null);
   registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 25 * 60 * 60 * 1000, estrutura: { resumoGeral: "Antigo" } }));
   assert.equal(contexto.lerCacheLocalResumo(edital), null);
@@ -260,7 +260,7 @@ test("resumo apresenta as seções sem faixa técnica e preserva o diagnóstico 
   const vm = require("node:vm");
   const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
   const inicio = html.indexOf("  function renderizarEstruturaIA(");
-  const fim = html.indexOf("  async function obterTokenSessao(", inicio);
+  const fim = html.indexOf("  function atualizarCentralDefesa(", inicio);
   function elemento(tag) {
     return { tag, children: [], dataset: {}, style: {}, textContent: "", append(...filhos) { this.children.push(...filhos); }, appendChild(filho) { this.children.push(filho); }, setAttribute() {}, querySelector() { return null; } };
   }
@@ -268,7 +268,8 @@ test("resumo apresenta as seções sem faixa técnica e preserva o diagnóstico 
     const conversa = elemento("div");
     const corpo = elemento("div");
     const ambiente = vm.createContext({
-      iaEditalAtual: {}, iaItensPncpAtual: [], iaEstruturaAtual: null,
+      iaEditalAtual: {}, iaItensPncpAtual: [], iaEstruturaAtual: null, iaCapagAtual: null,
+      atualizarCentralDefesa() {},
       aplicarDadosOficiaisNaEstruturaIA: (est) => est,
       renderizarCartoesTopoIA() {},
       avisoCoberturaLeitura: () => "Leitura parcial: arquivo.pdf não lido, HTTP 503",

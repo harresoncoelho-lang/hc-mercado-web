@@ -1,0 +1,53 @@
+{
+  "valorTotalHomologado": null,
+  "orgaoEntidade": {
+    "cnpj": "08928517000157",
+    "razaoSocial": "MUNICIPIO DE BELEM",
+    "poderId": "N",
+    "esferaId": "M"
+  },
+  "dataInclusao": "2026-10-20T07:17:58",
+  "dataAtualizacao": "2026-10-20T07:17:58",
+  "numeroControlePNCP": "08928517000157-1-000116/2026",
+  "anoCompra": 2026,
+  "srp": false,
+  "sequencialCompra": 116,
+  "emendaParlamentar": null,
+  "numeroCompra": "41",
+  "processo": "0158/2026",
+  "objetoCompra": "AQUISIÇÃO DE TUBOS DE CONCRETO DE 100 CM E 1M PRÉ-MOLDADO DE ENCAIXE, DESTINADOS A ATENDER AS DEMANDAS DA SECRETARIA DE INFRAESTRUTURA DO MUNICÍPIO DE BELÉM/PB",
+  "informacaoComplementar": null,
+  "dataAberturaProposta": "2026-10-20T08:00:00",
+  "dataEncerramentoProposta": "2026-10-22T12:00:00",
+  "dataPublicacaoPncp": "2026-10-20T07:17:58",
+  "dataAtualizacaoGlobal": "2026-10-20T07:18:12",
+  "unidadeOrgao": {
+    "ufNome": "Paraíba",
+    "ufSigla": "PB",
+    "municipioNome": "Belém",
+    "codigoUnidade": "1",
+    "nomeUnidade": "Prefeitura Municipal de Belém",
+    "codigoIbge": "2501906"
+  },
+  "orgaoSubRogado": null,
+  "unidadeSubRogada": null,
+  "amparoLegal": {
+    "nome": "Lei 14.133/2021, Art. 75, II",
+    "descricao": "Dispensa de Licitação: para contratação que envolva valores inferiores a R$ 50.000,00 (cinquenta mil reais), no caso de outros serviços e compras",
+    "codigo": 19
+  },
+  "linkSistemaOrigem": "",
+  "linkProcessoEletronico": null,
+  "justificativaPresencial": null,
+  "valorTotalEstimado": 57382.6,
+  "modalidadeId": 8,
+  "modalidadeNome": "Dispensa",
+  "modoDisputaId": 4,
+  "modoDisputaNome": "Dispensa Com Disputa",
+  "tipoInstrumentoConvocatorioCodigo": 2,
+  "tipoInstrumentoConvocatorioNome": "Aviso de Contratação Direta",
+  "fontesOrcamentarias": [],
+  "situacaoCompraId": 1,
+  "situacaoCompraNome": "Divulgada no PNCP",
+  "usuarioNome": "Elmar Tecnologia"
+}
