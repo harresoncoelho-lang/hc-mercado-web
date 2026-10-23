@@ -95,7 +95,7 @@ test("build local inclui o módulo CAPAG e o painel usa a mesma integração em 
   const { arquivosDaRaiz } = require("./montar_publico");
   assert.ok(arquivosDaRaiz().includes("capag.js"));
   const painel = fs.readFileSync(path.join(__dirname, "../painel.html"), "utf8");
-  assert.match(painel, /<script src="capag\.js"><\/script>/);
+  assert.match(painel, /<script src="capag\.js\?v=[a-f0-9]{12}"><\/script>/);
   assert.match(painel, /fetch\("data\/capag-municipios\.json"\)/);
   assert.match(painel, /iaCapagAtual = Capag\.consultarCapag\(base, edital\)/);
 });
@@ -148,4 +148,15 @@ test("consulta CAPAG atrasada não altera outro edital e indisponibilidade tem m
   await contexto.carregarCapagNoResumo({}, 2);
   assert.equal(contexto.iaCapagAtual.disponivel, false);
   assert.match(contexto.iaCapagAtual.motivo, /Base CAPAG indisponível/);
+});
+
+
+test("módulos do resumo têm versão por conteúdo para evitar JS antigo no navegador", () => {
+  const fs = require("node:fs"), path = require("node:path"), { createHash } = require("node:crypto");
+  const raiz = path.join(__dirname, "..");
+  const painel = fs.readFileSync(path.join(raiz, "painel.html"), "utf8");
+  for (const arquivo of ["resumo-modelo.js", "capag.js", "defesa-licitante.js", "defesa-ui.js"]) {
+    const hash = createHash("sha256").update(fs.readFileSync(path.join(raiz, arquivo))).digest("hex").slice(0, 12);
+    assert.ok(painel.includes(`src="${arquivo}?v=${hash}"`), arquivo);
+  }
 });
