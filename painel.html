@@ -3115,6 +3115,9 @@
     iaGeracaoModal += 1;
     const defesa = document.getElementById("modal-ia-defesa");
     if (defesa) { defesa._defesa?.fechar?.(); defesa.innerHTML = ""; defesa._defesa = null; }
+    const conversa = document.getElementById("modal-ia-conversa");
+    // O resumo posiciona o host antes da análise crítica; preserve-o ao limpar a conversa.
+    if (defesa && conversa?.parentNode) conversa.parentNode.insertBefore(defesa, conversa.nextSibling);
     clearTimeout(iaTemporizadorResumo);
     iaTemporizadorResumo = null;
     if (iaRequisicaoAtual) iaRequisicaoAtual.abort();
