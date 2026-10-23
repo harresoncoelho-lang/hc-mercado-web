@@ -8,26 +8,36 @@
       .replaceAll("[RAZAO_SOCIAL]", razaoSocial).replaceAll("[CNPJ]", cnpj);
   }
   function renderizar(host, contexto) {
-    const { estrutura = {}, edital = {}, usuarioId, empresaId, empresa, storage, exportar } = contexto;
+    const { estrutura = {}, edital = {}, usuarioId, empresaId, storage, exportar } = contexto;
     const identidade = JSON.stringify([usuarioId, empresaId, edital.numeroControlePNCP]);
     const hash = estrutura.hashFonte || "";
     const cobertura = estrutura.coberturaLeitura;
     const fonteBloqueada = Boolean(cobertura && ((cobertura.parcial !== undefined && cobertura.parcial !== false) ||
       (cobertura.documentosNaoLidos !== undefined && (!Array.isArray(cobertura.documentosNaoLidos) || cobertura.documentosNaoLidos.length)) ||
       (cobertura.ocrDocumentos !== undefined && (!Array.isArray(cobertura.ocrDocumentos) || cobertura.ocrDocumentos.some(o => o?.revisadoVisualmente !== true)))));
-    const versaoPontos = JSON.stringify([estrutura.questionamentosDocumentais, estrutura.possiveisQuestionamentos, estrutura.questionamentosSugeridos, fonteBloqueada]);
+    const versaoPontos = JSON.stringify([estrutura.questionamentosDocumentais, estrutura.possiveisQuestionamentos, estrutura.questionamentosSugeridos, estrutura.evidenciasQuestionamentos, fonteBloqueada]);
     let rascunhoEmMemoria;
     if (host._defesa?.identidade === identidade) {
       if (hash === host._defesa.hash && versaoPontos === host._defesa.versaoPontos) return;
       rascunhoEmMemoria = host._defesa.rascunho();
     }
+    host._defesa?.fechar?.();
     host.replaceChildren();
     const doc = host.ownerDocument;
     const el = (tag, texto) => { const e = doc.createElement(tag); if (texto) e.textContent = texto; return e; };
     const secao = el("details"); secao.className = "secao-ia defesa-central"; secao.open = true;
-    const sumario = el("summary", "Central de Defesa do Licitante"); sumario.className = "secao-ia-titulo"; secao.append(sumario);
-    secao.append(el("p", "Analise um questionamento com o contexto do edital e fontes normativas. Revise fatos, limites e minuta antes de exportar. Nada é enviado automaticamente."));
-    const avisos = el("p"); avisos.className = "defesa-status"; avisos.setAttribute("role", "status"); secao.append(avisos);
+    const sumario = el("summary", "Possíveis questionamentos"); sumario.className = "secao-ia-titulo"; secao.append(sumario);
+    secao.append(el("p", "Escolha um ponto para abrir a Central de Defesa. Uma sugestão não comprova irregularidade. A análise só começa quando você solicitar."));
+    const dialogo = el("dialog"); dialogo.id = "defesa-dialogo"; dialogo.className = "defesa-dialogo";
+    dialogo.setAttribute("aria-labelledby", "defesa-dialogo-titulo");
+    const tituloDialogo = el("h3", "Central de Defesa do Licitante"); tituloDialogo.id = "defesa-dialogo-titulo";
+    const fechar = el("button", "Voltar ao resumo"); fechar.type = "button"; fechar.className = "defesa-botao";
+    let abridor;
+    const fecharDialogo = () => { if (dialogo.open && dialogo.close) dialogo.close(); else dialogo.open = false; abridor?.focus(); };
+    fechar.onclick = fecharDialogo;
+    dialogo.oncancel = evento => { evento.preventDefault(); fecharDialogo(); };
+    dialogo.append(fechar, tituloDialogo, el("p", "Confirme o questionamento, as evidências e o objetivo. Nenhuma chamada de IA, envio ou protocolo acontece ao abrir esta janela."));
+    const avisos = el("p"); avisos.className = "defesa-status"; avisos.setAttribute("role", "status"); dialogo.append(avisos);
     if (fonteBloqueada) avisos.textContent = "A leitura está parcial ou contém OCR não revisado. Confira os documentos e conclua a revisão da fonte antes de analisar com IA.";
     const editor = el("div"); editor.id = "defesa-editor"; editor.className = "defesa-editor"; editor.hidden = true;
     const rotulo = el("label", "Minuta editável — confirme destinatário, empresa, pedido e prazo");
@@ -49,7 +59,7 @@
     try { chave = raiz.DefesaLicitante.chaveRascunho(usuarioId, empresaId, edital.numeroControlePNCP); }
     catch (e) { avisos.textContent = e.message; }
     const atualizar = () => { baixar.disabled = desatualizado || !confirmar.checked || !texto.value.trim() || !chave; };
-    const estado = { identidade, hash, versaoPontos, rascunho: () => ({ tipo, texto: texto.value, hashFonte: hashMinuta, origem: origemMinuta }), desatualizar() {
+    const estado = { identidade, hash, versaoPontos, fechar: () => { salvarRascunhoAoSair(); fecharDialogo(); }, rascunho: () => ({ tipo, texto: texto.value, hashFonte: hashMinuta, origem: origemMinuta, questionamento: pergunta.value, objetivo: objetivo.value, fase: fase.value, respostaOrgao: respostaOrgao.value, manifestacaoAnterior: manifestacaoAnterior.value, aberto: dialogo.open }), desatualizar() {
       desatualizado = true; confirmar.checked = false; confirmar.disabled = true; atualizar();
       avisos.textContent = "A fonte mudou. O texto foi preservado; prepare uma nova minuta com as evidências atuais antes de exportar.";
     } };
@@ -75,6 +85,11 @@
     const rotuloAnterior = el("label", "Sua manifestação anterior — opcional"); rotuloAnterior.htmlFor = manifestacaoAnterior.id;
     textosResposta.append(rotuloResposta, respostaOrgao, rotuloAnterior, manifestacaoAnterior); formulario.append(textosResposta);
     fase.onchange = () => { textosResposta.hidden = fase.value === "questionamento"; };
+    function salvarRascunhoAoSair() {
+      if (!chave || (!texto.value.trim() && !pergunta.value.trim())) return;
+      try { storage.setItem(chave, JSON.stringify({ ...estado.rascunho(), aberto: false, salvoEm: new Date().toISOString() })); }
+      catch { /* A indisponibilidade do armazenamento mantém o conteúdo enquanto a janela está aberta. */ }
+    }
     const acoesIA = el("div"); acoesIA.className = "defesa-acoes";
     const resultadoIA = el("div"); resultadoIA.className = "defesa-analise";
     let analisando = false;
@@ -107,7 +122,7 @@
     for (const [acao, titulo] of [["esclarecimento", "Analisar esclarecimento com IA"], ["impugnacao", "Analisar impugnação com IA"]]) {
       const botao = el("button", titulo); botao.type = "button"; botao.className = "defesa-botao defesa-botao-destaque";
       botao.disabled = fonteBloqueada || !hash || !chave || typeof contexto.analisar !== "function";
-      if (botao.disabled) botao.title = fonteBloqueada ? "A leitura está parcial ou contém OCR não revisado. Confira a fonte antes de analisar." : "A análise exige fonte identificada, conta e empresa selecionadas e serviço disponível.";
+      if (botao.disabled) botao.title = fonteBloqueada ? "A leitura está parcial ou contém OCR não revisado. Confira a fonte antes de analisar." : !chave ? "Selecione uma conta e empresa antes de analisar." : !hash ? "A fonte documental ainda não está identificada. Aguarde o processamento do edital." : "O serviço de análise não está disponível.";
       botao.onclick = async () => {
         if (botao.disabled) return;
         if (!pergunta.value.trim() || !objetivo.value.trim()) { avisos.textContent = "Preencha o questionamento e o objetivo antes de analisar."; pergunta.focus(); return; }
@@ -177,32 +192,52 @@
       };
       botoesIA.push(botao); acoesIA.append(botao);
     }
-    formulario.append(acoesIA); secao.append(formulario, resultadoIA, historicoUI);
+    formulario.append(acoesIA); dialogo.append(formulario, resultadoIA, historicoUI);
+    let pontoAberto;
+    const abrir = (ponto, acao, botao) => {
+      if (analisando) { botao.title = "Aguarde a análise em andamento antes de trocar de ponto."; return false; }
+      if (ponto && pontoAberto !== ponto && pergunta.value.trim() && !doc.defaultView.confirm("Substituir o questionamento atual por este ponto? A minuta em edição será preservada.")) return false;
+      abridor = botao;
+      tituloDialogo.textContent = acao === "impugnacao" ? "Central de Defesa — analisar possível impugnação" : "Central de Defesa — preparar esclarecimento";
+      if (ponto && pontoAberto !== ponto || !pergunta.value.trim()) pergunta.value = String(ponto?.pergunta || ponto?.titulo || "").slice(0, 3000);
+      if (ponto && pontoAberto !== ponto || !objetivo.value.trim()) objetivo.value = String(ponto?.descricao || (acao === "impugnacao" ? "Conferir o cabimento e os fundamentos antes de formular qualquer pedido de alteração." : "Esclarecer o alcance da regra e suas condições com base nos documentos do edital.")).slice(0, 3000);
+      pontoAberto = ponto;
+      botoesIA.forEach((botaoIA, indice) => { botaoIA.hidden = indice !== (acao === "impugnacao" ? 1 : 0); });
+      if (!dialogo.open) { if (dialogo.showModal) dialogo.showModal(); else dialogo.open = true; }
+      pergunta.focus();
+      return true;
+    };
+    const abrirLivre = el("button", "Abrir Central de Defesa"); abrirLivre.type = "button"; abrirLivre.className = "defesa-botao";
+    abrirLivre.onclick = () => abrir(null, "esclarecimento", abrirLivre); secao.append(abrirLivre);
     const lista = (v) => Array.isArray(v) ? v.filter((p) => p && ["string", "object"].includes(typeof p)) : [];
-    const pontos = [...lista(estrutura.questionamentosDocumentais), ...[...lista(estrutura.possiveisQuestionamentos), ...lista(estrutura.questionamentosSugeridos)].map((p) => ({ titulo: typeof p === "string" ? p : p.texto || p.titulo, evidencias: [] }))];
-    if (pontos.length) secao.append(el("p", "Pontos documentais identificados. Os botões abaixo preenchem uma estrutura documental sem IA; use a análise acima para avaliar fundamentação e aplicabilidade."));
+    const vincularSugestao = p => {
+      const titulo = typeof p === "string" ? p : p.texto || p.titulo || p.pergunta;
+      const referencias = Array.isArray(estrutura.evidenciasQuestionamentos) ? estrutura.evidenciasQuestionamentos.filter(r => r?.texto === titulo) : [];
+      const referencia = referencias.length === 1 ? referencias[0] : null;
+      const evidencias = raiz.DefesaLicitante.temEvidencias(p) ? p.evidencias : raiz.DefesaLicitante.temEvidencias(referencia) ? referencia.evidencias : [];
+      return { ...(typeof p === "object" ? p : {}), titulo, evidencias, motivo: referencia?.motivo };
+    };
+    const pontos = [...lista(estrutura.questionamentosDocumentais), ...[...lista(estrutura.possiveisQuestionamentos), ...lista(estrutura.questionamentosSugeridos)].map(vincularSugestao)];
+    if (pontos.length) secao.append(el("p", "Abra um ponto para conferir seu contexto. Sugestões sem trecho identificado precisam de verificação documental; não são evidências."));
     if (!pontos.length) secao.append(el("p", "Nenhum ponto com evidência estruturada foi identificado nesta análise. Isso não confirma ausência de problemas."));
     for (const ponto of pontos) {
-      const card = el("article"); card.className = "defesa-ponto"; card.append(el("h4", ponto.titulo || "Ponto a conferir"), el("p", ponto.descricao || "Sugestão ainda sem evidência documental confirmada."));
-      const provas = el("details"); provas.append(el("summary", "Ver trechos dos documentos"));
+      const card = el("article"); card.className = "defesa-ponto"; card.append(el("p", "Ponto a verificar"), el("h4", ponto.titulo || "Ponto a conferir"), el("p", ponto.descricao || "Sugestão ainda sem evidência documental confirmada."));
+      if (typeof ponto.motivo === "string" && ponto.motivo.trim()) card.append(el("p", ponto.motivo));
+      const provas = el("details"); provas.append(el("summary", "Trecho do edital"));
       for (const e of Array.isArray(ponto.evidencias) ? ponto.evidencias : []) {
         if (raiz.DefesaLicitante.temEvidencias({ evidencias: [e] })) provas.append(el("p", `${e.documento}${e.pagina ? `, página ${e.pagina}` : ""}${e.numero ? `, cláusula ${e.numero}` : ""}: ${e.texto}`));
       }
+      if (!raiz.DefesaLicitante.temEvidencias(ponto) && !(typeof ponto.motivo === "string" && ponto.motivo.trim())) provas.append(el("p", "Trecho ainda não identificado; confira a fonte antes de formular o pedido."));
       card.append(provas);
       const acoes = el("div"); acoes.className = "defesa-acoes";
-      for (const [acao, titulo] of [["esclarecimento", "Preparar esclarecimento"], ["impugnacao", "Preparar impugnação"]]) {
+      for (const [acao, titulo] of [["esclarecimento", "Pedir esclarecimentos"], ["impugnacao", "Impugnar"]]) {
         const botao = el("button", titulo); botao.type = "button";
         botao.className = `defesa-botao${acao === "impugnacao" ? " defesa-botao-destaque" : ""}`;
-        botao.setAttribute("aria-controls", editor.id);
-        botao.disabled = !chave || !hash || !raiz.DefesaLicitante.temEvidencias(ponto);
-        if (botao.disabled) botao.title = "Selecione a empresa e aguarde uma fonte identificada com evidência documental para preparar a minuta.";
+        botao.setAttribute("aria-controls", dialogo.id);
+        botao.title = "Abrir a Central com este ponto. A análise mantém as verificações de fonte, conta e empresa.";
         botao.onclick = () => {
-          if (alterado && !doc.defaultView.confirm("Substituir o texto atual por uma nova minuta? Salve o rascunho antes se quiser conservá-lo.")) return;
-          tipo = acao; hashMinuta = contexto.estrutura.hashFonte; desatualizado = false; alterado = false; origemMinuta = "documental";
-          origem.textContent = "Rascunho documental: estrutura para preenchimento; não é uma análise jurídica por IA.";
-          confirmar.disabled = false; confirmar.checked = false;
-          texto.value = raiz.DefesaLicitante.prepararMinuta(tipo, ponto, { ...edital, empresa });
-          editor.hidden = false; avisos.textContent = "Minuta preparada. Revise e complete os campos entre colchetes antes de utilizar."; atualizar(); texto.focus();
+          if (!abrir(ponto, acao, botao)) return;
+          if (!texto.value.trim()) avisos.textContent = fonteBloqueada ? "A leitura está parcial ou contém OCR não revisado. Confira a fonte antes de analisar." : "Confira o ponto e o objetivo. Solicite a análise para produzir uma minuta vinculada às evidências; abrir esta janela não gera documentos.";
         };
         acoes.append(botao);
       }
@@ -229,6 +264,8 @@
       const salvo = rascunhoEmMemoria?.texto ? rascunhoEmMemoria : chave && JSON.parse(storage.getItem(chave) || "null");
       if (salvo && typeof salvo.texto === "string" && salvo.texto.length <= 50000 && ["esclarecimento", "impugnacao"].includes(salvo.tipo)) {
         texto.value = salvo.texto; tipo = salvo.tipo; hashMinuta = salvo.hashFonte; editor.hidden = false;
+        for (const [campo, valor, limite] of [[pergunta, salvo.questionamento, 3000], [objetivo, salvo.objetivo, 3000], [respostaOrgao, salvo.respostaOrgao, 12000], [manifestacaoAnterior, salvo.manifestacaoAnterior, 6000]]) if (typeof valor === "string") campo.value = valor.slice(0, limite);
+        if (["questionamento", "resposta_orgao", "manifestacao"].includes(salvo.fase)) { fase.value = salvo.fase; fase.onchange(); }
         origemMinuta = salvo.origem === "ia" ? "ia" : "documental";
         if (origemMinuta === "ia") origem.textContent = "Rascunho assistido por IA recuperado. Reconfira fatos, base normativa e limites antes de utilizar.";
         alterado = Boolean(rascunhoEmMemoria);
@@ -236,7 +273,12 @@
         else avisos.textContent = "Rascunho recuperado. Revise novamente antes de exportar.";
       }
     } catch { avisos.textContent = "O rascunho não pôde ser recuperado neste navegador."; }
-    secao.append(editor); host.append(secao);
+    if (rascunhoEmMemoria) {
+      for (const [campo, valor] of [[pergunta, rascunhoEmMemoria.questionamento], [objetivo, rascunhoEmMemoria.objetivo], [respostaOrgao, rascunhoEmMemoria.respostaOrgao], [manifestacaoAnterior, rascunhoEmMemoria.manifestacaoAnterior]]) if (typeof valor === "string") campo.value = valor;
+      fase.value = rascunhoEmMemoria.fase || "questionamento"; fase.onchange();
+    }
+    dialogo.append(editor); host.append(secao, dialogo);
+    if (rascunhoEmMemoria?.aberto) abrir(null, tipo, abrirLivre);
   }
   const api = { renderizar, preencherIdentidadeLocal };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

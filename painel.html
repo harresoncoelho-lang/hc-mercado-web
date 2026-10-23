@@ -24,10 +24,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="resumo-modelo.js?v=dcf741ba863f"></script>
+<script src="resumo-modelo.js?v=6eb1347453c4"></script>
 <script src="capag.js?v=167fac74e421"></script>
 <script src="defesa-licitante.js?v=536b0c2b0be3"></script>
-<script src="defesa-ui.js?v=297879786eb9"></script>
+<script src="defesa-ui.js?v=42dce3ba0137"></script>
 <script src="operacao-edital.js"></script>
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
@@ -809,6 +809,11 @@
     z-index: 200; align-items: center; justify-content: center; padding: 20px;
   }
   .modal-ia-fundo.aberto { display: flex; }
+  .defesa-dialogo { width:min(920px,94vw); max-height:90vh; overflow:auto; padding:24px; border:1px solid #d6dee7; border-radius:14px; color:#252525; background:#fff; box-shadow:0 20px 70px #102c4555; }
+  .defesa-dialogo::backdrop { background:#102c4588; }
+  .defesa-dialogo textarea,.defesa-dialogo select { box-sizing:border-box; width:100%; padding:10px; margin:8px 0 16px; border:1px solid #a5b4c3; border-radius:7px; font:inherit; }
+  .defesa-dialogo textarea { resize:vertical; }
+  .defesa-dialogo button:focus-visible { outline:3px solid #176fc1; outline-offset:3px; }
   .modal-ia {
     background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px;
     width: 100%; max-width: 1180px; height: 94vh; max-height: 94vh; padding: 26px; display: flex; flex-direction: column;
@@ -2666,7 +2671,7 @@
     if (!chave) return null;
     try {
       const registro = JSON.parse(localStorage.getItem(chave) || "null");
-      if (!registro || registro.modoDegradado || registro.emProcessamento || registro.estrutura?.coberturaLeitura?.parcial || !registro.salvoEm || Date.now() - registro.salvoEm > VALIDADE_CACHE_LOCAL_RESUMO_MS) {
+      if (!registro || !registro.estrutura?.estruturaSintetica || typeof registro.estrutura.estruturaSintetica !== "object" || Array.isArray(registro.estrutura.estruturaSintetica) || registro.modoDegradado || registro.emProcessamento || registro.estrutura?.coberturaLeitura?.parcial || !registro.salvoEm || Date.now() - registro.salvoEm > VALIDADE_CACHE_LOCAL_RESUMO_MS) {
         localStorage.removeItem(chave);
         return null;
       }
@@ -2968,17 +2973,21 @@
     wrap.className = "msg-ia";
     wrap.dataset.resumoEstrutura = "1";
 
-    const modelo = ResumoModelo.montar(iaEstruturaAtual, iaEditalAtual || {});
+    const modelo = ResumoModelo.montarVisual(iaEstruturaAtual, iaEditalAtual || {});
     for (const def of modelo.secoes.filter((s) => s.titulo !== "Análise e Considerações do Licitante")) {
       const secao = document.createElement("details");
       secao.className = "secao-ia" + (def.titulo === "Penalidades e multas" ? " resumo-penalidades" : def.titulo === "Análise crítica" ? " resumo-critica" : "");
-      secao.open = true;
+      secao.dataset.resumoSecao = def.titulo;
+      secao.open = !def.recolhida;
       const titulo = document.createElement("summary");
       titulo.className = "secao-ia-titulo";
       const icone = document.createElement("span");
       icone.setAttribute("aria-hidden", "true"); icone.textContent = "▤"; icone.style.cssText = "color:#75818c;margin-right:10px";
       titulo.append(icone, document.createTextNode(def.titulo));
       secao.appendChild(titulo);
+      const preencher = () => {
+      if (secao.dataset.preenchida) return;
+      secao.dataset.preenchida = "1";
       const dl = document.createElement("dl");
       dl.className = "resumo-campos";
       const campos = def.campos.length ? def.campos : [{ rotulo: "Informação", valor: "Não informado" }];
@@ -2996,9 +3005,15 @@
         } else dd.textContent = campo.valor;
         bloco.append(dt, dd); dl.appendChild(bloco);
       }
-      secao.appendChild(dl); wrap.appendChild(secao);
+      secao.appendChild(dl);
+      };
+      if (def.recolhida) secao.addEventListener("toggle", () => { if (secao.open) preencher(); });
+      else preencher();
+      wrap.appendChild(secao);
     }
 
+    const defesa = document.getElementById("modal-ia-defesa");
+    if (defesa) wrap.insertBefore(defesa, [...wrap.children].find(secao => secao.dataset.resumoSecao === "Análise crítica") || null);
     if (anterior) anterior.replaceWith(wrap);
     else conversa.appendChild(wrap);
     atualizarCentralDefesa();
@@ -3099,7 +3114,7 @@
   function cancelarConsultaResumo() {
     iaGeracaoModal += 1;
     const defesa = document.getElementById("modal-ia-defesa");
-    if (defesa) { defesa.innerHTML = ""; defesa._defesa = null; }
+    if (defesa) { defesa._defesa?.fechar?.(); defesa.innerHTML = ""; defesa._defesa = null; }
     clearTimeout(iaTemporizadorResumo);
     iaTemporizadorResumo = null;
     if (iaRequisicaoAtual) iaRequisicaoAtual.abort();

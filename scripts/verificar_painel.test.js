@@ -114,7 +114,10 @@ test("resumo local expira após 24 horas e mantém a cópia recente", () => {
   registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 25 * 60 * 60 * 1000, estrutura: { resumoGeral: "Antigo" } }));
   assert.equal(contexto.lerCacheLocalResumo(edital), null);
   assert.equal(registros.has(chave), false);
-  registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 23 * 60 * 60 * 1000, estrutura: { resumoGeral: "Recente" } }));
+  registros.set(chave, JSON.stringify({ salvoEm: Date.now(), estrutura: { resumoGeral: "Completo antigo sem projeção" } }));
+  assert.equal(contexto.lerCacheLocalResumo(edital), null);
+  assert.equal(registros.has(chave), false);
+  registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 23 * 60 * 60 * 1000, estrutura: { resumoGeral: "Recente", estruturaSintetica: { resumoGeral: "Recente" } } }));
   assert.equal(contexto.lerCacheLocalResumo(edital).estrutura.resumoGeral, "Recente");
 });
 
@@ -140,7 +143,7 @@ test("cache parcial não esconde resumo corrigido no servidor", () => {
   assert.equal(registros.has(chave), false);
   contexto.salvarCacheLocalResumo(edital, parcial);
   assert.equal(registros.has(chave), false);
-  contexto.salvarCacheLocalResumo(edital, { fonteLida: true, estrutura: { resumoGeral: "114/114", coberturaLeitura: { parcial: false } } });
+  contexto.salvarCacheLocalResumo(edital, { fonteLida: true, estrutura: { resumoGeral: "114/114", estruturaSintetica: { resumoGeral: "114/114" }, coberturaLeitura: { parcial: false } } });
   assert.equal(contexto.lerCacheLocalResumo(edital).estrutura.resumoGeral, "114/114");
 });
 
@@ -273,8 +276,8 @@ test("resumo apresenta as seções sem faixa técnica e preserva o diagnóstico 
       aplicarDadosOficiaisNaEstruturaIA: (est) => est,
       renderizarCartoesTopoIA() {},
       avisoCoberturaLeitura: () => "Leitura parcial: arquivo.pdf não lido, HTTP 503",
-      ResumoModelo: { montar: () => ({ secoes: [{ titulo: "Resumo dos Itens", campos: [{ rotulo: "Descrição", valor: "Papel A4" }] }] }) },
-      document: { getElementById: () => conversa, querySelector: () => corpo, createElement: elemento, createTextNode: (texto) => ({ textContent: texto }) },
+      ResumoModelo: { montarVisual: () => ({ secoes: [{ titulo: "Resumo dos Itens", campos: [{ rotulo: "Descrição", valor: "Papel A4" }] }] }) },
+      document: { getElementById: id => id === "modal-ia-defesa" ? null : conversa, querySelector: () => corpo, createElement: elemento, createTextNode: (texto) => ({ textContent: texto }) },
     });
     vm.runInContext(html.slice(inicio, fim), ambiente);
     const entrada = { fonteLida, coberturaLeitura: { parcial: true, documentosNaoLidos: ["arquivo.pdf: HTTP 503"] } };

@@ -13,7 +13,7 @@ test("identificação é preenchida localmente apenas nos marcadores previstos, 
 function ambiente() {
   const doc = { defaultView: { confirm: () => true }, createElement(tag) {
     return { tag, ownerDocument: doc, children: [], style: {}, value: "", hidden: false, checked: false, disabled: false,
-      append(...filhos) { this.children.push(...filhos); }, replaceChildren() { this.children = []; }, setAttribute(k, v) { this[k] = v; }, focus() { doc.foco = this; } };
+      append(...filhos) { this.children.push(...filhos); }, replaceChildren() { this.children = []; }, setAttribute(k, v) { this[k] = v; }, focus() { doc.foco = this; }, showModal() { this.open = true; }, close() { this.open = false; } };
   } };
   const host = doc.createElement("div"), registros = new Map();
   const contexto = { usuarioId: "usuarioA", empresaId: "empresaA", empresa: "Empresa Exemplo", edital: { numeroControlePNCP: "04285896000153-1-000061/2026", orgao: "Município" }, storage: { getItem: (k) => registros.get(k), setItem: (k, v) => registros.set(k, v) }, exportar: async () => {}, estrutura: { hashFonte: "hashA", questionamentosDocumentais: [{ titulo: "Conferir pagamento", evidencias: [{ documento: "TR.pdf", pagina: "14", texto: "Pagamento em 10 dias." }] }] } };
@@ -39,16 +39,16 @@ test('Central bloqueia OCR não revisado e leitura parcial sem chamada e atualiz
 
 test("ações de defesa têm identidade visual, instrução de bloqueio e editor associado", () => {
   const a = ambiente(); renderizar(a.host, a.contexto);
-  const preparar = a.achar((e) => e.textContent === "Preparar esclarecimento");
+  const preparar = a.achar((e) => e.textContent === "Pedir esclarecimentos");
   assert.match(preparar.className, /defesa-botao/);
-  assert.equal(preparar["aria-controls"], "defesa-editor");
-  assert.match(a.achar((e) => e.textContent === "Preparar impugnação").className, /defesa-botao-destaque/);
+  assert.equal(preparar["aria-controls"], "defesa-dialogo");
+  assert.match(a.achar((e) => e.textContent === "Impugnar").className, /defesa-botao-destaque/);
   preparar.onclick();
-  assert.equal(a.achar((e) => e.id === "defesa-editor").hidden, false);
+  assert.equal(a.achar((e) => e.id === "defesa-dialogo").open, true);
   assert.equal(a.achar((e) => e.id === "defesa-minuta-texto")["aria-describedby"], "defesa-editor-ajuda");
   const semProvas = ambiente(); semProvas.contexto.estrutura.questionamentosDocumentais[0].evidencias = [];
   renderizar(semProvas.host, semProvas.contexto);
-  assert.match(semProvas.achar((e) => e.textContent === "Preparar esclarecimento").title, /evidência documental/);
+  assert.equal(semProvas.achar((e) => e.textContent === "Pedir esclarecimentos").disabled, false);
 });
 
 test("análise inteligente usa pergunta e objetivo, mostra fundamentação e exige revisão", async () => {
@@ -74,7 +74,7 @@ test("análise inteligente usa pergunta e objetivo, mostra fundamentação e exi
   renderizar(a.host, a.contexto);
   a.achar((e) => e.textContent === 'Reutilizar contexto para nova análise').onclick();
   assert.equal(a.achar((e) => e.id === 'defesa-questionamento').value, 'Qual é o prazo de pagamento?');
-  assert.equal(a.achar((e) => e.id === 'defesa-minuta-texto').value, '');
+  assert.equal(a.achar((e) => e.id === 'defesa-minuta-texto').value, 'Minuta personalizada após análise');
 });
 
 test("resposta do órgão exige texto e é enviada como informação declarada pelo usuário", async () => {
@@ -142,10 +142,11 @@ test("resposta atrasada de outra empresa não ocupa o editor atual", async () =>
 
 test("editor exige revisão, invalida revisão ao editar e não mistura rascunho de outra empresa", () => {
   const a = ambiente(); renderizar(a.host, a.contexto);
-  a.achar((e) => e.textContent === "Preparar esclarecimento").onclick();
+  a.achar((e) => e.textContent === "Pedir esclarecimentos").onclick();
   const texto = a.achar((e) => e.id === "defesa-minuta-texto"), revisar = a.achar((e) => e.type === "checkbox");
   const baixar = a.achar((e) => e.textContent === "Exportar minuta .docx");
   assert.equal(baixar.disabled, true);
+  texto.value = "Minuta recuperada para revisão";
   revisar.checked = true; revisar.onchange(); assert.equal(baixar.disabled, false);
   texto.value += "\nMinha revisão"; texto.oninput(); assert.equal(baixar.disabled, true);
   a.achar((e) => e.textContent === "Salvar rascunho neste navegador").onclick();
@@ -156,7 +157,7 @@ test("editor exige revisão, invalida revisão ao editar e não mistura rascunho
 
 test("mudança da fonte preserva texto não salvo e bloqueia exportação até nova minuta", () => {
   const a = ambiente(); renderizar(a.host, a.contexto);
-  a.achar((e) => e.textContent === "Preparar esclarecimento").onclick();
+  a.achar((e) => e.textContent === "Pedir esclarecimentos").onclick();
   a.achar((e) => e.id === "defesa-minuta-texto").value = "Revisão particular não salva";
   renderizar(a.host, { ...a.contexto, estrutura: { ...a.contexto.estrutura, hashFonte: "hashB" } });
   assert.equal(a.achar((e) => e.id === "defesa-minuta-texto").value, "Revisão particular não salva");
@@ -164,36 +165,46 @@ test("mudança da fonte preserva texto não salvo e bloqueia exportação até n
   assert.equal(a.achar((e) => e.textContent === "Exportar minuta .docx").disabled, true);
 });
 
-test("sugestão antiga sem provas não libera criação de peça", () => {
+test("sugestão antiga sem provas abre a investigação sem criar peça", () => {
   const a = ambiente(); renderizar(a.host, { ...a.contexto, estrutura: { hashFonte: "hash", possiveisQuestionamentos: ["Pode haver uma restrição"], questionamentosDocumentais: [] } });
-  assert.equal(a.achar((e) => e.textContent === "Preparar impugnação").disabled, true);
+  assert.equal(a.achar((e) => e.textContent === "Impugnar").disabled, false);
+  a.achar((e) => e.textContent === "Impugnar").onclick();
+  assert.equal(a.achar(e => e.id === "defesa-dialogo").open, true);
+  assert.equal(a.achar(e => e.id === "defesa-minuta-texto").value, "");
+  assert.equal(a.achar(e => e.textContent === "Exportar minuta .docx").disabled, true);
 });
 
-test("evidência sem trecho mantém a preparação bloqueada em vez de falhar no clique", () => {
+test("evidência sem trecho permite abrir a Central, mas não fabrica minuta", () => {
   const a = ambiente();
   a.contexto.estrutura.questionamentosDocumentais[0].evidencias = [{ documento: "Aviso.pdf", pagina: "2" }];
   renderizar(a.host, a.contexto);
-  assert.equal(a.achar((e) => e.textContent === "Preparar esclarecimento").disabled, true);
-  assert.equal(a.achar((e) => e.textContent === "Preparar impugnação").disabled, true);
+  assert.equal(a.achar((e) => e.textContent === "Pedir esclarecimentos").disabled, false);
+  assert.equal(a.achar((e) => e.textContent === "Impugnar").disabled, false);
 });
 
 for (const [modalidade, orgao, numero] of [
   ["Dispensa", "Município de Exemplo Sul", "11111111000111-1-000101/2026"],
   ["Pregão", "Instituto de Exemplo Norte", "22222222000122-1-000202/2026"],
   ["Concorrência", "Universidade de Exemplo Leste", "33333333000133-1-000303/2026"],
-]) test(`${modalidade}: prepara as duas minutas, exige revisão e exporta só o conteúdo confirmado`, async () => {
+]) test(`${modalidade}: abre sem gerar documento, analisa mediante clique e exporta só após revisão`, async () => {
   const a = ambiente(), exportados = [];
+  let chamadas = 0;
   a.contexto.edital = { modalidade, orgao, numeroControlePNCP: numero };
   a.contexto.exportar = async (minuta) => exportados.push(minuta);
   a.contexto.estrutura.questionamentosDocumentais = [{
     titulo: "Conferir momento da declaração", pergunta: "Em qual fase deve ser apresentada a declaração?",
     evidencias: [{ documento: "Aviso.pdf", pagina: "2", numero: "4.1", texto: "A declaração deverá acompanhar a proposta." }],
   }];
+  a.contexto.analisar = async () => { chamadas++; return { hashFonte: "hashA", versaoBase: "base-1", cobertura: { parcial: false }, analise: { diagnostico: "Conferir a fase", fatos: [{ texto: "Declaração", evidencias: a.contexto.estrutura.questionamentosDocumentais[0].evidencias }], fundamentos: [], argumentoContrario: "Conferir o procedimento", pedido: "Esclarecer a fase", pendencias: ["Revisão pendente"], minutaTexto: `${orgao}\n${numero}\nAviso.pdf, página 2, cláusula 4.1\nEm qual fase deve ser apresentada a declaração?` } }; };
   renderizar(a.host, a.contexto);
-  for (const [acao, tipo] of [["Preparar esclarecimento", "esclarecimento"], ["Preparar impugnação", "impugnacao"]]) {
+  for (const [acao, tipo] of [["Pedir esclarecimentos", "esclarecimento"], ["Impugnar", "impugnacao"]]) {
     const preparar = a.achar((e) => e.textContent === acao);
     assert.equal(preparar.disabled, false);
     preparar.onclick();
+    const antes = chamadas;
+    assert.equal(a.achar(e => e.id === "defesa-dialogo").open, true);
+    assert.equal(chamadas, antes);
+    await a.achar(e => e.textContent === (tipo === "impugnacao" ? "Analisar impugnação com IA" : "Analisar esclarecimento com IA")).onclick();
     const texto = a.achar((e) => e.id === "defesa-minuta-texto"), revisar = a.achar((e) => e.type === "checkbox");
     const baixar = a.achar((e) => e.textContent === "Exportar minuta .docx");
     assert.ok(texto.value.includes(orgao)); assert.ok(texto.value.includes(numero));
@@ -215,13 +226,13 @@ test("sugestões das duas listas de IA ficam visíveis sem inventar provas nem l
   renderizar(a.host, a.contexto);
   assert.ok(a.achar((e) => e.textContent === "Conferir prazo da proposta"));
   assert.ok(a.achar((e) => e.textContent === "Conferir abrangência do atestado"));
-  assert.equal(a.achar((e) => e.textContent === "Preparar esclarecimento").disabled, true);
-  assert.equal(a.achar((e) => e.textContent === "Preparar impugnação").disabled, true);
+  assert.equal(a.achar((e) => e.textContent === "Pedir esclarecimentos").disabled, false);
+  assert.equal(a.achar((e) => e.textContent === "Impugnar").disabled, false);
 });
 
 test("nova análise da mesma fonte atualiza questionamentos sem perder a minuta em edição", () => {
   const a = ambiente(); renderizar(a.host, a.contexto);
-  a.achar((e) => e.textContent === "Preparar esclarecimento").onclick();
+  a.achar((e) => e.textContent === "Pedir esclarecimentos").onclick();
   a.achar((e) => e.id === "defesa-minuta-texto").value = "Revisão do usuário preservada";
   renderizar(a.host, { ...a.contexto, estrutura: { ...a.contexto.estrutura, questionamentosSugeridos: ["Conferir prazo de entrega"] } });
   assert.ok(a.achar((e) => e.textContent === "Conferir prazo de entrega"));
@@ -234,8 +245,8 @@ test("provas nulas e malformadas não quebram interface nem habilitam preparaç�
     const a = ambiente();
     a.contexto.estrutura.questionamentosDocumentais[0].evidencias = evidencias;
     assert.doesNotThrow(() => renderizar(a.host, a.contexto));
-    assert.equal(a.achar((e) => e.textContent === "Preparar esclarecimento").disabled, true);
-    assert.equal(a.achar((e) => e.textContent === "Preparar impugnação").disabled, true);
+    assert.equal(a.achar((e) => e.textContent === "Pedir esclarecimentos").disabled, false);
+    assert.equal(a.achar((e) => e.textContent === "Impugnar").disabled, false);
   }
 });
 
@@ -243,5 +254,85 @@ test("listas de questionamentos malformadas não quebram o resumo", () => {
   const a = ambiente();
   a.contexto.estrutura = { hashFonte: "hash", questionamentosDocumentais: [null], questionamentosSugeridos: {}, possiveisQuestionamentos: null };
   assert.doesNotThrow(() => renderizar(a.host, a.contexto));
-  assert.equal(a.achar((e) => e.textContent === "Preparar esclarecimento"), undefined);
+  assert.equal(a.achar((e) => e.textContent === "Pedir esclarecimentos"), undefined);
+});
+
+test("dialog interno abre sem IA, preenche o ponto e Escape devolve foco ao botão", () => {
+  const a = ambiente(); let chamadas = 0;
+  a.contexto.analisar = async () => { chamadas++; };
+  renderizar(a.host, a.contexto);
+  const dialogo = a.achar(e => e.id === "defesa-dialogo");
+  assert.equal(Boolean(dialogo.open), false);
+  const abrir = a.achar(e => e.textContent === "Pedir esclarecimentos"); abrir.onclick();
+  assert.equal(dialogo.open, true);
+  assert.equal(a.achar(e => e.id === "defesa-questionamento").value, "Conferir pagamento");
+  assert.ok(a.achar(e => e.id === "defesa-objetivo").value);
+  assert.equal(chamadas, 0);
+  let cancelado = false; dialogo.oncancel({ preventDefault() { cancelado = true; } });
+  assert.equal(cancelado, true); assert.equal(dialogo.open, false); assert.equal(a.host.ownerDocument.foco, abrir);
+});
+
+test("sem fonte, conta ou OCR revisado pode abrir, mas análise continua bloqueada", () => {
+  for (const modificacao of [{ usuarioId: null }, { estrutura: { questionamentosSugeridos: ["Conferir prazo"] } }, { estrutura: { hashFonte: "h", coberturaLeitura: { parcial: true }, questionamentosSugeridos: ["Conferir prazo"] } }]) {
+    const a = ambiente(); renderizar(a.host, { ...a.contexto, ...modificacao, analisar: async () => {} });
+    a.achar(e => e.textContent === "Abrir Central de Defesa").onclick();
+    assert.equal(a.achar(e => e.id === "defesa-dialogo").open, true);
+    assert.equal(a.achar(e => e.textContent === "Analisar esclarecimento com IA").disabled, true);
+    assert.ok(a.achar(e => e.textContent === "Analisar esclarecimento com IA").title);
+  }
+});
+
+test("atualização preserva formulário e janela; fechar contexto salva rascunho privado", () => {
+  const a = ambiente(); renderizar(a.host, a.contexto);
+  a.achar(e => e.textContent === "Abrir Central de Defesa").onclick();
+  a.achar(e => e.id === "defesa-questionamento").value = "Pergunta em edição";
+  renderizar(a.host, { ...a.contexto, estrutura: { ...a.contexto.estrutura, questionamentosSugeridos: ["Novo ponto"] } });
+  assert.equal(a.achar(e => e.id === "defesa-dialogo").open, true);
+  assert.equal(a.achar(e => e.id === "defesa-questionamento").value, "Pergunta em edição");
+  a.host._defesa.fechar();
+  const salvo = JSON.parse(a.registros.get(globalThis.DefesaLicitante.chaveRascunho("usuarioA", "empresaA", a.contexto.edital.numeroControlePNCP)));
+  assert.equal(salvo.questionamento, "Pergunta em edição");
+  assert.equal(a.achar(e => e.id === "defesa-dialogo").open, false);
+});
+
+test("fechar durante análise não permite trocar de ponto sob uma resposta pendente", async () => {
+  const a = ambiente(); let resolver;
+  a.contexto.estrutura.questionamentosSugeridos = ["Conferir uma segunda cláusula"];
+  a.contexto.analisar = () => new Promise(resolve => { resolver = resolve; });
+  renderizar(a.host, a.contexto);
+  a.achar(e => e.textContent === "Pedir esclarecimentos").onclick();
+  const pendente = a.achar(e => e.textContent === "Analisar esclarecimento com IA").onclick();
+  const pergunta = a.achar(e => e.id === "defesa-questionamento");
+  a.achar(e => e.textContent === "Voltar ao resumo").onclick();
+  a.achar(e => e.textContent === "Abrir Central de Defesa").onclick();
+  assert.equal(a.achar(e => e.id === "defesa-dialogo").open, false);
+  assert.equal(pergunta.value, "Conferir pagamento");
+  resolver({}); await pendente;
+  assert.equal(a.achar(e => e.id === "defesa-minuta-texto").value, "");
+});
+
+test("sugestões usam vínculo canônico exato e preservam evidências estruturadas sem adivinhar trechos", () => {
+  const a = ambiente();
+  const evidencia = { documento: "Edital público", pagina: "4", numero: "7.1", texto: "A entrega ocorrerá em dez dias após a ordem de fornecimento." };
+  a.contexto.estrutura = { hashFonte: "hashA", possiveisQuestionamentos: ["Conferir o item 7.1", { titulo: "Ponto estruturado", evidencias: [evidencia] }, "Sem vínculo"], evidenciasQuestionamentos: [{ texto: "Conferir o item 7.1", evidencias: [evidencia] }, { texto: "Outro título", evidencias: [evidencia] }] };
+  renderizar(a.host, a.contexto);
+  const busca = (el, p) => [el, ...(el.children || []).flatMap(f => busca(f, p))].filter(p);
+  const trechos = busca(a.host, e => typeof e.textContent === "string" && e.textContent.includes(evidencia.texto));
+  assert.equal(trechos.length, 2);
+  assert.ok(a.achar(e => /Trecho ainda não identificado/.test(e.textContent || "")));
+  a.contexto.estrutura.evidenciasQuestionamentos.push({ texto: "Sem vínculo", evidencias: [], motivo: "Referência ambígua; confira o documento." });
+  renderizar(a.host, a.contexto);
+  assert.ok(a.achar(e => e.textContent === "Referência ambígua; confira o documento."));
+});
+
+test("referência parcialmente localizada mantém motivo visível mesmo com evidência válida", () => {
+  const a = ambiente();
+  const evidencia = { documento: "Edital público", pagina: "4", numero: "4.4", texto: "O prazo de entrega será contado após a ordem de fornecimento." };
+  a.contexto.estrutura = { hashFonte: "hashA", possiveisQuestionamentos: ["Conferir itens 4.4 e 3.6"], evidenciasQuestionamentos: [{ texto: "Conferir itens 4.4 e 3.6", evidencias: [evidencia], motivo: "Item 3.6 não localizado; confira o documento integral." }] };
+  renderizar(a.host, a.contexto);
+  const aviso = a.achar(e => e.textContent === "Item 3.6 não localizado; confira o documento integral.");
+  assert.ok(aviso);
+  const card = a.achar(e => e.tag === "article" && e.children?.includes(aviso));
+  assert.ok(card, "aviso deve estar diretamente no card, visível sem abrir os trechos");
+  assert.ok(a.achar(e => typeof e.textContent === "string" && e.textContent.includes(evidencia.texto)));
 });

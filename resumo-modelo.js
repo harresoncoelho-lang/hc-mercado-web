@@ -130,14 +130,15 @@ const CAMPOS = {
     const secoes = [
       ["Identificação da Licitação", [...livre("Objeto", est.identificacao.objeto), ...campos("identificacao"), ...pncp.identificacao, ...campos("dadosOficiais").filter(c => c.rotulo !== "Modalidade" || c.valor !== est.identificacao.modalidade)]],
       ["Informações da Sessão Pública", campos("sessaoPublica")],
-      ["Órgão Responsável", [...campos("orgao"), ...(est.capag ? (est.capag.disponivel ? [
+      ["Órgão Responsável", campos("orgao")],
+      ["CAPAG — situação fiscal do ente", est.capag ? (est.capag.disponivel ? [
         { rotulo: "Nota CAPAG", valor: est.capag.nota },
         ...(est.capag.indicadores || []).map((i) => ({ rotulo: `CAPAG — ${i.nome}`, valor: `${i.nota}${typeof i.valor === "number" ? ` · ${new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 2 }).format(i.valor)}` : " · valor não disponível"}` })),
         { rotulo: "Posição da CAPAG", valor: `${est.capag.posicao} · coletada em ${est.capag.coletadoEm}` },
         { rotulo: "Origem da nota", valor: est.capag.origemNota || "Prévia da CAPAG" },
         { rotulo: "Sobre a CAPAG", valor: est.capag.observacao },
         { rotulo: "Fonte CAPAG", valor: est.capag.fonte },
-      ] : [{ rotulo: "CAPAG", valor: est.capag.motivo }]) : [])]],
+      ] : [{ rotulo: "CAPAG", valor: est.capag.motivo }]) : [{ rotulo: "CAPAG", valor: "Consulta do ente responsável pendente." }]],
       ["Detalhes da Licitação", [...campos("detalhes"), ...livre("Critério por item", pncp.criterioPorItem), ...livre("Conteúdo nacional", pncp.conteudoNacional)]],
       ["Seguro Garantia", campos("garantias")],
       ["Informações sobre entrega e execução", campos("entregaExecucao")],
@@ -165,7 +166,43 @@ const CAMPOS = {
     return { numero: est.identificacao.numero, objeto: est.identificacao.objeto,
       cards: [["Valor estimado", est.detalhes.valorEstimado || "Não informado"], ["Modalidade", est.identificacao.modalidade || "Não informado"], ["Data da sessão", data(est.sessaoPublica?.data) || "Não informado"]], secoes };
   }
-  const api = { montar, texto, util };
+  function montarVisual(resumo = {}, edital = {}) {
+    const integral = montar(resumo, edital);
+    const sintetica = resumo.estruturaSintetica;
+    const modelo = sintetica && typeof sintetica === "object" && !Array.isArray(sintetica)
+      ? montar({ ...sintetica, capag: resumo.capag, itensPncp: resumo.itensPncp, coberturaLeitura: resumo.coberturaLeitura, coberturaSintese: resumo.coberturaSintese }, edital)
+      : integral;
+    for (const dados of new Set([modelo, integral])) {
+      const critica = dados.secoes.find(s => s.titulo === "Análise crítica");
+      if (critica) critica.campos = critica.campos.filter(c => !["Possíveis questionamentos", "Perguntas sugeridas ao órgão"].includes(c.rotulo));
+    }
+    modelo.secoes = modelo.secoes.flatMap(secao => {
+      if (secao.titulo === "CAPAG — situação fiscal do ente") {
+        const principais = secao.campos.filter(c => ["Nota CAPAG", "CAPAG", "Posição da CAPAG", "Fonte CAPAG"].includes(c.rotulo));
+        return [{ ...secao, campos: principais }, { titulo: "Entender a CAPAG e consultar indicadores", campos: secao.campos.filter(c => !principais.includes(c)), recolhida: true }];
+      }
+      if (secao.titulo === "Resumo dos Itens") return [{ ...secao, campos: secao.campos.filter(c => !c.rotulo.startsWith("Itens da oportunidade")) },
+        { titulo: "Consultar itens da oportunidade", campos: secao.campos.filter(c => c.rotulo.startsWith("Itens da oportunidade")), recolhida: true }];
+      const extensos = secao.campos.filter(c => JSON.stringify(c.valor).length > 1800);
+      if (!extensos.length) return [secao];
+      return [{ ...secao, campos: secao.campos.map(c => extensos.includes(c) ? { rotulo: c.rotulo, valor: "Conteúdo documental extenso: consulte os trechos integrais na seção de conferência abaixo antes de decidir." } : c) },
+        { titulo: `Conferir trechos integrais — ${secao.titulo}`, campos: extensos, recolhida: true }];
+    });
+    if (modelo !== integral) {
+      const complementos = integral.secoes.flatMap(secao => {
+        const principais = modelo.secoes.find(s => s.titulo === secao.titulo)?.campos || [];
+        return secao.campos.filter(c => !principais.some(p => p.rotulo === c.rotulo && JSON.stringify(p.valor) === JSON.stringify(c.valor)))
+          .filter(c => !c.rotulo.startsWith("Itens da oportunidade") && !secao.titulo.startsWith("CAPAG"))
+          .map(c => ({ rotulo: `${secao.titulo} — ${c.rotulo}`, valor: c.valor }));
+      });
+      if (complementos.length) modelo.secoes.push({ titulo: "Conferir complementos e evidências documentais", campos: complementos, recolhida: true });
+    } else {
+      const outras = modelo.secoes.find(s => s.titulo === "Outras informações relevantes");
+      if (outras) outras.recolhida = true;
+    }
+    return modelo;
+  }
+  const api = { montar, montarVisual, texto, util };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else raiz.ResumoModelo = api;
 })(globalThis);
