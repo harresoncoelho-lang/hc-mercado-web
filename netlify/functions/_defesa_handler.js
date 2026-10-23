@@ -1,8 +1,17 @@
 const { prepararContexto, mensagensDefesa, schemaDefesa, validarAnalise, fonteDocumentalVerificada, coberturaLeituraBloqueada } = require('./_defesa_contexto');
 const { Tiktoken } = require('js-tiktoken/lite');
-const codificador = new Tiktoken(require('js-tiktoken/ranks/o200k_base'));
+const ranks = require('js-tiktoken/ranks/o200k_base');
+const codificador = new Tiktoken(ranks);
 const { ancorasSolicitadas } = require('./_defesa_pontos');
 const { prepararTransporte, traduzirTransporte } = require('./_defesa_transporte');
+
+function codificacaoDentroDoLimite(texto) {
+  // O BPE em JS tem custo superlinear por fragmento; a guarda não altera texto nem estima tokens.
+  for (const fragmento of texto.matchAll(new RegExp(ranks.pat_str, 'ug'))) {
+    if (Buffer.byteLength(fragmento[0], 'utf8') > 256) return false;
+  }
+  return true;
+}
 
 function ajustarOrcamento(ctx, body, modelo) {
   const medir = fontes => {
@@ -11,7 +20,7 @@ function ajustarOrcamento(ctx, body, modelo) {
     const transporte = prepararTransporte(mensagens, schema);
     const requisicao = JSON.stringify({ model: modelo, max_tokens: 2500, messages: transporte.mensagens, response_format: { type: 'json_schema', json_schema: { name: 'etapa_operacional', strict: true, schema: transporte.schema } }, reasoning_effort: 'low' });
     const bytes = Buffer.byteLength(requisicao, 'utf8');
-    const tokens = bytes > 48000 ? Infinity : codificador.encode(requisicao).length + 256 + 2500;
+    const tokens = bytes > 48000 || !codificacaoDentroDoLimite(requisicao) ? Infinity : codificador.encode(requisicao).length + 256 + 2500;
     return { mensagens: transporte.mensagens, schema, schemaTransporte: transporte.schema, bytes, tokens, cabe: bytes <= 48000 && tokens <= 7200 };
   };
   const conferirMedida = medida => medida.cabe && medida.schema.properties.pontos.items.anyOf.length &&
@@ -80,7 +89,7 @@ async function executarDefesa(body, { sessao, robo, env = process.env, carregar,
     if (!ctx.fontes.some(f => !f.declarada)) return erro(409, 'Não foi possível localizar evidência documental verificável.');
     if (ancoras.length + Number(Boolean(body.fase && body.fase !== 'questionamento')) > 6) return erro(422, 'O questionamento excede o limite de pontos documentais. Divida as cláusulas solicitadas; nenhuma chamada de IA foi feita.');
     const orcamento = ajustarOrcamento(ctx, body, modelo);
-    if (!orcamento) return erro(422, 'O contexto mínimo excedeu o orçamento seguro desta análise. Nenhuma chamada de IA foi feita; reduza o questionamento ou a resposta informada e tente novamente.');
+    if (!orcamento) return erro(422, 'O texto não pode ser processado com segurança no formato atual. Reduza o questionamento ou a resposta e evite sequências muito longas sem separação. Nenhuma chamada de IA foi feita.');
     const cota = await autorizar(sessao.userId, 'ia-edital', 40);
     if (!cota?.ok) return erro(cota?.status === 429 ? 429 : 503, cota?.erro || 'Não foi possível confirmar a cota da IA. Tente depois.');
     const resposta = await chamar(env.GROQ_API_KEY, orcamento.mensagens, orcamento.schemaTransporte);
