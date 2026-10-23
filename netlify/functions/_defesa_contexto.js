@@ -2,7 +2,7 @@ const { createHash } = require('node:crypto');
 const { paginasDaFonte } = require('./_edital_operacional');
 const { clausulasComEscopo, normalizarFonteDocumental } = require('./_referencias_documentais');
 const base = require('./knowledge-defesa.json');
-const { pontosDisponiveis, ancorasSolicitadas, validarPontos, fundamentoApoiado, redigirPontos, ambitoIN67Comprovado } = require('./_defesa_pontos');
+const { pontosDisponiveis, clausulasSolicitadas, ancorasSolicitadas, validarPontos, fundamentoApoiado, redigirPontos, ambitoIN67Comprovado } = require('./_defesa_pontos');
 const normalizar = texto => texto.normalize('NFC').replace(/\s+/g, ' ').trim();
 
 function schemaDefesa(ctx, body) {
@@ -56,10 +56,14 @@ function prepararContexto(dossie, body) {
   const limite = 18000 - declarado.reduce((s, f) => s + f.texto.length, 0);
   const selecao = { selecaoParcial: false };
   const clausulas = clausulasComEscopo(texto);
-  const integrais = paginasDaFonte(texto);
+  const solicitadas = new Set(clausulasSolicitadas(body));
+  const selecionaveis = solicitadas.size ? clausulas.filter(c => solicitadas.has(c.numero)) : clausulas;
+  const integrais = solicitadas.size
+    ? [...new Map(selecionaveis.map(c => [JSON.stringify([c.documento, c.pagina]), { documento: c.documento, pagina: c.pagina }])).values()]
+    : paginasDaFonte(texto);
   const candidatosIntegrais = [];
   for (const pagina of integrais) {
-    const locais = clausulas.filter(c => c.documento === pagina.documento && c.pagina === pagina.pagina);
+    const locais = selecionaveis.filter(c => c.documento === pagina.documento && c.pagina === pagina.pagina);
     const candidatos = locais.length ? locais.map(c => {
       const anteriores = clausulas.slice(0, clausulas.indexOf(c));
       const pais = c.numero.split('.').slice(0, -1).map((_, indice, partes) => anteriores.findLast(p =>
@@ -67,7 +71,7 @@ function prepararContexto(dossie, body) {
         .filter(p => p && /\b(?:se|caso|quando|condicionad[ao]s?|vencedor(?:a)?s?)\b/i.test(p.texto));
       return { ...c, texto: normalizar([...pais.map(p => p.texto), c.texto].join(' ')),
         ...(pais.length ? { origens: [...pais, c].map(p => ({ documento: p.documento, pagina: p.pagina || '', numero: p.numero, texto: normalizar(p.texto), escopoDocumento: p.escopoDocumento })) } : {}) };
-    }) : integrais.filter(p => p.documento === pagina.documento && p.pagina === pagina.pagina).map(p => ({ ...p, texto: normalizar(p.texto) }));
+    }) : solicitadas.size ? [] : integrais.filter(p => p.documento === pagina.documento && p.pagina === pagina.pagina).map(p => ({ ...p, texto: normalizar(p.texto) }));
     for (const fonte of candidatos) {
       if (!fonte.texto) continue;
       if (candidatosIntegrais.some(f => f.documento === fonte.documento && f.pagina === fonte.pagina && f.numero === fonte.numero && f.escopoDocumento === fonte.escopoDocumento && f.texto === fonte.texto)) continue;

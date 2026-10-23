@@ -14,6 +14,26 @@ function ajustarOrcamento(ctx, body, modelo) {
     const tokens = bytes > 48000 ? Infinity : codificador.encode(requisicao).length + 256 + 2500;
     return { mensagens: transporte.mensagens, schema, schemaTransporte: transporte.schema, bytes, tokens, cabe: bytes <= 48000 && tokens <= 7200 };
   };
+  const conferirMedida = medida => medida.cabe && medida.schema.properties.pontos.items.anyOf.length &&
+    Object.values(medida.schema.properties.ancoras?.properties || {}).every(a => a.anyOf.length) &&
+    (!medida.schema.properties.resposta || medida.schema.properties.resposta.anyOf.length) ? medida : null;
+  const ancoras = ancorasSolicitadas(ctx, body);
+  if (ancoras.length) {
+    if (ancoras.some(a => !a.fontesPermitidas.length)) return null;
+    // O schema ancorado só permite estas fontes; não tokenizamos fatos que nunca poderiam ser selecionados.
+    const permitidas = new Set([...ancoras.flatMap(a => a.fontesPermitidas), 'R1', 'M1']);
+    const removidas = ctx.fontes.filter(f => !permitidas.has(f.id));
+    ctx.fontes = ctx.fontes.filter(f => permitidas.has(f.id));
+    if (removidas.length) {
+      ctx.cobertura.parcial = true;
+      ctx.cobertura.contextoParcial = true;
+      ctx.cobertura.fontesOmitidas = [...(ctx.cobertura.fontesOmitidas || []), ...removidas.map(f => ({ documento: f.documento, pagina: f.pagina || '', numero: f.numero || '', escopoDocumento: f.escopoDocumento }))];
+      if (removidas.some(f => f.declarada)) ctx.cobertura.declaracoesParciais = true;
+      if (!ctx.pendencias.includes('Contexto selecionado por relevância e orçamento; confira também as cláusulas e páginas omitidas.')) ctx.pendencias.push('Contexto selecionado por relevância e orçamento; confira também as cláusulas e páginas omitidas.');
+    }
+    // Nenhuma âncora é podada para caber: uma única medição exata decide entre aceitar e abster.
+    return conferirMedida(medir(ctx.fontes));
+  }
   const canonicas = ctx.fontes.filter(f => !f.declarada);
   if (!canonicas.length || !medir([canonicas[0], ...ctx.fontes.filter(f => f.id === 'R1')]).cabe) return null;
   const omitidas = [...(ctx.cobertura.fontesOmitidas || [])];
@@ -30,8 +50,7 @@ function ajustarOrcamento(ctx, body, modelo) {
     if (!ctx.pendencias.includes('Contexto selecionado por relevância e orçamento; confira também as cláusulas e páginas omitidas.')) ctx.pendencias.push('Contexto selecionado por relevância e orçamento; confira também as cláusulas e páginas omitidas.');
     medida = medir(ctx.fontes);
   }
-  return medida.schema.properties.pontos.items.anyOf.length && Object.values(medida.schema.properties.ancoras?.properties || {}).every(a => a.anyOf.length) &&
-    (!medida.schema.properties.resposta || medida.schema.properties.resposta.anyOf.length) ? medida : null;
+  return conferirMedida(medida);
 }
 
 async function executarDefesa(body, { sessao, robo, env = process.env, carregar, autorizar, chamar, modelo = 'openai/gpt-oss-20b' }) {
@@ -55,10 +74,10 @@ async function executarDefesa(body, { sessao, robo, env = process.env, carregar,
     if (!dossie || dossie.versao !== 17 || dossie.fonteLida !== true || (dossie.modoDegradado && !documentalVerificado) || dossie.metadadosIndisponiveis || typeof dossie.textoEdital !== 'string' || !dossie.textoEdital.trim()) return erro(409, 'A fonte canônica do edital ainda não está disponível para esta análise.');
     const ctx = prepararContexto(dossie, body);
     if (ctx.hashFonte !== body.hashFonte) return erro(409, 'A fonte documental mudou. Reabra o resumo antes de analisar.');
-    if (!ctx.fontes.some(f => !f.declarada)) return erro(409, 'Não foi possível localizar evidência documental verificável.');
     const ancoras = ancorasSolicitadas(ctx, body);
     const ausentes = ancoras.filter(a => !a.fontesPermitidas.length);
     if (ausentes.length) return erro(409, `As cláusulas solicitadas não estão disponíveis no contexto canônico: ${ausentes.map(a => a.numero).join(', ')}. Confira a numeração ou reabra os documentos; nenhuma chamada de IA foi feita.`);
+    if (!ctx.fontes.some(f => !f.declarada)) return erro(409, 'Não foi possível localizar evidência documental verificável.');
     if (ancoras.length + Number(Boolean(body.fase && body.fase !== 'questionamento')) > 6) return erro(422, 'O questionamento excede o limite de pontos documentais. Divida as cláusulas solicitadas; nenhuma chamada de IA foi feita.');
     const orcamento = ajustarOrcamento(ctx, body, modelo);
     if (!orcamento) return erro(422, 'O contexto mínimo excedeu o orçamento seguro desta análise. Nenhuma chamada de IA foi feita; reduza o questionamento ou a resposta informada e tente novamente.');

@@ -236,7 +236,8 @@ test('fonte real Belém preserva cláusulas inteiras, resposta declarada, orçam
     assert.ok(ctx.fontes.some(f => f.numero === '11.1' && /Se necessária/.test(f.texto)));
     assert.ok(ctx.fontes.some(f => f.numero === '11.2'));
     const depois = ctx.fontes.filter(f => !f.declarada);
-    assert.ok(depois.length < antes.length);
+    assert.ok(depois.length <= antes.length);
+    assert.deepEqual(depois.map(f => f.numero), ['11.1', '11.2']);
     assert.deepEqual(depois.map(f => f.id), depois.map((_, i) => `F${i + 1}`));
     assert.equal(depois[0].texto, antes[0].texto);
     assert.equal(ctx.hashFonte, pedido.hashFonte);
