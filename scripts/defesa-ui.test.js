@@ -345,3 +345,39 @@ test("descrição do card distingue trecho vinculado de sugestão sem prova sem 
   assert.ok(a.achar(e => e.textContent === "Sugestão ainda sem evidência documental confirmada."));
   assert.ok(a.achar(e => e.textContent === "Outra referência não foi localizada."));
 });
+
+test("minuta vazia alterada não pede substituição; minuta preenchida preserva confirmação cancelável", async () => {
+  const a = ambiente(); let confirmacoes = 0, chamadas = 0;
+  a.host.ownerDocument.defaultView.confirm = () => { confirmacoes++; return false; };
+  a.contexto.analisar = async () => { chamadas++; throw new Error("fixture sem rede"); };
+  renderizar(a.host, a.contexto);
+  const texto = a.achar(e => e.id === "defesa-minuta-texto");
+  a.achar(e => e.id === "defesa-questionamento").value = "Conferir pagamento";
+  a.achar(e => e.id === "defesa-objetivo").value = "Conferir prazo";
+  texto.value = "  "; texto.oninput();
+  await a.achar(e => e.textContent === "Analisar esclarecimento com IA").onclick();
+  assert.equal(confirmacoes, 0); assert.equal(chamadas, 1);
+  texto.value = "Minuta real em edição"; texto.oninput();
+  await a.achar(e => e.textContent === "Analisar esclarecimento com IA").onclick();
+  assert.equal(confirmacoes, 1); assert.equal(chamadas, 1);
+  assert.equal(texto.value, "Minuta real em edição");
+});
+
+test("questionamento restaurado igual abre sem confirmação, mas substituição diferente pode ser cancelada", () => {
+  const a = ambiente(); let confirmacoes = 0;
+  a.host.ownerDocument.defaultView.confirm = () => { confirmacoes++; return false; };
+  renderizar(a.host, a.contexto);
+  a.achar(e => e.id === "defesa-questionamento").value = "  Conferir pagamento  ";
+  a.achar(e => e.id === "defesa-objetivo").value = "Objetivo personalizado restaurado";
+  const abrir = a.achar(e => e.textContent === "Pedir esclarecimentos"); abrir.onclick();
+  assert.equal(confirmacoes, 0);
+  assert.equal(a.achar(e => e.id === "defesa-objetivo").value, "Objetivo personalizado restaurado");
+  const dialogo = a.achar(e => e.id === "defesa-dialogo"); assert.equal(dialogo.open, true);
+  a.achar(e => e.textContent === "Voltar ao resumo").onclick();
+  renderizar(a.host, { ...a.contexto, estrutura: { ...a.contexto.estrutura, questionamentosSugeridos: ["Outro ponto"] } });
+  a.achar(e => e.id === "defesa-questionamento").value = "Questionamento diferente em edição";
+  a.achar(e => e.textContent === "Pedir esclarecimentos").onclick();
+  assert.equal(confirmacoes, 1);
+  assert.equal(Boolean(a.achar(e => e.id === "defesa-dialogo").open), false);
+  assert.equal(a.achar(e => e.id === "defesa-questionamento").value, "Questionamento diferente em edição");
+});

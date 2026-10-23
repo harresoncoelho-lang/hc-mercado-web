@@ -128,7 +128,7 @@
         if (!pergunta.value.trim() || !objetivo.value.trim()) { avisos.textContent = "Preencha o questionamento e o objetivo antes de analisar."; pergunta.focus(); return; }
         if (!["questionamento", "resposta_orgao", "manifestacao"].includes(fase.value) || pergunta.value.length > 3000 || objetivo.value.length > 3000 || respostaOrgao.value.length > 12000 || manifestacaoAnterior.value.length > 6000) { avisos.textContent = "Confira a etapa e os limites dos textos informados."; return; }
         if (fase.value !== "questionamento" && !respostaOrgao.value.trim()) { avisos.textContent = "Informe a resposta do órgão para analisar esta etapa."; respostaOrgao.focus(); return; }
-        if (alterado && !doc.defaultView.confirm("Substituir o texto atual pela análise? Salve o rascunho antes se quiser conservá-lo.")) return;
+        if (alterado && texto.value.trim() && !doc.defaultView.confirm("Substituir o texto atual pela análise? Salve o rascunho antes se quiser conservá-lo.")) return;
         const textoAnterior = texto.value;
         analisando = true;
         [fase, pergunta, objetivo, respostaOrgao, manifestacaoAnterior].forEach((campo) => { campo.disabled = true; });
@@ -196,11 +196,13 @@
     let pontoAberto;
     const abrir = (ponto, acao, botao) => {
       if (analisando) { botao.title = "Aguarde a análise em andamento antes de trocar de ponto."; return false; }
-      if (ponto && pontoAberto !== ponto && pergunta.value.trim() && !doc.defaultView.confirm("Substituir o questionamento atual por este ponto? A minuta em edição será preservada.")) return false;
+      const perguntaAlvo = String(ponto?.pergunta || ponto?.titulo || "").slice(0, 3000);
+      const perguntaDiferente = pergunta.value.trim() !== perguntaAlvo.trim();
+      if (ponto && pontoAberto !== ponto && pergunta.value.trim() && perguntaDiferente && !doc.defaultView.confirm("Substituir o questionamento atual por este ponto? A minuta em edição será preservada.")) return false;
       abridor = botao;
       tituloDialogo.textContent = acao === "impugnacao" ? "Central de Defesa — analisar possível impugnação" : "Central de Defesa — preparar esclarecimento";
-      if (ponto && pontoAberto !== ponto || !pergunta.value.trim()) pergunta.value = String(ponto?.pergunta || ponto?.titulo || "").slice(0, 3000);
-      if (ponto && pontoAberto !== ponto || !objetivo.value.trim()) objetivo.value = String(ponto?.descricao || (acao === "impugnacao" ? "Conferir o cabimento e os fundamentos antes de formular qualquer pedido de alteração." : "Esclarecer o alcance da regra e suas condições com base nos documentos do edital.")).slice(0, 3000);
+      if (ponto && pontoAberto !== ponto || !pergunta.value.trim()) pergunta.value = perguntaAlvo;
+      if (ponto && pontoAberto !== ponto && perguntaDiferente || !objetivo.value.trim()) objetivo.value = String(ponto?.descricao || (acao === "impugnacao" ? "Conferir o cabimento e os fundamentos antes de formular qualquer pedido de alteração." : "Esclarecer o alcance da regra e suas condições com base nos documentos do edital.")).slice(0, 3000);
       pontoAberto = ponto;
       botoesIA.forEach((botaoIA, indice) => { botaoIA.hidden = indice !== (acao === "impugnacao" ? 1 : 0); });
       if (!dialogo.open) { if (dialogo.showModal) dialogo.showModal(); else dialogo.open = true; }
