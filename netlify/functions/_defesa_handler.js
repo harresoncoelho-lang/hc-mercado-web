@@ -1,7 +1,7 @@
 const { prepararContexto, mensagensDefesa, schemaDefesa, validarAnalise, fonteDocumentalVerificada, coberturaLeituraBloqueada } = require('./_defesa_contexto');
 const { Tiktoken } = require('js-tiktoken/lite');
 const ranks = require('js-tiktoken/ranks/o200k_base');
-const codificador = new Tiktoken(ranks);
+let codificador;
 const { ancorasSolicitadas } = require('./_defesa_pontos');
 const { prepararTransporte, traduzirTransporte } = require('./_defesa_transporte');
 
@@ -20,7 +20,7 @@ function ajustarOrcamento(ctx, body, modelo) {
     const transporte = prepararTransporte(mensagens, schema);
     const requisicao = JSON.stringify({ model: modelo, max_tokens: 2500, messages: transporte.mensagens, response_format: { type: 'json_schema', json_schema: { name: 'etapa_operacional', strict: true, schema: transporte.schema } }, reasoning_effort: 'low' });
     const bytes = Buffer.byteLength(requisicao, 'utf8');
-    const tokens = bytes > 48000 || !codificacaoDentroDoLimite(requisicao) ? Infinity : codificador.encode(requisicao).length + 256 + 2500;
+    const tokens = bytes > 48000 || !codificacaoDentroDoLimite(requisicao) ? Infinity : (codificador ||= new Tiktoken(ranks)).encode(requisicao).length + 256 + 2500;
     return { mensagens: transporte.mensagens, schema, schemaTransporte: transporte.schema, bytes, tokens, cabe: bytes <= 48000 && tokens <= 7200 };
   };
   const conferirMedida = medida => medida.cabe && medida.schema.properties.pontos.items.anyOf.length &&
