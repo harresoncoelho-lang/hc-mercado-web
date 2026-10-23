@@ -1,4 +1,5 @@
 const normalizar = valor => String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const { escopoDaReferencia } = require('./_referencias_documentais');
 const referenciaProduto = /\bmarca\s+|\bmodelos? (?:comercial|comerciais|de (?:produtos?|bens|equipamentos?)|do produto|dos produtos)|\bmodelo\s+[a-z0-9-]+\s+(?:comercial|do produto)/;
 const ambitoIN67Comprovado = texto => /(?:orgao|entidade) contratante (?:integra|pertence a) (?:a )?administracao publica federal (?:direta|autarquica|fundacional)|(?:esta|presente) contratacao (?:utiliza|executa|e custeada com) recursos (?:da uniao decorrentes de transferencias voluntarias|de transferencias voluntarias da uniao)/.test(normalizar(texto));
 const tipos = {
@@ -39,6 +40,18 @@ const tipos = {
     pedido: 'Esclarecer a aplicação dos eventos, marcos e unidades de prazo transcritos ao cronograma do caso, sem equiparar prazos de eventos diferentes',
     limite: 'Prazos contratuais não foram convertidos em prazo de manifestação. Trechos sobre eventos ou organização da contratação não comprovam, por si só, conflito ou identidade entre cronogramas.',
   },
+  esclarecer_recolhimento_multa: {
+    assunto: /\bmultas?\b/,
+    eventoAssunto: /recolh/,
+    fonte: /\bmultas?\b/,
+    evento: /\brecolh(?:id[ao]s?|imento|er)\b/,
+    temaFonte: /(?:\d+|\b(?:um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|quinze|vinte|trinta|sessenta))[^.;]{0,40}\b(?:dias?|horas?|meses?|semanas?)\b/,
+    marcoFonte: /\b(?:a contar|contad[oa]s?|apos|desde)\b.{0,100}\b(?:comunicacao|notificacao|ciencia|recebimento)\b/,
+    titulo: 'prazos e marcos de recolhimento de multas',
+    antecedente: 'Multa, recolhimento, prazo quantificado e marco de comunicação ou ciência literalmente expressos na mesma fonte.',
+    pedido: 'Esclarecer o alcance de cada regra de recolhimento de multa, preservando as unidades de tempo, os marcos de contagem e as condições de recolhimento administrativo transcritos',
+    limite: 'A seleção não afirma conflito ou ilegalidade, não equipara dias úteis e corridos nem comunicação e recebimento. Prazo de recolhimento de multa não foi convertido em prazo de recurso, esclarecimento ou impugnação.',
+  },
   esclarecer_fornecimento: {
     assunto: /entrega|fornecimento|requisic|pedidos/,
     fonte: /requisic|ordem de fornecimento|nota de empenho|conforme.{0,40}solicit/,
@@ -76,21 +89,36 @@ const tipos = {
   },
 };
 const posterior = body => Boolean(body.fase && body.fase !== 'questionamento');
-function clausulasSolicitadas(body) {
+function referenciasSolicitadas(body) {
   const texto = normalizar(`${body.questionamento} ${body.objetivo || ''}`);
   const numeros = [];
-  for (const referencia of texto.matchAll(/\b(?:it(?:em|ens)|clausulas?)\s*(\d+(?:\.\d+)*(?:\s*(?:,|e|ou)\s*\d+(?:\.\d+)*)*)/g)) {
+  for (const referencia of texto.matchAll(/\b(?:(?:sub)?it(?:em|ens)|clausulas?)\s*(\d+(?:\.\d+)*(?:\s*(?:,|e|ou)\s*\d+(?:\.\d+)*)*)/g)) {
     if (/^\s*(?:da|do)\s+(?:lei|decreto|artigo|norma)\b/.test(texto.slice(referencia.index + referencia[0].length))) continue;
     for (const numero of referencia[1].matchAll(/\d+(?:\.\d+)*/g)) {
       const fim = referencia.index + referencia[0].indexOf(referencia[1]) + numero.index + numero[0].length;
-      if (texto[fim] !== '/') numeros.push(numero[0]);
+      if (texto[fim] !== '/') numeros.push({ numero: numero[0], escopoDocumento: escopoDaReferencia(texto, referencia.index, referencia.index + referencia[0].length) });
     }
   }
-  return [...new Set(numeros)];
+  return numeros;
+}
+function clausulasSolicitadas(body) {
+  return [...new Set(referenciasSolicitadas(body).map(r => r.numero))];
 }
 function ancorasSolicitadas(ctx, body) {
-  return clausulasSolicitadas(body).map(numero => ({ numero, fontesPermitidas: ctx.fontes.filter(f => !f.declarada &&
-    (f.numero === numero || f.origens?.some(o => o.numero === numero))).map(f => f.id) }));
+  const referencias = referenciasSolicitadas(body);
+  const origens = f => f.origens?.length ? f.origens.map(o => ({ ...o, escopoDocumento: o.escopoDocumento ?? f.escopoDocumento })) : [f];
+  const catalogo = ctx.clausulasCanonicas || ctx.fontes.filter(f => !f.declarada).flatMap(origens);
+  const identidade = f => JSON.stringify([f.documento, f.pagina || '', f.numero, f.escopoDocumento || '', normalizar(f.texto).replace(/\s+/g, ' ').trim()]);
+  return clausulasSolicitadas(body).map(numero => {
+    const escopos = new Set(referencias.filter(r => r.numero === numero).map(r => r.escopoDocumento));
+    const escopo = [...escopos][0];
+    const candidatos = catalogo.filter(f => f.numero === numero && (!escopo || f.escopoDocumento === escopo));
+    const unicos = new Set(candidatos.map(identidade));
+    const univoco = ctx.clausulasCanonicas ? candidatos.length === 1 : unicos.size === 1;
+    // A seleção por orçamento nunca resolve uma ambiguidade existente na fonte integral.
+    const fontesPermitidas = escopos.size === 1 && univoco ? ctx.fontes.filter(f => !f.declarada && origens(f).some(o => o.numero === numero && unicos.has(identidade(o)))).map(f => f.id) : [];
+    return { numero, fontesPermitidas };
+  });
 }
 const fontesCanonicas = (fontes, tipo, body) => {
   const regra = tipos[tipo];
@@ -110,8 +138,11 @@ const fontesCanonicas = (fontes, tipo, body) => {
     (!regra.excluirFonte || !regra.excluirFonte.test(normalizar(f.texto))) &&
     (!['esclarecer_fornecimento', 'especificar_cronograma'].includes(tipo) || !financeiraAdjacente(f)) &&
     !(tipo === 'especificar_cronograma' && /entrega|fornecimento|requisic/.test(assunto) && /recurso|intimacao|sanc|penalidade|multa|afastamento do certame|suspensao do direito de licitar/.test(normalizar(f.texto))) &&
+    !(tipo === 'especificar_cronograma' && /\bmultas?\b/.test(assunto) && /recolh/.test(assunto) && /\bmultas?\b/.test(normalizar(f.texto))) &&
     !(tipo === 'esclarecer_organizacao_objeto' && !regra.assunto.test(normalizar(body.questionamento))) &&
     (!regra.evento || regra.evento.test(normalizar(f.texto))) &&
+    (!regra.eventoAssunto || (regra.eventoAssunto.test(assunto) && regra.assunto.test(assunto))) &&
+    (!regra.marcoFonte || regra.marcoFonte.test(normalizar(f.texto))) &&
     (!regra.temaFonte || regra.temaFonte.test(normalizar(f.texto))) &&
     (!vinculos.length || vinculos.some(v => v.test(normalizar(f.texto)))) &&
     (regra.assunto.test(assunto) || solicitadas.some(n => f.numero === n || f.origens?.some(o => o.numero === n))));
@@ -155,6 +186,7 @@ function validarPontos(pontos, fatos, ctx, body, totalAncoras = 0) {
 }
 function fundamentoApoiado(id, pontos, ctx) {
   if (ctx.regimeConfirmado === false) return false;
+  if (id === 'lei14133-art164' && pontos.some(p => p.tipo === 'esclarecer_recolhimento_multa') && ctx.regimeConfirmado !== true) return false;
   if (!pontos.some(p => p.tipo !== 'analisar_resposta_incompleta' && p.fontes.some(idFonte => ctx.fontes.some(f => f.id === idFonte && !f.declarada)))) return false;
   const fontesDos = tipo => pontos.filter(p => p.tipo === tipo).flatMap(p => p.fontes.map(idFonte => ctx.fontes.find(f => f.id === idFonte))).filter(f => !f.declarada);
   const fonteTema = (tipo, padrao) => fontesDos(tipo).some(f => padrao.test(normalizar(f.texto)));

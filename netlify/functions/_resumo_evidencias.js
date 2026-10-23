@@ -2,26 +2,28 @@ const normalizar = (texto) => String(texto || "").normalize("NFKD").replace(/[\u
 const LISTAS = ["documentosCredenciamento", "documentosHabilitacao", "requisitosProposta", "declaracoesExigidas"];
 const TEMAS = [/certificado(?:s)? digital(?:is)?/, /falencia/, /recuperacao judicial/];
 const { conferirFatosDocumentais } = require("./_resumo_documental");
-const { validarFatosDaFonte, completarDossieDaFonte, clausulasDaFonte } = require("./_edital_operacional");
+const { validarFatosDaFonte, completarDossieDaFonte } = require("./_edital_operacional");
+const { clausulasComEscopo, escopoDaReferencia } = require("./_referencias_documentais");
 
 function associarEvidenciasQuestionamentos(estrutura, fonte) {
-  const clausulas = clausulasDaFonte(fonte);
+  const clausulas = clausulasComEscopo(fonte);
   const sugestoes = [...new Set([...(estrutura.possiveisQuestionamentos || []), ...(estrutura.questionamentosSugeridos || [])].filter((v) => typeof v === "string"))];
   return sugestoes.map((texto) => {
-    const numeros = [];
+    const referencias = [];
     for (const m of texto.matchAll(/\b(?:item|itens|subitem|subitens|cl[aá]usulas?)\s+(\d+(?:\.\d+)*(?:\s*(?:,|;|e|ou)\s*\d+(?:\.\d+)*)*)/gi)) {
       if (/^\s+a\s+\d/.test(texto.slice(m.index + m[0].length))) continue;
-      numeros.push(...m[1].match(/\d+(?:\.\d+)*/g));
+      const escopo = escopoDaReferencia(texto, m.index, m.index + m[0].length);
+      for (const numero of m[1].match(/\d+(?:\.\d+)*/g)) referencias.push({ numero, escopo });
     }
     const evidencias = [], pendentes = [];
-    for (const numero of new Set(numeros)) {
-      const candidatos = clausulas.filter((c) => c.numero === numero);
+    for (const { numero, escopo } of referencias) {
+      const candidatos = clausulas.filter((c) => c.numero === numero && (!escopo || c.escopoDocumento === escopo));
       if (candidatos.length === 1) {
-        const { documento, pagina, texto: trecho } = candidatos[0];
-        evidencias.push({ documento, pagina, numero, texto: trecho });
+        const { documento, pagina, texto: trecho, escopoDocumento } = candidatos[0];
+        if (!evidencias.some(e => e.documento === documento && e.pagina === pagina && e.numero === numero && e.escopoDocumento === escopoDocumento)) evidencias.push({ documento, pagina, numero, texto: trecho, ...(escopoDocumento ? { escopoDocumento } : {}) });
       } else pendentes.push(numero);
     }
-    return { texto, evidencias, ...(pendentes.length || !numeros.length ? { motivo: pendentes.length ? `Referência não localizada de forma inequívoca na fonte: ${pendentes.join(", ")}. Confira o documento oficial.` : "A sugestão não indica item, subitem ou cláusula verificável; nenhuma prova foi atribuída automaticamente." } : {}) };
+    return { texto, evidencias, ...(pendentes.length || !referencias.length ? { motivo: pendentes.length ? `Referência não localizada de forma inequívoca na fonte: ${pendentes.join(", ")}. Confira o documento oficial.` : "A sugestão não indica item, subitem ou cláusula verificável; nenhuma prova foi atribuída automaticamente." } : {}) };
   });
 }
 
@@ -82,6 +84,7 @@ function conferirEvidenciasDoResumo(dossie) {
   }
   conferido.estrutura.estruturaSintetica = sintetica;
   conferido.estrutura.evidenciasQuestionamentos = associarEvidenciasQuestionamentos(conferido.estrutura, conferido.textoEdital);
+  conferido.estrutura.versaoReferenciasQuestionamentos = 2;
   return conferido;
 }
 

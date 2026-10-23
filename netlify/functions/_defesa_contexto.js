@@ -1,5 +1,6 @@
 const { createHash } = require('node:crypto');
-const { clausulasDaFonte, paginasDaFonte } = require('./_edital_operacional');
+const { paginasDaFonte } = require('./_edital_operacional');
+const { clausulasComEscopo } = require('./_referencias_documentais');
 const base = require('./knowledge-defesa.json');
 const { pontosDisponiveis, ancorasSolicitadas, validarPontos, fundamentoApoiado, redigirPontos, ambitoIN67Comprovado } = require('./_defesa_pontos');
 const normalizar = texto => texto.normalize('NFC').replace(/\s+/g, ' ').trim();
@@ -54,7 +55,7 @@ function prepararContexto(dossie, body) {
   // shortcut: recuperação lexical seleciona páginas; ampliar quando a matriz real demonstrar omissão de contexto.
   const limite = 18000 - declarado.reduce((s, f) => s + f.texto.length, 0);
   const selecao = { selecaoParcial: false };
-  const clausulas = clausulasDaFonte(texto);
+  const clausulas = clausulasComEscopo(texto);
   const integrais = paginasDaFonte(texto);
   const candidatosIntegrais = [];
   for (const pagina of integrais) {
@@ -62,14 +63,14 @@ function prepararContexto(dossie, body) {
     const candidatos = locais.length ? locais.map(c => {
       const anteriores = clausulas.slice(0, clausulas.indexOf(c));
       const pais = c.numero.split('.').slice(0, -1).map((_, indice, partes) => anteriores.findLast(p =>
-        p.documento === c.documento && p.secao === c.secao && p.numero === partes.slice(0, indice + 1).join('.')))
+        p.documento === c.documento && p.escopoDocumento === c.escopoDocumento && p.secao === c.secao && p.numero === partes.slice(0, indice + 1).join('.')))
         .filter(p => p && /\b(?:se|caso|quando|condicionad[ao]s?|vencedor(?:a)?s?)\b/i.test(p.texto));
       return { ...c, texto: normalizar([...pais.map(p => p.texto), c.texto].join(' ')),
-        ...(pais.length ? { origens: [...pais, c].map(p => ({ documento: p.documento, pagina: p.pagina || '', numero: p.numero, texto: normalizar(p.texto) })) } : {}) };
+        ...(pais.length ? { origens: [...pais, c].map(p => ({ documento: p.documento, pagina: p.pagina || '', numero: p.numero, texto: normalizar(p.texto), escopoDocumento: p.escopoDocumento })) } : {}) };
     }) : integrais.filter(p => p.documento === pagina.documento && p.pagina === pagina.pagina).map(p => ({ ...p, texto: normalizar(p.texto) }));
     for (const fonte of candidatos) {
       if (!fonte.texto) continue;
-      if (candidatosIntegrais.some(f => f.documento === fonte.documento && f.numero === fonte.numero && f.texto === fonte.texto)) continue;
+      if (candidatosIntegrais.some(f => f.documento === fonte.documento && f.pagina === fonte.pagina && f.numero === fonte.numero && f.escopoDocumento === fonte.escopoDocumento && f.texto === fonte.texto)) continue;
       candidatosIntegrais.push({ ...fonte, id: `F${candidatosIntegrais.length + 1}` });
     }
   }
@@ -91,8 +92,8 @@ function prepararContexto(dossie, body) {
     restante -= fonte.texto.length;
   }
   fontes.forEach((fonte, indice) => { fonte.id = `F${indice + 1}`; });
-  const fontesOmitidas = clausulas.filter(c => !fontes.some(f => f.documento === c.documento && f.pagina === c.pagina && f.numero === c.numero))
-    .map(c => ({ documento: c.documento, pagina: c.pagina || '', numero: c.numero }));
+  const fontesOmitidas = clausulas.filter(c => !fontes.some(f => f.documento === c.documento && f.pagina === c.pagina && f.numero === c.numero && f.escopoDocumento === c.escopoDocumento))
+    .map(c => ({ documento: c.documento, pagina: c.pagina || '', numero: c.numero, escopoDocumento: c.escopoDocumento }));
   const normalizada = modalidade.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const direta = /^(?:dispensa|inexigibilidade|contratacao direta)\b/.test(normalizada);
   const licitacao = /^(?:pregao|concorrencia|concurso|leilao|dialogo competitivo)\b/.test(normalizada);
@@ -118,7 +119,7 @@ function prepararContexto(dossie, body) {
     (n.id === 'lei14133-art164' && !dispensa) ||
     (n.id === 'in67-2021-escopo-abertura' && ambitoIN67)
   ));
-  const contextoNormativo = { fontes: [...fontes, ...declarado], normas: candidatas, regimeConfirmado, dispensa, objetoCompras, ambitoIN67 };
+  const contextoNormativo = { fontes: [...fontes, ...declarado], clausulasCanonicas: clausulas, normas: candidatas, regimeConfirmado, dispensa, objetoCompras, ambitoIN67 };
   const pontos = pontosDisponiveis(contextoNormativo, body);
   const novas = new Set(['lei14133-art62', 'lei14133-art68', 'lei14133-art92-V-VII', 'lei14133-art140-II', 'lei14133-art40-parcelamento', 'lei14133-art41-I', 'lei14133-art59-II-IV', 'in67-2021-escopo-abertura']);
   const normas = candidatas.filter(n => !novas.has(n.id) || pontos.some(p => p.fundamentosPermitidos.some(f => f.id === n.id)));
@@ -140,8 +141,8 @@ function mensagensDefesa(ctx, body) {
   { role: 'user', content: JSON.stringify({ fase: body.fase || 'questionamento', tipo: body.tipo, questionamento: body.questionamento, objetivo: body.objetivo || '',
     pontosDisponiveis: pontosDisponiveis(ctx, body),
     ancorasObrigatorias: ancorasSolicitadas(ctx, body),
-    fontes: ctx.fontes.map(({ id, documento, pagina, numero, texto, declarada, origens }) => ({ id, documento, pagina, numero, texto, declarada,
-      ...(origens ? { origens: origens.map(({ documento, pagina, numero }) => ({ documento, pagina, numero })) } : {}) })),
+    fontes: ctx.fontes.map(({ id, documento, pagina, numero, texto, declarada, origens, escopoDocumento }) => ({ id, documento, pagina, numero, texto, declarada, escopoDocumento,
+      ...(origens ? { origens: origens.map(({ documento, pagina, numero, escopoDocumento }) => ({ documento, pagina, numero, escopoDocumento })) } : {}) })),
     normas: ctx.normas.map(({ id, norma, dispositivo, escopo, resumo, alerta }) => ({ id, norma, dispositivo, escopo, resumo, alerta })) }) }];
 }
 function validarAnalise(texto, ctx, body) {

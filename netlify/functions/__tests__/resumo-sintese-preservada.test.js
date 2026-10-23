@@ -69,24 +69,23 @@ test("questionamentos reais do pregão 28 recebem apenas cláusulas rastreáveis
  const pontos=require("./fixtures/ux28-pontos-publicos.json");
  const r=conferirEvidenciasDoResumo({textoEdital:fonte,estrutura:{possiveisQuestionamentos:pontos}}).estrutura;
  assert.deepEqual(r.possiveisQuestionamentos,pontos);
- assert.deepEqual(r.evidenciasQuestionamentos[0].evidencias,[]);
- assert.match(r.evidenciasQuestionamentos[0].motivo,/14\.4, 7\.7/);
- assert.deepEqual(r.evidenciasQuestionamentos[1].evidencias,[]);
- assert.match(r.evidenciasQuestionamentos[1].motivo,/3\.6, 4\.4/);
+ assert.deepEqual(r.evidenciasQuestionamentos[0].evidencias.map(e=>`${e.numero}:${e.escopoDocumento}`),["14.4:Edital","7.7:Termo de Referência"]);
+ assert.equal(r.evidenciasQuestionamentos[0].motivo,undefined);
+ assert.deepEqual(r.evidenciasQuestionamentos[1].evidencias.map(e=>`${e.numero}:${e.escopoDocumento}`),["3.6:Edital","4.4:Termo de Referência"]);
+ assert.equal(r.evidenciasQuestionamentos[1].motivo,undefined);
  assert.deepEqual(r.evidenciasQuestionamentos[2].evidencias,[]);
  assert.match(r.evidenciasQuestionamentos[2].motivo,/nenhuma prova/);
- assert.deepEqual(r.evidenciasQuestionamentos[3].evidencias,[]);
- assert.match(r.evidenciasQuestionamentos[3].motivo,/inequívoca/);
+ assert.ok(r.evidenciasQuestionamentos[3].evidencias.length>0);
 });
-test("cláusulas homônimas sem âncora explícita continuam sem evidência atribuída", () => {
+test("cláusulas homônimas são vinculadas ao documento explícito, sem escolher por tema", () => {
  const f="--- Edital ---\n[Página 1]\n1. MULTAS\n1.1. A multa será de vinte por cento.\n--- TR ---\n[Página 2]\n1. ENTREGA\n1.1. A entrega será realizada em trinta dias.";
  const r=conferirEvidenciasDoResumo({textoEdital:f,estrutura:{questionamentosSugeridos:["Esclarecer a multa no item 1.1 do TR."]}}).estrutura.evidenciasQuestionamentos[0];
- assert.deepEqual(r.evidencias,[]);assert.match(r.motivo,/inequívoca/);
+ assert.equal(r.evidencias.length,1);assert.equal(r.evidencias[0].documento,"TR");assert.match(r.evidencias[0].texto,/entrega/);assert.doesNotMatch(r.evidencias[0].texto,/multa/);
 });
 
 test("referência única fornece documento, página e texto sem interpretação adicional", () => {
  const f="--- Edital.pdf ---\n[Página 7]\n9. ENTREGA\n9.9. A entrega ocorrerá em trinta dias após a ordem de fornecimento.";
  const r=conferirEvidenciasDoResumo({textoEdital:f,estrutura:{questionamentosSugeridos:["Esclarecer o item 9.9."]}}).estrutura.evidenciasQuestionamentos[0];
- assert.deepEqual(r.evidencias,[{documento:"Edital.pdf",pagina:"7",numero:"9.9",texto:"9.9. A entrega ocorrerá em trinta dias após a ordem de fornecimento."}]);
+ assert.deepEqual(r.evidencias,[{documento:"Edital.pdf",pagina:"7",numero:"9.9",texto:"9.9. A entrega ocorrerá em trinta dias após a ordem de fornecimento.",escopoDocumento:"Edital"}]);
  assert.equal(r.motivo,undefined);
 });
