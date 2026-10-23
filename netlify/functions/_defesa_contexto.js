@@ -1,6 +1,6 @@
 const { createHash } = require('node:crypto');
 const { paginasDaFonte } = require('./_edital_operacional');
-const { clausulasComEscopo } = require('./_referencias_documentais');
+const { clausulasComEscopo, normalizarFonteDocumental } = require('./_referencias_documentais');
 const base = require('./knowledge-defesa.json');
 const { pontosDisponiveis, ancorasSolicitadas, validarPontos, fundamentoApoiado, redigirPontos, ambitoIN67Comprovado } = require('./_defesa_pontos');
 const normalizar = texto => texto.normalize('NFC').replace(/\s+/g, ' ').trim();
@@ -40,7 +40,7 @@ function fonteDocumentalVerificada(dossie) {
 function prepararContexto(dossie, body) {
   const original = dossie.textoEdital;
   const hashFonte = createHash('sha256').update(original).digest('hex');
-  const texto = original.replace(/^\[Fonte: (.+), página (\d+)\]$/gm, '--- $1 ---\n[Página $2]');
+  const texto = normalizarFonteDocumental(original);
   const declarado = [];
   let parcialDeclarado = false;
   for (const [id, documento, valor, limite] of [

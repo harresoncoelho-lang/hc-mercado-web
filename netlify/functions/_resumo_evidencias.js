@@ -84,7 +84,7 @@ function conferirEvidenciasDoResumo(dossie) {
   }
   conferido.estrutura.estruturaSintetica = sintetica;
   conferido.estrutura.evidenciasQuestionamentos = associarEvidenciasQuestionamentos(conferido.estrutura, conferido.textoEdital);
-  conferido.estrutura.versaoReferenciasQuestionamentos = 2;
+  conferido.estrutura.versaoReferenciasQuestionamentos = 3;
   return conferido;
 }
 

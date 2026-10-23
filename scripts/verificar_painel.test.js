@@ -117,7 +117,7 @@ test("resumo local expira após 24 horas e mantém a cópia recente", () => {
   registros.set(chave, JSON.stringify({ salvoEm: Date.now(), estrutura: { resumoGeral: "Completo antigo sem projeção" } }));
   assert.equal(contexto.lerCacheLocalResumo(edital), null);
   assert.equal(registros.has(chave), false);
-  registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 23 * 60 * 60 * 1000, estrutura: { resumoGeral: "Recente", versaoReferenciasQuestionamentos: 2, estruturaSintetica: { resumoGeral: "Recente" } } }));
+  registros.set(chave, JSON.stringify({ salvoEm: Date.now() - 23 * 60 * 60 * 1000, estrutura: { resumoGeral: "Recente", versaoReferenciasQuestionamentos: 3, estruturaSintetica: { resumoGeral: "Recente" } } }));
   assert.equal(contexto.lerCacheLocalResumo(edital).estrutura.resumoGeral, "Recente");
 });
 
@@ -143,7 +143,7 @@ test("cache parcial não esconde resumo corrigido no servidor", () => {
   assert.equal(registros.has(chave), false);
   contexto.salvarCacheLocalResumo(edital, parcial);
   assert.equal(registros.has(chave), false);
-  contexto.salvarCacheLocalResumo(edital, { fonteLida: true, estrutura: { resumoGeral: "114/114", versaoReferenciasQuestionamentos: 2, estruturaSintetica: { resumoGeral: "114/114" }, coberturaLeitura: { parcial: false } } });
+  contexto.salvarCacheLocalResumo(edital, { fonteLida: true, estrutura: { resumoGeral: "114/114", versaoReferenciasQuestionamentos: 3, estruturaSintetica: { resumoGeral: "114/114" }, coberturaLeitura: { parcial: false } } });
   assert.equal(contexto.lerCacheLocalResumo(edital).estrutura.resumoGeral, "114/114");
 });
 
@@ -155,16 +155,16 @@ test("cache completo exige revisão canônica exata das referências e preserva 
   const contexto = vm.createContext({ localStorage: { getItem: chave => registros.get(chave), setItem: (chave, valor) => registros.set(chave, valor), removeItem: chave => registros.delete(chave) }, idOportunidade: () => "edital", lerMapa: () => ({}), empresaOperacionalId: null });
   vm.runInContext(html.slice(inicio, fim), contexto);
   const edital = { numeroControlePNCP: "11111111000111-1-000001/2026" }, chave = contexto.chaveCacheLocalResumo(edital);
-  const estrutura = { hashFonte: "hash-canônico", estruturaSintetica: { versaoReferenciasQuestionamentos: 2 }, coberturaLeitura: { parcial: false }, evidenciasQuestionamentos: [{ texto: "Conferir a regra", evidencias: [] }] };
-  for (const versao of [undefined, 1, "2", 3, null]) {
+  const estrutura = { hashFonte: "hash-canônico", estruturaSintetica: { versaoReferenciasQuestionamentos: 3 }, coberturaLeitura: { parcial: false }, evidenciasQuestionamentos: [{ texto: "Conferir a regra", evidencias: [] }] };
+  for (const versao of [undefined, 1, 2, "3", 4, null]) {
     registros.set(chave, JSON.stringify({ salvoEm: Date.now(), estrutura: { ...estrutura, versaoReferenciasQuestionamentos: versao } }));
     assert.equal(contexto.lerCacheLocalResumo(edital), null, `não reutilizar referência versão ${versao}`);
     assert.equal(registros.has(chave), false);
   }
-  contexto.salvarCacheLocalResumo(edital, { fonteLida: true, estrutura: { ...estrutura, versaoReferenciasQuestionamentos: 2 } });
+  contexto.salvarCacheLocalResumo(edital, { fonteLida: true, estrutura: { ...estrutura, versaoReferenciasQuestionamentos: 3 } });
   const pronto = contexto.lerCacheLocalResumo(edital);
   assert.equal(pronto.estrutura.hashFonte, "hash-canônico");
-  assert.equal(pronto.estrutura.versaoReferenciasQuestionamentos, 2);
+  assert.equal(pronto.estrutura.versaoReferenciasQuestionamentos, 3);
   assert.equal(pronto.estrutura.evidenciasQuestionamentos.length, 1);
   const abrir = html.slice(html.indexOf("  function abrirModalIA("), html.indexOf('  document.getElementById("modal-ia-fechar").addEventListener'));
   assert.match(abrir, /const resumoLocal = lerCacheLocalResumo\(edital\)/);

@@ -30,3 +30,13 @@ test('contexto real 28 conserva cláusula 3.6 recuperada e sua origem documental
 });
 
 
+
+test('contexto usa o mesmo enquadramento para wrappers Python e Fonte sem alterar hash',()=>{
+ const corpo=p=>p===1?'Modelo de Edital - Lei nº 14.133, de 2021.\n1. REGRAS\n1.1. Primeira regra.':'1.2. A multa será recolhida em cinco dias.';
+ for(const formato of ['python','fonte']){
+  const x=[1,2].map(p=>`${formato==='python'?`--- anexo.pdf, página ${p} ---`:`[Fonte: anexo.pdf, página ${p}]`}\n${corpo(p)}`).join('\n');
+  const ctx=prepararContexto(dossie(x),{...body,questionamento:'Esclarecer o item 1.2 do Edital.'});
+  const c=ctx.fontes.find(c=>c.numero==='1.2'&&c.escopoDocumento==='Edital');assert.ok(c);assert.equal(c.pagina,'2');assert.equal(c.documento,'anexo.pdf');
+  assert.equal(ctx.hashFonte,createHash('sha256').update(x).digest('hex'));
+ }
+});

@@ -65,3 +65,35 @@ test('marco ausente em uma âncora bloqueia422 antes da cota e da IA', async () 
   const r = await executarDefesa(pedido, { sessao: { ok: true, userId: 'qa' }, env: { GROQ_API_KEY: 'fixture', DEFESA_IA_GRATUITA_CONFIRMADA: 'true' }, carregar: async () => ({ versao: 17, fonteLida: true, textoEdital, estrutura: { identificacao: { modalidade: 'Pregão' } } }), autorizar: async () => { cota++; return { ok: true }; }, chamar: async () => { ia++; return { ok: false }; } });
   assert.equal(r.statusCode, 422); assert.equal(cota, 0); assert.equal(ia, 0);
 });
+
+test('handler usa envelope Python, objetivo genérico da UI e duas âncoras estritas sem IA real', async () => {
+  const { prepararContexto } = require('../_defesa_contexto');
+  const { ajustarOrcamento } = require('../_defesa_handler');
+  const textoEdital = `--- anexo.pdf, página 17 ---\nModelo de Edital - Lei nº 14.133, de 2021.\n14. SANÇÕES\n${fontes[0].texto}\n--- anexo.pdf, página 25 ---\nModelo de Termo de Referência – Aquisições\n7. SANÇÕES\n${fontes[1].texto}`;
+  const pedido = { ...body, questionamento: require('./fixtures/ux28-pontos-publicos.json')[0], objetivo: 'Esclarecer o alcance da regra e suas condições com base nos documentos do edital.', hashFonte: createHash('sha256').update(textoEdital).digest('hex') };
+  const dossie = { versao: 17, fonteLida: true, textoEdital, estrutura: { identificacao: { modalidade: 'Pregão' } } };
+  const contexto = prepararContexto(dossie, pedido);
+  const medida = ajustarOrcamento(contexto, pedido, 'openai/gpt-oss-20b');
+  assert.ok(medida); assert.ok(medida.tokens <= 7200 && medida.bytes <= 48000);
+  let cotas = 0, chamadas = 0;
+  const r = await executarDefesa(pedido, { sessao: { ok: true, userId: 'qa' }, env: { GROQ_API_KEY: 'fixture', DEFESA_IA_GRATUITA_CONFIRMADA: 'true' }, carregar: async () => dossie, autorizar: async () => { cotas++; return { ok: true }; }, chamar: async (_, mensagens, schema) => {
+    chamadas++;
+    assert.deepEqual(schema.properties.ancoras.required, ['A1', 'A2']);
+    const catalogo = JSON.parse(mensagens[1].content);
+    const ancoras = {};
+    for (const [chave, numero, escopo, pagina] of [['A1', '14.4', 'Edital', '17'], ['A2', '7.7', 'Termo de Referência', '25']]) {
+      const ramos = schema.properties.ancoras.properties[chave].anyOf;
+      assert.deepEqual(ramos.map(r => r.properties.tipo.enum[0]), ['esclarecer_recolhimento_multa']);
+      const ids = ramos[0].properties.fontes.items.enum;
+      assert.equal(ids.length, 1);
+      const fonte = catalogo.fontes.find(f => f.id === ids[0]);
+      assert.equal(fonte.numero, numero); assert.equal(fonte.escopoDocumento, escopo); assert.equal(fonte.pagina, pagina);
+      ancoras[chave] = { tipo: 'esclarecer_recolhimento_multa', fontes: ids, fundamentos: [] };
+    }
+    return { ok: true, texto: JSON.stringify({ ancoras }) };
+  } });
+  assert.equal(r.statusCode, 200); assert.equal(cotas, 1); assert.equal(chamadas, 1);
+  assert.equal(r.dados.analise.fatos.length, 2);
+  assert.match(r.dados.analise.minutaTexto, /trinta.*dias úteis/s);
+  assert.match(r.dados.analise.minutaTexto, /poderá ser recolhida administrativamente.*recebimento/s);
+});
