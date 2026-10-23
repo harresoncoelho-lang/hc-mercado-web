@@ -336,3 +336,12 @@ test("referência parcialmente localizada mantém motivo visível mesmo com evid
   assert.ok(card, "aviso deve estar diretamente no card, visível sem abrir os trechos");
   assert.ok(a.achar(e => typeof e.textContent === "string" && e.textContent.includes(evidencia.texto)));
 });
+
+test("descrição do card distingue trecho vinculado de sugestão sem prova sem apagar limites", () => {
+  const a = ambiente();
+  a.contexto.estrutura = { hashFonte: "hashA", possiveisQuestionamentos: ["Conferir o item 4.4", "Conferir condição sem referência"], evidenciasQuestionamentos: [{ texto: "Conferir o item 4.4", evidencias: [{ documento: "Edital", pagina: "3", numero: "4.4", texto: "A condição deve ser conferida antes da participação." }], motivo: "Outra referência não foi localizada." }] };
+  renderizar(a.host, a.contexto);
+  assert.ok(a.achar(e => e.textContent === "Confira os trechos documentais vinculados antes de analisar."));
+  assert.ok(a.achar(e => e.textContent === "Sugestão ainda sem evidência documental confirmada."));
+  assert.ok(a.achar(e => e.textContent === "Outra referência não foi localizada."));
+});

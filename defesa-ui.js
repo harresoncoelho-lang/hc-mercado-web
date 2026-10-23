@@ -221,7 +221,7 @@
     if (pontos.length) secao.append(el("p", "Abra um ponto para conferir seu contexto. Sugestões sem trecho identificado precisam de verificação documental; não são evidências."));
     if (!pontos.length) secao.append(el("p", "Nenhum ponto com evidência estruturada foi identificado nesta análise. Isso não confirma ausência de problemas."));
     for (const ponto of pontos) {
-      const card = el("article"); card.className = "defesa-ponto"; card.append(el("p", "Ponto a verificar"), el("h4", ponto.titulo || "Ponto a conferir"), el("p", ponto.descricao || "Sugestão ainda sem evidência documental confirmada."));
+      const card = el("article"); card.className = "defesa-ponto"; card.append(el("p", "Ponto a verificar"), el("h4", ponto.titulo || "Ponto a conferir"), el("p", ponto.descricao || (raiz.DefesaLicitante.temEvidencias(ponto) ? "Confira os trechos documentais vinculados antes de analisar." : "Sugestão ainda sem evidência documental confirmada.")));
       if (typeof ponto.motivo === "string" && ponto.motivo.trim()) card.append(el("p", ponto.motivo));
       const provas = el("details"); provas.append(el("summary", "Trecho do edital"));
       for (const e of Array.isArray(ponto.evidencias) ? ponto.evidencias : []) {
