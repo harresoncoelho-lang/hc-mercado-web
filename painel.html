@@ -26,8 +26,9 @@
 <script src="supabase-config.js"></script>
 <script src="resumo-modelo.js?v=6eb1347453c4"></script>
 <script src="capag.js?v=167fac74e421"></script>
-<script src="defesa-licitante.js?v=536b0c2b0be3"></script>
-<script src="defesa-ui.js?v=b9945476c34e"></script>
+<script src="defesa-licitante.js?v=0fc91f5a970b"></script>
+<script src="empresa-identificacao-ui.js?v=782a6b926bae"></script>
+<script src="defesa-ui.js?v=18f5e8d4fb00"></script>
 <script src="operacao-edital.js"></script>
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
@@ -3032,7 +3033,21 @@
     const conferirContextoDefesa = () => {
       if (usuarioId !== window.__clienteIdAtual || empresaId !== empresaOperacionalId || numeroEdital !== iaEditalAtual?.numeroControlePNCP || geracaoDefesa !== iaGeracaoModal || hashDefesa !== iaEstruturaAtual?.hashFonte) throw new Error("O contexto mudou. Reabra a análise no edital e na empresa corretos.");
     };
-    DefesaUI.renderizar(host, { estrutura: iaEstruturaAtual || {}, edital: iaEditalAtual,
+    const identificacaoEmpresa = async (pedido) => {
+      conferirContextoDefesa();
+      const token = await obterTokenSessao(); conferirContextoDefesa();
+      const enviar = credencial => fetch('/api/empresa-identificacao', {method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${credencial}`},body:JSON.stringify({...pedido,empresaId})});
+      let resposta = await enviar(token); conferirContextoDefesa();
+      if (resposta.status === 401) {
+        const renovacao = await window.__sbClient.auth.refreshSession(); conferirContextoDefesa();
+        if (renovacao.error || !renovacao.data?.session?.access_token) throw new Error('Entre novamente para consultar os dados da empresa.');
+        resposta = await enviar(renovacao.data.session.access_token);
+      }
+      const dados = await resposta.json().catch(() => ({})); conferirContextoDefesa();
+      if (!resposta.ok || dados.erro) { const erro = new Error(dados.erro || 'Não foi possível consultar os dados da empresa.'); erro.status = resposta.status; throw erro; }
+      return dados;
+    };
+    DefesaUI.renderizar(host, { estrutura: iaEstruturaAtual || {}, edital: iaEditalAtual, identificacaoEmpresa,
       usuarioId, empresaId, empresa: document.getElementById("op-empresa")?.selectedOptions?.[0]?.textContent,
       analisar: async ({ tipo, questionamento, objetivo, fase, respostaOrgao, manifestacaoAnterior }) => {
         conferirContextoDefesa();
@@ -3057,13 +3072,17 @@
           const dados = await resp.json().catch(() => ({}));
           conferirContextoDefesa();
           if (!resp.ok || dados.erro) throw new Error(dados.erro || "Não foi possível analisar agora. Tente novamente depois.");
-          let empresaLocal;
+          let empresaLocal, identificacaoLocal;
           try {
-            const { empresa } = await empresaOperacionalParaDossie(empresaId);
+            identificacaoLocal = await identificacaoEmpresa({acao:'consultar'});
             conferirContextoDefesa();
-            empresaLocal = { razaoSocial: empresa.razao_social, cnpj: empresa.cnpj };
-          } catch { conferirContextoDefesa(); }
-          return { ...dados, empresaLocal };
+          } catch (erro) {
+            conferirContextoDefesa();
+            if (erro.status === 503) {
+              try { const {empresa} = await empresaOperacionalParaDossie(empresaId); conferirContextoDefesa(); empresaLocal = {razaoSocial:empresa.razao_social,cnpj:empresa.cnpj}; } catch { conferirContextoDefesa(); }
+            }
+          }
+          return { ...dados, empresaLocal, identificacaoLocal };
         } catch (erro) {
           if (erro.name === "AbortError") throw new Error("A análise demorou além do limite. Seu rascunho foi preservado; tente depois.");
           throw erro;

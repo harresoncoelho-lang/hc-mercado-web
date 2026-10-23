@@ -29,7 +29,10 @@ import * as m13 from "../../netlify/functions/pncp-proxy.js";
 import * as m14 from "../../netlify/functions/sancoes.js";
 import * as m15 from "../../netlify/functions/enviar-duvida.js";
 
+import * as m16 from "../../netlify/functions/empresa-identificacao.js";
+
 const ROTAS = {
+  "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,
   "comprasgov-marca": m1,
   "comprasgov-marcas-produto": m2,

@@ -9,6 +9,22 @@
     return Array.isArray(ponto?.evidencias) && ponto.evidencias.length > 0 && ponto.evidencias.every((e) =>
       typeof e?.documento === "string" && e.documento.trim() && typeof e.texto === "string" && e.texto.trim());
   }
+  const marcadorIdentidade = 'Destinatário e identificação da interessada: [preencher e conferir]';
+  const blocoIdentidade = /^Destinatário: [^\n]*(?:\nAutoridade destinatária: [^\n]*)?\nInteressada: [^\n]*\nCNPJ: [^\n]*(?:\nEndereço da interessada: [^\n]*)?(?:\nRepresentante: [^\n]*)?(?:\nCargo do representante: [^\n]*)?/m;
+  const linha = valor => typeof valor === 'string' ? valor.replace(/\s+/g, ' ').trim() : '';
+  function possuiIdentificacaoLocal(texto) { return texto.includes(marcadorIdentidade) || blocoIdentidade.test(texto) || /\[RAZAO_SOCIAL\]|\[CNPJ\]/.test(texto); }
+  function preencherIdentificacao(texto, { empresa = {}, perfil, orgao = '' } = {}) {
+    const razao = linha(empresa.razao_social) || '[preencher razão social]';
+    const cnpj = /^\d{14}$/.test(String(empresa.cnpj || '').replace(/\D/g, '')) ? linha(empresa.cnpj) : '[preencher CNPJ]';
+    const dados = perfil?.status === 'confirmado' ? perfil.dados : null;
+    const bloco = [`Destinatário: ${linha(orgao) || '[preencher e conferir]'}`, ...(linha(orgao) ? ['Autoridade destinatária: [confirmar autoridade competente]'] : []), `Interessada: ${razao}`, `CNPJ: ${cnpj}`,
+      ...(dados ? [`Endereço da interessada: ${linha(dados.endereco) || '[preencher e conferir]'}`, `Representante: ${linha(dados.representante) || '[preencher e conferir]'}`, `Cargo do representante: ${linha(dados.cargo) || '[preencher e conferir]'}`] : [])].join('\n');
+    return texto.replace(marcadorIdentidade, () => bloco).replace(blocoIdentidade, () => bloco).replaceAll('[RAZAO_SOCIAL]', () => razao).replaceAll('[CNPJ]', () => cnpj);
+  }
+  function assinaturaIdentificacao({ empresa = {}, perfil } = {}) {
+    return JSON.stringify([empresa.id, linha(empresa.razao_social), String(empresa.cnpj || '').replace(/\D/g, ''), perfil?.status, perfil?.versao, perfil?.confirmadoEm,
+      perfil?.dados?.endereco, perfil?.dados?.representante, perfil?.dados?.cargo]);
+  }
   function prepararMinuta(tipo, ponto, dados) {
     if (!["esclarecimento", "impugnacao"].includes(tipo)) throw new Error("Tipo de minuta inválido.");
     if (!temEvidencias(ponto)) throw new Error("O ponto precisa de evidência documental antes de preparar uma minuta.");
@@ -26,7 +42,7 @@
       "Minuta elaborada com apoio do LicitaPlena. Revise fatos, enquadramento, legitimidade, prazo e canal antes de utilizar. Nenhum documento foi protocolado ou enviado.",
     ].join("\n\n");
   }
-  const api = { chaveRascunho, prepararMinuta, temEvidencias };
+  const api = { chaveRascunho, prepararMinuta, temEvidencias, preencherIdentificacao, assinaturaIdentificacao, possuiIdentificacaoLocal };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else raiz.DefesaLicitante = api;
 })(globalThis);
