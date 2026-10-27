@@ -2,6 +2,7 @@
 // O token do ZeptoMail fica exclusivamente nas variáveis de ambiente da Netlify;
 // nunca é entregue ao navegador.
 const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
+const { criarSolicitacao, blocoDecisao, marcarEnvio } = require("./_decisao_oportunidade");
 
 const ZEPTOMAIL_URL = "https://api.zeptomail.com/v1.1/email";
 const REMETENTE_PADRAO = "licitaplena@licitaplena.com.br";
@@ -152,7 +153,7 @@ function resposta(event, statusCode, body) {
   return { statusCode, headers: cabecalhosPadrao(event), body: JSON.stringify(body) };
 }
 
-function montarHtml(texto, linkEdital, resumoEstruturado, edital) {
+function montarHtml(texto, linkEdital, resumoEstruturado, edital, tokenDecisao) {
   const conteudo = escapeHtml(texto).replace(/\r?\n/g, "<br>");
   const conteudoEstruturado = montarConteudoEstruturado(resumoEstruturado, edital);
   const chamadaEdital = linkPncpValido(linkEdital)
@@ -164,7 +165,7 @@ function montarHtml(texto, linkEdital, resumoEstruturado, edital) {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#eef3f9" style="width:100%;background:#eef3f9;"><tr><td align="center" style="padding:24px 12px;">
       <table role="presentation" width="960" cellspacing="0" cellpadding="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:960px;background:#ffffff;border:1px solid #dce5f0;">
         <tr><td class="lp-cabecalho" bgcolor="#082243" style="padding:20px 32px;background-color:#082243;background-image:linear-gradient(#082243,#082243);color:#ffffff;-webkit-text-fill-color:#ffffff;font-size:21px;font-weight:700;line-height:1.2;"><img src="${URL_LOGO}" alt="" width="38" height="38" style="display:inline-block;vertical-align:middle;width:38px;height:38px;object-fit:contain;margin-right:11px;border:0;"> <font class="lp-marca" color="#ffffff" style="vertical-align:middle;color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;">LicitaPlena</font></td></tr>
-        <tr><td style="padding:26px 24px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudoEstruturado || conteudo}${chamadaEdital}</td></tr>
+        <tr><td style="padding:26px 24px;font-size:15px;line-height:1.6;color:#162d4c;">${conteudoEstruturado || conteudo}${chamadaEdital}${blocoDecisao(tokenDecisao)}</td></tr>
         <tr><td style="padding:16px 28px;border-top:1px solid #dce5f0;color:#66778e;font-size:12px;line-height:1.5;">Resumo preparado no LicitaPlena com base em dados públicos. Confira sempre o edital oficial antes de decidir.</td></tr>
       </table>
     </td></tr></table></body></html>`;
@@ -218,7 +219,10 @@ exports.handler = async (event) => {
     // Cada chamada recebe apenas um destinatário, para que e-mails de clientes
     // nunca apareçam uns para os outros no cabeçalho da mensagem.
     for (const destino of destinos) {
-      const api = await fetch(ZEPTOMAIL_URL, {
+      const tokenDecisao = dados.solicitarDecisao === true
+        ? await criarSolicitacao(usuario.userId, dados.empresaId, destino, edital) : null;
+      let api;
+      try { api = await fetch(ZEPTOMAIL_URL, {
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -230,10 +234,11 @@ exports.handler = async (event) => {
           to: [{ email_address: { address: destino, ...(nomeDestino ? { name: nomeDestino } : {}) } }],
           reply_to: [{ address: remetente, name: NOME_REMETENTE }],
           subject: assunto,
-          htmlbody: montarHtml(texto, linkEdital, resumoEstruturado, edital),
-          textbody: texto,
+          htmlbody: montarHtml(texto, linkEdital, resumoEstruturado, edital, tokenDecisao),
+          textbody: texto + (tokenDecisao ? `\n\nInforme se deseja participar: https://licitaplena.com.br/responder-oportunidade.html#token=${tokenDecisao}` : ""),
         }),
-      });
+      }); } catch (erro) { await marcarEnvio(tokenDecisao, usuario.userId, 'incerto'); throw erro; }
+      await marcarEnvio(tokenDecisao, usuario.userId, api.ok ? 'enviado' : 'falhou');
       if (!api.ok) {
         const corpo = await api.text();
         const erro = mensagemErroZepto(api.status, corpo);
@@ -244,7 +249,7 @@ exports.handler = async (event) => {
     return resposta(event, 200, { ok: true, quantidade: destinos.length, mensagem: "E-mail enviado com sucesso." });
   } catch (e) {
     console.error("Falha ao enviar resumo por e-mail:", e.message);
-    return resposta(event, 502, { erro: "Não foi possível enviar o e-mail agora. Tente novamente em instantes." });
+    return resposta(event, e.status || 502, { erro: e.status ? e.message : "Não foi possível enviar o e-mail agora. Tente novamente em instantes." });
   }
 };
 

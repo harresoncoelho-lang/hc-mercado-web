@@ -1,0 +1,90 @@
+/* Direção A: camada visual do painel. Não é carregada nas saídas de e-mail/DOCX/impressão. */
+@media screen {
+  :root {
+    color-scheme: dark;
+    --azul: #2255e0;
+    --azul-escuro: #071b70;
+    --azul-texto: #8eafff;
+    --fundo: #0b1020;
+    --cartao: #101828;
+    --cartao-claro: #141c2f;
+    --borda: #2d3952;
+    --texto: #edf2ff;
+    --texto-fraco: #adbbd4;
+    --fundo-fraco: #0e1525;
+    --fundo-elevado: #18233b;
+    --fundo-elevado-hover: #233351;
+    --fundo-hover: #1a2949;
+    --input-borda: #7786a0;
+    --chip-fundo: #19294c;
+    --chip-texto: #c3d4ff;
+    --chip-texto-medio: #8eafff;
+    --chip-borda: #3c578b;
+    --sombra: 0 4px 16px #00000018;
+    --lp-acao: #5e8bff;
+    --lp-sobre-acao: #071329;
+    --lp-foco: #8eafff;
+  }
+  html.tema-claro {
+    color-scheme: light;
+    --azul: #2255e0;
+    --azul-escuro: #071b70;
+    --azul-texto: #2255e0;
+    --fundo: #f5f7fc;
+    --cartao: #fff;
+    --cartao-claro: #f1f4fa;
+    --borda: #dce3f0;
+    --texto: #142443;
+    --texto-fraco: #52627d;
+    --fundo-fraco: #f1f4fa;
+    --fundo-elevado: #fff;
+    --fundo-elevado-hover: #e8efff;
+    --fundo-hover: #e8efff;
+    --input-borda: #7a879b;
+    --chip-fundo: #e8efff;
+    --chip-texto: #183f9b;
+    --chip-texto-medio: #2255e0;
+    --chip-borda: #b5c8f5;
+    --lp-acao: #2255e0;
+    --lp-sobre-acao: #fff;
+    --lp-foco: #2255e0;
+  }
+  body { background: var(--fundo); }
+  header { background: var(--cartao); border-bottom: 1px solid var(--borda); box-shadow: none; }
+  header::after { display: none; }
+  .header-nome { color: var(--texto); }
+  .header-logo { background: #071b70; border-radius: 8px; filter: none; }
+  .header-badge, .header-badge-plano { background: var(--chip-fundo); color: var(--chip-texto); border: 1px solid var(--borda); }
+  /* Os controles legados declaram estas cores inline. */
+  header .header-icone-btn { color: var(--texto) !important; background: var(--fundo-fraco) !important; border-color: var(--input-borda) !important; }
+  nav { background: var(--cartao); }
+  nav button, nav a { color: var(--texto-fraco) !important; }
+  nav button.ativo { color: var(--chip-texto) !important; }
+  nav button.ativo { background: var(--chip-fundo); color: var(--chip-texto); box-shadow: inset 3px 0 var(--lp-acao); }
+  nav button.ativo .nav-ico { background: transparent; box-shadow: none; }
+  .painel-filtros { border: 1px solid var(--borda); }
+  .seletor-ufs-acoes button, .angulo-icone, .boletim-identificacao, .marca-kpi strong, .marca-rank, .marca-numero, .marca-abrir { color: var(--azul-texto); }
+  .btn-buscar, .btn-buscar:hover:not(:disabled), .btn-subaba.ativo { background: var(--lp-acao); color: var(--lp-sobre-acao); box-shadow: none; transform: none; }
+  :is(button,a,input,textarea,select,summary):focus-visible { outline: 3px solid var(--lp-foco); outline-offset: 3px; }
+  /* O documento continua em papel claro nos dois temas, como o resumo já utilizado. */
+  #modal-ia-fundo .modal-ia { color-scheme: light; }
+  #modal-ia-fundo :is(button,a,input,textarea,summary):focus-visible { outline-color: #2255e0; }
+  #modal-ia-fundo [data-resumo-secao^="CAPAG"] { border-color: #b5c8f5; }
+  #modal-ia-fundo [data-resumo-secao^="CAPAG"] > summary { background: #e8efff; color: #071b70; }
+  @media (min-width: 769px) {
+    nav:not(.colapsada) { width: 216px; padding: 16px 10px; }
+    nav:not(.colapsada) button { flex-direction: row; justify-content: flex-start; text-align: left; padding: 10px; gap: 10px; }
+    nav:not(.colapsada) button .nav-ico { width: 28px; height: 28px; font-size: 18px; background: transparent; }
+    main { padding: 28px 32px 70px; }
+  }
+}
+.contatos-resumo { border: 1px solid var(--borda); border-radius: 8px; padding: 12px; }
+#modal-enviar-resumo-fundo .modal-ia { overflow-y: auto; }
+#modal-enviar-resumo-fundo .modal-ia-topo { flex-shrink: 0; }
+.contatos-resumo label { display: grid; gap: 6px; }
+.contatos-resumo input { width: 100%; padding: 10px; font: inherit; border: 1px solid var(--input-borda); background: var(--fundo-fraco); color: var(--texto); border-radius: 6px; }
+.contatos-resumo small { display: block; color: var(--texto-fraco); margin-top: 6px; }
+#contatos-resumo-lista { display: grid; gap: 6px; margin-top: 8px; max-height: 180px; overflow: auto; font-size: 13px; }
+#contatos-resumo-lista > div { display: flex; gap: 8px; }
+#contatos-resumo-lista button { background: var(--fundo-fraco); color: var(--texto); border: 1px solid var(--input-borda); padding: 8px; border-radius: 6px; cursor: pointer; }
+#contatos-resumo-lista button:first-child { flex: 1; text-align: left; overflow-wrap: anywhere; min-width: 0; }

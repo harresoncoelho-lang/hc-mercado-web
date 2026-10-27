@@ -1,0 +1,40 @@
+const { PGlite } = require('C:/Users/harre/AppData/Local/LicitaPlena/qa-postgres/node_modules/@electric-sql/pglite');
+const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
+(async () => {
+ const db = new PGlite();
+ try {
+  await db.exec(`create role anon; create role authenticated; create role service_role;
+   create schema auth; create table auth.users(id uuid primary key);
+   create table public.clientes(id uuid primary key,status text);
+   create table public.operacao_empresas(id uuid primary key,organizacao_id uuid,razao_social text,cnpj text);
+   create table public.operacao_membros(organizacao_id uuid,usuario_id uuid,papel text,empresa_id uuid);`);
+  await db.exec(fs.readFileSync(path.join(__dirname,'../../supabase/decisao_oportunidade.sql'),'utf8'));
+  const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',e='33333333-3333-4333-8333-333333333333';
+  await db.query('insert into auth.users values($1),($2)',[a,b]);
+  await db.query("insert into public.clientes values($1,'aprovado'),($2,'aprovado')",[a,b]);
+  await db.query("insert into public.operacao_empresas values($1,$1,'Empresa exemplo','11222333000181')",[e]);
+  await db.query("insert into public.operacao_membros values($1,$2,'gestor',null),($1,$3,'leitura',null)",[e,a,b]);
+  const rpc = async (name,args) => (await db.query(`select public.${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) as r`,args)).rows[0].r;
+  const criar=(user,hash)=>rpc('criar_decisao_oportunidade',[user,e,'cliente@example.com','11222333000181-1-1/2026','Objeto exemplo',hash]);
+  const hash='a'.repeat(64);
+  assert.deepEqual(await criar(b,hash),{ok:false});
+  assert.deepEqual(await criar(a,hash),{ok:true});
+  assert.equal(await rpc('marcar_envio_decisao',[hash,b,'enviado']),false);
+  assert.equal(await rpc('marcar_envio_decisao',[hash,a,'enviado']),true);
+  const leitura=await rpc('responder_decisao_oportunidade',[hash,null,null]); assert.equal(leitura.decisao,null);
+  assert.equal((await rpc('listar_decisoes_oportunidade',[b])).length,0);
+  assert.equal(await rpc('responder_decisao_oportunidade',['b'.repeat(64),null,null]),null);
+  const decisao=await rpc('responder_decisao_oportunidade',[hash,'participar','Dedé']); assert.equal(decisao.decisao,'participar');
+  const repetida=await rpc('responder_decisao_oportunidade',[hash,'participar','Outra pessoa']); assert.equal(repetida.respondidoEm,decisao.respondidoEm);
+  assert.equal((await rpc('responder_decisao_oportunidade',[hash,'nao_participar','Dedé'])).conflito,true);
+  const registros=await rpc('listar_decisoes_oportunidade',[a]); assert.equal(registros[0].nome_declarado,'Dedé'); assert.equal(registros[0].token_hash,undefined);
+  await db.query("update public.decisoes_oportunidade set expira_em=now()-interval '1 second'");
+  assert.equal(await rpc('responder_decisao_oportunidade',[hash,null,null]),null);
+  await criar(a,'c'.repeat(64)); await rpc('marcar_envio_decisao',['c'.repeat(64),a,'falhou']);
+  assert.equal(await rpc('responder_decisao_oportunidade',['c'.repeat(64),null,null]),null);
+  await db.exec('set role anon'); await assert.rejects(()=>db.query('select * from public.decisoes_oportunidade'),/permission denied/);
+  await assert.rejects(()=>rpc('listar_decisoes_oportunidade',[a]),/permission denied/);
+  await db.exec('reset role; set role authenticated'); await assert.rejects(()=>criar(a,'b'.repeat(64)),/permission denied/);
+  console.log('SQL real PGlite: migração, isolamento, leitor, consulta sem decisão, repetição, conflito, expiração e permissões aprovados.');
+ } finally { await db.close(); }
+})().catch(e=>{console.error(e);process.exitCode=1;});

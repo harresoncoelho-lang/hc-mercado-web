@@ -24,7 +24,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<script src="resumo-modelo.js?v=6eb1347453c4"></script>
+<script src="resumo-modelo.js?v=953e30c32a3c"></script>
 <script src="capag.js?v=167fac74e421"></script>
 <script src="defesa-licitante.js?v=0fc91f5a970b"></script>
 <script src="empresa-identificacao-ui.js?v=782a6b926bae"></script>
@@ -1434,6 +1434,9 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="painel-design.css?v=1">
+<script src="contatos-resumo.js?v=1" defer></script>
+<script src="decisoes-resumo.js?v=1" defer></script>
 </head>
 <body>
 <!-- Sprite de ícones Phosphor (peso "fill") — SVG inline embutido de propósito, sem
@@ -1616,6 +1619,7 @@
 </script>
 
 <main>
+<details class="contatos-resumo" style="margin-bottom:18px"><summary>Respostas dos clientes às oportunidades</summary><p>Decisões recebidas pelos links individuais. Confirmar participação aqui não inscreve a empresa no portal.</p><button type="button" id="decisoes-clientes-atualizar">Atualizar respostas</button><div id="decisoes-clientes-lista" role="status"></div></details>
 
   <section id="dashboard" class="ativa">
     <div class="dash-boas-vindas">
@@ -2318,6 +2322,7 @@
     </div>
     <p style="margin:6px 0 16px;color:var(--texto-fraco);font-size:13px;line-height:1.45;">O e-mail será enviado pelo <strong>licitaplena@licitaplena.com.br</strong>. Cada destinatário recebe uma cópia individual.</p>
     <form id="modal-enviar-resumo-form" style="display:grid;gap:12px;">
+      <div class="contatos-resumo"><label>Contatos salvos<input id="contatos-resumo-busca" type="search" placeholder="Buscar nome ou e-mail" autocomplete="off" aria-controls="contatos-resumo-lista"></label><small>Salvos neste navegador após o envio, apenas para sua conta.</small><div id="contatos-resumo-lista"></div></div>
       <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">E-mails dos clientes
         <input id="modal-enviar-resumo-destino" type="text" required inputmode="email" autocomplete="email" placeholder="cliente1@empresa.com, cliente2@empresa.com" aria-describedby="modal-enviar-resumo-destino-ajuda" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;">
         <span id="modal-enviar-resumo-destino-ajuda" style="font-size:12px;font-weight:400;color:var(--texto-fraco);">Separe os endereços por vírgula ou ponto e vírgula. Máximo de 10 por envio.</span>
@@ -2331,6 +2336,7 @@
       <label style="display:grid;gap:6px;font-size:13px;font-weight:700;">Prévia do resumo
         <textarea id="modal-enviar-resumo-texto" readonly rows="12" style="padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font:inherit;line-height:1.45;resize:vertical;"></textarea>
       </label>
+      <label><input id="solicitar-decisao-cliente" type="checkbox" disabled> Solicitar decisão do cliente no e-mail</label><small id="decisao-cliente-status">Verificando disponibilidade…</small>
       <p id="modal-enviar-resumo-aviso" class="aviso" style="display:none;margin:0;"></p>
       <div class="modal-ia-acoes-rodape" style="margin-top:0;">
         <button type="submit" id="modal-enviar-resumo-confirmar" style="background:var(--azul);border-color:var(--azul);color:#fff;"><svg class='icone-ph'><use href='#ph-paper-plane-tilt'></use></svg> Enviar e-mail</button>
@@ -3754,6 +3760,7 @@
       const corpo = montarResumoParaCliente(edital, iaEstruturaAtual);
       document.getElementById("modal-enviar-resumo-destino").value = "";
       document.getElementById("modal-enviar-resumo-nome").value = "";
+      window.ContatosResumo?.atualizar();
       document.getElementById("modal-enviar-resumo-assunto").value = `Oportunidade para análise — ${edital.objeto || "Licitação"}`;
       document.getElementById("modal-enviar-resumo-texto").value = corpo;
       const aviso = document.getElementById("modal-enviar-resumo-aviso");
@@ -3827,6 +3834,13 @@
     const botao = document.getElementById("modal-enviar-resumo-confirmar");
     const aviso = document.getElementById("modal-enviar-resumo-aviso");
     const destinos = document.getElementById("modal-enviar-resumo-destino").value.trim();
+    const usuarioEnvio = window.__clienteIdAtual;
+    const empresaEnvio = empresaOperacionalId;
+    const editalEnvio = iaEditalAtual;
+    const conferirContextoEnvio = () => {
+      if (usuarioEnvio !== window.__clienteIdAtual || empresaEnvio !== empresaOperacionalId || editalEnvio !== iaEditalAtual) throw new Error("A empresa ou a licitação mudou durante o envio. Reabra o resumo correto e tente novamente.");
+    };
+    const solicitarDecisao = document.getElementById("solicitar-decisao-cliente").checked && !document.getElementById("solicitar-decisao-cliente").disabled;
     const nomeDestino = document.getElementById("modal-enviar-resumo-nome").value.trim();
     const assunto = document.getElementById("modal-enviar-resumo-assunto").value.trim();
     let texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
@@ -3854,6 +3868,7 @@
       // busca antes de montar o payload para que um clique rápido não omita a
       // seção "Itens da oportunidade" do e-mail.
       if (iaEditalAtual) await carregarItensDoResumoIA(iaEditalAtual);
+      conferirContextoEnvio();
       if (iaEstruturaAtual) {
         iaEstruturaAtual.itensPncp = Array.isArray(iaItensPncpAtual) ? iaItensPncpAtual : [];
         texto = montarResumoParaCliente(iaEditalAtual, iaEstruturaAtual);
@@ -3867,18 +3882,21 @@
         itensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp : [],
       } : null;
       const token = await obterTokenSessao();
+      conferirContextoEnvio();
       const resp = await fetch("/api/enviar-resumo-edital", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ destinos, nomeDestino, assunto, texto, linkEdital, resumoEstruturado, edital: editalResumo }),
+        body: JSON.stringify({ destinos, nomeDestino, assunto, texto, linkEdital, resumoEstruturado, edital: editalResumo, solicitarDecisao, empresaId: empresaEnvio }),
       });
       const dados = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(dados.erro || "Não foi possível enviar o e-mail.");
+      const contatoSalvo = window.ContatosResumo?.registrarEnvio({usuarioId: usuarioEnvio, destinos, nome: nomeDestino});
       aviso.className = "aviso aviso-sucesso";
       const quantidade = Number(dados.quantidade || 1);
       aviso.textContent = quantidade > 1
         ? `E-mails enviados com sucesso a ${quantidade} destinatários pelo LicitaPlena.`
         : "E-mail enviado com sucesso pelo LicitaPlena.";
+      if (contatoSalvo === false) aviso.textContent += " Não foi possível salvar o contato neste navegador.";
       aviso.style.display = "block";
       // O formulário permanece aberto justamente para permitir trocar somente o
       // destinatário e encaminhar o mesmo resumo a outro cliente em seguida.

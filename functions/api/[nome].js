@@ -30,8 +30,10 @@ import * as m14 from "../../netlify/functions/sancoes.js";
 import * as m15 from "../../netlify/functions/enviar-duvida.js";
 
 import * as m16 from "../../netlify/functions/empresa-identificacao.js";
+import * as m17 from "../../netlify/functions/decisao-oportunidade.js";
 
 const ROTAS = {
+  "decisao-oportunidade": m17,
   "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,
   "comprasgov-marca": m1,

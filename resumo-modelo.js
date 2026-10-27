@@ -196,9 +196,6 @@ const CAMPOS = {
           .map(c => ({ rotulo: `${secao.titulo} — ${c.rotulo}`, valor: c.valor }));
       });
       if (complementos.length) modelo.secoes.push({ titulo: "Conferir complementos e evidências documentais", campos: complementos, recolhida: true });
-    } else {
-      const outras = modelo.secoes.find(s => s.titulo === "Outras informações relevantes");
-      if (outras) outras.recolhida = true;
     }
     return modelo;
   }

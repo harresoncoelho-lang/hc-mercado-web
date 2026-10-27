@@ -3,6 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { montar, montarVisual } = require('../resumo-modelo');
 
+test('todas as seções principais abrem completas, inclusive outras informações', () => {
+  for (const estrutura of [{outrasInformacoesRelevantes:['Informação para decisão']}, {estruturaSintetica:{outrasInformacoesRelevantes:['Informação para decisão']}}]) {
+    const secoes=montarVisual(estrutura).secoes.filter(s=>!s.titulo.startsWith('Consultar ')&&!s.titulo.startsWith('Conferir ')&&!s.titulo.startsWith('Entender '));
+    assert.ok(secoes.every(s=>!s.recolhida));
+  }
+});
+
 test('síntese original fica no principal e expansões documentais ficam sob demanda sem truncamento', () => {
   const fonte = 'Cláusula documental completa. '.repeat(4000);
   const estrutura = { identificacao: { objeto: 'Compra pública' }, outrasInformacoesRelevantes: ['Síntese original', fonte], condicoesPagamento: 'Pagamento em 30 dias. Trechos integrais adicionais.', estruturaSintetica: { identificacao: { objeto: 'Compra pública' }, outrasInformacoesRelevantes: ['Síntese original'], condicoesPagamento: 'Pagamento em 30 dias.' } };
