@@ -175,7 +175,7 @@ for (const nome of ["sincronizarContratosNoSupabase", "sincronizarMercadoNoSupab
     const inicioFuncao = codigo.indexOf(`async function ${nome}(`);
     const fimFuncao = codigo.indexOf("\n}\n", inicioFuncao) + 2;
     vm.runInContext(codigo.slice(inicioFuncao, fimFuncao), ambiente);
-    await assert.rejects(ambiente[nome]({ registros: [], atas: [] }), /lote 2 falhou/);
+    await assert.rejects(ambiente[nome]({ registros: [], novosNaExecucao: [], atas: [] }), /lote 2 falhou/);
   });
 }
 
@@ -863,4 +863,73 @@ test("cursor de oportunidades vencido reinicia a consulta com preservação do h
   assert.ok(paginas.includes(2));
   assert.equal(concluido.registros.length, 23);
   assert.deepEqual(Array.from(concluido.ufsComFalha), []);
+});
+
+function ambienteRateLimit(respostas) {
+  const esperas = [];
+  const ambiente = vm.createContext({
+    AbortController,
+    console: { log() {} },
+    esperarComBackoff: async () => {},
+    // O prazo de rede (25s) não é espera de rate limit; só registra pausas reais.
+    setTimeout: (callback, ms) => { if (ms !== 100) { esperas.push(ms); callback(); } return {}; },
+    clearTimeout: () => {},
+    fetch: async () => respostas.shift(),
+  });
+  vm.runInContext(codigo.slice(codigo.indexOf("async function fetchComRetentativa("), codigo.indexOf("async function lerJsonExistente(")), ambiente);
+  return { ambiente, esperas };
+}
+
+const resposta429 = (retryAfter) => ({ ok: false, status: 429, headers: { get: (nome) => (nome === "retry-after" ? retryAfter : null) } });
+const resposta200 = { ok: true, status: 200, text: async () => '{"data":[],"totalPaginas":0}' };
+
+test("429 respeita Retry-After em segundos antes de tentar de novo", async () => {
+  const { ambiente, esperas } = ambienteRateLimit([resposta429("7"), resposta200]);
+  assert.equal(JSON.stringify(await ambiente.fetchComRetentativa("https://exemplo.invalid", 2, 100)), '{"data":[],"totalPaginas":0}');
+  assert.deepEqual(esperas, [7000]);
+});
+
+test("429 com limitador global delega a pausa ao chamador em vez de dormir sozinho", async () => {
+  const pausas = [];
+  const { ambiente, esperas } = ambienteRateLimit([resposta429("30"), resposta429(null), resposta200]);
+  const dados = await ambiente.fetchComRetentativa("https://exemplo.invalid", 4, 100, "", null, (retryAfter, tentativa) => pausas.push([retryAfter, tentativa]));
+  assert.equal(JSON.stringify(dados), '{"data":[],"totalPaginas":0}');
+  assert.deepEqual(pausas, [["30", 0], [null, 1]]);
+  assert.deepEqual(esperas, []);
+});
+
+test("espera após 429 dobra sem Retry-After e respeita o teto", () => {
+  const { ambiente } = ambienteRateLimit([]);
+  const semCabecalho = ambiente.esperaAposRateLimitMs(null, 2, 5000);
+  assert.ok(semCabecalho >= 20000 && semCabecalho < 20300);
+  assert.equal(ambiente.esperaAposRateLimitMs("600", 0, 5000), 60000);
+  const data = new Date(Date.now() + 12000).toUTCString();
+  const porData = ambiente.esperaAposRateLimitMs(data, 0, 1000);
+  assert.ok(porData > 10000 && porData <= 12000);
+});
+
+test("contratos: upsert envia só o que veio da fonte nesta execução, com atualizado_em", async () => {
+  const contrato = (id) => ({ numeroControlePNCP: id, objeto: id, dataAssinatura: "2026-11-10" });
+  const enviados = [];
+  const ambiente = vm.createContext({
+    UFS: ["AM"], RETENCAO_DIAS: 730, FOLGA_DIAS: 2, DIAS_HISTORICO_INICIAL: 30, TAMANHO_PAGINA: 100, CONCORRENCIA_PAGINAS: 1,
+    console: { log() {} }, fmtData: () => "20261118", segmentosQueBatem: () => [],
+    chaveRegistro: (r) => r.numeroControlePNCP,
+    lerJsonExistente: async () => ({ dataFinal: "20261117", registros: [contrato("hidratado"), contrato("recoletado")] }),
+    buscarPaginasEmLote: async (_url, _p, _t, _c, aoReceber) => {
+      aoReceber({ data: ["recoletado", "inedito"].map((id) => ({ numeroControlePNCP: id, objetoContrato: id, dataAssinatura: "2026-11-10" })) });
+      return { paginasVarridas: 1, totalPaginas: 1, parcial: false, progresso: null };
+    },
+    coletarContratosComplementarPorUf: async () => ({ registros: [contrato("por-uf")], ufsComFalha: [], progressoPorUf: {} }),
+    upsertEmLotes: async (_tabela, linhas) => { enviados.push(...linhas); return linhas.length; },
+    removerMaisAntigosQue: async () => {},
+  });
+  const trecho = (nome, fim) => codigo.slice(codigo.indexOf(nome), codigo.indexOf(fim, codigo.indexOf(nome)));
+  vm.runInContext(trecho("async function coletarContratos(", "\n// ---------- Oportunidades") +
+    trecho("async function sincronizarContratosNoSupabase(", "\nasync function hidratarMercadoDoSupabase("), ambiente);
+  const contratos = await ambiente.coletarContratos("ignorado");
+  assert.equal(contratos.registros.length, 4);
+  await ambiente.sincronizarContratosNoSupabase(contratos);
+  assert.deepEqual(enviados.map((l) => l.numero_controle_pncp), ["recoletado", "inedito", "por-uf"]);
+  assert.ok(enviados.every((l) => Number.isFinite(Date.parse(l.atualizado_em))));
 });

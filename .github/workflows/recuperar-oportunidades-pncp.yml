@@ -12,7 +12,10 @@ on:
     # um deploy completo no Netlify e consumindo credito de build). Espacado pra a cada 3h
     # (8x/dia) - ainda cobre bem o dia sem gerar deploy toda hora. Ver Segundo-Cerebro
     # /03-Bugs-Conhecidos.md sobre o consumo de credito do Netlify.
-    - cron: "17 */3 * * *"
+    # Em 18/11 a grade "17 */3" caía às 21:17 UTC, dentro do boletim das 21:00 (seg-sex),
+    # que consulta o mesmo /contratacoes/proposta. "17 2-23/3" (02,05,...,20,23h) termina
+    # antes de 09:00, 10:00, 16:00 e 21:00 UTC, horários do robô principal e do boletim.
+    - cron: "17 2-23/3 * * *"
   workflow_dispatch: {}
 
 permissions:

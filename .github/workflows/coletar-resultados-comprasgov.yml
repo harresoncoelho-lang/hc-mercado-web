@@ -34,4 +34,7 @@ jobs:
           INTERVALO_MS: "900"
           PAUSA_429_MS: "15000"
           CONCORRENCIA_ITENS: "1"
+          # 500 linhas por upsert estouravam o statement_timeout (57014) desde 12/11.
+          TAMANHO_LOTE_BANCO: "100"
+          LOTE_MINIMO_BANCO: "10"
         run: node scripts/coletar_comprasgov_resultados.js

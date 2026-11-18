@@ -12,6 +12,8 @@
 //   CONCORRENCIA_PAGINAS=5        -> quantas páginas buscar em paralelo na coleta de contratos (padrão 5)
 //   CONCORRENCIA_ATAS=6           -> quantas chamadas de "resultados de item" buscar em paralelo por
 //                                    ata, dentro de enriquecerAta() (padrão 6) — ver comentário lá
+//   PAUSA_429_MS_OPORTUNIDADES=5000 -> base do backoff global após 429 sem Retry-After (dobra a
+//                                    cada tentativa, teto 60s) — ver esperaAposRateLimitMs()
 //
 // IMPORTANTE: a partir desta versão o robô é INCREMENTAL — ele não re-varre tudo do zero
 // a cada execução. Ele lê os arquivos já existentes (comitados no repo), busca só o que é
@@ -115,7 +117,10 @@ function esperarComBackoff(tentativaZeroIndexed) {
   return new Promise((r) => setTimeout(r, base + Math.random() * 300));
 }
 
-async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "", antesDaTentativa = null) {
+// aoLimitarTaxa(retryAfter, tentativa): opcional. Quando a fonte devolve 429, o chamador
+// que tem um limitador global pausa TODOS os workers de uma vez (ver
+// coletarOportunidadesAbertas). Sem ele, esta função espera sozinha.
+async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "", antesDaTentativa = null, aoLimitarTaxa = null) {
   for (let i = 0; i < tentativas; i++) {
     let t;
     try {
@@ -135,7 +140,9 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotul
           console.log(`[fetch${rotulo ? " " + rotulo : ""}] Rate-limit (429) persistente após ${tentativas} tentativa(s) em ${url}`);
           return null;
         }
-        await esperarComBackoff(i);
+        const retryAfter = resp.headers && resp.headers.get ? resp.headers.get("retry-after") : null;
+        if (aoLimitarTaxa) aoLimitarTaxa(retryAfter, i);
+        else await new Promise((r) => setTimeout(r, esperaAposRateLimitMs(retryAfter, i, 1000)));
         continue;
       }
       if (resp.status === 204) return { data: [], totalPaginas: 0 };
@@ -159,6 +166,19 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotul
     }
   }
   return null;
+}
+
+// Antes o 429 esperava 1s, 2s, 4s (7s no total em 4 tentativas) e ignorava Retry-After:
+// em 18/11 a recuperação teve 26 de 27 UFs com "429 persistente" na primeira passada e 11
+// na segunda, todas dentro desses 7s.
+// Agora respeita Retry-After (segundos ou data HTTP) e, sem ele, dobra a partir de baseMs.
+// O teto impede que um único pedido da fonte consuma o orçamento da fase.
+const TETO_PAUSA_429_MS = 60000;
+function esperaAposRateLimitMs(retryAfter, tentativa, baseMs) {
+  const segundos = Number(retryAfter);
+  const pedido = retryAfter && Number.isFinite(segundos) ? segundos * 1000 : Date.parse(retryAfter) - Date.now();
+  const backoff = baseMs * 2 ** tentativa + Math.random() * 300;
+  return Math.min(TETO_PAUSA_429_MS, Math.max(backoff, Number.isFinite(pedido) ? pedido : 0));
 }
 
 async function lerJsonExistente(caminho) {
@@ -447,7 +467,9 @@ async function coletarContratos(caminhoArquivo) {
   if (existentes && Array.isArray(existentes.registros)) {
     for (const r of existentes.registros) mapa.set(chaveRegistro(r), r);
   }
-  for (const r of novos) mapa.set(chaveRegistro(r), r);
+  // Só o que veio da fonte nesta execução vai para o upsert (ver sincronizarContratosNoSupabase).
+  const chavesDaExecucao = new Set();
+  for (const r of novos) { mapa.set(chaveRegistro(r), r); chavesDaExecucao.add(chaveRegistro(r)); }
 
   // Passada complementar por UF (ver coletarContratosComplementarPorUf acima) — preenche os
   // estados que o scan nacional deixou de fora, usando o que já temos (existentes + novos
@@ -459,7 +481,7 @@ async function coletarContratos(caminhoArquivo) {
     const complementares = await coletarContratosComplementarPorUf(baseParaContagem, progressoPorUf);
     ufsComFalha = complementares.ufsComFalha;
     progressoPorUf = complementares.progressoPorUf || {};
-    for (const r of complementares.registros) mapa.set(chaveRegistro(r), r);
+    for (const r of complementares.registros) { mapa.set(chaveRegistro(r), r); chavesDaExecucao.add(chaveRegistro(r)); }
   } catch (e) {
     console.log(`[contratos-uf] Falhou, seguindo só com o scan nacional: ${e && e.message}`);
   }
@@ -511,6 +533,7 @@ async function coletarContratos(caminhoArquivo) {
     ufsComFalha,
     progressoPorUf,
     registros,
+    novosNaExecucao: registros.filter((r) => chavesDaExecucao.has(chaveRegistro(r))),
   };
 }
 
@@ -595,6 +618,12 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     proximaChamadaEm = Math.max(agora, proximaChamadaEm) + INTERVALO_MS;
     if (espera > 0) await new Promise((r) => setTimeout(r, espera));
   }
+  // O limite do endpoint é por origem: se cada worker insistisse sozinho após um 429, os
+  // outros continuariam batendo durante a pausa. Um 429 adia a próxima chamada de TODOS.
+  const PAUSA_429_MS = parseInt(process.env.PAUSA_429_MS_OPORTUNIDADES || "5000", 10);
+  function pausarCadenciaPncp(retryAfter, tentativa) {
+    proximaChamadaEm = Math.max(proximaChamadaEm, Date.now() + esperaAposRateLimitMs(retryAfter, tentativa, PAUSA_429_MS));
+  }
   iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
   const recuperarPendentes = process.env.RECUPERAR_UFS_PENDENTES === "1";
@@ -632,7 +661,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     const fimConsulta = progresso?.dataFinal || dataFinal;
     const buscarPagina = (pagina) => fetchComRetentativa(
       `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${fimConsulta}&pagina=${pagina}&tamanhoPagina=50`,
-      4, 25000, `oportunidades ${uf}`, respeitarCadenciaPncp);
+      4, 25000, `oportunidades ${uf}`, respeitarCadenciaPncp, pausarCadenciaPncp);
     const assinatura = (dado) => JSON.stringify([dado.totalPaginas, dado.totalRegistros, dado.data.map((r) => r.numeroControlePNCP)]);
     const paginaValida = (dado, numero) => dado && Array.isArray(dado.data) &&
       Number.isSafeInteger(dado.totalPaginas) && dado.totalPaginas >= 0 &&
@@ -1324,8 +1353,17 @@ async function hidratarContratosDoSupabase(caminhoArquivo, caminhoMeta) {
   console.log(`[supabase] Hidratado ${registros.length} contrato(s) do Supabase pra continuar o incremental.`);
 }
 
+// Antes reenviava a base inteira (165 mil linhas, ~330 lotes) a cada execução, e os
+// contratos inéditos ficavam no FIM do array (a Map preserva a ordem de inserção:
+// hidratados primeiro). Qualquer falha num lote anterior — na produção engolida por um
+// try/catch — impedia justamente as linhas novas de entrar (provável causa de nenhuma
+// linha nova desde 30/10).
+// O hidratado já está no banco: basta gravar o que a fonte devolveu agora. atualizado_em
+// vai no payload porque o default now() só vale no INSERT; no merge-duplicates a coluna
+// ficava parada e o painel mostrava a data do último contrato inédito, não da coleta.
 async function sincronizarContratosNoSupabase(contratos) {
-  const linhas = contratos.registros
+  const atualizadoEm = new Date().toISOString();
+  const linhas = contratos.novosNaExecucao
     .filter((r) => r.numeroControlePNCP)
     .map((r) => ({
       numero_controle_pncp: r.numeroControlePNCP,
@@ -1334,6 +1372,7 @@ async function sincronizarContratosNoSupabase(contratos) {
       cnpj_fornecedor: r.cnpjFornecedor || null,
       data_assinatura: r.dataAssinatura || null,
       dado: r,
+      atualizado_em: atualizadoEm,
     }));
   const enviadas = await upsertEmLotes("contratos", linhas, "numero_controle_pncp");
   console.log(`[supabase] ${enviadas} contrato(s) sincronizado(s) na tabela "contratos".`);
@@ -1462,7 +1501,7 @@ async function main() {
     const ids = contratos.consultaPendente?.paginacao?.ids || [];
     await salvarBlob("dados_robo", "contratos_coleta_pendente", { atualizadoEm: contratos.atualizadoEm, ids, hash: hashProgressoAtas(ids) });
     await gravarJson(caminhoContratos, contratos);
-    const { registros: _registrosContratos, ...contratosMeta } = contratos;
+    const { registros: _registrosContratos, novosNaExecucao: _novosContratos, ...contratosMeta } = contratos;
     if (contratosMeta.consultaPendente?.paginacao) {
       const { ids: _ids, ...paginacao } = contratosMeta.consultaPendente.paginacao;
       contratosMeta.consultaPendente = { ...contratosMeta.consultaPendente, paginacao };
