@@ -4,7 +4,21 @@
   const doc = document;
   let storage = null;
   try { storage = globalThis.localStorage; } catch { storage = null; }
-  const ctrl = globalThis.LicitaPlenaComercialControlador.criarControlador({
+  const C = globalThis.LicitaPlenaComercialControlador;
+  // sistema.html marca data-modo="producao" e carrega supabase-js + supabase-config.js. Sem a marca (página
+  // do harness QA), o controlador usa as rotas /qa/*. SUPABASE_URL é `const` global, não propriedade de window.
+  let autenticacao = null;
+  if (doc.documentElement.dataset.modo === 'producao') {
+    let cliente = null;
+    try {
+      if (globalThis.supabase && typeof SUPABASE_URL === 'string' && typeof SUPABASE_ANON_KEY === 'string') {
+        cliente = globalThis.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+    } catch { cliente = null; }
+    autenticacao = C.criarAutenticacaoSupabase({ cliente, fetch: (...args) => globalThis.fetch(...args) });
+  }
+  const ctrl = C.criarControlador({
+    autenticacao,
     doc,
     fetch: (...args) => globalThis.fetch(...args),
     storage,

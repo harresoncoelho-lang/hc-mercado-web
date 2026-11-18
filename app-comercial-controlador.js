@@ -17,9 +17,91 @@
     encerrada: CORE.MSG_SESSAO_ENCERRADA,
     descartarAlteracoes: 'Há alterações não salvas nesta peça. Se trocar agora, elas serão descartadas. Continuar?',
     erroNovoProcesso: 'Não foi possível cadastrar o processo. Tente de novo.',
+    naoAprovado: 'Seu cadastro ainda está em análise. Você recebe um aviso assim que for aprovado.',
   };
 
-  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, confirmar = null }) {
+  // Autenticação do servidor QA local (docs/qa/qa-real-isolado/servidor.cjs): cookie HttpOnly e rotas /qa/*.
+  // É o padrão quando a página não pede produção, para os testes e o harness QA seguirem iguais.
+  function autenticacaoQA(fetch) {
+    return {
+      async entrar(email, password) {
+        const r = await fetch('/qa/login', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ email, password }) });
+        return { ok: r.ok === true };
+      },
+      async sair() {
+        const r = await fetch('/qa/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin', body: '{}' });
+        return { ok: r.ok === true };
+      },
+      // O QA devolve o catálogo em toda consulta; o pedido de catálogo é ignorado.
+      async sessao() {
+        const r = await fetch('/qa/session', { credentials: 'same-origin' });
+        if (r.status === 401) return { estado: 'sem-sessao' };
+        if (!r.ok) return { estado: 'erro' };
+        return lerCatalogo(await r.json(), null);
+      },
+    };
+  }
+
+  // Normaliza { userId, contextos, empresas } vindo do QA ou do handler contextos-operacao.
+  function lerCatalogo(j, accessToken) {
+    if (!j || typeof j.userId !== 'string') return { estado: 'erro' };
+    const empresas = Array.isArray(j.empresas) ? j.empresas.filter((e) => e && typeof e.empresaId === 'string').map((e) => ({ empresaId: e.empresaId, razaoSocial: typeof e.razaoSocial === 'string' ? e.razaoSocial.trim() : '' })) : [];
+    return { estado: 'ok', sessao: { userId: j.userId, accessToken: accessToken || j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas } };
+  }
+
+  // Produção (sistema.html): Supabase Auth no navegador, mesmo fluxo do login.html, inclusive recusar e
+  // deslogar quem não tem clientes.status === 'aprovado'. O catálogo vem de /api/contextos-operacao com o
+  // token do próprio usuário (RLS). cliente nulo (supabase-js não carregou) falha fechado.
+  function criarAutenticacaoSupabase({ cliente, fetch }) {
+    async function sessaoLocal() {
+      const { data, error } = await cliente.auth.getSession();
+      if (error) return { estado: 'erro' };
+      const s = data && data.session;
+      if (!s || typeof s.access_token !== 'string' || !s.user || typeof s.user.id !== 'string') return { estado: 'sem-sessao' };
+      return { estado: 'ok', sessao: { userId: s.user.id, accessToken: s.access_token } };
+    }
+    async function encerrarNaoAprovado() {
+      try { await cliente.auth.signOut(); } catch { /* a sessão local é descartada de qualquer forma */ }
+      return MSG.naoAprovado;
+    }
+    return {
+      async entrar(email, password) {
+        if (!cliente) return { ok: false };
+        const { data, error } = await cliente.auth.signInWithPassword({ email: String(email || '').trim(), password });
+        if (error || !data || !data.user) return { ok: false };
+        const { data: c } = await cliente.from('clientes').select('status').eq('id', data.user.id).single();
+        if (!c || c.status !== 'aprovado') return { ok: false, mensagem: await encerrarNaoAprovado() };
+        return { ok: true };
+      },
+      async sair() {
+        if (!cliente) return { ok: false };
+        const { error } = await cliente.auth.signOut();
+        return { ok: !error };
+      },
+      // Sem catálogo: só a sessão local (barata; os módulos chamam a cada requisição).
+      async sessao({ comCatalogo = false } = {}) {
+        if (!cliente) return { estado: 'erro' };
+        const atual = await sessaoLocal();
+        if (atual.estado !== 'ok' || !comCatalogo) return atual;
+        const r = await fetch('/api/contextos-operacao', { headers: { Authorization: 'Bearer ' + atual.sessao.accessToken } });
+        if (r.status === 401) return { estado: 'sem-sessao' };
+        // Sessão antiga de conta não aprovada (ex.: logo após o cadastro): encerra, como o login.html.
+        if (r.status === 403) return { estado: 'sem-sessao', mensagem: await encerrarNaoAprovado() };
+        if (!r.ok) return { estado: 'erro' };
+        const lido = lerCatalogo(await r.json(), atual.sessao.accessToken);
+        // Catálogo de usuário diferente do da sessão local nunca é aceito.
+        return lido.estado === 'ok' && lido.sessao.userId !== atual.sessao.userId ? { estado: 'erro' } : lido;
+      },
+      // Token atual do supabase-js (renovado sozinho): o guardado no início expira em 1 h.
+      async token() {
+        const atual = cliente ? await sessaoLocal() : null;
+        return atual && atual.estado === 'ok' ? atual.sessao.accessToken : null;
+      },
+    };
+  }
+
+  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, confirmar = null, autenticacao = null }) {
+    const auth = autenticacao || autenticacaoQA(fetch);
     const el = (id) => doc.getElementById(id);
     let epoca = 0;
     let atual = null;
@@ -168,16 +250,18 @@
       el('contexto-atual').textContent = '';
     }
 
-    async function consultarSessao() {
-      try {
-        const r = await fetch('/qa/session', { credentials: 'same-origin' });
-        if (r.status === 401) return { estado: 'sem-sessao' };
-        if (!r.ok) return { estado: 'erro' };
-        const j = await r.json();
-        if (!j || typeof j.userId !== 'string') return { estado: 'erro' };
-        const empresas = Array.isArray(j.empresas) ? j.empresas.filter((e) => e && typeof e.empresaId === 'string').map((e) => ({ empresaId: e.empresaId, razaoSocial: typeof e.razaoSocial === 'string' ? e.razaoSocial.trim() : '' })) : [];
-        return { estado: 'ok', sessao: { userId: j.userId, accessToken: j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas } };
-      } catch { return { estado: 'erro' }; }
+    async function consultarSessao(comCatalogo) {
+      try { return await auth.sessao({ comCatalogo }); } catch { return { estado: 'erro' }; }
+    }
+
+    // Toda chamada do controlador e dos itens leva o Bearer real: os handlers o exigem (_auth.js).
+    // No QA o servidor troca pelo token do cookie, então o marcador enviado é inofensivo. Sem await no
+    // caminho QA, para o fetch sair no mesmo instante de antes.
+    async function requisitarAutenticado(url, op = {}) {
+      const token = auth.token ? await auth.token() : sessao?.accessToken;
+      const headers = { ...(op.headers || {}) };
+      if (token) headers.Authorization = 'Bearer ' + token;
+      return fetch(url, { ...op, headers });
     }
 
     // Encerra a casca sem recursão: a época avança antes de limpar, então respostas pendentes ficam obsoletas.
@@ -216,7 +300,7 @@
       // itensPaginados:true é exigido pelo handler quando há mais de uma página de itens (sem ele, 409).
       // 403/404 = não autorizado; qualquer outra falha é tratada como falha de carregamento, não como ausência de acesso.
       try {
-        const r = await fetch('/api/kit-documentos', {
+        const r = await requisitarAutenticado('/api/kit-documentos', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'same-origin',
@@ -300,7 +384,7 @@
       // Itens do processo: mesmo contexto do kit (empresa + processo). Sem processo, nunca chega aqui.
       // Gancho: apos salvar item, renova o catalogo do kit SOMENTE se o contexto ainda for o mesmo (epoca) e o mesmo kit.
       const epocaKit = epoca, kitDoItem = { atual: null };
-      if (itens) itensComp = itens.montar({ alvo: el('itens-processo'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: (url, op) => fetch(url, op),
+      if (itens) itensComp = itens.montar({ alvo: el('itens-processo'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: requisitarAutenticado,
         // Mesmo kit e mesmo contexto, mesmo oculto (voltar ao Hoje preserva o kit). Fechado ou contexto trocado: bloqueia.
         aoSalvar: () => { if (epoca === epocaKit && componente !== null && componente === kitDoItem.atual) kitDoItem.atual?.atualizarItens?.(); } });
       componente = kit.montar({
@@ -325,7 +409,7 @@
       setBusy(true);
       mostrar('carregando');
       aviso(MSG.carregando, 'carregando');
-      const r = await consultarSessao();
+      const r = await consultarSessao(true);
       if (e !== epoca) return;
       setBusy(false);
       if (r.estado === 'erro') {
@@ -336,7 +420,9 @@
       if (r.estado === 'sem-sessao') {
         fecharAreas(); limparSessaoVisivel(); sessao = null; autorizados = [];
         mostrar('login');
-        tinhaSessao ? aviso(MSG.sessaoExpirada, 'erro') : aviso('', '');
+        if (r.mensagem) aviso(r.mensagem, 'erro');
+        else if (tinhaSessao) aviso(MSG.sessaoExpirada, 'erro');
+        else aviso('', '');
         return;
       }
       sessao = r.sessao;
@@ -368,19 +454,11 @@
       setBusy(true);
       mostrar('carregando');
       aviso(MSG.entrando, 'carregando');
-      let ok = false;
-      try {
-        const r = await fetch('/qa/login', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ email, password }),
-        });
-        ok = r.ok === true;
-      } catch { ok = false; }
+      let r = { ok: false };
+      try { r = await auth.entrar(email, password); } catch { r = { ok: false }; }
       if (e !== epoca) return;
       setBusy(false);
-      if (!ok) { mostrar('login'); aviso(MSG.erroEntrar, 'erro'); return; }
+      if (!r || r.ok !== true) { mostrar('login'); aviso((r && r.mensagem) || MSG.erroEntrar, 'erro'); return; }
       await iniciar();
     }
 
@@ -395,15 +473,7 @@
       mostrar('carregando');
       aviso(MSG.encerrando, 'carregando');
       let ok = false;
-      try {
-        const r = await fetch('/qa/logout', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          credentials: 'same-origin',
-          body: '{}',
-        });
-        ok = r.ok === true;
-      } catch { ok = false; }
+      try { ok = (await auth.sair()).ok === true; } catch { ok = false; }
       if (e !== epoca) return;
       setBusy(false);
       if (ok) { mostrar('login'); aviso(MSG.encerrada, 'ok'); return; }
@@ -513,7 +583,7 @@
       let r = null;
       let corpo = null;
       try {
-        r = await fetch('/api/criar-processo', {
+        r = await requisitarAutenticado('/api/criar-processo', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           credentials: 'same-origin',
@@ -584,5 +654,5 @@
     };
   }
 
-  global.LicitaPlenaComercialControlador = { criarControlador, MSG };
+  global.LicitaPlenaComercialControlador = { criarControlador, criarAutenticacaoSupabase, MSG };
 })(globalThis);
