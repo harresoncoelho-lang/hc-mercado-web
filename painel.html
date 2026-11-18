@@ -870,6 +870,8 @@
   .kanban-card-prazo.ok { background: rgba(52,193,124,0.15); color: var(--verde-texto); }
   .kanban-card-prazo.perto { background: rgba(242,137,26,0.18); color: var(--laranja-forte-texto); }
   .kanban-card-prazo.vencido { background: rgba(232,97,122,0.18); color: var(--vermelho-texto); }
+  .kanban-card-esteira { margin-left: 4px; }
+  .kanban-card-esteira.lendo { background: rgba(46,141,255,0.12); color: var(--azul-texto); }
   .kanban-card-acoes { display: flex; gap: 6px; margin-top: 10px; }
   .kanban-card-acoes button {
     flex: 1; font-size: 11px; font-weight: 700; padding: 6px 4px; border-radius: 7px;
@@ -4746,6 +4748,15 @@
   const PREFIXO_RESULTADO_KANBAN = "Status informado no Kanban: ";
   const STATUS_RESULTADO_KANBAN = { interesse: "Tenho interesse", participando: "Participando", ganhei: "Ganhei", perdi: "Perdi" };
   const sincronizacoesOperacionais = new Map();
+  // Selo da esteira por processo (operacao_esteira_tarefas); vazio = banco sem a tabela ou sem tarefas.
+  let esteiraPorProcesso = {};
+  // Qualquer etapa com falha pede atenção; as três feitas = pronto; o resto ainda está lendo.
+  function seloEsteira(estados) {
+    if (!estados?.length) return null;
+    if (estados.includes("falhou")) return "atencao";
+    return estados.length >= 3 && estados.every(e => e === "feito") ? "pronto" : "lendo";
+  }
+  const SELOS_ESTEIRA = { lendo: ["lendo", "Lendo edital"], pronto: ["ok", "Esteira pronta"], atencao: ["perto", "Esteira: atenção"] };
   // null = banco sem operacao_funil_etapas (painel no ar antes do SQL): não envia etapa_id.
   let etapasFunil = null;
   let organizacaoFunilId = null;
@@ -4837,7 +4848,12 @@
         observacoes: "Pré-preenchido automaticamente a partir do Boletim / Kanban. Confira o edital antes de enviar a proposta."
       }).select("*").single();
       if (error) throw error;
-      processo = data;
+      // O gatilho da esteira (operacao_esteira.sql) copia as premissas depois do INSERT, e o retorno do
+      // insert não as traz: relê do banco antes de qualquer salvamento seguinte usar este objeto.
+      const { data: relido, error: erroReleitura } = await sb.from("operacao_processos").select("*")
+        .eq("id", data.id).eq("organizacao_id", organizacaoId);
+      if (erroReleitura) throw erroReleitura;
+      processo = relido?.[0] || data;
     }
     if (!processo.checklist_editado_manualmente && !(processo.documentos_exigidos || []).length && /^\d{14}-\d+-\d+\/\d{4}$/.test(edital.numeroControlePNCP || "")) {
       let requisitos = LicitaOperacaoEdital.requisitosDaEstrutura(lerCacheLocalResumo(edital)?.estrutura);
@@ -4995,6 +5011,17 @@
         }
       }
     }
+    // Selo da esteira: leitura opcional; erro (tabela ausente, RLS) só deixa o cartão sem selo.
+    const estadosEsteira = {};
+    try {
+      for (let inicio = 0; inicio < idsProcesso.length; inicio += 100) {
+        const { data, error } = await sb.from("operacao_esteira_tarefas")
+          .select("processo_id,estado").in("processo_id", idsProcesso.slice(inicio, inicio + 100));
+        if (error) break;
+        for (const t of data || []) (estadosEsteira[t.processo_id] ||= []).push(t.estado);
+      }
+    } catch (erro) { console.warn("Selo da esteira indisponível:", erro); }
+    esteiraPorProcesso = Object.fromEntries(Object.entries(estadosEsteira).map(([id, estados]) => [id, seloEsteira(estados)]));
     // O banco decide quais cartões pertencem à empresa; o navegador só guarda
     // detalhes de apresentação e anotações separados pelo ID da empresa.
     salvarMapa("status-licitacao", status, empresaId);
@@ -5204,6 +5231,8 @@
   function montarCardKanban(id, edital, valorStatus, anotacaoAtual) {
     const classePrazo = classePrazoKanban(edital.encerramento);
     const linkSistema = linkSistemaProcesso(empresaOperacionalId, edital.processoId);
+    const selo = SELOS_ESTEIRA[esteiraPorProcesso[edital.processoId]];
+    const seloHtml = selo ? `<span class="kanban-card-prazo kanban-card-esteira ${selo[0]}">${selo[1]}</span>` : "";
     const prazoHtml = edital.encerramento
       ? `<span class="kanban-card-prazo ${classePrazo || ""}"><svg class='icone-ph'><use href='#ph-timer'></use></svg> ${escapeHtml([textoPrazo(edital.encerramento), formatarPrazoPropostas(edital.encerramento).split(" (")[0]].filter(Boolean).join(" · "))}</span>`
       : "";
@@ -5221,7 +5250,7 @@
         </div>
         <p class="kanban-card-meta"><svg class='icone-ph'><use href='#ph-bank'></use></svg> ${escapeHtml(edital.orgao || "Órgão não informado")}</p>
         <p class="kanban-card-meta"><svg class='icone-ph'><use href='#ph-map-pin'></use></svg> ${escapeHtml([edital.municipio, edital.uf].filter(Boolean).join(" / ") || "Não informado")}</p>
-        ${prazoHtml}
+        ${prazoHtml}${seloHtml}
         <select class="kanban-card-mover" data-id="${escapeHtml(id)}" title="Mover para outra coluna">${opcoesMoverHtml}</select>
         <textarea class="kanban-card-anotacao" data-id="${escapeHtml(id)}" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual || "")}</textarea>
         ${linkSistema ? `<a class="kanban-btn-sistema" href="${escapeHtml(linkSistema)}">Abrir no sistema</a>` : ""}
