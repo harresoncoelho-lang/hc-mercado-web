@@ -85,6 +85,30 @@ test('premissas: linha Padrão (todos) vem primeiro e só mudança envia a lista
   assert.deepEqual(S.validarPerfilEmpresa(corpo.perfil), {});
 });
 
+test('premissas: linha salva removida ou com segmento trocado vai em premissasRemover; Padrão nunca', () => {
+  const salvas = [{ segmento: '*', uf: '*', margem_percentual: 20 }, { segmento: 'limpeza', uf: 'AM' }, { segmento: 'obras', uf: '*' }, { segmento: '*', uf: 'PA' }];
+  const linhas = P.linhasDePremissas(salvas), inicial = P.valoresDoPerfil(perfilSalvo);
+  // Remove "obras", troca a UF de "limpeza" e mantém "*|PA" com mudança só de caixa/espaço.
+  const atuais = [linhas[0], { ...linhas[1], uf: 'RR' }, { ...linhas[3], uf: ' pa ' }].map(l => ({ ...l }));
+  const corpo = P.montarPayload(inicial, { ...inicial }, linhas, atuais);
+  assert.deepEqual(corpo.premissasRemover, [{ segmento: 'limpeza', uf: 'AM' }, { segmento: 'obras', uf: '*' }]);
+  assert.equal(corpo.premissas.length, 3);
+  // O servidor aceita o par e não vê conflito entre salvar e remover.
+  const gravar = new Set(S.validarPremissas(corpo.premissas).map(p => p.segmento + '|' + p.uf));
+  assert.ok(S.validarPremissasRemover(corpo.premissasRemover).every(p => !gravar.has(p.segmento + '|' + p.uf)));
+  // Só mudar percentual não remove nada.
+  assert.equal('premissasRemover' in P.montarPayload(inicial, { ...inicial }, linhas, linhas.map(l => ({ ...l, frete_percentual: '2' }))), false);
+  assert.match(P.mensagemDoErro(422, { erro: 'A linha Padrão não pode ser removida.', campo: 'premissasRemover[0]' }), /^Premissas removidas: /);
+});
+
+test('premissas: linha extra sem segmento e sem UF é barrada antes do envio', () => {
+  const linhas = P.linhasDePremissas([{ segmento: 'limpeza', uf: 'AM' }]);
+  assert.equal(P.linhaSemChave(linhas), -1);
+  const vazia = { segmento: '*', uf: '*', tributos_percentual: '', frete_percentual: '', garantia_percentual: '', margem_percentual: '5', margem_minima_percentual: '' };
+  assert.equal(P.linhaSemChave([...linhas, vazia]), 2);
+  assert.equal(P.linhaSemChave([...linhas, { ...vazia, uf: 'AM' }]), -1);
+});
+
 test('erro 422: campo do servidor vira id da tela e rótulo simples', () => {
   assert.equal(P.idDoCampo('cpf_representante'), 'perfil-cpf_representante');
   assert.equal(P.idDoCampo('banco.conta'), 'perfil-banco-conta');

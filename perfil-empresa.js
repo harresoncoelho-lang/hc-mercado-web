@@ -70,6 +70,10 @@
     const padrao = i >= 0 ? linhas.splice(i, 1)[0] : { segmento: '*', uf: '*', ...Object.fromEntries(PERCENTUAIS.map(k => [k, ''])) };
     return [padrao, ...linhas];
   }
+  // Mesma normalização do servidor (chavePremissa em _empresa_identificacao.js).
+  const chaveLinha = l => `${(l.segmento.trim() || '*').normalize('NFKC').replace(/\s+/g, ' ').toLowerCase()}|${l.uf.trim().toUpperCase() || '*'}`;
+  // Linha extra sem segmento nem UF repetiria a Padrão: índice da primeira, ou -1.
+  const linhaSemChave = linhas => linhas.findIndex((l, i) => i > 0 && l.segmento.trim() === '*' && l.uf.trim() === '*');
   // Só vai ao servidor o que mudou: o CPF mascarado intacto nunca volta, e grupos jsonb vão inteiros.
   function montarPayload(inicial, atual, linhasIniciais, linhasAtuais) {
     const perfil = {};
@@ -81,6 +85,10 @@
     if (Object.keys(perfil).length) corpo.perfil = perfil;
     if (JSON.stringify(linhasAtuais) !== JSON.stringify(linhasIniciais)) {
       corpo.premissas = linhasAtuais.map(l => ({ segmento: l.segmento.trim(), uf: l.uf.trim(), ...Object.fromEntries(PERCENTUAIS.map(k => [k, l[k].trim()])) }));
+      // Linha salva que sumiu (removida ou com segmento/UF trocado) é apagada no banco; Padrão fica sempre.
+      const ficam = new Set(linhasAtuais.map(chaveLinha));
+      const remover = linhasIniciais.filter(l => !(l.segmento === '*' && l.uf === '*') && !ficam.has(chaveLinha(l))).map(l => ({ segmento: l.segmento, uf: l.uf }));
+      if (remover.length) corpo.premissasRemover = remover;
       // salvarPerfil exige o objeto perfil; vazio não altera nada no banco.
       corpo.perfil ??= {};
     }
@@ -98,6 +106,7 @@
   function rotuloDoCampo(campo) {
     const m = /^premissas\[(\d+)\](?:\.(\w+))?$/.exec(campo || '');
     if (m) return `Premissas, linha ${Number(m[1]) + 1}${m[2] ? `, ${ROTULOS[m[2]] || m[2]}` : ''}`;
+    if (/^premissasRemover/.test(campo || '')) return 'Premissas removidas';
     return ROTULOS[campo] || campo || '';
   }
   // A mensagem do servidor cita o nome técnico do campo; a tela mostra o rótulo.
@@ -183,7 +192,7 @@
         $('perfil-premissas').innerHTML = linhas.map((l, i) => `<tr id="perfil-premissas-${i}">
           ${i === 0 ? '<td colspan="2"><strong>Padrão (todos)</strong></td>' : `<td><input id="perfil-premissas-${i}-segmento" data-i="${i}" data-k="segmento" maxlength="80" aria-label="Segmento, linha ${i + 1}" placeholder="Ex.: limpeza"></td><td><input id="perfil-premissas-${i}-uf" data-i="${i}" data-k="uf" maxlength="2" aria-label="UF, linha ${i + 1}" placeholder="Todas" class="perfil-uf"></td>`}
           ${PERCENTUAIS.map(k => `<td><input id="perfil-premissas-${i}-${k}" data-i="${i}" data-k="${k}" inputmode="decimal" aria-label="${ROTULOS[k]}, linha ${i + 1}" class="perfil-pct"></td>`).join('')}
-          <td>${i >= linhasIniciais.length ? `<button type="button" class="link" data-remover="${i}" aria-label="Remover linha ${i + 1}">Remover</button>` : ''}</td></tr>`).join('');
+          <td>${i > 0 ? `<button type="button" class="link" data-remover="${i}" aria-label="Remover linha ${i + 1}">Remover</button>` : ''}</td></tr>`).join('');
         for (const el of $('perfil-premissas').querySelectorAll('[data-k]')) { const l = linhas[el.dataset.i]; el.value = el.dataset.k === 'segmento' || el.dataset.k === 'uf' ? (l[el.dataset.k] === '*' ? '' : l[el.dataset.k]) : l[el.dataset.k]; }
       }
       desenharLinhas();
@@ -203,6 +212,8 @@
       }
       $('perfil-salvar').onclick = async () => {
         limparDestaque();
+        const semChave = linhaSemChave(linhas);
+        if (semChave >= 0) { avisoTela(`Premissas, linha ${semChave + 1}: Preencha segmento ou UF.`, 'erro'); destacar(`premissas[${semChave}].segmento`); return; }
         const atual = lerCampos(), corpo = montarPayload(inicial, atual, linhasIniciais, linhas);
         if (!corpo) { avisoTela('Nada mudou desde o último salvamento.', 'info'); return; }
         const botao = $('perfil-salvar'); botao.disabled = true; avisoTela('Salvando…', 'info');
@@ -238,7 +249,7 @@
     return { abrir, limpar: texto => { vigente = null; aviso(texto); } };
   }
 
-  const api = { LOGO, dimensoesLogo, validarLogo, sha256Hex, caminhoLogo, valoresDoPerfil, sugestoes, linhasDePremissas, montarPayload, idDoCampo, rotuloDoCampo, mensagemDoErro, montar };
+  const api = { LOGO, dimensoesLogo, validarLogo, sha256Hex, caminhoLogo, valoresDoPerfil, sugestoes, linhasDePremissas, montarPayload, linhaSemChave, idDoCampo, rotuloDoCampo, mensagemDoErro, montar };
   raiz.PerfilEmpresa = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

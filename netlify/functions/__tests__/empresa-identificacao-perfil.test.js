@@ -23,7 +23,7 @@ function fixture(t,changes={}){
    if(op.method==='POST'){const row=JSON.parse(op.body);state.escritas.push(['perfil',row]);state.perfil={...state.perfil,...row,versao:(state.perfil?.versao||0)+1};data=[state.perfil];}
    else data=state.papel==='leitura'||!state.perfil?[]:[state.perfil];
   }
-  else if(url.includes('/operacao_premissas_empresa')){if(op.method==='POST'){const rows=JSON.parse(op.body);state.escritas.push(['premissas',rows]);data=rows;}else data=state.premissas;}
+  else if(url.includes('/operacao_premissas_empresa')){if(op.method==='DELETE'){state.escritas.push(['remover',decodeURIComponent(url.split('?')[1])]);data=[];}else if(op.method==='POST'){const rows=JSON.parse(op.body);state.escritas.push(['premissas',rows]);data=rows;}else data=state.premissas;}
   else if(url.includes('/storage/v1/object/sign/')){state.assinou=JSON.parse(op.body);data={signedURL:'/object/sign/operacao-documentos/x?token=t'};}
   else if(url.includes('/storage/v1/object/authenticated/')){if(!state.objeto)return new Response('{}',{status:400});return new Response(state.objeto);}
   else throw new Error('URL inesperada '+url);
@@ -129,4 +129,24 @@ test('LGPD: CPF e banco nunca aparecem em console.* nem em mensagens de erro',as
  assert.ok(respostas.every(r=>r.statusCode>=400));
  const texto=saida.join('\n')+respostas.map(r=>r.body).join('\n');
  for(const s of sensiveis)assert.equal(texto.includes(s),false,'vazou um valor sensível');
+});
+test('salvarPerfil remove premissas pelo segmento e UF, com escopo da empresa e antes do upsert',async t=>{
+ const f=fixture(t);
+ const r=await f.run({acao:'salvarPerfil',perfil:{},premissas:[{}],premissasRemover:[{segmento:' Limpeza, Geral ',uf:'am'},{segmento:'obras'}]});
+ assert.equal(r.statusCode,200);
+ assert.deepEqual(f.state.escritas.map(e=>e[0]),['perfil','remover','remover','premissas']);
+ assert.equal(f.state.escritas[1][1],`empresa_id=eq.${ids.empresa}&organizacao_id=eq.${ids.org}&segmento=eq.limpeza, geral&uf=eq.AM`);
+ assert.match(f.state.escritas[2][1],/&segmento=eq\.obras&uf=eq\.\*$/);
+});
+test('premissasRemover inválido responde 422 e não grava nada; Padrão nunca é removida',async t=>{
+ const f=fixture(t);
+ const casos=[
+  [{premissasRemover:[{}]},'premissasRemover[0]'],[{premissasRemover:[{segmento:'*',uf:'*'}]},'premissasRemover[0]'],
+  [{premissasRemover:'x'},'premissasRemover'],[{premissasRemover:Array(51).fill({segmento:'a'})},'premissasRemover'],
+  [{premissasRemover:[{uf:'AMZ'}]},'premissasRemover[0].uf'],[{premissasRemover:[{segmento:'a',margem_percentual:1}]},'premissasRemover[0]'],
+  [{premissasRemover:[{segmento:'a'},{segmento:'A'}]},'premissasRemover[1]'],
+  [{premissas:[{segmento:'obras',uf:'PA'}],premissasRemover:[{segmento:'Obras',uf:'pa'}]},'premissasRemover[0]'],
+ ];
+ for(const [extra,campo] of casos){const r=await f.run({acao:'salvarPerfil',perfil:{},...extra});assert.equal(r.statusCode,422,JSON.stringify(extra));assert.equal(r.json.campo,campo,JSON.stringify(extra));}
+ assert.equal(f.state.escritas.length,0);
 });

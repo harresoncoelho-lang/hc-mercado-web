@@ -56,17 +56,34 @@ function validarPerfilEmpresa(perfil){
  }
  return dados;
 }
+// Segmento/UF normalizados como o banco guarda; repetição na mesma lista é recusada.
+function chavePremissa(p,c,vistas){
+ const segmento=vazio(p.segmento)?'*':typeof p.segmento==='string'?normal(p.segmento).toLowerCase():'';
+ if(!segmento||segmento.length>80)falhar('Segmento inválido.',422,`${c}.segmento`);
+ const uf=vazio(p.uf)?'*':typeof p.uf==='string'?p.uf.trim().toUpperCase():'';
+ if(uf!=='*'&&!/^[A-Z]{2}$/.test(uf))falhar('UF inválida.',422,`${c}.uf`);
+ if(vistas.has(segmento+'|'+uf))falhar('Premissa repetida para o mesmo segmento e UF.',422,c);vistas.add(segmento+'|'+uf);
+ return {segmento,uf};
+}
+// A linha Padrão (*|*) é o último recurso do cálculo de preço: nunca sai por aqui.
+function validarPremissasRemover(lista){
+ if(!Array.isArray(lista)||lista.length>50)falhar('Envie até 50 premissas para remover.',422,'premissasRemover');
+ const vistas=new Set();
+ return lista.map((p,i)=>{
+  const c=`premissasRemover[${i}]`;
+  if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).some(k=>!['segmento','uf'].includes(k)))falhar('Premissa inválida.',422,c);
+  const chave=chavePremissa(p,c,vistas);
+  if(chave.segmento==='*'&&chave.uf==='*')falhar('A linha Padrão não pode ser removida.',422,c);
+  return chave;
+ });
+}
 function validarPremissas(premissas){
  if(!Array.isArray(premissas)||premissas.length>50)falhar('Envie até 50 premissas.',422,'premissas');
  const vistas=new Set();
  return premissas.map((p,i)=>{
   const c=`premissas[${i}]`;
   if(!p||typeof p!=='object'||Array.isArray(p)||Object.keys(p).some(k=>!['segmento','uf',...PERCENTUAIS_PREMISSA].includes(k)))falhar('Premissa inválida.',422,c);
-  const segmento=vazio(p.segmento)?'*':typeof p.segmento==='string'?normal(p.segmento).toLowerCase():'';
-  if(!segmento||segmento.length>80)falhar('Segmento inválido.',422,`${c}.segmento`);
-  const uf=vazio(p.uf)?'*':typeof p.uf==='string'?p.uf.trim().toUpperCase():'';
-  if(uf!=='*'&&!/^[A-Z]{2}$/.test(uf))falhar('UF inválida.',422,`${c}.uf`);
-  if(vistas.has(segmento+'|'+uf))falhar('Premissa repetida para o mesmo segmento e UF.',422,c);vistas.add(segmento+'|'+uf);
+  const {segmento,uf}=chavePremissa(p,c,vistas);
   const linha={segmento,uf};for(const k of PERCENTUAIS_PREMISSA)linha[k]=vazio(p[k])?null:percentual(p[k],`${c}.${k}`,100);
   if(linha.margem_minima_percentual!==null&&(linha.margem_percentual===null||linha.margem_minima_percentual>linha.margem_percentual))falhar('A margem mínima não pode passar da margem.',422,`${c}.margem_minima_percentual`);
   return linha;
@@ -103,4 +120,4 @@ async function lerAte(r,max){
  try{for(;;){const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');chunks.push(Buffer.from(value));}}finally{await reader.cancel();}
  return Buffer.concat(chunks);
 }
-module.exports={lerAte,LIMITES,LOGO,falhar,caminhoPermitido,validarArquivo,validarConfirmacao,cpfValido,mascararCpf,validarPerfilEmpresa,validarPremissas,tipoCaminhoLogo,dimensoesImagem,validarLogo};
+module.exports={lerAte,LIMITES,LOGO,falhar,caminhoPermitido,validarArquivo,validarConfirmacao,cpfValido,mascararCpf,validarPerfilEmpresa,validarPremissas,validarPremissasRemover,tipoCaminhoLogo,dimensoesImagem,validarLogo};

@@ -1,5 +1,5 @@
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
-const {falhar,LIMITES,LOGO,validarArquivo,validarConfirmacao,mascararCpf,validarPerfilEmpresa,validarPremissas,tipoCaminhoLogo,validarLogo,lerAte}=require('./_empresa_identificacao');
+const {falhar,LIMITES,LOGO,validarArquivo,validarConfirmacao,mascararCpf,validarPerfilEmpresa,validarPremissas,validarPremissasRemover,tipoCaminhoLogo,validarLogo,lerAte}=require('./_empresa_identificacao');
 const {createHash,randomUUID}=require('node:crypto');
 const {carregarContextoIdentificacao}=require('./_empresa_identificacao_contexto');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
@@ -34,8 +34,14 @@ const ACOES_PERFIL={
   if(await papelNaEmpresa(c)==='leitura')falhar('Seu papel não permite alterar o perfil.',403);
   // Valida tudo antes da primeira escrita: perfil e premissas não gravam pela metade por erro de entrada.
   const dados=validarPerfilEmpresa(body.perfil);const premissas=body.premissas===undefined?null:validarPremissas(body.premissas);
+  const remover=body.premissasRemover===undefined?[]:validarPremissasRemover(body.premissasRemover);
+  const gravar=new Set((premissas||[]).map(p=>p.segmento+'|'+p.uf));
+  remover.forEach((p,i)=>{if(gravar.has(p.segmento+'|'+p.uf))falhar('A mesma premissa não pode ser salva e removida.',422,`premissasRemover[${i}]`);});
   const escopo={empresa_id:c.empresa.id,organizacao_id:c.empresa.organizacao_id};
   const [perfil]=await upsert(c,'operacao_perfil_empresa','empresa_id',{...dados,...escopo});
+  // Remove antes do upsert: libera vaga no teto de 50 do gatilho. Token do usuário: a RLS decide.
+  const filtro=`empresa_id=eq.${c.empresa.id}&organizacao_id=eq.${c.empresa.organizacao_id}`;
+  await comTabelaPerfil(Promise.all(remover.map(p=>c.request(`/rest/v1/operacao_premissas_empresa?${filtro}&segmento=eq.${encodeURIComponent(p.segmento)}&uf=eq.${encodeURIComponent(p.uf)}`,{method:'DELETE'}))));
   const gravadas=premissas?.length?await upsert(c,'operacao_premissas_empresa','empresa_id,segmento,uf',premissas.map(p=>({...p,...escopo}))):[];
   return {perfil:perfilPublicoEmpresa(perfil,false),premissas:gravadas};
  },
