@@ -10,6 +10,9 @@
 // Editar um item muda o conteúdo da prévia: o hash de revisão do kit deixa de conferir (contrato já existente).
 const {falhar}=require('./_empresa_identificacao');
 const {uuid,decimal,totalItem}=require('./_kit_documentos');
+const {selectLista,colunaInexistente}=require('./_kit_proposta_itens');
+const {randomUUID}=require('node:crypto');
+const planilha=require('../../planilha-itens.js');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
 const ANON='sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb';
 const CAMPOS=['id','tipo','identificador','descricao','quantidade','valorUnitario','marca','modelo'];
@@ -107,4 +110,121 @@ async function salvarItemProcesso({token,organizacaoId,processoId,body}){
   ? criar({token,organizacaoId,processoId,item})
   : editar({token,organizacaoId,processoId,item});
 }
-module.exports={salvarItemProcesso,validarItem,chaveDeLinha,publico};
+
+// ---------- Preços por item, premissas, referência e planilha (espec. dezembro, seções 3 e 4) ----------
+// Regra 1 da espec.: custo, mínimo, referência e premissas NUNCA tocam atualizado_em (nem do item, nem do processo):
+// os dois entram no revisaoHash do kit, e a proposta revisada precisa continuar válida.
+const INDISPONIVEL='Preços por item ainda não estão disponíveis neste ambiente. Peça para aplicar a atualização do banco.';
+const PROPOSTA=['descricao','quantidade','valorUnitario','marca','modelo'];
+const PREMISSAS={tributos:'tributos_percentual',garantia:'garantia_percentual',margem:'margem_percentual',margemMinima:'margem_minima_percentual',frete:'frete'};
+const escalado=(t,c)=>{const [i,f='']=String(t).split('.');return BigInt(i+f.padEnd(c,'0'));};
+function publicoPreco(l){return {...publico(l),unidade:l.unidade??null,fabricante:l.fabricante??null,custoUnitario:l.custo_unitario??null,valorUnitarioMinimo:l.valor_unitario_minimo??null,codigoCatalogo:l.codigo_catalogo??null,precoReferencia:l.preco_referencia??null,precoReferenciaEm:l.preco_referencia_em??null};}
+async function exigirOk(r){
+ if(r.ok)return r.json();
+ if(await colunaInexistente(r))falhar(INDISPONIVEL,503);
+ if(r.status===401||r.status===403)falhar('Acesso não autorizado.',403);
+ if(r.status===409)falhar('Já existe item com este identificador neste processo.',409);
+ falhar('Serviço de itens indisponível.',503);
+}
+function escopo(organizacaoId,processoId,itemId){
+ if(!uuid(organizacaoId)||!uuid(processoId))falhar('Escopo inválido.',400);
+ if(itemId!==undefined&&!uuid(itemId))falhar('Identificador de item inválido.',400);
+}
+function exigirChaves(body,chaves){if(chaves.some(k=>!Object.hasOwn(body,k)))falhar(`Informe ${chaves.join(', ')} (null para limpar).`,400);}
+const opcional=(v,escala,rotulo)=>v===null?null:valorDecimal(v,escala,rotulo);
+const caminhoItem=(itemId,organizacaoId,processoId)=>`/rest/v1/operacao_itens_resultado?id=eq.${itemId}&processo_id=eq.${processoId}&organizacao_id=eq.${organizacaoId}`;
+async function patchItem(token,organizacaoId,processoId,itemId,dados,filtro=''){
+ const linhas=await exigirOk(await rest(token,caminhoItem(itemId,organizacaoId,processoId)+filtro+'&select='+selectLista,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(dados)}));
+ if(!Array.isArray(linhas)||linhas.length>1)falhar('Serviço de itens indisponível.',503);
+ if(linhas.length)conferirLinha(linhas[0],organizacaoId,processoId);
+ return linhas[0]||null;
+}
+
+async function salvarPrecoItem({token,organizacaoId,processoId,body}){
+ escopo(organizacaoId,processoId,body.itemId);exigirChaves(body,['custoUnitario','valorUnitarioMinimo']);
+ const custo=opcional(body.custoUnitario,2,'Custo unitário'),minimo=opcional(body.valorUnitarioMinimo,2,'Preço mínimo');
+ const atuais=await exigirOk(await rest(token,caminhoItem(body.itemId,organizacaoId,processoId)+'&select='+selectLista));
+ if(!Array.isArray(atuais)||atuais.length!==1)falhar('Item indisponível.',404);
+ conferirLinha(atuais[0],organizacaoId,processoId);
+ const valor=atuais[0].valor_unitario_proposta;
+ if(minimo&&valor!=null&&minimo.n>escalado(valor,2))falhar('O preço mínimo não pode ser maior que o valor unitário da proposta.',422);
+ // O filtro repete a regra no PATCH: valor alterado entre a leitura e a gravação não passa.
+ const guarda=minimo?`&or=(valor_unitario_proposta.is.null,valor_unitario_proposta.gte.${minimo.texto})`:'';
+ const l=await patchItem(token,organizacaoId,processoId,body.itemId,{custo_unitario:custo?.texto??null,valor_unitario_minimo:minimo?.texto??null},guarda);
+ if(!l)falhar('O item mudou enquanto você editava. Atualize e tente de novo.',409);
+ return {status:200,body:{item:publicoPreco(l)}};
+}
+
+async function salvarReferencia({token,organizacaoId,processoId,body}){
+ escopo(organizacaoId,processoId,body.itemId);exigirChaves(body,['preco','em']);
+ if((body.preco===null)!==(body.em===null))falhar('Informe preço e data da referência juntos (ou os dois null para limpar).',400);
+ const preco=opcional(body.preco,4,'Preço de referência');
+ const em=body.em===null?null:Date.parse(body.em);
+ if(em!==null&&(typeof body.em!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(body.em)||!Number.isFinite(em)||em>Date.now()+300000))falhar('Data da referência inválida.',400);
+ const l=await patchItem(token,organizacaoId,processoId,body.itemId,{preco_referencia:preco?.texto??null,preco_referencia_em:body.em});
+ if(!l)falhar('Item indisponível.',404);
+ return {status:200,body:{item:publicoPreco(l)}};
+}
+
+// Percentual de 0 a 99,999 (numeric(7,3)); frete >= 0 (numeric(15,2)). null limpa.
+function premissa(v,chave){
+ if(v===null)return null;
+ const ok=chave==='frete'?/^(?:0|[1-9]\d{0,12})(?:\.\d{1,2})?$/:/^(?:0|[1-9]\d?)(?:\.\d{1,3})?$/;
+ if(typeof v!=='string'||!ok.test(v))falhar(chave==='frete'?'Frete inválido. Use número de 0 em diante, com até 2 casas.':`Percentual inválido (${chave}). Use de 0 a 99.999, com até 3 casas.`,400);
+ return v;
+}
+async function salvarPremissas({token,organizacaoId,processoId,empresaId,body}){
+ escopo(organizacaoId,processoId);if(!uuid(empresaId))falhar('Escopo inválido.',400);exigirChaves(body,Object.keys(PREMISSAS));
+ const v=Object.fromEntries(Object.keys(PREMISSAS).map(k=>[k,premissa(body[k],k)]));
+ if(v.margemMinima!==null&&(v.margem===null||escalado(v.margemMinima,3)>escalado(v.margem,3)))falhar('A margem mínima não pode ser maior que a margem desejada.',422);
+ const select=Object.values(PREMISSAS).map(c=>`${c}:${c}::text`).join(',');
+ const dados=Object.fromEntries(Object.entries(PREMISSAS).map(([k,c])=>[c,v[k]]));
+ const linhas=await exigirOk(await rest(token,`/rest/v1/operacao_processos?id=eq.${processoId}&empresa_id=eq.${empresaId}&organizacao_id=eq.${organizacaoId}&select=${select}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(dados)}));
+ if(!Array.isArray(linhas)||linhas.length!==1)falhar('Processo indisponível.',404);
+ return {status:200,body:{premissas:Object.fromEntries(Object.entries(PREMISSAS).map(([k,c])=>[k,linhas[0][c]??null]))}};
+}
+
+// Planilha: 1 GET (itens + origem PNCP embutida) + 1 POST em lote. Tudo ou nada.
+// shortcut: edição concorrente entre o GET e o POST é sobrescrita pela planilha; trocar por RPC com versão se virar problema.
+async function lerItensAtuais(token,organizacaoId,processoId){
+ const r=await rest(token,`/rest/v1/operacao_itens_resultado?processo_id=eq.${processoId}&organizacao_id=eq.${organizacaoId}&tipo=eq.item&select=${selectLista},operacao_origens_pncp(item_id)&order=id.asc`,{headers:{Prefer:'count=exact'}});
+ const rows=await exigirOk(r);
+ const total=/\/(\d+)$/.exec(r.headers.get('content-range')||'');
+ if(!Array.isArray(rows)||!total||Number(total[1])!==rows.length)falhar('Não foi possível conferir todos os itens do processo.',503);
+ for(const l of rows)conferirLinha(l,organizacaoId,processoId);
+ return rows;
+}
+function linhaGravacao(l,atual,organizacaoId,processoId,agora){
+ const d=l.dados,id=atual?.id||randomUUID();
+ // Revalida no contrato do servidor, mas grava os valores da planilha/banco sem normalizar: campo intocado fica igual.
+ validarItem({id,identificador:d.identificador,descricao:d.descricao,quantidade:d.quantidade,valorUnitario:d.valorUnitario,marca:d.marca||null,modelo:d.modelo||null});
+ const minimo=d.valorUnitarioMinimo?valorDecimal(d.valorUnitarioMinimo,2,'Preço mínimo'):null;
+ if(minimo&&minimo.n>escalado(d.valorUnitario,2))falhar('O preço mínimo não pode ser maior que o valor unitário da proposta.',422);
+ const renovar=!atual||PROPOSTA.some(k=>Object.hasOwn(l.mudancas,k));
+ return {id,organizacao_id:organizacaoId,processo_id:processoId,tipo:'item',identificador:d.identificador,descricao:d.descricao,quantidade:d.quantidade,valor_unitario_proposta:d.valorUnitario,marca:d.marca||null,modelo:d.modelo||null,unidade:d.unidade||null,fabricante:d.fabricante||null,valor_unitario_minimo:d.valorUnitarioMinimo||null,atualizado_em:renovar?agora:atual.atualizado_em};
+}
+async function importarPlanilha({token,organizacaoId,processoId,body}){
+ escopo(organizacaoId,processoId);
+ if(typeof body.texto!=='string')falhar('Envie o conteúdo da planilha.',400);
+ const lida=planilha.lerCsv(body.texto);
+ if(!lida.ok)return {status:422,body:{erro:'Confira a planilha. Nada foi gravado.',erros:lida.erros}};
+ const rows=await lerItensAtuais(token,organizacaoId,processoId);
+ const porIdentificador=new Map(rows.map(l=>[l.identificador,l]));
+ const origem=l=>Array.isArray(l.operacao_origens_pncp)?l.operacao_origens_pncp.length>0:Boolean(l.operacao_origens_pncp);
+ const v=planilha.validarLinhas(lida.linhas,rows.map(l=>({...publicoPreco(l),origemPncp:origem(l)})));
+ const erros=[...v.erros],gravar=[],agora=new Date().toISOString();
+ for(const l of v.linhas){
+  if(l.estado!=='novo'&&l.estado!=='alterado')continue;
+  try{gravar.push(linhaGravacao(l,porIdentificador.get(l.item),organizacaoId,processoId,agora));}
+  catch(e){erros.push(`Linha ${l.linha} (item ${l.item}): ${e.message}`);}
+ }
+ const linhas=v.linhas.map(({linha,item,estado,mensagens})=>({linha,item,estado,mensagens}));
+ if(!v.linhas.length)erros.push('A planilha não tem linhas de itens.');
+ if(erros.length)return {status:422,body:{erro:'A planilha tem erros. Nada foi gravado.',erros,resumo:v.resumo,linhas}};
+ if(!gravar.length)return {status:200,body:{gravados:0,resumo:v.resumo,linhas,itens:[]}};
+ const salvos=await exigirOk(await rest(token,'/rest/v1/operacao_itens_resultado?on_conflict=processo_id,tipo,identificador&select='+selectLista,{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(gravar)}));
+ if(!Array.isArray(salvos)||salvos.length!==gravar.length)falhar('Serviço de itens indisponível.',503);
+ for(const l of salvos)conferirLinha(l,organizacaoId,processoId);
+ return {status:200,body:{gravados:salvos.length,resumo:v.resumo,linhas,itens:salvos.map(publicoPreco)}};
+}
+module.exports={rest,salvarItemProcesso,validarItem,chaveDeLinha,publico,publicoPreco,salvarPrecoItem,salvarReferencia,salvarPremissas,importarPlanilha};

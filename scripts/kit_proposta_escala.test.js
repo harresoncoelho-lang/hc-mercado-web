@@ -6,7 +6,7 @@ const item=n=>({id:id(n),organizacao_id:org,processo_id:proc});
 test('paginação exige total exato e detecta cap, cursor e item intruso',async()=>{
  const base={organizacaoId:org,processoId:proc,limit:2};
  const request=async(path,op)=>{assert.match(path,/order=id.asc/);assert.equal(op.headers.Prefer,'count=exact');return new Response(JSON.stringify([item(1),item(2),item(3)]),{headers:{'Content-Range':'0-2/3','Preference-Applied':'count=exact'}});};
- assert.deepEqual(await listarPaginaItens({...base,request}),{itens:[item(1),item(2)],hasMore:true,nextCursor:id(2)});
+ assert.deepEqual(await listarPaginaItens({...base,request}),{itens:[item(1),item(2)],hasMore:true,nextCursor:id(2),precoDisponivel:true});
  for(const [data,range]of [[[item(1)],'0-0/3'],[[item(1)],'0-0/*'],[[{...item(1),organizacao_id:proc}],'0-0/1']])await assert.rejects(listarPaginaItens({...base,request:async()=>new Response(JSON.stringify(data),{headers:{'Content-Range':range,'Preference-Applied':'count=exact'}})}));
 });
 test('seleção 101 em lotes50 exige conjunto exato escopo e não aceita truncamento',async()=>{

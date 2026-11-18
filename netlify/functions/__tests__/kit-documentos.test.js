@@ -2,13 +2,17 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {createHash}=require('node:crypto');
 const {handler}=require('../kit-documentos');
+const planilha=require('../../../planilha-itens.js');
+// O mock devolve só as colunas pedidas no select, como o PostgREST: assim o hash prova que o select do kit não mudou.
+function projetar(url,rows){const sel=new URL(url).searchParams.get('select');if(!sel)return rows;const campos=sel.split(/,(?![^(]*\))/).map(c=>c.split(':')[0].replace(/\(.*$/,''));return rows.map(r=>Object.fromEntries(campos.filter(c=>c in r).map(c=>[c,r[c]])));}
 const ids={empresa:'11111111-1111-1111-1111-111111111111',processo:'22222222-2222-2222-2222-222222222222',item:'33333333-3333-3333-3333-333333333333',org:'44444444-4444-4444-4444-444444444444'};
 function fixture(t,changes={}){
  const empresa={id:ids.empresa,organizacao_id:ids.org,razao_social:'Empresa QA',cnpj:'11222333000181'};
  const perfil={empresa_id:ids.empresa,organizacao_id:ids.org,versao:1,confirmado_em:'2026-10-27',dados_confirmados:{endereco:'Rua QA',representante:'Ana',cargo:'Sócia'},proveniencia:[]};
  const state={empresa,perfil,gate:true,aprovado:true,membro:{usuario_id:'usuario',organizacao_id:ids.org,empresa_id:ids.empresa,papel:'operador'},processo:{id:ids.processo,organizacao_id:ids.org,empresa_id:ids.empresa,numero:'1',orgao:'Órgão',documentos_exigidos:['Declaração']},itens:[{id:ids.item,organizacao_id:ids.org,processo_id:ids.processo,tipo:'item',identificador:'1',descricao:'Material',quantidade:'2.000',valor_unitario_proposta:'1.25'}],documentos:[],...changes};
- state.kit=[];state.userId='usuario';
+ state.kit=[];state.userId='usuario';state.posts=[];state.origens=state.origens||[];
  const calls=[];t.mock.method(global,'fetch',async(url,op={})=>{calls.push([url,op]);assert.equal(op.headers.Authorization,url.includes('/rpc/gravar_kit_documento')?'Bearer QA_SERVICE':'Bearer QA');let data;
+ if(state.semColunas&&/custo_unitario|margem_minima|preco_referencia/.test(url+(op.body||'')))return new Response(JSON.stringify({code:'42703',message:'column does not exist'}),{status:400});
  if(url.includes('/auth/v1/user'))data={id:state.userId};
  else if(url.includes('/rpc/gravar_kit_documento')){
  const p=JSON.parse(op.body);let d=state.kit.find(d=>d.id===p.p_documento);
@@ -27,9 +31,12 @@ function fixture(t,changes={}){
  else if(url.includes('/operacao_membros?'))data=state.membro?[state.membro]:[];
  else if(url.includes('/operacao_identificacao_empresa?'))data=state.perfil?[state.perfil]:[];
  else if(url.includes('/operacao_documentos?'))data=state.documentos;
- else if(url.includes('/operacao_processos?'))data=state.processo?[state.processo]:[];
+ else if(url.includes('/operacao_processos?')){if(op.method==='PATCH'&&state.processo)Object.assign(state.processo,JSON.parse(op.body));data=projetar(url,state.processo?[state.processo]:[]);}
  else if(url.includes('/operacao_origens_pncp?')){const records=state.originState?[{item_id:ids.item,organizacao_id:ids.org,processo_id:ids.processo,estado:state.originState}]:[];return new Response(JSON.stringify(records),{headers:{'Content-Range':records.length?'0-0/1':'*/0','Preference-Applied':'count=exact'}});}
- else if(url.includes('/operacao_itens_resultado?')){assert.match(url,/quantidade:quantidade::text/);const q=new URL(url).searchParams;data=state.itens;const sel=q.get('id');if(sel?.startsWith('in.('))data=data.filter(i=>sel.slice(4,-1).split(',').includes(i.id));if(sel?.startsWith('gt.'))data=data.filter(i=>i.id>sel.slice(3));if(op.headers.Prefer==='count=exact'){const total=data.length;data=data.slice(0,Number(q.get('limit')));return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json','Content-Range':data.length?`0-${data.length-1}/${total}`:'*/0','Preference-Applied':'count=exact'}});}}
+ else if(url.includes('/operacao_itens_resultado?')){assert.match(url,/quantidade:quantidade::text/);const q=new URL(url).searchParams;data=state.itens.filter(i=>['id','processo_id','organizacao_id','tipo'].every(k=>!q.get(k)?.startsWith('eq.')||q.get(k)==='eq.'+(i[k]??'item')));
+ if(op.method==='PATCH'){const g=/valor_unitario_proposta\.gte\.([\d.]+)/.exec(q.get('or')||'');data=data.filter(i=>!g||i.valor_unitario_proposta==null||Number(i.valor_unitario_proposta)>=Number(g[1]));for(const i of data)Object.assign(i,JSON.parse(op.body));return new Response(JSON.stringify(projetar(url,data)));}
+ if(op.method==='POST'){const rows=JSON.parse(op.body);state.posts.push({url,op,rows});const out=rows.map(r=>{const i=state.itens.find(i=>i.processo_id===r.processo_id&&(i.tipo||'item')===r.tipo&&i.identificador===r.identificador);if(i)return Object.assign(i,r);state.itens.push({...r});return r;});return new Response(JSON.stringify(projetar(url,out)));}
+ data=data.map(i=>({...i,operacao_origens_pncp:state.origens.includes(i.id)?[{item_id:i.id}]:[]}));const sel=q.get('id');if(sel?.startsWith('in.('))data=data.filter(i=>sel.slice(4,-1).split(',').includes(i.id));if(sel?.startsWith('gt.'))data=data.filter(i=>i.id>sel.slice(3));data=projetar(url,data);if(op.headers.Prefer==='count=exact'){const total=data.length;if(q.get('limit'))data=data.slice(0,Number(q.get('limit')));return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json','Content-Range':data.length?`0-${data.length-1}/${total}`:'*/0','Preference-Applied':'count=exact'}});}}
  else if(url.includes('/storage/'))return new Response(Buffer.from('%PDF-1.4\n'));
  else throw new Error('URL inesperada '+url);
  return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
@@ -191,4 +198,77 @@ test('abrir peça revisada após retificação preserva rascunho mas não declar
  const target={documentoId,versaoEsperada:1},p=await f.run({...target,acao:'preparar'});assert.equal(p.statusCode,200);
  assert.equal((await f.run({...target,acao:'confirmarRevisao',revisado:true,revisaoHash:p.json.revisaoHash})).statusCode,200);
  f.state.originState='fonte_alterada';const opened=await f.run({...target,acao:'abrir'});assert.equal(opened.statusCode,200);assert.equal(opened.json.revisaoVigente,false);assert.equal(opened.json.itensNaoVerificados,true);assert.equal(opened.json.documento.dados.proposta.itemIds[0],ids.item);
+});
+
+const outro='55555555-5555-5555-5555-555555555555';
+const csv=linhas=>'﻿'+[planilha.COLUNAS.join(';'),...linhas].join('\r\n')+'\r\n';
+const patches=f=>f.calls.filter(([,op])=>op.method==='PATCH');
+test('custo, mínimo, referência e premissas gravam sem atualizado_em e sem invalidar a proposta revisada',async t=>{
+ const f=fixture(t);const target={documentoId:ids.item,versaoEsperada:1};
+ await f.run({acao:'salvar',...target,versaoEsperada:0});const p=await f.run(target);
+ assert.equal((await f.run({acao:'confirmarRevisao',...target,revisado:true,revisaoHash:p.json.revisaoHash})).statusCode,200);
+ const preco=await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:'0.80',valorUnitarioMinimo:'1.10'});
+ assert.equal(preco.statusCode,200);assert.equal(preco.json.item.custoUnitario,'0.80');assert.equal(preco.json.item.valorUnitarioMinimo,'1.10');
+ assert.deepEqual(Object.keys(JSON.parse(patches(f)[0][1].body)).sort(),['custo_unitario','valor_unitario_minimo']);
+ const ref=await f.run({acao:'salvarReferencia',itemId:ids.item,preco:'1.2345',em:'2026-11-18T10:00:00Z'});
+ assert.equal(ref.statusCode,200);assert.equal(ref.json.item.precoReferencia,'1.2345');
+ const prem=await f.run({acao:'salvarPremissas',tributos:'10',garantia:'0',margem:'25.5',margemMinima:'12.000',frete:'150.00'});
+ assert.equal(prem.statusCode,200);assert.deepEqual(prem.json.premissas,{tributos:'10',garantia:'0',margem:'25.5',margemMinima:'12.000',frete:'150.00'});
+ assert.equal(patches(f).length,3);for(const [,op] of patches(f))assert.doesNotMatch(op.body,/atualizado_em/);
+ assert.equal((await f.run(target)).json.revisaoHash,p.json.revisaoHash);
+ assert.equal((await f.run({acao:'abrir',documentoId:ids.item})).json.revisaoVigente,true);
+ assert.equal((await f.run({acao:'exportar',...target,revisado:true,revisaoHash:p.json.revisaoHash})).statusCode,200);
+ const lista=await f.run({acao:'listarItens'});assert.equal(lista.json.precoDisponivel,true);assert.equal(lista.json.itens[0].precoReferencia,'1.2345');
+});
+test('preço, referência e premissas validam regra, formato e escopo',async t=>{
+ const f=fixture(t);f.state.itens.push({...f.state.itens[0],id:outro,processo_id:ids.empresa,identificador:'9'});
+ assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:null,valorUnitarioMinimo:'1.26'})).statusCode,422);
+ for(const patch of [{custoUnitario:'-1',valorUnitarioMinimo:null},{custoUnitario:'1,00',valorUnitarioMinimo:null},{custoUnitario:1,valorUnitarioMinimo:null},{custoUnitario:null},{itemId:'x',custoUnitario:null,valorUnitarioMinimo:null}])assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,...patch})).statusCode,400);
+ assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:null,valorUnitarioMinimo:'1.25'})).statusCode,200);
+ assert.equal((await f.run({acao:'salvarPrecoItem',itemId:outro,custoUnitario:'1.00',valorUnitarioMinimo:null})).statusCode,404);
+ assert.equal((await f.run({acao:'salvarReferencia',itemId:outro,preco:'1.00',em:'2026-11-18T10:00:00Z'})).statusCode,404);
+ assert.equal(f.state.itens[1].custo_unitario,undefined);assert.equal(f.state.itens[1].preco_referencia,undefined);
+ for(const patch of [{preco:'1.00',em:null},{preco:'1.00',em:'ontem'},{preco:'1.00',em:'2999-01-01T00:00:00Z'},{preco:'0',em:'2026-11-18T10:00:00Z'}])assert.equal((await f.run({acao:'salvarReferencia',itemId:ids.item,...patch})).statusCode,400);
+ const base={tributos:null,garantia:null,margem:'10',margemMinima:'5',frete:null};
+ assert.equal((await f.run({acao:'salvarPremissas',...base,margemMinima:'10.001'})).statusCode,422);
+ assert.equal((await f.run({acao:'salvarPremissas',...base,margem:null})).statusCode,422);
+ for(const patch of [{tributos:'100'},{garantia:'1.2345'},{frete:'-1'},{margem:10}])assert.equal((await f.run({acao:'salvarPremissas',...base,...patch})).statusCode,400);
+ const semFrete={...base};delete semFrete.frete;assert.equal((await f.run({acao:'salvarPremissas',...semFrete})).statusCode,400);
+ assert.equal((await f.run({acao:'salvarPremissas',...base,tributos:'99.999'})).statusCode,200);
+ f.state.membro.papel='leitura';assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:null,valorUnitarioMinimo:null})).statusCode,403);
+});
+test('importarPlanilha grava em 1 POST com on_conflict, mesmas chaves e atualizado_em só quando muda a proposta',async t=>{
+ const f=fixture(t,{origens:[ids.item]});const antigo='2026-01-01T00:00:00.000Z';
+ f.state.itens[0].atualizado_em=antigo;f.state.itens.push({id:outro,organizacao_id:ids.org,processo_id:ids.processo,tipo:'item',identificador:'2',descricao:'Outro',quantidade:'1.000',valor_unitario_proposta:'3.00',atualizado_em:antigo});
+ const r=await f.run({acao:'importarPlanilha',texto:csv(['1;;;;;;;;1,00','2;Nome novo;;;;;;Fab;','3;Item novo;5;un;2,00;Marca;;;'])});
+ assert.equal(r.statusCode,200);assert.equal(r.json.gravados,3);assert.deepEqual(r.json.resumo,{novo:1,alterado:2,sem_mudanca:0,erro:0});
+ assert.equal(f.state.posts.length,1);const {url,op,rows}=f.state.posts[0];
+ assert.match(url,/on_conflict=processo_id,tipo,identificador/);assert.equal(op.headers.Prefer,'resolution=merge-duplicates,return=representation');
+ const chaves=JSON.stringify(Object.keys(rows[0]).sort());for(const row of rows)assert.equal(JSON.stringify(Object.keys(row).sort()),chaves);
+ const por=Object.fromEntries(rows.map(x=>[x.identificador,x]));
+ assert.equal(por['1'].atualizado_em,antigo);assert.equal(por['1'].valor_unitario_minimo,'1');assert.equal(por['1'].id,ids.item);assert.equal(por['1'].descricao,'Material');
+ assert.notEqual(por['2'].atualizado_em,antigo);assert.equal(por['2'].fabricante,'Fab');assert.equal(por['2'].id,outro);
+ assert.ok(require('../_kit_documentos').uuid(por['3'].id));assert.notEqual(por['3'].id,ids.item);
+ for(const row of rows){assert.equal(row.organizacao_id,ids.org);assert.equal(row.processo_id,ids.processo);assert.equal(row.tipo,'item');}
+ const sem=await f.run({acao:'importarPlanilha',texto:csv(['1;;;;;;;;1,00'])});assert.equal(sem.statusCode,200);assert.equal(sem.json.gravados,0);assert.equal(f.state.posts.length,1);
+});
+test('importarPlanilha é tudo ou nada: erro de linha e item PNCP protegido respondem 422 sem POST',async t=>{
+ const f=fixture(t,{origens:[ids.item]});
+ const linha=await f.run({acao:'importarPlanilha',texto:csv(['3;Novo;abc;;2,00;;;;','4;Válido;1;;1,00;;;;'])});
+ assert.equal(linha.statusCode,422);assert.ok(linha.json.erros.some(e=>/^Linha 2 \(item 3\)/.test(e)));
+ const pncp=await f.run({acao:'importarPlanilha',texto:csv(['1;Outra descrição;;;;;;;'])});
+ assert.equal(pncp.statusCode,422);assert.match(pncp.json.erros[0],/PNCP/);
+ assert.equal((await f.run({acao:'importarPlanilha',texto:csv(['1;;;;;;;;9,00'])})).statusCode,422);
+ assert.equal((await f.run({acao:'importarPlanilha',texto:'item;descricao\r\n1;x\r\n'})).statusCode,422);
+ assert.equal((await f.run({acao:'importarPlanilha',texto:csv([])})).statusCode,422);
+ assert.equal(f.state.posts.length,0);assert.equal(f.state.itens[0].descricao,'Material');
+});
+test('banco sem as colunas novas: listagem cai no select antigo e ações novas respondem 503',async t=>{
+ const f=fixture(t,{semColunas:true});
+ const c=await f.run({acao:'consultar'});assert.equal(c.statusCode,200);assert.equal(c.json.precoDisponivel,false);assert.equal(c.json.itens[0].valorUnitario,'1.25');
+ const l=await f.run({acao:'listarItens'});assert.equal(l.statusCode,200);assert.equal(l.json.precoDisponivel,false);
+ for(const body of [{acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:'1.00',valorUnitarioMinimo:null},{acao:'salvarReferencia',itemId:ids.item,preco:'1.00',em:'2026-11-18T10:00:00Z'},{acao:'salvarPremissas',tributos:null,garantia:null,margem:null,margemMinima:null,frete:null},{acao:'importarPlanilha',texto:csv(['1;;;;;;;;1,00'])}]){
+  const r=await f.run(body);assert.equal(r.statusCode,503);assert.match(r.json.erro,/ainda não estão disponíveis/);
+ }
+ assert.equal(f.state.posts.length,0);
 });

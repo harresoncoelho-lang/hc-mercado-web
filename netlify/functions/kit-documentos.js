@@ -1,6 +1,11 @@
 const {LIMITES}=require('./_kit_proposta_limites');
 const {listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada}=require('./_kit_proposta_itens');
-const {salvarItemProcesso}=require('./_itens_processo');
+const {rest:restItens,salvarItemProcesso,salvarPrecoItem,salvarPremissas,salvarReferencia,importarPlanilha}=require('./_itens_processo');
+const {MAX_BYTES:PLANILHA_BYTES}=require('../../planilha-itens.js');
+// Ações de cadastro do item: só token do usuário (RLS), escopo já validado por carregarEscopo. Não tocam em documentos.
+// Listagem com Response crua: o fallback do banco antigo precisa ler o código do erro.
+const requestBruto=event=>(path,op)=>restItens(event.headers?.authorization||event.headers?.Authorization||'',path,op);
+const ACOES_ITENS={salvarItem:salvarItemProcesso,salvarPrecoItem,salvarPremissas,salvarReferencia,importarPlanilha};
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
 const {createHash}=require('node:crypto');
 const {falhar,validarConfirmacao}=require('./_empresa_identificacao');
@@ -30,7 +35,7 @@ async function identificacaoKit(c){
  }
  return {perfil,pendencias};
 }
-function consulta(empresa,processo,perfil,itens,pendencias){return {empresa:{id:empresa.id,razaoSocial:empresa.razao_social,cnpj:empresa.cnpj},processo:{id:processo.id,numero:processo.numero,orgao:processo.orgao},identificacao:{status:perfil&&!perfil.invalidado_em?'confirmado':'pendente'},itens:itens.map(i=>({id:i.id,tipo:i.tipo,identificador:i.identificador,descricao:i.descricao,quantidade:i.quantidade,valorUnitario:i.valor_unitario_proposta,marca:i.marca,modelo:i.modelo})),requisitos:Array.isArray(processo.documentos_exigidos)?processo.documentos_exigidos.filter(v=>typeof v==='string'):[],pendencias};}
+function consulta(empresa,processo,perfil,itens,pendencias){return {empresa:{id:empresa.id,razaoSocial:empresa.razao_social,cnpj:empresa.cnpj},processo:{id:processo.id,numero:processo.numero,orgao:processo.orgao},identificacao:{status:perfil&&!perfil.invalidado_em?'confirmado':'pendente'},itens:itens.map(i=>({id:i.id,tipo:i.tipo,identificador:i.identificador,descricao:i.descricao,quantidade:i.quantidade,valorUnitario:i.valor_unitario_proposta,marca:i.marca,modelo:i.modelo,unidade:i.unidade,fabricante:i.fabricante,custoUnitario:i.custo_unitario,valorUnitarioMinimo:i.valor_unitario_minimo,codigoCatalogo:i.codigo_catalogo,precoReferencia:i.preco_referencia,precoReferenciaEm:i.preco_referencia_em})),requisitos:Array.isArray(processo.documentos_exigidos)?processo.documentos_exigidos.filter(v=>typeof v==='string'):[],pendencias};}
 function prepararPeca(ctx,payload,documento){
  const resultado=preparar(ctx,payload);
  // O hash legado conserva o usuário/fontes; a peça salva acrescenta sua identidade e versão.
@@ -50,8 +55,11 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
  let body;
  try{
  const auth=await exigirUsuarioLogado(event);if(!auth.ok)return responder(auth.status,{erro:auth.erro});
- if(typeof event.body!=='string'||Buffer.byteLength(event.body,'utf8')>LIMITES.envelopeBytes)falhar('Solicitação inválida.');
+ // Planilha de até 2 MB chega como texto JSON; as demais ações seguem o envelope do kit.
+ const bytes=typeof event.body==='string'?Buffer.byteLength(event.body,'utf8'):Infinity;
+ if(bytes>PLANILHA_BYTES*2)falhar('Solicitação inválida.');
  try{body=JSON.parse(event.body);}catch{falhar('Solicitação inválida.');}
+ if(body?.acao!=='importarPlanilha'&&bytes>LIMITES.envelopeBytes)falhar('Solicitação inválida.');
  const acaoLeitura=['iniciarLeitura','registrarLeitura','cancelarLeitura','consultarLeituras','confirmarCorrespondencias'].includes(body?.acao);
  if(acaoLeitura){
   if(!require('./_ponte_leitura').validarPedido(body))falhar('Contrato de leitura inválido.',400);
@@ -61,13 +69,12 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
    const cancelada=await ponteLeitura({event,body});return responder(cancelada.status||200,cancelada);
   }
  }
- if(body?.tipo!=='proposta'&&event.body.length>50000)falhar('Solicitação inválida.');
- if(!body||!uuid(body.empresaId)||!uuid(body.processoId)||!['consultar','listarItens','listar','abrir','salvar','preparar','confirmarRevisao','exportar','prepararOperacao','iniciarLeitura','registrarLeitura','consultarLeituras','confirmarCorrespondencias','salvarItem'].includes(body.acao))falhar('Solicitação inválida.');
+ if(body?.tipo!=='proposta'&&body?.acao!=='importarPlanilha'&&event.body.length>50000)falhar('Solicitação inválida.');
+ if(!body||!uuid(body.empresaId)||!uuid(body.processoId)||!['consultar','listarItens','listar','abrir','salvar','preparar','confirmarRevisao','exportar','prepararOperacao','iniciarLeitura','registrarLeitura','consultarLeituras','confirmarCorrespondencias',...Object.keys(ACOES_ITENS)].includes(body.acao))falhar('Solicitação inválida.');
  if(body.acao==='prepararOperacao'&&(Object.keys(body).some(k=>!['acao','empresaId','processoId','documentoId','versaoEsperada'].includes(k))||!uuid(body.documentoId)))falhar('Seletores operacionais inválidos.',400);
  const {c,empresa,processo}=await carregarEscopo(event,auth.userId,body);
  const store=persistencia(c,empresa,processo,auth.userId);
- // Cadastro de item do processo: só token do usuário (RLS), escopo já validado acima. Não toca em documentos.
- if(body.acao==='salvarItem'){const r=await salvarItemProcesso({token:event.headers?.authorization||event.headers?.Authorization||'',organizacaoId:empresa.organizacao_id,processoId:processo.id,body});return responder(r.status,r.body);}
+ if(Object.hasOwn(ACOES_ITENS,body.acao)){const r=await ACOES_ITENS[body.acao]({token:event.headers?.authorization||event.headers?.Authorization||'',organizacaoId:empresa.organizacao_id,processoId:processo.id,empresaId:empresa.id,body});return responder(r.status,r.body);}
  if(body.acao==='listar')return responder(200,{documentos:(await store.listar()).map(d=>documentoPublico(d,false))});
  if(body.acao==='salvar'){
  const itens=await carregarItensSelecionados({rest:c.rest,organizacaoId:empresa.organizacao_id,processoId:processo.id,itemIds:body.tipo==='proposta'?body.proposta?.itemIds:[]});
@@ -81,9 +88,9 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
  }
  const {perfil,pendencias}=await identificacaoKit(c);
  if(['consultar','listarItens'].includes(body.acao)){
- const pagina=await listarPaginaItens({request:c.request,organizacaoId:empresa.organizacao_id,processoId:processo.id,afterId:body.afterId,limit:body.itensPaginados===true||body.acao==='listarItens'?100:50});
+ const pagina=await listarPaginaItens({request:requestBruto(event),organizacaoId:empresa.organizacao_id,processoId:processo.id,afterId:body.afterId,limit:body.itensPaginados===true||body.acao==='listarItens'?100:50});
  if(body.acao==='consultar'&&body.itensPaginados!==true&&pagina.hasMore)falhar('Atualize a interface para selecionar todos os itens por página.',409);
- return responder(200,{...consulta(empresa,processo,perfil,pagina.itens,pendencias),paginacaoItens:{hasMore:pagina.hasMore,nextCursor:pagina.nextCursor},limitesProposta:LIMITES});
+ return responder(200,{...consulta(empresa,processo,perfil,pagina.itens,pendencias),paginacaoItens:{hasMore:pagina.hasMore,nextCursor:pagina.nextCursor},precoDisponivel:pagina.precoDisponivel,limitesProposta:LIMITES});
  }
  const payload=documento?{tipo:documento.tipo,...documento.dados}:body;
  let itens=[],itensNaoVerificados=false;

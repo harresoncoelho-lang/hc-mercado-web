@@ -2,16 +2,27 @@ const {falhar}=require('./_empresa_identificacao');
 const {LIMITES}=require('./_kit_proposta_limites');
 const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(v);
 const select='id,organizacao_id,processo_id,tipo,identificador,descricao,quantidade:quantidade::text,valor_unitario_proposta:valor_unitario_proposta::text,marca,modelo,atualizado_em';
-function base(org,proc){if(!uuid(org)||!uuid(proc))falhar('Escopo inválido.',400);return `operacao_itens_resultado?processo_id=eq.${proc}&organizacao_id=eq.${org}&select=${select}`;}
+// Regra 1 da espec.: o select acima entra no revisaoHash e não muda. Colunas novas só na listagem.
+const selectLista=select+',unidade,fabricante,custo_unitario:custo_unitario::text,valor_unitario_minimo:valor_unitario_minimo::text,codigo_catalogo,preco_referencia:preco_referencia::text,preco_referencia_em';
+function base(org,proc,campos=select){if(!uuid(org)||!uuid(proc))falhar('Escopo inválido.',400);return `operacao_itens_resultado?processo_id=eq.${proc}&organizacao_id=eq.${org}&select=${campos}`;}
+// Banco sem operacao_itens_proposta.sql: PostgREST responde coluna inexistente (42703 / PGRST204).
+async function colunaInexistente(r){try{return ['42703','PGRST204'].includes((await r.clone().json())?.code);}catch{return false;}}
 function conferir(rows,org,proc){if(!Array.isArray(rows)||rows.some(i=>!uuid(i.id)||i.organizacao_id!==org||i.processo_id!==proc)||new Set(rows.map(i=>i.id)).size!==rows.length)falhar('Item indisponível.',404);}
+// request devolve a Response crua (sem lançar em !ok) para detectar o banco antigo.
+async function paginaComFallback(pagina){
+ let r=await pagina(selectLista),precoDisponivel=true;
+ if(!r.ok&&await colunaInexistente(r)){precoDisponivel=false;r=await pagina(select);}
+ if(!r.ok)falhar('Serviço de documentos indisponível.',r.status===403?403:503);
+ return {r,precoDisponivel};
+}
 async function listarPaginaItens({request,organizacaoId,processoId,afterId,limit=100}){
  if(!Number.isInteger(limit)||limit<1||limit>100||(afterId!==undefined&&!uuid(afterId)))falhar('Página inválida.',400);
- const path=base(organizacaoId,processoId)+`&order=id.asc&limit=${limit+1}`+(afterId?`&id=gt.${afterId}`:'');
- const r=await request('/rest/v1/'+path,{headers:{Prefer:'count=exact'}}),rows=await r.json();conferir(rows,organizacaoId,processoId);
+ const {r,precoDisponivel}=await paginaComFallback(campos=>request('/rest/v1/'+base(organizacaoId,processoId,campos)+`&order=id.asc&limit=${limit+1}`+(afterId?`&id=gt.${afterId}`:''),{headers:{Prefer:'count=exact'}}));
+ const rows=await r.json();conferir(rows,organizacaoId,processoId);
  const range=r.headers.get('content-range')||'',m=/^0-(\d+)\/(\d+)$/.exec(range);
  if(!/(?:^|,\s*)count=exact(?:,|$)/.test(r.headers.get('preference-applied')||'')||(!rows.length?range!=='*/0':!m||!Number.isSafeInteger(Number(m[2]))||Number(m[1])!==rows.length-1||rows.length!==Math.min(Number(m[2]),limit+1)))falhar('Não foi possível comprovar a página completa.',503);
  if(rows.some((i,n)=>(afterId&&i.id<=afterId)||(n&&i.id<=rows[n-1].id)))falhar('Ordem de itens inválida.',503);
- const hasMore=rows.length>limit,itens=rows.slice(0,limit);return {itens,hasMore,nextCursor:hasMore?itens.at(-1).id:null};
+ const hasMore=rows.length>limit,itens=rows.slice(0,limit);return {itens,hasMore,nextCursor:hasMore?itens.at(-1).id:null,precoDisponivel};
 }
 async function carregarItensSelecionados({rest,organizacaoId,processoId,itemIds=[]}){
  const path=base(organizacaoId,processoId);
@@ -30,4 +41,4 @@ async function verificarOrigemSelecionada({request,organizacaoId,processoId,item
  if(rows.some(r=>r.estado==='fonte_alterada'))falhar('Fonte PNCP alterada. Confira a divergência antes de preparar ou exportar.',422);
  }
 }
-module.exports={listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada};
+module.exports={selectLista,colunaInexistente,listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada};

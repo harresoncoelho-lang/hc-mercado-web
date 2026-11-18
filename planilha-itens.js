@@ -1,6 +1,6 @@
 /* global module, require, TextEncoder */
 // Planilha de itens do processo (CSV para Excel/LibreOffice em pt-BR). Mesmo módulo no navegador e no servidor
-// (require('../../planilha-itens.js')). Só prepara e confere: a gravação real (tudo ou nada) fica no servidor.
+// (as funções do Netlify carregam este arquivo da raiz do repositório). Só prepara e confere: a gravação real (tudo ou nada) fica no servidor.
 // - Saída: UTF-8 com BOM, separador ';', CRLF, aspas RFC 4180, decimal com vírgula, antifórmula com apóstrofo.
 // - Entrada: a chave é a coluna "item" (identificador). Célula vazia não altera nada. Item de origem PNCP não
 //   muda descrição, quantidade nem unidade. Regras de texto e limite são as de validarItemCampos (itens-processo-ui.js).
