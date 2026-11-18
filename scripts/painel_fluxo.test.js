@@ -170,3 +170,40 @@ test("cartão ganha o link só quando acompanhado pela empresa ativa com process
   contexto.atualizarLinkSistemaCard(card, { ed1: "interesse" }, { ed1: { processoId: P } });
   assert.equal(criados.length, 1, "empresa ainda carregando não mostra link");
 });
+
+// Baixar planilha: mesmas colunas do cartão, sem fórmula executável e com CSV que o Excel pt-BR abre.
+const trecho = (nome) => html.match(new RegExp(String.raw` {2}function ${nome}\(.*\) \{[\s\S]*?\n {2}\}`))[0];
+const codigoPlanilha = ["formatarPrazoPropostas", "identificacaoCompra", "celulaPlanilhaSegura", "linhasPlanilhaOportunidades", "csvDeLinhasPlanilha"].map(trecho).join("\n");
+
+test("planilha traz cabeçalho e os campos do cartão, com prazo em texto e valor como número", () => {
+  const contexto = carregar();
+  vm.runInContext(codigoPlanilha, contexto);
+  const linhas = contexto.linhasPlanilhaOportunidades([
+    { encerramento: "2026-11-25T10:00:00", objeto: "Limpeza", orgao: "Prefeitura", municipio: "Manaus", uf: "AM", modalidadeNome: "Pregão Eletrônico", numeroCompra: "19", anoCompra: 2026, valorTotalEstimado: 1234.5, link: "https://pncp.gov.br/x" },
+    { objeto: "Sem prazo", uf: "PA", valorTotalEstimado: null },
+  ], AGORA);
+  assert.deepEqual(Array.from(linhas[0]), ["Prazo", "Data do prazo", "Objeto", "Órgão", "Município/UF", "Modalidade e número", "Valor estimado (R$)", "Link do edital"]);
+  assert.deepEqual(Array.from(linhas[1]), ["Vence em 7 dias", "25/11/2026 10:00 (horário de Brasília)", "Limpeza", "Prefeitura", "Manaus / AM", "Pregão Eletrônico 19/2026", 1234.5, "https://pncp.gov.br/x"]);
+  assert.deepEqual(Array.from(linhas[2]), ["Prazo não informado", "Não informado", "Sem prazo", "", "PA", "", "Não informado", ""]);
+});
+
+test("célula que começa com = + - @ tab ou retorno recebe apóstrofo (injeção de fórmula)", () => {
+  const contexto = carregar();
+  vm.runInContext(codigoPlanilha, contexto);
+  for (const perigoso of ["=HYPERLINK(\"x\")", "+1", "-2+3", "@SOMA(A1)", "\tcmd", "\r=1"]) {
+    assert.equal(contexto.celulaPlanilhaSegura(perigoso), "'" + perigoso);
+  }
+  assert.equal(contexto.celulaPlanilhaSegura("Aquisição = 2 lotes"), "Aquisição = 2 lotes", "sinal no meio não é fórmula");
+  assert.equal(contexto.celulaPlanilhaSegura(null), "");
+  const [, linha] = contexto.linhasPlanilhaOportunidades([{ objeto: "=1+1", orgao: "@org" }], AGORA);
+  assert.equal(linha[2], "'=1+1");
+  assert.equal(linha[3], "'@org");
+});
+
+test("CSV de reserva: BOM, separador ponto e vírgula e escape de ; aspas e quebra de linha", () => {
+  const contexto = carregar();
+  vm.runInContext(codigoPlanilha, contexto);
+  const csv = contexto.csvDeLinhasPlanilha([["Objeto", "Valor"], ["a;b", 10.5], ["diz \"sim\"", 3], ["linha 1\nlinha 2", "x"]]);
+  assert.ok(csv.startsWith("﻿"), "BOM faz o Excel ler UTF-8");
+  assert.equal(csv.slice(1), 'Objeto;Valor\r\n"a;b";10,5\r\n"diz ""sim""";3\r\n"linha 1\nlinha 2";x');
+});

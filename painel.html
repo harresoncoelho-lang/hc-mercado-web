@@ -1716,12 +1716,12 @@
 
     <div style="margin-top:20px;">
       <div class="dash-painel-titulo" style="margin-bottom:4px;"><svg class='icone-ph'><use href='#ph-chart-line-up'></use></svg> Vis&atilde;o geral do mercado</div>
-      <p style="margin:0 0 14px;font-size:13px;color:var(--texto-fraco);">N&uacute;meros agregados de toda a base de licita&ccedil;&otilde;es monitorada pelo LicitaPlena &mdash; n&atilde;o s&oacute; as oportunidades do seu boletim.</p>
+      <p style="margin:0 0 14px;font-size:13px;color:var(--texto-fraco);">N&uacute;meros da base que o LicitaPlena j&aacute; coletou do PNCP (contratos assinados e editais abertos) &mdash; n&atilde;o s&oacute; as oportunidades do seu boletim.</p>
       <div class="dash-cards-mercado">
         <div class="dash-card">
           <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-files'></use></svg></div>
           <div class="dash-card-num" id="dash-mercado-total">&ndash;</div>
-          <div class="dash-card-label">Licita&ccedil;&otilde;es monitoradas</div>
+          <div class="dash-card-label">Contratos do PNCP na base</div>
         </div>
         <div class="dash-card">
           <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-calendar'></use></svg></div>
@@ -1785,7 +1785,7 @@
       <button class="btn-buscar" id="bol-salvar">Salvar filtro e atualizar boletim</button>
     </div>
     <p id="bol-filtro-status" role="status" aria-live="polite"></p>
-    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
+    <div class="dg-topo-acoes"><span></span><div class="dg-topo-botoes"><button type="button" class="btn-imprimir btn-baixar-planilha" data-planilha-de="bol-resultado" data-planilha-nome="boletim" title="Baixar esta lista em planilha do Excel (.xlsx)"><svg class='icone-ph' aria-hidden="true"><use href='#ph-download-simple'></use></svg> Baixar planilha</button><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div></div>
     <div id="bol-calendario" class="caixa-interna"></div>
     <div id="bol-resultado"></div>
     </div>
@@ -1873,7 +1873,7 @@
       <button type="button" class="btn-imprimir" id="op-receber-boletim"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Receber isso todo dia no Boletim</button>
       <p class="dica-clique" id="op-receber-boletim-status" role="status" aria-live="polite" style="margin:0;">Usa as palavras-chave e os estados acima e substitui o filtro atual do seu Boletim.</p>
     </div>
-    <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
+    <div class="dg-topo-acoes"><span></span><div class="dg-topo-botoes"><button type="button" class="btn-imprimir btn-baixar-planilha" data-planilha-de="op-resultado" data-planilha-nome="licitacoes" title="Baixar esta lista em planilha do Excel (.xlsx)"><svg class='icone-ph' aria-hidden="true"><use href='#ph-download-simple'></use></svg> Baixar planilha</button><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div></div>
     <div id="op-resultado"></div>
     </div>
   </section>
@@ -2239,7 +2239,7 @@
 
   <section id="precos">
     <h2 style="margin-top:0;">Pesquisa de Preços de Mercado</h2>
-    <p class="dica-clique" style="margin:0 0 14px;">Descubra quanto o governo está pagando, agora, por um item — direto da base oficial do Compras.gov.br (a mesma que substituiu o antigo "Painel de Preços"). Busque um produto, escolha a especificação exata e veja o preço médio, mediano e as compras reais por trás (fornecedor, órgão, valor, link do edital) dos últimos 12 meses.</p>
+    <p class="dica-clique" style="margin:0 0 14px;">Veja quanto o governo pagou por um item nas compras registradas na base oficial do Compras.gov.br (a mesma que substituiu o antigo "Painel de Preços"). Busque um produto, escolha a especificação exata e veja o preço médio, mediano e as compras reais por trás (fornecedor, órgão, valor, link do edital) dos últimos 12 meses.</p>
 
     <div class="secao-conteudo-principal">
     <ol class="pp-passos" aria-label="Passos da pesquisa de preços">
@@ -2269,7 +2269,7 @@
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-folders'></use></svg> Funil</h2>
-        <p class="dica-clique" style="margin:4px 0 0;">Arraste os cartões entre as colunas pra acompanhar o andamento de cada licitação. Pra uma licitação aparecer aqui, clique em "Acompanhar" nela no Boletim ou em Encontrar Licitações.</p>
+        <p class="dica-clique" style="margin:4px 0 0;">Arraste os cartões entre as colunas pra acompanhar o andamento de cada licitação. Pra uma licitação aparecer aqui, clique em "Acompanhar" nela no Boletim ou em Encontrar Licitações. O Funil organiza o acompanhamento; o envio da proposta e os lances continuam no portal da licitação.</p>
       </div>
       <button type="button" class="btn-imprimir" id="kanban-ir-boletim"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Abrir Boletim</button>
     </div>
@@ -2305,6 +2305,15 @@
       <button type="submit" class="btn-buscar" id="duvida-enviar">Enviar dúvida</button>
     </form>
     <p class="aviso-duvida" id="duvida-aviso" style="display:none;margin-top:12px;"></p>
+    </div>
+
+    <h2>O que o LicitaPlena faz hoje e o que ainda não faz</h2>
+    <div class="secao-conteudo-principal">
+    <div class="caixa-interna limites-sistema">
+      <p><strong>Faz hoje:</strong> reúne editais publicados no PNCP (e do Sistema S no Amazonas) no seu Boletim e em Encontrar Licitações, resume o edital a partir dos documentos públicos, guarda o acompanhamento no Funil e mostra preços, contratos e concorrentes da base já coletada. A base é atualizada pelas coletas diárias; veja em Status das Ferramentas quando cada fonte foi atualizada.</p>
+      <p><strong>Ainda não faz:</strong> não dá lances por você (não há robô de lances), não envia a proposta ao portal e não acompanha o chat do pregoeiro. A disputa, o envio e as mensagens da sessão continuam no portal da licitação, com você.</p>
+      <p>O LicitaPlena ajuda a encontrar e organizar oportunidades; não garante vitória em nenhuma licitação.</p>
+    </div>
     </div>
 
     <h2>Artigos Jurídicos</h2>
@@ -5900,6 +5909,38 @@
     return [r.modalidadeNome || r.modalidade, numero].filter(Boolean).join(" ");
   }
 
+  // ---- Baixar planilha da lista (Boletim e Encontrar Licitações): os mesmos campos do cartão ----
+  // Objeto e órgão vêm do PNCP: texto que começa com = + - @ tab ou retorno ganharia vida de
+  // fórmula ao abrir no Excel (injeção de fórmula), por isso recebe um apóstrofo na frente.
+  function celulaPlanilhaSegura(valor) {
+    const texto = valor === null || valor === undefined ? "" : String(valor);
+    return /^[=+\-@\t\r]/.test(texto) ? "'" + texto : texto;
+  }
+  function linhasPlanilhaOportunidades(resultados, agora = Date.now()) {
+    const cabecalho = ["Prazo", "Data do prazo", "Objeto", "Órgão", "Município/UF", "Modalidade e número", "Valor estimado (R$)", "Link do edital"];
+    return [cabecalho, ...resultados.map((r) => {
+      const valor = r.valorTotalEstimado === null || r.valorTotalEstimado === undefined || r.valorTotalEstimado === "" ? NaN : Number(r.valorTotalEstimado);
+      return [
+        textoPrazo(r.encerramento, agora) || "Prazo não informado",
+        formatarPrazoPropostas(r.encerramento),
+        r.objeto,
+        r.orgao,
+        r.municipio ? r.municipio + (r.uf ? " / " + r.uf : "") : r.uf,
+        identificacaoCompra(r),
+        Number.isFinite(valor) ? valor : "Não informado",
+        r.link,
+      ].map((c) => (typeof c === "number" ? c : celulaPlanilhaSegura(c)));
+    })];
+  }
+  // Só usado se o SheetJS do CDN não carregar: CSV com BOM e ";" abre direto no Excel em pt-BR.
+  function csvDeLinhasPlanilha(linhas) {
+    const celula = (c) => {
+      const texto = typeof c === "number" ? String(c).replace(".", ",") : String(c);
+      return /[;"\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+    };
+    return "﻿" + linhas.map((linha) => linha.map(celula).join(";")).join("\r\n");
+  }
+
   function campoBoletimMeta(rotulo, valor, campoDetalhe) {
     const texto = (valor === null || valor === undefined || valor === "") ? "Não informado" : valor;
     const atributoDetalhe = campoDetalhe ? ` data-detalhe-campo="${escapeHtml(campoDetalhe)}"` : "";
@@ -6334,6 +6375,7 @@
   // quanto pelo Encontrar Licitações (busca manual) — mesma UI, fontes de dados diferentes.
   function renderizarPainelBoletim(alvo, resultadosOriginais, avisoHtml, opcoes = {}) {
     const resultados = opcoes.porPrazo ? ordenarPorPrazo(resultadosOriginais) : resultadosOriginais;
+    resultadosPlanilha.set(alvo.id, resultados);
     const renderizar = (modoFiltro) => {
       const lidos = lerConjunto("lidos");
       const naoLidos = resultados.filter((r) => !lidos.has(idOportunidade(r))).length;
@@ -6381,6 +6423,28 @@
     };
     renderizar("todos");
   }
+
+  // Lista desenhada por último em cada tela (id do alvo → resultados), na ordem do cartão.
+  // O botão só aparece com cartões na tela (CSS :has em painel-design.css).
+  const resultadosPlanilha = new Map();
+  document.querySelectorAll(".btn-baixar-planilha").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const linhas = linhasPlanilhaOportunidades(resultadosPlanilha.get(btn.dataset.planilhaDe) || []);
+      const nome = `licitaplena-${btn.dataset.planilhaNome}-${new Date(Date.now() + FUSO_BRASILIA_MS).toISOString().slice(0, 10)}`;
+      if (window.XLSX) {
+        const planilha = XLSX.utils.book_new();
+        const folha = XLSX.utils.aoa_to_sheet(linhas);
+        folha["!cols"] = [14, 24, 60, 40, 24, 26, 18, 50].map((wch) => ({ wch }));
+        XLSX.utils.book_append_sheet(planilha, folha, "Oportunidades");
+        XLSX.writeFile(planilha, nome + ".xlsx");
+        return;
+      }
+      const url = URL.createObjectURL(new Blob([csvDeLinhasPlanilha(linhas)], { type: "text/csv;charset=utf-8" }));
+      const link = Object.assign(document.createElement("a"), { href: url, download: nome + ".csv" });
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+  });
 
   // ---- Boletim (painel automático, baseado num filtro salvo — igual ao conceito de
   // "edição do dia" do ConLicitação, só que sem precisar clicar em nada toda vez) ----
@@ -6768,7 +6832,7 @@
       if (resp.falhaConexao) resultados = combinarResultadosDoBoletim(resultados, resultadosAnteriores);
       metaEl.textContent = metaBoletim(ufs, palavras);
       let avisoHtml = resp.falhaConexao
-        ? '<div class="aviso">A API pública do PNCP não respondeu agora — mostrando também o que o robô já tinha coletado, então a lista abaixo pode não estar 100% atualizada.</div>'
+        ? '<div class="aviso">A API pública do PNCP não respondeu agora — mostrando também o que o robô já tinha coletado, então a lista abaixo pode estar desatualizada.</div>'
         : "";
 
       resultados = combinarResultadosDoBoletim(resultados, await buscarExtrasSistemaS(ufs, palavras))
@@ -7447,7 +7511,7 @@
       </tr>`;
     }
     html += "</table>";
-    html += '<div class="dica-clique">Clique no nome do fornecedor para ver todos os contratos e a ficha cadastral dele.</div>';
+    html += '<div class="dica-clique">Clique no nome do fornecedor para ver os contratos dele que estão na base e a ficha cadastral.</div>';
     const alvoDetalhe = abrirDossieDiagnostico(`Órgão: ${nomeOrgao}`, html);
     if (!alvoDetalhe) return;
 
@@ -7813,7 +7877,7 @@
     let html = "";
 
     if (d.fonte && d.fonte.tipo === "cache") {
-      html += `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Dados atualizados automaticamente em ${escapeHtml(new Date(d.fonte.atualizadoEm).toLocaleString("pt-BR"))} (robô coleta todo dia, últimos ${d.fonte.diasHistoricoCache} dias). Resposta instantânea, sem depender do PNCP ao vivo.</div>`;
+      html += `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Dados atualizados automaticamente em ${escapeHtml(new Date(d.fonte.atualizadoEm).toLocaleString("pt-BR"))} (robô coleta todo dia, últimos ${d.fonte.diasHistoricoCache} dias). A consulta usa essa base já coletada, sem esperar o PNCP responder.</div>`;
     }
 
     if (d.amostra && d.amostra.falhaConexao) {
@@ -9668,7 +9732,7 @@
   const MURAL_NOVIDADES = [
     { tag: "novo", data: "2026-08-20", titulo: "Dashboard com visão geral do mercado", desc: "Total de licitações monitoradas, novas do dia, estados cobertos e ranking dos principais estados e segmentos, direto na tela inicial." },
     { tag: "novo", data: "2026-08-20", titulo: "Tags automáticas nos cards", desc: "Cada licitação agora mostra etiquetas automáticas (Material, Limpeza, Hospitalar, Engenharia etc.) pra identificar do que se trata sem precisar ler o texto inteiro." },
-    { tag: "melhoria", data: "2026-08-20", titulo: "Mais campos preenchidos nos cards", desc: "Amparo legal, valor estimado, processo e outros dados do PNCP agora aparecem completos com muito mais frequência." },
+    { tag: "melhoria", data: "2026-08-20", titulo: "Mais campos preenchidos nos cards", desc: "Amparo legal, valor estimado, processo e outros dados do PNCP agora aparecem preenchidos em mais cartões, quando o PNCP informa." },
     { tag: "melhoria", data: "2026-08-20", titulo: "Ícones renovados", desc: "Visual mais limpo e profissional em todo o painel." },
     { tag: "novo", data: "2026-08-20", titulo: "Tema claro e escuro", desc: "Escolha o visual que preferir, com o botão de sol/lua no cabeçalho." },
     { tag: "novo", data: "2026-08-20", titulo: "Filtros avançados em Encontrar Licitações", desc: "Agora dá pra filtrar por esfera (federal/estadual/municipal), faixa de valor estimado, código da licitação e nome do órgão." },

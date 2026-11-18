@@ -439,9 +439,10 @@
   .bol-config-intro { flex: 1 1 100%; }
   .bol-config-intro h3 { margin: 0 0 4px; font: 600 18px/26px var(--font-sans); color: var(--text-primary); }
   .bol-config-intro p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 22px; }
-  /* Imprimir só quando há o que imprimir. */
-  #boletim:not(:has(#bol-resultado .boletim-card)) .btn-imprimir-generico,
-  #oportunidades:not(:has(#op-resultado .boletim-card)) .btn-imprimir-generico { display: none; }
+  /* Imprimir e Baixar planilha só quando há o que imprimir ou baixar. */
+  #boletim:not(:has(#bol-resultado .boletim-card)) :is(.btn-imprimir-generico, .btn-baixar-planilha),
+  #oportunidades:not(:has(#op-resultado .boletim-card)) :is(.btn-imprimir-generico, .btn-baixar-planilha) { display: none; }
+  .dg-topo-botoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
   /* Cartão enxuto: prazo primeiro, por texto e cor. */
   .boletim-prazo {
@@ -506,3 +507,5 @@
 #contatos-resumo-lista > div { display: flex; gap: 8px; }
 #contatos-resumo-lista button { background: var(--fundo-fraco); color: var(--texto); border: 1px solid var(--input-borda); padding: 8px; border-radius: 6px; cursor: pointer; }
 #contatos-resumo-lista button:first-child { flex: 1; text-align: left; overflow-wrap: anywhere; min-width: 0; }
+.limites-sistema p { margin: 0 0 8px; font-size: 14px; line-height: 22px; color: var(--text-primary); }
+.limites-sistema p:last-child { margin-bottom: 0; color: var(--text-secondary); }
