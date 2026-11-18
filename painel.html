@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,6 +13,7 @@
     try {
       if (localStorage.getItem("licitaplena_tema") === "claro") {
         document.documentElement.classList.add("tema-claro");
+        document.documentElement.dataset.theme = "light"; // tokens do Design System (ds-tokens.css)
       }
     } catch (e) { /* localStorage indisponível: segue com o tema padrão (escuro) */ }
   })();
@@ -22,6 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds-tokens.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="resumo-modelo.js?v=953e30c32a3c"></script>
@@ -1434,7 +1436,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="painel-design.css?v=1">
+<link rel="stylesheet" href="painel-design.css?v=2">
 <script src="contatos-resumo.js?v=1" defer></script>
 <script src="decisoes-resumo.js?v=1" defer></script>
 </head>
@@ -1503,22 +1505,25 @@
   
 <header>
   <div class="header-topo">
+    <button id="nav-gaveta-btn" class="header-icone-btn" type="button" aria-controls="menu-principal" aria-expanded="false">Menu</button>
     <a href="painel.html" class="header-marca">
-      <img src="logo-icone-branco.svg" alt="LicitaPlena" class="header-logo">
+      <span class="header-placa"><img src="logo-icone.svg" alt="" class="header-logo"></span>
       <span class="header-nome">LicitaPlena</span>
     </a>
     <div class="header-acoes">
       <span class="header-badge" id="header-badge-empresa" title="Empresa"><svg class='icone-ph'><use href='#ph-buildings'></use></svg> --</span>
       <span class="header-badge header-badge-plano" id="header-badge-plano" title="Plano atual">--</span>
-      <button id="header-ajuda-btn" class="header-icone-btn" title="Ajuda / D&uacute;vidas" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;font-weight:700;padding:0;">?</button>
-      <button id="header-bell-btn" class="header-icone-btn" title="Notifica&ccedil;&otilde;es" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;position:relative;">
-        <svg class='icone-ph'><use href='#ph-bell'></use></svg>
-        <span id="header-bell-badge" style="display:none;position:absolute;top:-2px;right:-2px;background:#e8617a;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;align-items:center;justify-content:center;padding:0 3px;line-height:16px;">0</span>
+      <button id="header-ajuda-btn" class="header-icone-btn" type="button" title="Ajuda / D&uacute;vidas" aria-label="Ajuda e d&uacute;vidas">?</button>
+      <button id="header-bell-btn" class="header-icone-btn" type="button" title="Notifica&ccedil;&otilde;es" aria-label="Notifica&ccedil;&otilde;es">
+        <svg class='icone-ph' aria-hidden="true"><use href='#ph-bell'></use></svg>
+        <span id="header-bell-badge" class="header-bell-contador" style="display:none;">0</span>
       </button>
-      <button id="header-tema-btn" class="header-icone-btn" title="Alternar tema claro/escuro" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:16px;padding:0;"><span class="icone-tema"><svg class='icone-ph'><use href='#ph-moon'></use></svg></span></button>
-      <button id="header-user-btn" class="header-icone-btn" title="Minha conta" style="display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:0;">
+      <button id="header-tema-btn" class="header-icone-btn" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro ou escuro"><span class="icone-tema"><svg class='icone-ph' aria-hidden="true"><use href='#ph-moon'></use></svg></span></button>
+      <span id="header-user-nome" class="header-usuario-nome"></span>
+      <button id="header-user-btn" class="header-icone-btn" type="button" title="Minha conta" aria-label="Minha conta">
         <span id="header-user-iniciais">--</span>
       </button>
+      <button type="button" id="btn-sair-painel" class="header-sair">Sair</button>
     </div>
   </div>
 </header>
@@ -1541,16 +1546,15 @@
   })();
 </script>
 
-<div id="header-user-dropdown" style="display:none;position:fixed;background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:190px;overflow:hidden;z-index:500;">
+<div id="header-user-dropdown" class="header-flutuante" style="display:none;">
   <button type="button" class="menu-conta-item" data-acao="conta">Minha conta</button>
   <button type="button" class="menu-conta-item" data-acao="lembretes"><svg class='icone-ph'><use href='#ph-bell'></use></svg> Meus lembretes</button>
   <button type="button" class="menu-conta-item" data-acao="planos">Planos e pre&ccedil;os</button>
   <button type="button" class="menu-conta-item" data-acao="feedback">Envie seu feedback</button>
-  <button type="button" id="btn-sair-painel" class="menu-conta-item" style="color:#c0392b;">Sair</button>
 </div>
-<div id="header-bell-dropdown" style="display:none;position:fixed;background:#fff;color:#1a2b45;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.28);min-width:260px;max-width:300px;overflow:hidden;z-index:500;">
-  <div style="padding:14px 16px;border-bottom:1px solid #eef1f6;font-weight:700;font-size:13.5px;">Notifica&ccedil;&otilde;es</div>
-  <div id="header-bell-corpo" style="padding:14px 16px;font-size:13px;color:#3a4a63;line-height:1.5;"></div>
+<div id="header-bell-dropdown" class="header-flutuante" style="display:none;">
+  <div class="header-flutuante-titulo">Notifica&ccedil;&otilde;es</div>
+  <div id="header-bell-corpo" class="header-flutuante-corpo"></div>
 </div>
 
 <div class="modal-ia-fundo" id="modal-conta-fundo">
@@ -1569,7 +1573,7 @@
 </div>
 
 <div class="shell">
-<nav>
+<nav id="menu-principal" aria-label="Menu principal">
   <button id="nav-colapsar-btn" type="button" title="Recolher menu">
     <span class="nav-ico">&#171;</span><span class="nav-label">Recolher</span>
   </button>
@@ -1581,7 +1585,7 @@
   <button data-alvo="transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-handshake'></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></button>
   <button data-alvo="precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-coins'></use></svg></span><span class="nav-label">Pesquisa de Preços</span></button>
   <button data-alvo="kanban" title="Kanban"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-folders'></use></svg></span><span class="nav-label">Kanban</span></button>
-  <a href="operacao.html" title="Central Operacional" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:64px;padding:8px 4px;border-radius:8px;color:var(--texto-fraco);text-decoration:none;font-size:11px;font-weight:700;text-align:center;"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-files'></use></svg></span><span class="nav-label">Central Operacional</span></a>
+  <a href="operacao.html" title="Central Operacional"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-files'></use></svg></span><span class="nav-label">Central Operacional</span></a>
   <button data-alvo="juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-scales'></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></button>
   <button data-alvo="status" title="Status das Ferramentas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-circle'></use></svg></span><span class="nav-label">Status das Ferramentas</span></button>
 </nav>
@@ -1617,6 +1621,36 @@
     });
   })();
 </script>
+<div class="nav-gaveta-fundo" id="nav-gaveta-fundo" hidden></div>
+<script>
+  // Gaveta do menu no celular (até 768px): o botão "Menu" do topo abre e fecha a mesma <nav>
+  // do desktop, então ids, data-alvo e handlers das abas continuam exatamente os mesmos.
+  (function () {
+    const nav = document.getElementById("menu-principal");
+    const btn = document.getElementById("nav-gaveta-btn");
+    const fundo = document.getElementById("nav-gaveta-fundo");
+    if (!nav || !btn || !fundo) return;
+    const celular = window.matchMedia("(max-width: 768px)");
+    function definir(aberta) {
+      nav.classList.toggle("gaveta-aberta", aberta);
+      fundo.hidden = !aberta;
+      btn.setAttribute("aria-expanded", aberta ? "true" : "false");
+      if (aberta) {
+        const atual = nav.querySelector("button.ativo") || nav.querySelector("button[data-alvo]");
+        if (atual) atual.focus();
+      }
+    }
+    btn.addEventListener("click", () => definir(!nav.classList.contains("gaveta-aberta")));
+    fundo.addEventListener("click", () => definir(false));
+    nav.addEventListener("click", (ev) => {
+      if (celular.matches && ev.target.closest("button[data-alvo], a")) definir(false);
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && nav.classList.contains("gaveta-aberta")) { definir(false); btn.focus(); }
+    });
+    celular.addEventListener("change", () => definir(false));
+  })();
+</script>
 
 <main>
 <details class="contatos-resumo" style="margin-bottom:18px"><summary>Respostas dos clientes às oportunidades</summary><p>Decisões recebidas pelos links individuais. Confirmar participação aqui não inscreve a empresa no portal.</p><button type="button" id="decisoes-clientes-atualizar">Atualizar respostas</button><div id="decisoes-clientes-lista" role="status"></div></details>
@@ -1624,7 +1658,7 @@
   <section id="dashboard" class="ativa">
     <div class="dash-boas-vindas">
       <div>
-        <h2 style="margin-top:0;margin-bottom:4px;">Ol&aacute;, <span id="dash-nome">tudo bem?</span> &#128075;</h2>
+        <h2 style="margin-top:0;margin-bottom:4px;">Ol&aacute;, <span id="dash-nome">tudo bem?</span></h2>
         <p style="margin:0;color:var(--texto-fraco);font-size:14px;">Aqui est&aacute; um resumo r&aacute;pido da sua conta no LicitaPlena.</p>
       </div>
     </div>
@@ -2458,7 +2492,7 @@
     const alvo = document.getElementById("juridico-artigos");
     if (!alvo) return;
     alvo.innerHTML = ARTIGOS_JURIDICOS.map((a, i) => `
-      <details class="cartao" style="margin-bottom:12px;border-top:4px solid var(--laranja);" ${i === 0 ? "open" : ""}>
+      <details class="cartao" style="margin-bottom:12px;" ${i === 0 ? "open" : ""}>
         <summary style="cursor:pointer;font-weight:700;color:var(--texto);">${escapeHtml(a.titulo)}</summary>
         <p style="margin:10px 0 0;color:var(--texto-fraco);line-height:1.55;">${escapeHtml(a.corpo)}</p>
       </details>
@@ -9507,6 +9541,8 @@ window.__preencherIdentidadeUsuario = function () {
     if (elIni) elIni.textContent = iniciais;
     const boasVindas = document.getElementById("dash-nome");
     if (boasVindas) boasVindas.textContent = nome;
+    const elNomeTopo = document.getElementById("header-user-nome");
+    if (elNomeTopo) elNomeTopo.textContent = nome;
 
     // Badges do header: empresa vem do cadastro (clientes.empresa); plano vem de
     // clientes.plano (mesmo campo já editável no admin.html e mostrado em "Planos e
@@ -9637,6 +9673,7 @@ window.__preencherIdentidadeUsuario();
     atualizarIconeTema();
     temaBtn.addEventListener("click", () => {
       const claro = document.documentElement.classList.toggle("tema-claro");
+      document.documentElement.dataset.theme = claro ? "light" : "dark"; // tokens do Design System
       atualizarIconeTema();
       try { localStorage.setItem("licitaplena_tema", claro ? "claro" : "escuro"); } catch (e) { /* localStorage indisponível */ }
     });
