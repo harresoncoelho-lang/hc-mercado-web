@@ -18,3 +18,15 @@
 /data/*
   ! Cache-Control
   Cache-Control: public, max-age=300, stale-while-revalidate=3600
+
+# Portal do cliente (cliente.html, aberto por /cliente#t=<token>): página pública sem script/estilo inline,
+# então tem CSP própria e bem mais estreita que a do site. "/cliente*" já cobre /cliente e /cliente.html
+# (um segundo bloco igual duplicaria os valores). Desanexa CSP, Referrer-Policy e Cache-Control herdados de /*.
+/cliente*
+  ! Content-Security-Policy
+  ! Referrer-Policy
+  ! Cache-Control
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  Referrer-Policy: no-referrer
+  Cache-Control: no-store
+  X-Robots-Tag: noindex

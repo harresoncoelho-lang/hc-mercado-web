@@ -53,6 +53,18 @@
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
 
+# Portal do cliente (cliente.html, aberto por /cliente#t=<token>): mesma regra do bloco /cliente* do _headers.
+# Página sem script/estilo inline, por isso a CSP é própria e bem mais estreita que a de "/*". O netlify.toml não
+# tem o "!" do _headers: se o Netlify somar estes valores aos de "/*" em vez de trocar, continua seguro (duas CSPs
+# valem as duas, "no-store" e "no-referrer" prevalecem sobre os valores mais frouxos).
+[[headers]]
+  for = "/cliente*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    Referrer-Policy = "no-referrer"
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex"
+
 # O front-end chama /api/* (Cloudflare Pages); aqui o Netlify encaminha para as mesmas funções.
 [[redirects]]
   from = "/api/*"
