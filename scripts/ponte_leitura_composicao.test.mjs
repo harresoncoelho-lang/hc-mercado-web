@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import endpoint from '../netlify/functions/kit-documentos.js';
 
 
@@ -54,8 +54,8 @@ async function fixture(t, quantity = '2.000', price = '12.50', size = 1, cnpj = 
 }
 
 
-import ponte from '../netlify/functions/_ponte_leitura.js';
 import {criarReceptor} from '../extensao-leitura/ponte-receptor.mjs';
+import ponte from '../netlify/functions/_ponte_leitura.js';
 test('UI real → handler → RPC double → receptor e popup reais → recibo parcial',async t=>{
  const f=await fixture(t);const fs=await import('node:fs'),vm=await import('node:vm');
  const originalFetch=globalThis.fetch;let record=null,observations=0,delayRegistro=false,releaseRegistro,mapa=null,delayMapa=false,releaseMapa;
@@ -75,7 +75,7 @@ test('UI real → handler → RPC double → receptor e popup reais → recibo p
   }
   return originalFetch(url,op);
  });
- const handler=endpoint.criarHandler({ponteLeitura:ponte.criarPonteLeitura({requestCancelar:async(event,path,op)=>globalThis.fetch('https://fixture.invalid'+path,op)})});
+ const handler=endpoint.criarHandler({ponteLeitura:ponte.criarPonteLeitura({requestCancelar:async(_event,path,op)=>globalThis.fetch('https://fixture.invalid'+path,op)})});
  const elements=new Map(),node=key=>{if(!elements.has(key))elements.set(key,{value:'',dataset:{},hidden:false,disabled:false,textContent:'',classList:{toggle(){}},setAttribute(){},focus(){},events:{},addEventListener(n,fn){this.events[n]=fn;},querySelectorAll(){return [];},querySelector(){return null;}});return elements.get(key);};
  const form=node('form');form.elements=new Proxy({},{get:(_,k)=>node('field:'+k)});form.reset=()=>{};
  const alvo={ownerDocument:{activeElement:null,createElement:()=>node('created'),body:{append(){}}},innerHTML:'',querySelector:node,querySelectorAll:()=>[],setAttribute(){},replaceChildren(){}};

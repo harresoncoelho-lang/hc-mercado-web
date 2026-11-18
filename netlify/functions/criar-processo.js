@@ -12,6 +12,7 @@ const ANON='sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb';
 const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(v);
 const CAMPOS_PERMITIDOS=['empresaId','tentativaId','objeto','numero','orgao','modalidade'];
 const LIMITE_BYTES=8192;
+// eslint-disable-next-line no-control-regex -- sanitizador: rejeitar caracteres de controle é o objetivo da regex
 const CONTROLE=/[\u0000-\u001f\u007f]/;
 const emAndamento=new Map(); // empresaId -> {tentativaId, userId, assinatura, promessa}: bloqueio de concorrência explícito
 

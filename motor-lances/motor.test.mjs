@@ -119,6 +119,7 @@ test('autorização futura, expirada, sem ID e relógio inválido não ativam mo
 });
 
 test('identificador da compra exige string para evitar coerção numérica insegura', () => {
+  // eslint-disable-next-line no-loss-of-precision -- o teste usa de propósito um inteiro acima de MAX_SAFE_INTEGER
   assert.throws(() => createMotor({ ...policy(), purchaseId: 78882005000412026 }, config()));
 });
 

@@ -1,9 +1,9 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateKeyPairSync,createHash} from 'node:crypto';
-import {mkdtemp,readFile,stat,rm} from 'node:fs/promises';
+import {createHash, generateKeyPairSync} from 'node:crypto';
+import {mkdtemp,readFile,rm, stat} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import test from 'node:test';
 import {empacotarQA} from './empacotar-extensao-leitura-qa.mjs';
 test('pacote QA exige configuração íntegra antes de escrever e preserva manifesto fonte',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'lp-pacote-fixture-'));try{

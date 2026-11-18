@@ -1,5 +1,5 @@
 import {createHash,createPublicKey} from 'node:crypto';
-import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 const source=new URL('../extensao-leitura/',import.meta.url);

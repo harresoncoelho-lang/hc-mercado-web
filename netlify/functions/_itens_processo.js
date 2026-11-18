@@ -15,6 +15,7 @@ const ANON='sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb';
 const CAMPOS=['id','tipo','identificador','descricao','quantidade','valorUnitario','marca','modelo'];
 const MODOS=['criar','editar'];
 const SELECT='id,organizacao_id,processo_id,tipo,identificador,descricao,quantidade:quantidade::text,valor_unitario_proposta:valor_unitario_proposta::text,marca,modelo,atualizado_em';
+// eslint-disable-next-line no-control-regex -- sanitizador: rejeitar caracteres de controle é o objetivo da regex
 const CONTROLE=/[\u0000-\u001f\u007f]/;
 
 function objeto(v){return v!==null&&typeof v==='object'&&!Array.isArray(v);}
