@@ -1,11 +1,11 @@
 const {LIMITES}=require('./_kit_proposta_limites');
-const {listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada}=require('./_kit_proposta_itens');
-const {rest:restItens,salvarItemProcesso,salvarPrecoItem,salvarPremissas,salvarReferencia,importarPlanilha}=require('./_itens_processo');
+const {listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada,origemPncp}=require('./_kit_proposta_itens');
+const {rest:restItens,salvarItemProcesso,salvarPrecoItem,salvarPremissas,lerPremissas,salvarReferencia,importarPlanilha}=require('./_itens_processo');
 const {MAX_BYTES:PLANILHA_BYTES}=require('../../planilha-itens.js');
 // Ações de cadastro do item: só token do usuário (RLS), escopo já validado por carregarEscopo. Não tocam em documentos.
 // Listagem com Response crua: o fallback do banco antigo precisa ler o código do erro.
 const requestBruto=event=>(path,op)=>restItens(event.headers?.authorization||event.headers?.Authorization||'',path,op);
-const ACOES_ITENS={salvarItem:salvarItemProcesso,salvarPrecoItem,salvarPremissas,salvarReferencia,importarPlanilha};
+const ACOES_ITENS={salvarItem:salvarItemProcesso,salvarPrecoItem,salvarPremissas,lerPremissas,salvarReferencia,importarPlanilha};
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
 const {createHash}=require('node:crypto');
 const {falhar,validarConfirmacao}=require('./_empresa_identificacao');
@@ -35,7 +35,7 @@ async function identificacaoKit(c){
  }
  return {perfil,pendencias};
 }
-function consulta(empresa,processo,perfil,itens,pendencias){return {empresa:{id:empresa.id,razaoSocial:empresa.razao_social,cnpj:empresa.cnpj},processo:{id:processo.id,numero:processo.numero,orgao:processo.orgao},identificacao:{status:perfil&&!perfil.invalidado_em?'confirmado':'pendente'},itens:itens.map(i=>({id:i.id,tipo:i.tipo,identificador:i.identificador,descricao:i.descricao,quantidade:i.quantidade,valorUnitario:i.valor_unitario_proposta,marca:i.marca,modelo:i.modelo,unidade:i.unidade,fabricante:i.fabricante,custoUnitario:i.custo_unitario,valorUnitarioMinimo:i.valor_unitario_minimo,codigoCatalogo:i.codigo_catalogo,precoReferencia:i.preco_referencia,precoReferenciaEm:i.preco_referencia_em})),requisitos:Array.isArray(processo.documentos_exigidos)?processo.documentos_exigidos.filter(v=>typeof v==='string'):[],pendencias};}
+function consulta(empresa,processo,perfil,itens,pendencias){return {empresa:{id:empresa.id,razaoSocial:empresa.razao_social,cnpj:empresa.cnpj},processo:{id:processo.id,numero:processo.numero,orgao:processo.orgao},identificacao:{status:perfil&&!perfil.invalidado_em?'confirmado':'pendente'},itens:itens.map(i=>({id:i.id,tipo:i.tipo,identificador:i.identificador,descricao:i.descricao,quantidade:i.quantidade,valorUnitario:i.valor_unitario_proposta,marca:i.marca,modelo:i.modelo,unidade:i.unidade,fabricante:i.fabricante,custoUnitario:i.custo_unitario,valorUnitarioMinimo:i.valor_unitario_minimo,codigoCatalogo:i.codigo_catalogo,precoReferencia:i.preco_referencia,precoReferenciaEm:i.preco_referencia_em,origemPncp:origemPncp(i)})),requisitos:Array.isArray(processo.documentos_exigidos)?processo.documentos_exigidos.filter(v=>typeof v==='string'):[],pendencias};}
 function prepararPeca(ctx,payload,documento){
  const resultado=preparar(ctx,payload);
  // O hash legado conserva o usuário/fontes; a peça salva acrescenta sua identidade e versão.

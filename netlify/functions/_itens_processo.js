@@ -10,7 +10,7 @@
 // Editar um item muda o conteúdo da prévia: o hash de revisão do kit deixa de conferir (contrato já existente).
 const {falhar}=require('./_empresa_identificacao');
 const {uuid,decimal,totalItem}=require('./_kit_documentos');
-const {selectLista,colunaInexistente}=require('./_kit_proposta_itens');
+const {selectLista,colunaInexistente,origemPncp}=require('./_kit_proposta_itens');
 const {randomUUID}=require('node:crypto');
 const planilha=require('../../planilha-itens.js');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
@@ -173,15 +173,23 @@ function premissa(v,chave){
  if(typeof v!=='string'||!ok.test(v))falhar(chave==='frete'?'Frete inválido. Use número de 0 em diante, com até 2 casas.':`Percentual inválido (${chave}). Use de 0 a 99.999, com até 3 casas.`,400);
  return v;
 }
+const SELECT_PREMISSAS=Object.values(PREMISSAS).map(c=>`${c}:${c}::text`).join(',');
+const caminhoProcesso=(organizacaoId,processoId,empresaId)=>`/rest/v1/operacao_processos?id=eq.${processoId}&empresa_id=eq.${empresaId}&organizacao_id=eq.${organizacaoId}&select=${SELECT_PREMISSAS}`;
+function premissasPublicas(linhas){
+ if(!Array.isArray(linhas)||linhas.length!==1)falhar('Processo indisponível.',404);
+ return {status:200,body:{premissas:Object.fromEntries(Object.entries(PREMISSAS).map(([k,c])=>[k,linhas[0][c]??null]))}};
+}
 async function salvarPremissas({token,organizacaoId,processoId,empresaId,body}){
  escopo(organizacaoId,processoId);if(!uuid(empresaId))falhar('Escopo inválido.',400);exigirChaves(body,Object.keys(PREMISSAS));
  const v=Object.fromEntries(Object.keys(PREMISSAS).map(k=>[k,premissa(body[k],k)]));
  if(v.margemMinima!==null&&(v.margem===null||escalado(v.margemMinima,3)>escalado(v.margem,3)))falhar('A margem mínima não pode ser maior que a margem desejada.',422);
- const select=Object.values(PREMISSAS).map(c=>`${c}:${c}::text`).join(',');
  const dados=Object.fromEntries(Object.entries(PREMISSAS).map(([k,c])=>[c,v[k]]));
- const linhas=await exigirOk(await rest(token,`/rest/v1/operacao_processos?id=eq.${processoId}&empresa_id=eq.${empresaId}&organizacao_id=eq.${organizacaoId}&select=${select}`,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(dados)}));
- if(!Array.isArray(linhas)||linhas.length!==1)falhar('Processo indisponível.',404);
- return {status:200,body:{premissas:Object.fromEntries(Object.entries(PREMISSAS).map(([k,c])=>[k,linhas[0][c]??null]))}};
+ return premissasPublicas(await exigirOk(await rest(token,caminhoProcesso(organizacaoId,processoId,empresaId),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(dados)})));
+}
+// GET próprio: o select do carregarEscopo entra no hash do kit (atualizado_em do processo) e não ganha colunas.
+async function lerPremissas({token,organizacaoId,processoId,empresaId}){
+ escopo(organizacaoId,processoId);if(!uuid(empresaId))falhar('Escopo inválido.',400);
+ return premissasPublicas(await exigirOk(await rest(token,caminhoProcesso(organizacaoId,processoId,empresaId))));
 }
 
 // Planilha: 1 GET (itens + origem PNCP embutida) + 1 POST em lote. Tudo ou nada.
@@ -210,8 +218,7 @@ async function importarPlanilha({token,organizacaoId,processoId,body}){
  if(!lida.ok)return {status:422,body:{erro:'Confira a planilha. Nada foi gravado.',erros:lida.erros}};
  const rows=await lerItensAtuais(token,organizacaoId,processoId);
  const porIdentificador=new Map(rows.map(l=>[l.identificador,l]));
- const origem=l=>Array.isArray(l.operacao_origens_pncp)?l.operacao_origens_pncp.length>0:Boolean(l.operacao_origens_pncp);
- const v=planilha.validarLinhas(lida.linhas,rows.map(l=>({...publicoPreco(l),origemPncp:origem(l)})));
+ const v=planilha.validarLinhas(lida.linhas,rows.map(l=>({...publicoPreco(l),origemPncp:origemPncp(l)})));
  const erros=[...v.erros],gravar=[],agora=new Date().toISOString();
  for(const l of v.linhas){
   if(l.estado!=='novo'&&l.estado!=='alterado')continue;
@@ -227,4 +234,4 @@ async function importarPlanilha({token,organizacaoId,processoId,body}){
  for(const l of salvos)conferirLinha(l,organizacaoId,processoId);
  return {status:200,body:{gravados:salvos.length,resumo:v.resumo,linhas,itens:salvos.map(publicoPreco)}};
 }
-module.exports={rest,salvarItemProcesso,validarItem,chaveDeLinha,publico,publicoPreco,salvarPrecoItem,salvarReferencia,salvarPremissas,importarPlanilha};
+module.exports={rest,salvarItemProcesso,validarItem,chaveDeLinha,publico,publicoPreco,salvarPrecoItem,salvarReferencia,salvarPremissas,lerPremissas,importarPlanilha};

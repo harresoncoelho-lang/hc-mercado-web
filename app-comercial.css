@@ -133,6 +133,52 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .itens-importar [data-situacao="erro"]{color:var(--error-text)}
 .itens-importar [data-situacao="ok"]{color:var(--success-text)}
 
+/* Preço por item, premissas e planilha (itens-processo-ui.js). Situação sempre com texto no selo; só tokens do DS. */
+.itens-processo h3{font:var(--text-section);color:var(--text-primary);margin:0 0 var(--space-4)}
+.itens-apoio{margin:0;font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+.itens-apoio:empty{display:none}
+.itens-premissas{margin:var(--space-12) 0 var(--space-16);padding:var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-sunken);min-width:0}
+.itens-premissas-campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-12);margin-top:var(--space-12)}
+.itens-campo{display:grid;gap:var(--space-4);min-width:0}
+.itens-campo label{font:var(--text-label);color:var(--text-secondary)}
+.itens-campo-estado{font:var(--text-label);color:var(--text-secondary);min-height:16px;overflow-wrap:anywhere}
+.itens-campo-estado[data-situacao="ok"],.itens-planilha-estado[data-situacao="ok"]{color:var(--success-text)}
+.itens-campo-estado[data-situacao="erro"],.itens-planilha-estado[data-situacao="erro"]{color:var(--error-text)}
+.itens-processo input[aria-invalid="true"]{border-color:var(--error-text)}
+.itens-cabeca{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center;min-width:0}
+.selo-edital{display:inline-flex;align-items:center;gap:var(--space-4);padding:2px var(--space-8);border-radius:999px;border:1px solid var(--border-strong);background:var(--surface-sunken);color:var(--text-primary);font:var(--text-label);white-space:nowrap}
+.selo-edital-icone{width:12px;height:12px;fill:currentColor;stroke:currentColor;stroke-width:1.5}
+.selo-edital-icone path{fill:none}
+.itens-preco{display:grid;gap:var(--space-12);margin-top:var(--space-8);padding-top:var(--space-12);border-top:1px solid var(--border-default);min-width:0}
+.itens-precos{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--space-8);margin:0}
+.itens-precos div{min-width:0}
+.itens-precos dt{font:var(--text-label);color:var(--text-secondary)}
+.itens-precos dd{margin:0;font:var(--text-section);color:var(--text-primary);overflow-wrap:anywhere}
+.itens-referencia{display:grid;gap:var(--space-4);padding:var(--space-8) var(--space-12);border-radius:var(--radius-control);background:var(--surface-sunken);min-width:0}
+.itens-processo .itens-referencia strong{font:var(--text-label);color:var(--text-secondary)}
+.itens-referencia p{margin:0}
+.itens-referencia a{color:var(--action-text);display:inline-flex;align-items:center;min-height:44px;width:max-content;max-width:100%}
+.itens-processo li .itens-referencia button{justify-self:start}
+.itens-simulacao{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center;font:var(--text-body);color:var(--text-secondary);min-width:0}
+.selo-lance,.selo-linha{padding:2px var(--space-8);border-radius:999px;border:1px solid var(--success-border);background:var(--success-bg);color:var(--success-text);font:var(--text-label);font-weight:600;white-space:nowrap}
+.selo-lance[data-cor="amarelo"],.selo-linha[data-estado-linha="alterado"]{border-color:var(--attention-border);background:var(--attention-bg);color:var(--attention-text)}
+.selo-lance[data-cor="vermelho"],.selo-linha[data-estado-linha="erro"]{border-color:var(--error-border);background:var(--error-bg);color:var(--error-text)}
+.selo-linha[data-estado-linha="sem_mudanca"]{border-color:var(--border-default);background:var(--surface-sunken);color:var(--text-secondary)}
+.itens-planilha-estado{margin:var(--space-8) 0 0;font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+.itens-planilha-estado:empty{display:none}
+.itens-previa{margin-top:var(--space-12);padding:var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control);min-width:0}
+.itens-previa p{margin:0 0 var(--space-8);font:var(--text-body);color:var(--text-primary)}
+.itens-processo ul.itens-previa-erros{display:block;margin:0 0 var(--space-8);padding-left:var(--space-16);list-style:disc;color:var(--error-text)}
+.itens-processo ul.itens-previa-erros:empty{display:none}
+.itens-previa-erros li{border:0;padding:0}
+/* Tabela larga rola dentro do próprio quadro, nunca a página. */
+.tabela-rolagem{overflow-x:auto;max-width:100%;border:1px solid var(--border-default);border-radius:var(--radius-control)}
+.tabela-rolagem table{width:100%;min-width:560px;border-collapse:collapse;font:var(--text-body)}
+.tabela-rolagem th{font:var(--text-label);color:var(--text-secondary);text-align:left;background:var(--surface-sunken);padding:var(--space-8)}
+.tabela-rolagem td{padding:var(--space-8);border-top:1px solid var(--border-default);vertical-align:top;color:var(--text-primary);overflow-wrap:anywhere}
+.tabela-rolagem td .selo-edital{margin-left:var(--space-4)}
+.tabela-rolagem tr[data-estado-linha="erro"] td{background:var(--error-bg)}
+
 /* Identificação da empresa (empresa-identificacao-ui.js). Markup real: #identificacao > details > summary, p, p[role=status], label+campo em pares, select, input file, botões .defesa-botao, div de sugestões, checkbox e label.
    Desktop (641px+): duas colunas label | campo; textos, botões, arquivo, tipo e sugestões ocupam a largura toda; checkbox e label ficam na mesma linha.
    Mobile: uma coluna, rótulo acima do campo; checkbox e label na mesma linha.
@@ -171,4 +217,3 @@ button:disabled{opacity:.55;cursor:not-allowed}
 @media (max-width:640px){
   #identificacao .defesa-botao{width:100%;justify-self:stretch}
 }
-

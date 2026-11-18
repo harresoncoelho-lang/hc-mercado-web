@@ -272,3 +272,40 @@ test('banco sem as colunas novas: listagem cai no select antigo e ações novas 
  }
  assert.equal(f.state.posts.length,0);
 });
+test('lerPremissas devolve as premissas do processo por GET próprio; sem permissão é 403 e banco antigo 503',async t=>{
+ const f=fixture(t);Object.assign(f.state.processo,{tributos_percentual:'8.500',garantia_percentual:'0',margem_percentual:'22',margem_minima_percentual:'8',frete:'150.00'});
+ const r=await f.run({acao:'lerPremissas'});
+ assert.equal(r.statusCode,200);assert.deepEqual(r.json.premissas,{tributos:'8.500',garantia:'0',margem:'22',margemMinima:'8',frete:'150.00'});
+ assert.equal(patches(f).length,0);
+ const get=f.calls.map(([u])=>u).filter(u=>/margem_minima_percentual/.test(u));
+ assert.equal(get.length,1);assert.match(get[0],new RegExp(`id=eq\\.${ids.processo}&empresa_id=eq\\.${ids.empresa}&organizacao_id=eq\\.${ids.org}&`));
+ // O select do carregarEscopo (que entra no hash) não ganhou as colunas de premissa.
+ assert.ok(f.calls.some(([u])=>u.endsWith('select=id,empresa_id,organizacao_id,numero,orgao,documentos_exigidos,atualizado_em')));
+ f.state.membro.papel='leitura';const negado=await f.run({acao:'lerPremissas'});
+ assert.equal(negado.statusCode,403);assert.equal(negado.json.premissas,undefined);
+ f.state.membro=null;assert.equal((await f.run({acao:'lerPremissas'})).statusCode,403);
+ const antigo=fixture(t,{semColunas:true});const r503=await antigo.run({acao:'lerPremissas'});
+ assert.equal(r503.statusCode,503);assert.match(r503.json.erro,/ainda não estão disponíveis/);
+});
+test('listagem marca origemPncp por item pelo embed, sem mudar o select do kit',async t=>{
+ const f=fixture(t,{origens:[ids.item]});f.state.itens.push({...f.state.itens[0],id:outro,identificador:'2'});
+ for(const acao of ['listarItens','consultar']){
+  const r=await f.run({acao,itensPaginados:true});assert.equal(r.statusCode,200);
+  assert.deepEqual(r.json.itens.map(i=>[i.id,i.origemPncp]),[[ids.item,true],[outro,false]]);
+ }
+ const lista=f.calls.map(([u])=>u).filter(u=>u.includes('/operacao_itens_resultado?')&&u.includes('order=id.asc&limit='));
+ assert.ok(lista.length&&lista.every(u=>u.includes('operacao_origens_pncp(item_id)')));
+ const antigo=fixture(t,{semColunas:true,origens:[ids.item]});
+ const r=await antigo.run({acao:'listarItens'});assert.equal(r.json.precoDisponivel,false);assert.equal(r.json.itens[0].origemPncp,false);
+});
+test('regressão: hash do kit igual antes e depois de lerPremissas, listagem com origem e preços; select fixo intacto',async t=>{
+ const {selectLista}=require('../_kit_proposta_itens');
+ assert.equal(selectLista.split(',').slice(0,11).join(','),'id,organizacao_id,processo_id,tipo,identificador,descricao,quantidade:quantidade::text,valor_unitario_proposta:valor_unitario_proposta::text,marca,modelo,atualizado_em');
+ const f=fixture(t,{origens:[ids.item]});const antes=(await f.run({})).json.revisaoHash;assert.match(antes,/^[a-f0-9]{64}$/);
+ await f.run({acao:'lerPremissas'});await f.run({acao:'listarItens'});
+ await f.run({acao:'salvarPremissas',tributos:'8.5',garantia:null,margem:'22',margemMinima:'8',frete:'10.00'});
+ await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:'0.50',valorUnitarioMinimo:'1.00'});
+ assert.equal((await f.run({})).json.revisaoHash,antes);
+ const doHash=f.calls.map(([u])=>u).filter(u=>u.includes('/operacao_itens_resultado?')&&u.includes('id=in.('));
+ assert.ok(doHash.length);for(const u of doHash){const sel=new URL(u).searchParams.get('select');assert.equal(sel,'id,organizacao_id,processo_id,tipo,identificador,descricao,quantidade:quantidade::text,valor_unitario_proposta:valor_unitario_proposta::text,marca,modelo,atualizado_em');}
+});

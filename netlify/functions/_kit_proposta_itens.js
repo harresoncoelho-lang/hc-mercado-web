@@ -5,12 +5,17 @@ const select='id,organizacao_id,processo_id,tipo,identificador,descricao,quantid
 // Regra 1 da espec.: o select acima entra no revisaoHash e não muda. Colunas novas só na listagem.
 const selectLista=select+',unidade,fabricante,custo_unitario:custo_unitario::text,valor_unitario_minimo:valor_unitario_minimo::text,codigo_catalogo,preco_referencia:preco_referencia::text,preco_referencia_em';
 function base(org,proc,campos=select){if(!uuid(org)||!uuid(proc))falhar('Escopo inválido.',400);return `operacao_itens_resultado?processo_id=eq.${proc}&organizacao_id=eq.${org}&select=${campos}`;}
-// Banco sem operacao_itens_proposta.sql: PostgREST responde coluna inexistente (42703 / PGRST204).
-async function colunaInexistente(r){try{return ['42703','PGRST204'].includes((await r.clone().json())?.code);}catch{return false;}}
+// Banco sem operacao_itens_proposta.sql: PostgREST responde coluna inexistente (42703 / PGRST204);
+// sem operacao_origens_pncp (01-aplicar.sql), o embed responde relação inexistente (PGRST200).
+async function colunaInexistente(r){try{return ['42703','PGRST204','PGRST200'].includes((await r.clone().json())?.code);}catch{return false;}}
 function conferir(rows,org,proc){if(!Array.isArray(rows)||rows.some(i=>!uuid(i.id)||i.organizacao_id!==org||i.processo_id!==proc)||new Set(rows.map(i=>i.id)).size!==rows.length)falhar('Item indisponível.',404);}
 // request devolve a Response crua (sem lançar em !ok) para detectar o banco antigo.
+// Listagem: colunas novas + origem PNCP embutida (a prévia da planilha precisa saber quais itens são protegidos).
+const selectListaOrigem=selectLista+',operacao_origens_pncp(item_id)';
+// Item com origem PNCP: o embed vem como lista (1:N) ou objeto/null (1:1), conforme a FK.
+const origemPncp=l=>Array.isArray(l.operacao_origens_pncp)?l.operacao_origens_pncp.length>0:Boolean(l.operacao_origens_pncp);
 async function paginaComFallback(pagina){
- let r=await pagina(selectLista),precoDisponivel=true;
+ let r=await pagina(selectListaOrigem),precoDisponivel=true;
  if(!r.ok&&await colunaInexistente(r)){precoDisponivel=false;r=await pagina(select);}
  if(!r.ok)falhar('Serviço de documentos indisponível.',r.status===403?403:503);
  return {r,precoDisponivel};
@@ -41,4 +46,4 @@ async function verificarOrigemSelecionada({request,organizacaoId,processoId,item
  if(rows.some(r=>r.estado==='fonte_alterada'))falhar('Fonte PNCP alterada. Confira a divergência antes de preparar ou exportar.',422);
  }
 }
-module.exports={selectLista,colunaInexistente,listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada};
+module.exports={selectLista,origemPncp,colunaInexistente,listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada};
