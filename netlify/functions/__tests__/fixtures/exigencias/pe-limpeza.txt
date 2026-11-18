@@ -1,0 +1,33 @@
+--- Edital PE 12-2026 (#1) ---
+[Página 1]
+PREGÃO ELETRÔNICO Nº 12/2026
+1. DO OBJETO
+1.1. Contratação de empresa para prestação de serviços contínuos de limpeza e conservação predial.
+[Página 2]
+8. DA HABILITAÇÃO
+8.1. Habilitação jurídica: ato constitutivo, estatuto ou contrato social em vigor, devidamente registrado na Junta Comercial.
+8.2. Prova de inscrição no CNPJ; certidão conjunta de débitos relativos a tributos federais e à dívida ativa da União; certificado de regularidade do FGTS; certidão negativa de débitos trabalhistas (CNDT); prova de regularidade com a Fazenda Estadual e Municipal do domicílio do licitante.
+8.3. Qualificação econômico-financeira: balanço patrimonial do último exercício social, com índices de Liquidez Geral (LG), Solvência Geral (SG) e Liquidez Corrente (LC) iguais ou superiores a 1 (um); certidão negativa de falência.
+8.4. Qualificação técnica: atestado de capacidade técnica que comprove a execução de serviços compatíveis, em quantitativo mínimo de 50% (cinquenta por cento) do objeto.
+[Página 3]
+9. DAS DECLARAÇÕES
+9.1. O licitante deverá apresentar declaração de que não emprega menor de dezoito anos em trabalho noturno, perigoso ou insalubre, nos termos do art. 7º, XXXIII, da Constituição.
+9.2. O licitante deverá apresentar declaração de que cumpre plenamente os requisitos de habilitação.
+9.3. O licitante deverá apresentar declaração de cumprimento da reserva de cargos para pessoa com deficiência e para reabilitado da Previdência Social.
+
+--- Termo de Referencia (#2) ---
+[Página 13]
+4. DA EXECUÇÃO DOS SERVIÇOS
+4.1. Os serviços serão executados nas dependências do órgão, de segunda a sexta-feira.
+[Página 14]
+5. DAS CONDIÇÕES DE PARTICIPAÇÃO
+5.3. A licitante deverá apresentar, junto com a proposta, declaração de que possui sede ou filial na cidade de Manaus, ou de que a instalará em até 30 (trinta) dias da assinatura do contrato, sob pena de desclassificação.
+6. DA VISTORIA
+6.1. A vistoria técnica ao local da prestação dos serviços é obrigatória e deverá ser agendada com até 2 (dois) dias úteis de antecedência da sessão, sob pena de inabilitação.
+
+--- Minuta de Contrato (#3) ---
+[Página 1]
+MINUTA DE CONTRATO
+CLÁUSULA OITAVA – DAS AMOSTRAS
+8.1. A CONTRATADA deverá apresentar amostra dos produtos saneantes no prazo de 3 (três) dias úteis contados da convocação, sob pena de rescisão.
+8.2. A entrega dos materiais de limpeza ocorrerá em até 2 (dois) dias corridos após a emissão da ordem de fornecimento.
