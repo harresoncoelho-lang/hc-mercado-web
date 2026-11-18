@@ -28,6 +28,8 @@ function montarPublico() {
   const copiados = arquivosDaRaiz();
   for (const nome of copiados) fs.copyFileSync(path.join(RAIZ, nome), path.join(DESTINO, nome));
   fs.cpSync(path.join(RAIZ, "data"), path.join(DESTINO, "data"), { recursive: true });
+  // Histórico do boletim tem e-mails de destinatários; o robô usa o blob no Supabase, não o site.
+  fs.rmSync(path.join(DESTINO, "data", "editais_vistos.json"), { force: true });
   return copiados;
 }
 
