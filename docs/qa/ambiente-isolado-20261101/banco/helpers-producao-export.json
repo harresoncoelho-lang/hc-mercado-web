@@ -1,0 +1,194 @@
+[
+  {
+    "evidencia_auth_dependencias": {
+      "catalogo": {
+        "funcoes": [
+          {
+            "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+            "dono": "postgres",
+            "nome": "admin_tem_permissao",
+            "strict": false,
+            "esquema": "public",
+            "retorno": "boolean",
+            "parallel": "u",
+            "definicao": "CREATE OR REPLACE FUNCTION public.admin_tem_permissao(permissao text)\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select exists (\n    select 1 from public.admins a\n    where a.email = (auth.jwt() ->> 'email')\n      and (a.role = 'owner' or a.permissoes ? 'all' or a.permissoes ? permissao)\n  );\n$function$\n",
+            "linguagem": "sql",
+            "argumentos": "permissao text",
+            "solicitada": "public.admin_tem_permissao(text)",
+            "volatilidade": "s",
+            "hash_corpo_md5": "6d9e404c46ad1324e53d9e6d96994a49",
+            "security_definer": true,
+            "hash_definicao_md5": "3a2dcc6cdb9d4e0fcbca604af9f404eb",
+            "configuracao_funcao": [
+              "search_path=public"
+            ]
+          },
+          {
+            "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+            "dono": "postgres",
+            "nome": "criar_cliente_no_cadastro",
+            "strict": false,
+            "esquema": "public",
+            "retorno": "trigger",
+            "parallel": "u",
+            "definicao": "CREATE OR REPLACE FUNCTION public.criar_cliente_no_cadastro()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\ndeclare\n  aprovacao_automatica boolean;\nbegin\n  select coalesce((dado->>'aprovacao_automatica')::boolean, false)\n    into aprovacao_automatica\n    from public.dados_robo\n    where chave = 'config_admin';\n\n  insert into public.clientes (\n    id, nome, empresa, cnpj, telefone, email, segmento, cargo, porte_empresa,\n    aceite_termos, aceite_termos_em,\n    atividades, estados_interesse, como_conheceu, quantidade_funcionarios,\n    licitacoes_por_mes, faturamento_anual, como_pretende_usar,\n    status, aprovado_em, aprovado_por\n  ) values (\n    new.id,\n    coalesce(new.raw_user_meta_data->>'nome', ''),\n    new.raw_user_meta_data->>'empresa',\n    new.raw_user_meta_data->>'cnpj',\n    new.raw_user_meta_data->>'telefone',\n    new.email,\n    coalesce(new.raw_user_meta_data->'segmento', '[]'::jsonb),\n    new.raw_user_meta_data->>'cargo',\n    new.raw_user_meta_data->>'porte_empresa',\n    coalesce((new.raw_user_meta_data->>'aceite_termos')::boolean, false),\n    case when (new.raw_user_meta_data->>'aceite_termos') = 'true' then now() else null end,\n    new.raw_user_meta_data->>'atividades',\n    coalesce(new.raw_user_meta_data->'estados_interesse', '[]'::jsonb),\n    new.raw_user_meta_data->>'como_conheceu',\n    new.raw_user_meta_data->>'quantidade_funcionarios',\n    new.raw_user_meta_data->>'licitacoes_por_mes',\n    new.raw_user_meta_data->>'faturamento_anual',\n    new.raw_user_meta_data->>'como_pretende_usar',\n    case when aprovacao_automatica then 'aprovado' else 'pendente' end,\n    case when aprovacao_automatica then now() else null end,\n    case when aprovacao_automatica then 'automatico' else null end\n  );\n  return new;\nend;\n$function$\n",
+            "linguagem": "plpgsql",
+            "argumentos": "",
+            "solicitada": "public.criar_cliente_no_cadastro()",
+            "volatilidade": "v",
+            "hash_corpo_md5": "32a21d12de6a3a909de316bb2c2f04a8",
+            "security_definer": true,
+            "hash_definicao_md5": "1cfb4b1a1984044079dc8d8ad93c0160",
+            "configuracao_funcao": [
+              "search_path=public"
+            ]
+          }
+        ],
+        "limites": [
+          "Sem registros de negócio ou chamadas às funções inventariadas.",
+          "Corpos PL/pgSQL e SQL em string podem conter referências não registradas em pg_depend.",
+          "Dependências são diretas; funções relacionadas aparecem somente por identidade, sem corpo.",
+          "Definições são reconstruídas por pg_get_functiondef; não são uma exportação completa do banco."
+        ],
+        "acl_funcoes": [
+          {
+            "papel": "PUBLIC",
+            "assinatura": "public.admin_tem_permissao(text)",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "assinatura": "public.admin_tem_permissao(text)",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "assinatura": "public.admin_tem_permissao(text)",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "assinatura": "public.admin_tem_permissao(text)",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "assinatura": "public.admin_tem_permissao(text)",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "PUBLIC",
+            "assinatura": "public.criar_cliente_no_cadastro()",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "assinatura": "public.criar_cliente_no_cadastro()",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "assinatura": "public.criar_cliente_no_cadastro()",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "assinatura": "public.criar_cliente_no_cadastro()",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "assinatura": "public.criar_cliente_no_cadastro()",
+            "concedente": "postgres",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          }
+        ],
+        "solicitadas": [
+          {
+            "existe": true,
+            "assinatura": "public.admin_tem_permissao(text)"
+          },
+          {
+            "existe": true,
+            "assinatura": "public.criar_cliente_no_cadastro()"
+          }
+        ],
+        "dependencias_diretas_catalogadas": [
+          {
+            "raiz": "public.admin_tem_permissao(text)",
+            "tipo": "n",
+            "objeto": "policy admin_atualiza_qualquer_registro on table clientes",
+            "direcao": "entrada",
+            "referencia": "function admin_tem_permissao(text)"
+          },
+          {
+            "raiz": "public.admin_tem_permissao(text)",
+            "tipo": "n",
+            "objeto": "policy admin_ve_logs_boletim on table logs_boletim",
+            "direcao": "entrada",
+            "referencia": "function admin_tem_permissao(text)"
+          },
+          {
+            "raiz": "public.admin_tem_permissao(text)",
+            "tipo": "n",
+            "objeto": "policy admin_ve_todos_os_registros on table clientes",
+            "direcao": "entrada",
+            "referencia": "function admin_tem_permissao(text)"
+          },
+          {
+            "raiz": "public.admin_tem_permissao(text)",
+            "tipo": "n",
+            "objeto": "function admin_tem_permissao(text)",
+            "direcao": "saida",
+            "referencia": "schema public"
+          },
+          {
+            "raiz": "public.criar_cliente_no_cadastro()",
+            "tipo": "n",
+            "objeto": "trigger on_auth_user_created on table auth.users",
+            "direcao": "entrada",
+            "referencia": "function criar_cliente_no_cadastro()"
+          },
+          {
+            "raiz": "public.criar_cliente_no_cadastro()",
+            "tipo": "n",
+            "objeto": "function criar_cliente_no_cadastro()",
+            "direcao": "saida",
+            "referencia": "language plpgsql"
+          },
+          {
+            "raiz": "public.criar_cliente_no_cadastro()",
+            "tipo": "n",
+            "objeto": "function criar_cliente_no_cadastro()",
+            "direcao": "saida",
+            "referencia": "schema public"
+          }
+        ]
+      },
+      "read_only": "on",
+      "server_version": "17.6",
+      "versao_consulta": 1,
+      "observado_em_utc": "2026-11-01T18:11:39Z",
+      "hash_catalogo_md5": "78df1c76c30c2c45fb7abcdb67171b4e"
+    }
+  }
+]

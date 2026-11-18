@@ -1,0 +1,8 @@
+{
+  "executado": false,
+  "arquivo": "ATO-ESCALA-02-DIAGNOSTICO-ROLLBACK.sql",
+  "sha256": "c6a59e89c63b5fc19451704696019708c720ef7f762f47fb75df8dc1e2b4cc63",
+  "candidatoMd5": "734dd791818e141c7b62dd6ca7c62a9d",
+  "candidatoBytes": 7071,
+  "corpoEsperado": "a1c37914704cdb3dce5fb6dc056e9896"
+}

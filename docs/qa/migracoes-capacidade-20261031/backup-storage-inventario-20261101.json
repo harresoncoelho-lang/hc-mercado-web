@@ -1,0 +1,39 @@
+{
+  "capturedUtc": "2026-11-01T17:45:59.080245+00:00",
+  "selectedFieldsStable": true,
+  "oneToOneMapping": true,
+  "localHashesOnly": true,
+  "sourceCryptographicEqualityProven": false,
+  "sameMachine": true,
+  "offsite": false,
+  "restoreExecuted": false,
+  "productionDatabaseDownloaded": false,
+  "fullStorageMetadataCompared": false,
+  "transactionalSnapshotProven": false,
+  "verifierSelfChecks": 22,
+  "scope": "Local copies and existing private metadata exports only; no remote access.",
+  "beforeObjectCount": 2,
+  "afterObjectCount": 2,
+  "localCopyCount": 2,
+  "matchedIdentityCount": 2,
+  "stableExportedMetadataCount": 2,
+  "sizeMatchedCount": 2,
+  "sha256CalculatedCount": 2,
+  "bytesPerCopy": [
+    80003,
+    7596002
+  ],
+  "totalBytes": 7676005,
+  "missingCopies": 0,
+  "mismatchedCopies": 0,
+  "sourceEtagUsedAsCryptographicHash": false,
+  "contentRenderedOrDecoded": false,
+  "coverage": "Exactly the two rows in both supplied exports; no independent fresh enumeration.",
+  "limitations": [
+    "Source SHA-256 unavailable; local hashes establish a baseline only.",
+    "ETag, version and selected timestamps stable between supplied captures.",
+    "Full metadata JSON and source bytes were not read by this verifier.",
+    "Same-machine copy; no offsite storage, restoration or RPO/RTO proof.",
+    "No production database dump downloaded or restored."
+  ]
+}

@@ -1,0 +1,12 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #172033; background: #f6f8fc; }
+body { width: 340px; margin: 0; padding: 16px; }
+h1 { font-size: 20px; margin: 0 0 12px; }
+p { font-size: 13px; line-height: 1.5; }
+fieldset { border: 1px solid #7a879b; border-radius: 6px; }
+legend, label { font-size: 13px; }
+label { display: block; margin-top: 10px; }
+input { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid #7a879b; border-radius: 4px; font: inherit; }
+button { margin-top: 14px; padding: 10px; width: 100%; border: 0; border-radius: 6px; background: #2255e0; color: #fff; font: inherit; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+:focus-visible { outline: 3px solid #071b70; outline-offset: 2px; }
+#result { font-weight: 600; overflow-wrap: anywhere; white-space: pre-line; }

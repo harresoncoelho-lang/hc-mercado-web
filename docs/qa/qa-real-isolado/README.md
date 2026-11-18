@@ -1,0 +1,78 @@
+# Harness QA isolado — percurso real ainda em validação
+
+`preparar(config)` deriva cópias dos handlers atuais e dependências locais em `.sandbox/qa-*`. Não altera originais. Substitui seis declarações em quatro cópias, exige destino fixo `https://luguscapasskcsficckf.supabase.co` para Auth/REST/Storage, gera hashes de origem e derivação. A chave pública fornecida deve pertencer ao QA; formato não prova procedência. Nenhuma credencial real foi lida nesta entrega.
+
+`criarServidor({copia, serviceKey, fetchImpl, emailsPermitidos, contextos})` cria um servidor não iniciado. Exige allowlist exata de e-mails de fixtures `@example.invalid` ou `@qa.invalid` e pares empresa/processo explícitos; todos continuam sujeitos à sessão/RLS reais dos handlers. O coordenador deve revisar antes de fornecer transporte real e iniciar com `listen(0,'127.0.0.1')`. O launcher descrito abaixo recebe configuração privada explícita; não faz chamadas remotas antes da interação de login. Testes usam transporte fictício e servidores efêmeros, fechados ao terminar.
+
+`IDENTIFICACAO_EMPRESA_LOCAL=1` é o feature gate intencional do módulo QA. Não desativa autenticação: a cópia de `_auth` continua verificando a sessão no Auth QA e os handlers consultam vínculos/RLS. A chave pública admite somente formato publishable ou JWT com papel anon; chave secret/service_role é recusada. Isso não comprova assinatura nem procedência da chave, que ainda precisa ser verificada pelo coordenador. Transporte tem timeout padrão de 15 segundos para cabeçalhos e corpo e máximo de 8 MiB por resposta, além dos limites menores dos leitores de PDF/kit.
+
+A raiz reaproveita a página QA existente e a UI canônica do kit, acrescentando apenas entrada técnica de login QA. Não é novo Design System nem login comercial. `/qa/login` usa somente password grant no QA; não cria usuário, não solicita recuperação e não envia SMTP. Token fica na memória do servidor, cookie aleatório HttpOnly/SameSite=Strict; o navegador recebe apenas marcador não credencial. Expira em no máximo uma hora e não renova. Sessão precisa login novamente. Dez tentativas de login por processo limitam uso do harness; não é política comercial.
+
+A identificação reutiliza integralmente `EmpresaIdentificacaoUI` e `OperacaoIdentificacao`, com CSS existente e `obterSessao` do mesmo cookie QA. Trocar empresa ou fechar seção invalida o contexto anterior e limpa a identificação; não há Supabase SDK fictício nem import de `supabase-config.js`. UI envia upload/consulta/extração/confirmação ao handler derivado já permitido. Dados ausentes continuam pendentes, sem seed de confirmação. A confirmação cadastral não confirma a peça: voltar ao kit exige atualizar seus dados/preparar nova prévia. Os testes de rota não equivalem a inspeção visual ou upload real.
+
+Servidor permite somente dois handlers, Host exato loopback, Origin exato em POST, CSP e arquivos estáticos permitidos. Fonte dos módulos é conferida por hash; loader executa cópias com fetch injetado e ambiente mínimo, sem sobrescrever fetch/process globais. Transporte limita origem, métodos, tabelas/RPCs e bucket de documentos, força redirect:error e recusa respostas redirecionadas. Erros externos são genéricos, console dos handlers suprimido, service key nunca serializada ao cliente. Dependências npm instaladas e módulos Node permitidos são código confiável; VM não é sandbox contra dependência hostil.
+
+Pré-requisitos antes de uso real: procedência das chaves QA, contas fixtures previamente criadas/aprovadas, perfis/papéis/empresas/processos e arquivos privados, schema/grants/RLS/RPC de escala testados, gate de identificação ativo, baseline/diário/limpeza exclusivos e orçamento autorizado. O mesmo harness agora monta a UI existente de identificação junto ao kit; não serve o dashboard inteiro. Troca de bytes do PDF exige reconfirmar identificação, não apenas restaurar o arquivo. Nada aqui comprova migração SQL, Auth real, Storage real, entrega de DOCX via UI, desempenho Cloudflare ou prontidão comercial.
+
+Comando de verificação offline: `node --test docs/qa/qa-real-isolado/isolamento.test.cjs docs/qa/qa-real-isolado/servidor.test.cjs`.
+
+## Checklist de entrada no percurso real — atualização após ensaios rollback
+
+| Estado | Evidência / consequência |
+|---|---|
+| Executado pela coordenação | `resultado-escala-qa.txt`: QA_ESCALA_GATES_E_ROLLBACK_OK, definição restaurada MD5 `64c94369bded0ca5721959406a8d5434`. `apos-rollback-escala-qa.txt` é conferência posterior daquela execução, anterior à criação das contas. Não usar seu campo usuários=0 como estado atual. |
+| Executado pela coordenação | `resultado-pncp-qa-74208.txt`: QA_PNCP_GATES_E_ROLLBACK_OK, 56 tabelas/1 sequência restauradas e relações/funções PNCP ausentes. Não instalou PNCP nem promoveu a RPC do kit. |
+| Confirmado por leitura da coordenação | A/B existem e e-mails estão confirmados; a aprovação foi executada depois, conforme linha seguinte. UIDs estão em `APROVACAO-QA.md`. Isso ainda não comprova password grant/login. |
+| Executado pela coordenação | Aprovação restrita SHA76f88: `aprovacao-qa-baseline-real.txt` registra APROVACAO_QA_DOIS_CLIENTES_OK; `apos-aprovacao-qa-real.txt` confirma dois clientes aprovados, campos aprovado_em/aprovado_por nulos preservados. Seed executado depois, conforme linha seguinte; reversão continua condicionada à baseline. |
+| Executado pela coordenação | `seed-qa-baseline-real.txt` e `seed-qa-conferencia-real.txt`: A=51, B=200, identificações=0. Nenhum perfil foi confirmado por SQL. |
+| Preparado/testado com doubles | Derivação de handlers, servidor loopback, login e transporte restritos, UI canônica do kit. Nenhuma conexão real por este harness foi comprovada. |
+| Ainda falta | Configuração QA de procedência verificada, sessão real, arquivo privado/proveniência, validação visual da identificação agora ligada ao harness, percurso integral e limpeza comprovada. |
+
+Ordem mínima de execução, sem novo harness:
+
+1. **Congelar rodada e configuração.** Confirmar projeto QA na URL; guardar hashes de código/SQL e inventário atual. Obter chave publishable/anon e service key do mesmo projeto por canal local seguro, sem chat/log/browser; serviço lê somente a chave QA. Formato aceito não comprova procedência. Não fornecer transportes reais antes dessa conferência. Não usar chave ou helper de produção por conveniência.
+2. **Já executado: liberar apenas as duas contas de teste.** Não repetir. Revisar e executar o ato separado `APROVAR-CLIENTES-QA.sql`, guardar sua `baselineReversao`. Confirmar ausência de org/membro e os dois status aprovados. Auth/senha permanecem intactos. A aprovação não ativa plano comercial.
+3. **Já executado: criar fixtures identificadas.** Não repetir. Revisar/executar `FIXTURES-AUTH-UI.sql`, salvar baseline e IDs de saída. Verificar 51 itens A, 200 B e identificação ainda pendente. Não preencher SQL de perfil confirmado. Estes dados permanecem até a limpeza; não são ensaio rollback.
+4. **Preparações concluídas, percurso real pendente.** A coordenação aplicou a RPC de escala somente no QA via ATO-ESCALA-03; evidências `ATO-ESCALA-03-resultado-real.txt` e `ATO-ESCALA-03-pos-commit.txt`. Não repetir a instalação. A UI de identificação já reutiliza a sessão deste harness, com testes locais de rotas/handler. Os PDFs A/B exatos estão em `pdfs-identificacao/manifesto.json`, extração canônica em `validacao-canonica.json` e renderização revisada. Falta login e upload reais; preparação não comprova o percurso.
+5. **Login e Storage reais pelo navegador interno.** O usuário entra com credencial QA sem enviá-la no chat. Registrar apenas status e UUID; validar A→B negado e B→A negado. Anexar PDF fictício, registrar bucket/caminho/UUID/hash, revisar extração e confirmar identificação pelo endpoint autenticado. A configuração do gate e RLS precisa funcionar de verdade. Falta de arquivo mantém pendência; nunca simular cadastro aprovado para destravar.
+6. **Kit ponta a ponta.** Selecionar páginas → salvar → reabrir → preparar prévia integral → revisar → confirmar → DOCX. Conferir 51/200, valores e primeiro/último item; modificar dado/fonte e comprovar bloqueio da revisão antiga. Restaurar PDF não remove invalidação: reconfirmar explicitamente. Registrar artefatos sem tokens, senhas ou conteúdo de cliente real.
+7. **Limpeza depois da evidência.** Parar novos testes, fechar sessão do harness; inventariar IDs de peças/documentos/objetos imediatamente registrados no diário. Remover Storage somente pelos caminhos autorizados, verificar ausência, depois limpar metadados/fixtures com allowlist e checagem de dependentes. Não executar o recuperador histórico de outra rodada. Reverter aprovação apenas após ausência de org/membro, usando baseline real e estado esperado. Preservar Auth users, demais clientes e qualquer dado preexistente; comparar hashes fora da allowlist e definição/grants de RPC conforme decisão separada.
+
+Nesta entrega local houve 7 testes Node de isolamento/servidor, com transporte fictício e loopback efêmero. Nenhum SQL, rede externa, credencial real ou servidor persistente foi usado. Ainda falta validação visual/real; não repetir testes isolados para substituir esse percurso.
+
+
+Inventário de PDFs: `PDFS-EXISTENTES-PARA-EXECUCAO.md`. Os seis anteriores não correspondem integralmente; foram preparados os dois PDFs exatos A/B em `pdfs-identificacao/`, com marca fictícia, hashes, extração e renderização verificadas. Nenhum upload feito nesta preparação.
+
+## Launcher privado do harness existente
+
+`launcher.cjs --config <caminho-absoluto.json> --remove-transfer` aceita somente um arquivo JSON diretamente em `C:/Users/harre/AppData/Local/LicitaPlena/qa-runtime-private`; alternativamente `--stdin` recebe o mesmo JSON (até 16 KiB). Não colocar chaves na linha de comando. O diretório privado tem ACL restritiva conferida pela coordenação; o launcher não audita ACL. Recusa symlink/hardlink e caminhos fora desse diretório. Nunca incluir esse arquivo no repositório.
+
+Schema: `authUrl`, `restUrl`, `storageUrl` iguais a `https://luguscapasskcsficckf.supabase.co`; `publicKey` anon JWT ou publishable QA; `serviceKey` JWT service_role QA; `emailsPermitidos` com operador-a@qa.invalid/operador-b@qa.invalid; `contextos` com os pares empresa/processo A/B registrados no seed. JWT exige ref QA, papel correto e expiração futura. Isso verifica claims, não assinatura: procedência vem da UI QA e o serviço remoto valida a chave. Não aceita chave de produção nem service key como pública.
+
+`--remove-transfer` remove o arquivo exato depois de ler, **antes** de interpretar/validar JSON; uma falha posterior exige novo handoff. Sem essa opção o arquivo permanece. Não há garantia de apagar strings da memória; credencial de serviço permanece em memória enquanto o processo atende. Não sai no browser, log ou manifesto. A saída é somente URL loopback efêmera e hashes dos módulos derivados. Login continua pelo usuário no navegador interno, nunca senha no chat. Encerrar via SIGINT/SIGTERM fecha o serviço e as sessões.
+
+Verificação local: `node --test docs/qa/qa-real-isolado/launcher.test.cjs docs/qa/qa-real-isolado/isolamento.test.cjs docs/qa/qa-real-isolado/servidor.test.cjs`. Doubles e loopback efêmeros não certificam Auth/Storage real. A coordenação iniciou a instância revisada depois destes testes, por handoff privado; esta preparação não a reinicia.
+
+Observação da coordenação no primeiro percurso: antes do login, a seleção herdada exibe nomes fictícios antigos (Papelaria Aurora/Materiais Horizonte), substituídos ao abrir o contexto. Defeito de apresentação pendente; não modificar/reiniciar o serviço ativo durante o ensaio.
+
+## Leitura IA integrada ao harness (sem provedor)
+
+`POST /api/ia-leitura` compõe `integracao-ia/private-handler.mjs` e `private-transport.mjs` com o token da sessão HttpOnly já existente. Não recebe JWT do navegador, não usa service_role e não altera `_auth.js`. A chave privilegiada usada por outros módulos do harness não é passada à composição IA. Somente `listar_empresas_autorizadas` é oferecida; evidência documental, escrita, OAuth/MCP e provedores continuam indisponíveis.
+
+O launcher aceita `iaOrganizacoes` opcional, contendo apenas os IDs das fixtures de organização `a1000000-0000-4000-8000-000000000001` e/ou `b1000000-0000-4000-8000-000000000001`, sem duplicação. Omitido ou vazio mantém essa rota indisponível sem afetar kit/identificação. A lista limita o ensaio, não concede acesso: Auth, clientes aprovados, vínculos e RLS são reconsultados pelo handler, inclusive antes da resposta. Não modificar arquivo privado nem reiniciar serviço vivo como efeito desta implementação.
+
+A interface identifica explicitamente um teste de integração de leitura; lista nomes/IDs com paginação e limpa resultados ao trocar contexto ou entrar novamente. Não representa ChatGPT/Claude conectado. O transporte preserva destino QA fixo, corpo4KiB, limites de resposta, abort e contagem exata. Carteiras acima1000 ou fonte truncada falham explicitamente. Os testes HTTP locais usam doubles de Auth/REST e não comprovam RLS remota; homologação real dessa rota é uma etapa posterior.
+
+## Atualização coordenada na mesma origem (preparação, não executada)
+
+Launcher aceita `--port 53820`; sem argumento mantém porta efêmera. Somente loopback, conflito de porta falha sem fallback. Parser valida opção antes de consumir o arquivo privado. Testes reservam uma porta efêmera própria e comprovam reabertura e conflito; não ocupam53820.
+
+Inspeção de metadados em02/11: PID32136 é o launcher iniciado com remoção de transferência e o caminho de configuração apontado por esse processo não existe mais. Não lemos seu conteúdo nem memória. Configuração em disco antiga não está disponível; é preciso novo handoff privado pela coordenação.
+
+Procedimento mínimo: (1) revisar hashes/testes e preparar novo arquivo privado QA pelo canal já aprovado, sem senha/chave no chat; (2) verificar processo/porta reais novamente; (3) coordenador encerrar somente a sessão61757/PID confirmado, aguardar porta53820 liberada; (4) executar launcher atual com `--config <arquivo-privado> --remove-transfer --port 53820`, sem outro servidor em paralelo; (5) recarregar a mesma aba81/origem e validar GETsession; (6) usuário entra uma vez após atualização, depois ensaio integrado. Se a porta estiver ocupada, diagnosticar; não trocar porta automaticamente.
+
+Mesmo host/porta preserva aba e origem, **não preserva sessão autenticada**: sessões/tokens são Map somente em memória e são apagados ao fechar. Cookie antigo não autentica o novo processo. Não existe handoff seguro de sessão implementado; não extrair memória, expor token ou persistir credenciais para evitar um novo login. Sem novo handoff de configuração, preservar processo atual e aguardar coordenação. Nenhuma atualização ocorreu por esta preparação.
+
+## Recuperação sem arquivo de transferência — 09/11
+`node docs/qa/qa-real-isolado/qa-bootstrap-formulario.cjs` oferece um formulário temporário exclusivamente em127.0.0.1, nonce/CSRF aleatórios, Host/Origin exatos e limite16KiB. Chaves QA existentes são recebidas em memória e validadas pelo launcher original; inicia somente53820 e encerra o formulário após sucesso. Não grava configuração nem altera credenciais. Expira em5min se não utilizado. Nunca enviar chaves ao chat/Claude.
+Referrer-Policy same-origin é necessário para o POST nativo manter Origin verificável. Origin nula/externa continua recusada. Onze testes offline passaram; inicialização real e tela de login observadas em09/11. Isso não comprova login, isolamento CNPJ ou persistência; aguardam sessão do usuário.

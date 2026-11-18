@@ -1,5 +1,5 @@
 -- Identificação conferida por empresa. Aplicação LOCAL; pode ser reaplicada.
--- Requer acesso_empresa_convites.sql. Não cria bucket nem altera permissões existentes.
+-- Requer acesso_empresa_convites.sql. Não cria bucket; restringe a ACL da função interna de trigger.
 begin;
 do $$ begin
  if to_regprocedure('public.pode_acessar_empresa_operacao(uuid,uuid)') is null or to_regprocedure('public.acesso_arquivo_operacao(text)') is null then raise exception 'Instale primeiro o isolamento por empresa'; end if;
@@ -29,6 +29,8 @@ begin
  update public.operacao_identificacao_empresa p set invalidado_em=now() where exists(select 1 from jsonb_array_elements(p.proveniencia) x where x->>'documentoId'=old.id::text);
  end if; return null;
 end $$;
+-- Função interna: os triggers executam sem conceder chamada direta aos papéis da aplicação.
+revoke all on function public.invalidar_identificacao_empresa() from public,anon,authenticated,service_role;
 drop trigger if exists identificacao_documento_alterado on public.operacao_documentos;
 create trigger identificacao_documento_alterado after update or delete on public.operacao_documentos for each row execute function public.invalidar_identificacao_empresa();
 drop trigger if exists identificacao_arquivo_alterado on storage.objects;

@@ -10,6 +10,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="empresa-identificacao-ui.js"></script>
+<script src="operacao-identificacao.js"></script>
+<link rel="stylesheet" href="operacao-identificacao.css">
 <script>try{if(localStorage.getItem("licitaplena_tema")==="claro")document.documentElement.classList.add("tema-claro");}catch(e){}</script>
 <style>
 header .marca{color:#fff;text-decoration:none}header .tema-icone{width:36px;height:36px;padding:0;border-radius:50%;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:17px;line-height:1}
@@ -23,7 +26,8 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   <div class="topo"><div><h1>Documentos, prazos e prontidão</h1><p>Controle privado por empresa, com certidões, responsáveis e alertas de vencimento.</p><p class="nota" id="cota-empresas">Verificando empresas disponíveis...</p></div><div class="empresa-select"><label for="empresa-atual">Empresa ativa</label><select id="empresa-atual"></select></div></div>
   <div id="aviso" class="aviso"></div>
   <section class="metricas"><div class="metrica ok"><span>Documentos válidos</span><b id="m-validos">—</b><span>com validade regular</span></div><div class="metrica alerta"><span>Vencem em até 30 dias</span><b id="m-proximos">—</b><span>alerta configurável: 30, 15, 7, 3 e 1 dia</span></div><div class="metrica vencido"><span>Documentos vencidos</span><b id="m-vencidos">—</b><span>pedem renovação</span></div><div class="metrica"><span>Prontidão da empresa</span><b id="m-prontidao">—</b><span>documentos essenciais válidos</span></div></section>
-  <div class="abas"><button class="aba ativa" data-aba="documentos">Documentos e certidões</button><button class="aba" data-aba="agenda">Agenda operacional</button><button class="aba" data-aba="relatorio">Prontidão e relatório</button></div>
+  <div class="abas"><button class="aba" data-aba="identificacao">Dados da empresa</button><button class="aba ativa" data-aba="documentos">Documentos e certidões</button><button class="aba" data-aba="agenda">Agenda operacional</button><button class="aba" data-aba="relatorio">Prontidão e relatório</button></div>
+  <section id="aba-identificacao" class="painel"><div class="card"><p>Identificação e representação da empresa ativa para preparar documentos e propostas.</p><p id="identificacao-retorno" hidden><a class="link" id="voltar-processo">Abrir processo de origem</a><br><span class="nota">Seu rascunho continua na aba original. Volte a ela para continuar a edição e atualizar a prévia.</span></p><div id="identificacao-empresa" aria-live="polite"><p>Carregando empresas autorizadas…</p></div></div></section>
   <section id="aba-documentos" class="painel ativo"><div class="card"><div class="card-topo"><div><h2>Central de documentos</h2><p>Federal, estadual, municipal, FGTS, CNDT, balanço, contrato social, licenças, registros, atestados e tipos personalizados.</p></div><button class="btn" id="btn-atualizar">Atualizar</button></div><div class="tabela-wrap"><table class="tabela"><thead><tr><th>Documento</th><th>Emissão / vencimento</th><th>Emissor / responsável</th><th>Status</th><th>Arquivo</th><th></th></tr></thead><tbody id="lista-documentos"></tbody></table></div></div></section>
   <section id="aba-agenda" class="painel"><div class="card"><div class="card-topo"><div><h2>Agenda operacional</h2><p>Compromissos em atraso e próximos prazos da empresa.</p></div><button class="btn primario" id="btn-novo-evento">+ Compromisso</button></div><div id="lista-agenda" class="lista-agenda"></div></div></section>
   <section id="aba-relatorio" class="painel"><div class="grade"><div class="card"><h2>Checklist de habilitação</h2><p class="nota">Os documentos abaixo são indicadores operacionais. O edital de cada processo continua sendo a referência final.</p><div id="checklist"></div></div><div class="card"><h2>Exportação</h2><p>Exporte o recorte atual para conferência e prestação de contas.</p><button class="btn primario" id="btn-exportar">Baixar CSV de documentos</button><p class="nota">A exportação inclui somente a empresa ativa e não torna dados públicos.</p></div><div class="card"><h2>Histórico de renovações</h2><p class="nota">Nesta primeira fase, a troca de vencimento e arquivo preserva o registro do documento. A trilha detalhada de renovação será ativada junto à edição na próxima fatia.</p></div></div></section>
@@ -40,6 +44,25 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   const estado = { orgId: null, empresas: [], empresaId: null, documentos: [], limiteCnpjs: undefined, acessoEmpresaId: null };
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  let contextoInicial = true, usuarioIdentificacao, sessaoIdentificacaoAlterada = false;
+  const identificacao = OperacaoIdentificacao.montar({ alvo: $("identificacao-empresa"), obterSessao: async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    return session ? { userId: session.user.id, accessToken: session.access_token } : null;
+  } });
+  sb.auth.onAuthStateChange((_evento, sessao) => {
+    if (usuarioIdentificacao !== undefined && sessao?.user?.id !== usuarioIdentificacao) {
+      sessaoIdentificacaoAlterada = true;
+      identificacao.limpar("Sua sessão mudou. Recarregue a página para validar seu acesso.");
+      $("identificacao-retorno").hidden = true;
+    }
+  });
+  function carregarIdentificacao() {
+    if (sessaoIdentificacaoAlterada) return;
+    identificacao.abrir(estado.empresaId, usuarioIdentificacao);
+    const retorno = OperacaoIdentificacao.retornoAoProcesso(location.search, estado.empresaId);
+    $("identificacao-retorno").hidden = !retorno;
+    if (retorno) $("voltar-processo").href = retorno;
+  }
   const hoje = () => new Date(new Date().toDateString());
   const isoData = (v) => v ? new Date(`${v}T12:00:00`).toLocaleDateString("pt-BR") : "—";
   function aviso(texto, tipo = "info") { const el = $("aviso"); el.textContent = texto; el.className = `aviso ${tipo}`; }
@@ -66,6 +89,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   async function autenticar() {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { location.replace("login.html"); return false; }
+    usuarioIdentificacao = session.user.id;
     const { data: cliente } = await sb.from("clientes").select("status").eq("id", session.user.id).maybeSingle();
     if (!cliente || cliente.status !== "aprovado") { await sb.auth.signOut(); location.replace("login.html"); return false; }
     return true;
@@ -89,10 +113,13 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
     select.innerHTML = estado.empresas.map(e => `<option value="${e.id}">${esc(e.razao_social)}${e.cnpj ? ` · ${esc(e.cnpj)}` : ""}</option>`).join("");
     atualizarCotaEmpresas();
     let preferida = ""; try { preferida = localStorage.getItem("licitaplena_empresa_operacional_id") || ""; } catch (_) {}
-    estado.empresaId = estado.empresas.some(e => e.id === estado.empresaId) ? estado.empresaId : estado.empresas.some(e => e.id === preferida) ? preferida : estado.empresas[0]?.id;
+    const empresaLink = contextoInicial ? OperacaoIdentificacao.empresaDoLink(location.search, estado.empresas) : undefined;
+    contextoInicial = false;
+    estado.empresaId = empresaLink !== undefined ? empresaLink : estado.empresas.some(e => e.id === estado.empresaId) ? estado.empresaId : estado.empresas.some(e => e.id === preferida) ? preferida : estado.empresas[0]?.id;
     select.value = estado.empresaId || ""; await carregarDados();
+    if (empresaLink === null) { identificacao.limpar("A empresa do link não está disponível no seu acesso. Selecione uma empresa autorizada."); aviso("A empresa do link não está disponível no seu acesso.", "erro"); }
   }
-  async function carregarDados() { if (!estado.empresaId) return; fecharAviso(); await Promise.all([carregarDocumentos(), carregarAgenda()]); }
+  async function carregarDados() { carregarIdentificacao(); if (!estado.empresaId) return; fecharAviso(); await Promise.all([carregarDocumentos(), carregarAgenda()]); }
   async function carregarDocumentos() {
     const { data, error } = await sb.from("operacao_documentos").select("*").eq("empresa_id", estado.empresaId).order("vencimento", { ascending: true, nullsFirst: false });
     if (error) { aviso("Não foi possível carregar os documentos: " + error.message, "erro"); return false; }
@@ -192,6 +219,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   function rotuloTema(){ const claro = document.documentElement.classList.contains("tema-claro"); btnTema.textContent = claro ? "☀" : "☾"; btnTema.title = claro ? "Mudar para tema escuro" : "Mudar para tema claro"; }
   btnTema.addEventListener("click", () => { const claro = document.documentElement.classList.toggle("tema-claro"); try { localStorage.setItem("licitaplena_tema", claro ? "claro" : "escuro"); } catch (_) {} rotuloTema(); });
   rotuloTema();
+  if (new URLSearchParams(location.search).get("aba") === "identificacao") document.querySelector('[data-aba="identificacao"]').click();
   iniciar();
 })();
 </script>

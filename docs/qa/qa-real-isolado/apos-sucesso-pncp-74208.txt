@@ -1,0 +1,2 @@
+verificacao
+{"a":"pendente","b":"pendente","usuarios":2,"origens_pncp":null}

@@ -1,0 +1,13 @@
+{
+  "executado": false,
+  "destino": "luguscapasskcsficckf",
+  "arquivo": "ATO-ESCALA-03-APLICAR-BASE64.sql",
+  "sha256": "a64a50b361d148303892ab26211e94ea9b9d4e3110f33f38e9c568e25ca831a1",
+  "originalSha256": "5bedd93dd0ac40a8e05f4351fdd4d509eb4075e42e5c6aeab99a6725687859c0",
+  "diagnosticoSha256": "9722a0f0e641e67afca23da50fef5c26e5eae68ae2b420bc7fb59d4b18eaff15",
+  "payloadMd5": "734dd791818e141c7b62dd6ca7c62a9d",
+  "payloadBytes": 7071,
+  "baselineMd5": "64c94369bded0ca5721959406a8d5434",
+  "candidatoBodyMd5": "a1c37914704cdb3dce5fb6dc056e9896",
+  "candidatoDefMd5": "30ed507d50e613bbf91a6a974082e400"
+}

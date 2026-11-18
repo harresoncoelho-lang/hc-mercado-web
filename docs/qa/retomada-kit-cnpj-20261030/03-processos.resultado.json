@@ -1,0 +1,6 @@
+{
+  "comando": "node docs/qa/verificar-kit-processos.cjs",
+  "inicioUtc": "2026-10-30T22:49:19.9530608+00:00",
+  "fimUtc": "2026-10-30T22:49:23.6234302+00:00",
+  "exitCode": 0
+}

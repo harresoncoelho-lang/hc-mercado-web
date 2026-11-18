@@ -1,0 +1,23 @@
+# Pacote SQL de escala — preparado, não executado
+
+Destino exclusivo: projeto Supabase QA `luguscapasskcsficckf`. O coordenador conferiu por leitura a assinatura da RPC, SECURITY DEFINER, owner/ACL e MD5 `64c94369bded0ca5721959406a8d5434`, com zero kits, usuários Auth e objetos Storage. O pacote exige esses valores; divergência bloqueia, sem atualizar baseline automaticamente. `current_database()='postgres'` não identifica o projeto: conferir a URL do SQL Editor antes de qualquer execução. Não executar no projeto produtivo.
+
+Arquivo único: `ENSAIO-ESCALA-ROLLBACK.sql`. Manifesto SHA-256 e hashes das três fontes normalizadas LF: `ENSAIO-ESCALA-manifesto.json`. Preparador local: `preparar-ensaio-escala.cjs`. Nenhuma senha, token ou chave é necessária no texto SQL.
+
+1. Após revisão independente, conferir projeto/URL e SHA-256, ausência de atividades concorrentes e role administrativo adequado. Não pressupor que as 21 tabelas bastam: assinatura/owner/ACL e execução dos gates também são obrigatórios.
+2. Executar o arquivo inteiro no SQL Editor QA. Não destacar somente a migração ou os testes. Há exatamente um BEGIN/ROLLBACK externo, sem COMMIT nem NOTIFY.
+3. Dentro do DO, snapshots de definição/metadados, contagens e hashes de todas as tabelas public/auth/storage e valores das sequências ficam em variáveis. Uma subtransação executa a substituição e os dois testes existentes. Somente depois de todos os gates a flag torna-se verdadeira e o SQLSTATE reservado ZQ001 força rollback da subtransação. O catch aceita apenas esse código com flag verdadeira; falhas reais propagam.
+4. Ainda no DO, comparar definição integral, owner/ACL/search_path/SECURITY DEFINER/retorno, tabelas e sequências após rollback. Só então emitir notice e linha `QA_ESCALA_GATES_E_ROLLBACK_OK`, acompanhados do MD5 restaurado. O ROLLBACK externo encerra tudo. Nenhuma RPC candidata fica instalada.
+5. Preservar saída completa e eventuais erros. Se não houver status/notice de sucesso verificável, não presumir aprovação. Sessão abortada exige ROLLBACK, diagnóstico e comparação da baseline; não repetir automaticamente.
+
+Fixtures reutilizadas usam `@qa.invalid`, compatível com a allowlist de domínio do harness, mas este ensaio não cria credencial/password grant e não comprova login HTTP. Testa 51/1000 pela RPC; fórmula de bytes cobre 51/200/1000. Inclui revisão/CAS, usuário/empresa/item estrangeiro e 1001 recusado conforme fonte original, preservada integralmente exceto wrappers transacionais. Não é homologação de RLS sob JWT, Storage de arquivos, UI, Cloudflare ou carga concorrente.
+
+MD5 é fingerprint de igualdade, não assinatura de segurança; SHA-256 identifica o artefato local. Sequências PostgreSQL não revertem nextval como linhas: o pacote compara seus valores e falha se algum efeito persistir, mas não os altera para esconder divergências. Não alegar rollback total se esse gate falhar. Não há snapshot transacional de sistemas externos nem garantia sobre efeitos externos de triggers não auditados. Fontes atuais usam UUIDs nas fixtures; a revisão deve conferir triggers existentes antes da execução.
+
+Validação realizada nesta entrega é estática: `node --test docs/qa/qa-real-isolado/ensaio-escala.test.cjs`. Não foi executado SQL, rede, migração ou restauração.
+
+Correção após revisão: o negativo de 1001 itens reconstruía IDs, mas herdava unidades do item estrangeiro. A fonte agora reconstrói unidades a partir dos 1001 IDs, verifica quantidade/identidades únicas e exige a mensagem específica do gate de excesso, propagando outros PT400. O SHA anterior `d691f203fc35146d7774257b53d6e16e3edda9cf0d05bfaa21235143f674eb6c` está superado, não foi executado. Usar exclusivamente o hash atual do manifesto. Sem o teto, os demais campos desta fixture são válidos por inspeção; não foi executado mutante SQL sem teto, portanto não alegar essa prova dinâmica.
+
+## Execução real confirmada pela coordenação
+Pacote SHA256 b1282db185ba6fa20b2c8ce3e40e8d6e0b31b031757d382e1527ac3fe0413f1f executado via SQL Editor exclusivamente em luguscapasskcsficckf. Texto integral conferido por seleção/cópia antes de Run selected. Resultado: QA_ESCALA_GATES_E_ROLLBACK_OK e MD5 restaurado 64c94369bded0ca5721959406a8d5434. Consulta independente posterior confirmou MD5 idêntico e kits=0, auth.users=0, storage.objects=0. Evidências: resultado-escala-qa.txt/png e apos-rollback-escala-qa.txt. Triggers observados e definições preservados em JSON; nenhum envio externo identificado nos caminhos exercitados. A RPC candidata NÃO ficou instalada. Este resultado supera somente a indicação de não execução deste pacote; não comprova login HTTP, Storage de arquivos, UI completa ou capacidade concorrente.
+

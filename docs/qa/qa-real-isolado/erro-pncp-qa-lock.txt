@@ -1,0 +1,27 @@
+ndente obrigatória antes de execução. Confira project-ref externamente. -- SQL não identifica projeto Supabase. Nunca executar em produção. -- Não exige banco vazio. Usuários existentes são apenas contados/hashed; nenhum é atualizado. -- Uma sessão sem concorrência; lock/statement timeout finitos. Sem HTTP, SMTP, senha ou token. -- DDL/RPC/fixtures dentro de subtransação; erro real aborta. Não apagar evidências nem repetir cegamente. begin; set local statement_timeout='60s'; set local lock_timeout='5s'; set local idle_in_transaction_session_timeout='90s'; …('reservar_importacao_pncp','gravar_importacao_pncp')) as funcoes_pncp_ausentes; rollback; -- Linha SELECT de sucesso só é alcançada após todos os testes e comparação pre/post. -- Erro real não é capturado como sucesso; sequências divergentes não são reajustadas automaticamente."
+      - generic: "205"
+      - generic: 
+      - list:
+        - generic: select 'QA_PNCP_GATES_E_ROLLBACK_OK' as status,
+    - separator:
+    - tablist:
+      - tab "Results" [selected]:
+        - generic: Results
+      - tab "Chart":
+        - generic: Chart
+      - button "0 rows":
+        - paragraph:
+          - generic: 0 rows
+      - button "Export" [disabled]:
+        - generic: Export
+    - generic: "Failed to run sql query: ERROR: 42501: permission denied for table schema_migrations"
+    - generic: "CONTEXT: SQL statement \"lock table auth.schema_migrations in share row exclusive mode\""
+    - generic: PL/pgSQL function inline_code_block line 27 at EXECUTE
+    - button:
+      - button:
+    - button "Debug with Assistant":
+      - generic: Debug with Assistant
+    - button "More actions":
+- region "Notifications alt+T"
+- alert
+- alert

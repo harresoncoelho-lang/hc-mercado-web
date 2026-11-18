@@ -1,0 +1,11 @@
+OK cadastro direto respeita empresa da URL, confirma e recarrega
+OK link inválido e cadastro vazio não escolhem outra empresa
+OK falha e leitor mostram erro e permitem repetir sem habilitar gravação
+OK cadastro pendente encerra a página antes de consultar identificação
+OK A → B → A descarta resposta antiga
+OK sessão trocada sem evento invalida resposta
+OK sessão A → B → A com evento invalida resposta
+OK atalho do kit preserva rascunho e retorna ao processo autorizado
+OK retorno de outra empresa não abre dossiê e URL externa é ignorada
+OK atalho invalida revisão pronta e reconsulta conserva proposta
+OK cadastro em 375, 704 e 1280 nos temas existentes

@@ -1,0 +1,9 @@
+KitProposta/preview.html
+  v39 (baseline): 09261d0bc6950b6efe7424f6ee60aa58921bda145c26798d5ab74ef3b1ebdff9
+  final v40:      c8f44a4de6c4dbb1b94854a050d21c15a8260dd92ff379579a942ab13744cb47
+  igual? NÃO (alterado conforme a correção)
+
+PerfilDocumentos/preview.html
+  v39 (baseline): 51e465ec3cd16720c9188f68e3a4722dd535fbf3ac9db16d79dd4d245992ec77
+  final v40:      51e465ec3cd16720c9188f68e3a4722dd535fbf3ac9db16d79dd4d245992ec77
+  igual? SIM

@@ -1,0 +1,14 @@
+const assert = require('node:assert/strict');
+const { resumirPerfil, urlInspector, lerArgumentos } = require('./perf-worker.cjs');
+const profile = { startTime: 100, endTime: 6100, nodes: [{ id:1,callFrame:{functionName:'fn'} },{ id:2,callFrame:{functionName:'(idle)'} },{ id:3,callFrame:{functionName:'(garbage collector)'} }], samples:[1,2,3], timeDeltas:[1000,3000,2000] };
+const r = resumirPerfil(profile); assert.equal(r.ativoAmostradoMs,3); assert.equal(r.janelaMs,6); assert.equal(r.ociosoMs,3); assert.equal(r.gcMs,2);
+assert.equal(resumirPerfil({ ...profile, samples:[], timeDeltas:[] }).ativoAmostradoMs,null);
+assert.throws(() => resumirPerfil({ ...profile, samples:[99], timeDeltas:[1] }));
+assert.throws(() => resumirPerfil({ ...profile, timeDeltas:[1] }));
+assert.throws(() => resumirPerfil({ ...profile, timeDeltas:[1,-1,1] }));
+assert.equal(urlInspector('http://127.0.0.1:4567').href,'ws://127.0.0.1:4567/core:user:produto');
+assert.throws(() => urlInspector('https://example.com:443')); assert.throws(() => urlInspector('http://localhost'));
+assert.deepEqual(lerArgumentos(['perfil-01']), { execucao: 'perfil-01', inspecionar: false });
+assert.deepEqual(lerArgumentos(['perfil-01', '--inspecionar']), { execucao: 'perfil-01', inspecionar: true });
+for (const args of [[], ['../fora'], ['--inspecionar'], ['perfil-01', '--inspeciona'], ['perfil-01', '--outra'], ['perfil-01', '--inspecionar', 'extra'], ['perfil-01', '--inspecionar', '--inspecionar']]) assert.throws(() => lerArgumentos(args));
+console.log('Self-check do perfil e CLI estrita: passou, sem Miniflare nem subprocessos.');

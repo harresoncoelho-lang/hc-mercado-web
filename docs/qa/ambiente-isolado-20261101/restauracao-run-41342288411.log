@@ -1,0 +1,180 @@
+restauracao	Set up job	﻿2026-11-01T19:33:03.6082913Z Current runner version: '2.338.2'
+restauracao	Set up job	2026-11-01T19:33:03.6144145Z ##[group]Runner Image Provisioner
+restauracao	Set up job	2026-11-01T19:33:03.6145294Z Hosted Compute Agent
+restauracao	Set up job	2026-11-01T19:33:03.6146101Z Version: 20261021.618
+restauracao	Set up job	2026-11-01T19:33:03.6146918Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+restauracao	Set up job	2026-11-01T19:33:03.6148004Z Build Date: 2026-10-21T00:45:21Z
+restauracao	Set up job	2026-11-01T19:33:03.6148932Z Worker ID: {9da5f5ed-5248-4b82-b975-c5042a3bb605}
+restauracao	Set up job	2026-11-01T19:33:03.6149840Z Region: westus3
+restauracao	Set up job	2026-11-01T19:33:03.6150481Z Cloud: Azure
+restauracao	Set up job	2026-11-01T19:33:03.6151216Z ##[endgroup]
+restauracao	Set up job	2026-11-01T19:33:03.6152926Z ##[group]Operating System
+restauracao	Set up job	2026-11-01T19:33:03.6153886Z Ubuntu
+restauracao	Set up job	2026-11-01T19:33:03.6154547Z 24.04.5
+restauracao	Set up job	2026-11-01T19:33:03.6155161Z LTS
+restauracao	Set up job	2026-11-01T19:33:03.6155879Z ##[endgroup]
+restauracao	Set up job	2026-11-01T19:33:03.6156553Z ##[group]Runner Image
+restauracao	Set up job	2026-11-01T19:33:03.6157331Z Image: ubuntu-24.04
+restauracao	Set up job	2026-11-01T19:33:03.6178429Z Version: 20261025.353.1
+restauracao	Set up job	2026-11-01T19:33:03.6179895Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+restauracao	Set up job	2026-11-01T19:33:03.6182277Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+restauracao	Set up job	2026-11-01T19:33:03.6183601Z ##[endgroup]
+restauracao	Set up job	2026-11-01T19:33:03.6185084Z ##[group]GITHUB_TOKEN Permissions
+restauracao	Set up job	2026-11-01T19:33:03.6187711Z Contents: read
+restauracao	Set up job	2026-11-01T19:33:03.6188480Z Metadata: read
+restauracao	Set up job	2026-11-01T19:33:03.6189576Z ##[endgroup]
+restauracao	Set up job	2026-11-01T19:33:03.6192007Z Secret source: Actions
+restauracao	Set up job	2026-11-01T19:33:03.6193243Z Cache mode: write
+restauracao	Set up job	2026-11-01T19:33:03.6194353Z Prepare workflow directory
+restauracao	Set up job	2026-11-01T19:33:03.6759810Z Prepare all required actions
+restauracao	Set up job	2026-11-01T19:33:03.6833842Z Getting action download info
+restauracao	Set up job	2026-11-01T19:33:04.0118376Z Download action repository 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' (SHA:11bd71901bbe5b1630ceea73d27597364c9af683)
+restauracao	Set up job	2026-11-01T19:33:04.3021595Z Download action repository 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+restauracao	Set up job	2026-11-01T19:33:04.8761677Z Complete job name: restauracao
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	﻿2026-11-01T19:33:04.9465277Z ##[group]Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9466266Z with:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9466681Z   persist-credentials: false
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9467138Z   fetch-depth: 1
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9467795Z   repository: harresoncoelho-lang/licitaplena-homologacao
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9471075Z   token: ***
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9471471Z   ssh-strict: true
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9471891Z   ssh-user: git
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9472274Z   clean: true
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9472681Z   sparse-checkout-cone-mode: true
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9473159Z   fetch-tags: false
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9473557Z   show-progress: true
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9473963Z   lfs: false
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9474342Z   submodules: false
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9474766Z   set-safe-directory: true
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9475360Z env:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9475749Z   PYTHONDONTWRITEBYTECODE: 1
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:04.9476197Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.5886033Z Syncing repository: harresoncoelho-lang/licitaplena-homologacao
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.5889893Z ##[group]Getting Git version info
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.5892186Z Working directory is '/home/runner/work/licitaplena-homologacao/licitaplena-homologacao'
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.5895612Z [command]/usr/bin/git version
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.5978851Z git version 2.56.0
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6010936Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6037019Z Temporarily overriding HOME='/home/runner/work/_temp/19923db3-8835-4252-8e61-11439bbdcc8e' before making global git config changes
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6061674Z Adding repository directory to the temporary git global config as a safe directory
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6070160Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/licitaplena-homologacao/licitaplena-homologacao
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6140224Z Deleting the contents of '/home/runner/work/licitaplena-homologacao/licitaplena-homologacao'
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6144048Z ##[group]Initializing the repository
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6157337Z [command]/usr/bin/git init /home/runner/work/licitaplena-homologacao/licitaplena-homologacao
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6353169Z hint: Using 'master' as the name for the initial branch. This default branch name
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6362105Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6365020Z hint: to use in all of your new repositories, which will suppress this warning,
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6367828Z hint: call:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6386199Z hint:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6393101Z hint: 	git config --global init.defaultBranch <name>
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6394953Z hint:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6416374Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6419754Z hint: 'development'. The just-created branch can be renamed via this command:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6422229Z hint:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6423549Z hint: 	git branch -m <name>
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6425104Z hint:
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6426968Z hint: Disable this message with "git config set advice.defaultBranchName false"
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6469776Z Initialized empty Git repository in /home/runner/work/licitaplena-homologacao/licitaplena-homologacao/.git/
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6486494Z [command]/usr/bin/git remote add origin https://github.com/harresoncoelho-lang/licitaplena-homologacao
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6491595Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6493630Z ##[group]Disabling automatic garbage collection
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.6496357Z [command]/usr/bin/git config --local gc.auto 0
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.7273088Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.7274684Z ##[group]Setting up auth
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.7276254Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.7280983Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.8248427Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.8293187Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.8513758Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.8560581Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.8562714Z ##[group]Fetching the repository
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:05.8573999Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a0a9c7e4b66ac36a564f4f9eafd97646bc6efbf1:refs/remotes/origin/main
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4455267Z From https://github.com/harresoncoelho-lang/licitaplena-homologacao
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4457563Z  * [new ref]         a0a9c7e4b66ac36a564f4f9eafd97646bc6efbf1 -> origin/main
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4459821Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4460570Z ##[group]Determining the checkout info
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4461593Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4466738Z [command]/usr/bin/git sparse-checkout disable
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4534187Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4559629Z ##[group]Checking out the ref
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4564329Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4640111Z Switched to a new branch 'main'
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4644770Z branch 'main' set up to track 'origin/main'.
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4654254Z ##[endgroup]
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4695302Z [command]/usr/bin/git log -1 --format=%H
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4741851Z a0a9c7e4b66ac36a564f4f9eafd97646bc6efbf1
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4752821Z ##[group]Removing auth
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4753852Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.4794268Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.5006904Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.5039989Z http.https://github.com/.extraheader
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.5046244Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.5087168Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+restauracao	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:06.5296179Z ##[endgroup]
+restauracao	Conferir guardas locais	﻿2026-11-01T19:33:06.5484847Z ##[group]Run python3 -B -m unittest discover -s restauracao -p test_restore.py -v
+restauracao	Conferir guardas locais	2026-11-01T19:33:06.5485478Z ^[[36;1mpython3 -B -m unittest discover -s restauracao -p test_restore.py -v^[[0m
+restauracao	Conferir guardas locais	2026-11-01T19:33:06.5506786Z shell: /usr/bin/bash -e {0}
+restauracao	Conferir guardas locais	2026-11-01T19:33:06.5507060Z env:
+restauracao	Conferir guardas locais	2026-11-01T19:33:06.5507284Z   PYTHONDONTWRITEBYTECODE: 1
+restauracao	Conferir guardas locais	2026-11-01T19:33:06.5507801Z ##[endgroup]
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0840887Z test_acl_order_does_not_hide_privilege_changes (test_restore.RestoreGuards.test_acl_order_does_not_hide_privilege_changes) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0845954Z test_baseline_and_role_preparation_preserve_real_roles (test_restore.RestoreGuards.test_baseline_and_role_preparation_preserve_real_roles) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0851212Z test_container_has_only_private_scratch_and_readonly_input (test_restore.RestoreGuards.test_container_has_only_private_scratch_and_readonly_input) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0859057Z test_diagnostic_timeout_keeps_partial_output_and_continues (test_restore.RestoreGuards.test_diagnostic_timeout_keeps_partial_output_and_continues) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0878801Z test_library_loader_requires_exit_zero_and_exact_marker (test_restore.RestoreGuards.test_library_loader_requires_exit_zero_and_exact_marker) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0898678Z test_library_probe_is_bounded_and_unknown_library_is_rejected (test_restore.RestoreGuards.test_library_probe_is_bounded_and_unknown_library_is_rejected) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0918624Z test_local_execution_rejected_before_commands (test_restore.RestoreGuards.test_local_execution_rejected_before_commands) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0939329Z test_schema_comparison_ignores_only_section_order_and_psql_guard (test_restore.RestoreGuards.test_schema_comparison_ignores_only_section_order_and_psql_guard) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0943724Z test_stopped_container_keeps_initdb_error_in_bounded_docker_log (test_restore.RestoreGuards.test_stopped_container_keeps_initdb_error_in_bounded_docker_log) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0945581Z test_timeout_preserves_partial_stdout_and_stderr (test_restore.RestoreGuards.test_timeout_preserves_partial_stdout_and_stderr) ... ok
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0946459Z 
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0946773Z ----------------------------------------------------------------------
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0947344Z Ran 10 tests in 0.005s
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0947847Z 
+restauracao	Conferir guardas locais	2026-11-01T19:33:07.0948128Z OK
+restauracao	Restaurar em banco efemero sem rede	﻿2026-11-01T19:33:07.1038406Z ##[group]Run python3 -B restauracao/restore.py
+restauracao	Restaurar em banco efemero sem rede	2026-11-01T19:33:07.1038745Z ^[[36;1mpython3 -B restauracao/restore.py^[[0m
+restauracao	Restaurar em banco efemero sem rede	2026-11-01T19:33:07.1056723Z shell: /usr/bin/bash -e {0}
+restauracao	Restaurar em banco efemero sem rede	2026-11-01T19:33:07.1056937Z env:
+restauracao	Restaurar em banco efemero sem rede	2026-11-01T19:33:07.1057118Z   PYTHONDONTWRITEBYTECODE: 1
+restauracao	Restaurar em banco efemero sem rede	2026-11-01T19:33:07.1057323Z ##[endgroup]
+restauracao	Restaurar em banco efemero sem rede	2026-11-01T19:33:40.0968824Z {"status": "failed", "details": "private evidence-restore/report.json"}
+restauracao	Restaurar em banco efemero sem rede	2026-11-01T19:33:40.1031424Z ##[error]Process completed with exit code 1.
+restauracao	Preservar evidencias privadas	﻿2026-11-01T19:33:40.1184358Z ##[group]Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1184699Z with:
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1184882Z   name: restauracao-ficticia-41342288411
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1185116Z   path: evidence-restore/
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1185312Z   retention-days: 1
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1185499Z   if-no-files-found: warn
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1185696Z   compression-level: 6
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1185886Z   overwrite: false
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1186211Z   include-hidden-files: false
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1186441Z env:
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1186615Z   PYTHONDONTWRITEBYTECODE: 1
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.1186813Z ##[endgroup]
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.2902588Z (node:2769) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.2903725Z (Use `node --trace-deprecation ...` to show where the warning was created)
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.3124522Z With the provided path, there will be 27 files uploaded
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.3145987Z Artifact name is valid!
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.3166808Z Root directory input is valid!
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.8968015Z Beginning upload of artifact content to blob storage
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:40.9765375Z (node:2769) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:41.2999018Z Uploaded bytes 91929
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:41.3632430Z Finished uploading artifact content to blob storage!
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:41.3633482Z SHA256 digest of uploaded artifact zip is 5f5a328fcc7a5afdd64373556e2532b21788cfe55a75a5a4c183e2f5f86e33ba
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:41.3634361Z Finalizing artifact upload
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:41.8256711Z Artifact restauracao-ficticia-41342288411.zip successfully finalized. Artifact ID 13098440082
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:41.8258347Z Artifact restauracao-ficticia-41342288411 has been successfully uploaded! Final size is 91929 bytes. Artifact ID is 13098440082
+restauracao	Preservar evidencias privadas	2026-11-01T19:33:41.8263924Z Artifact download URL: https://github.com/harresoncoelho-lang/licitaplena-homologacao/actions/runs/41342288411/artifacts/13098440082
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	﻿2026-11-01T19:33:41.8485518Z Post job cleanup.
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9313893Z [command]/usr/bin/git version
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9378014Z git version 2.56.0
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9423810Z Temporarily overriding HOME='/home/runner/work/_temp/d97a5d81-2185-4938-97b3-0c09665166d1' before making global git config changes
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9425041Z Adding repository directory to the temporary git global config as a safe directory
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9429741Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/licitaplena-homologacao/licitaplena-homologacao
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9505676Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9569153Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:41.9963515Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+restauracao	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T19:33:42.0019659Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+restauracao	Complete job	﻿2026-11-01T19:33:42.0475367Z Cleaning up orphan processes
+restauracao	Complete job	2026-11-01T19:33:42.0797157Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683, actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

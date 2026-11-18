@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>LicitaPlena — leitura</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <h1>Conferir contexto</h1>
+  <p>Protótipo somente leitura. Sem conexão com o SaaS, propostas ou lances.</p>
+  <fieldset><legend>Contexto esperado — informe para comparar</legend>
+    <label for="cnpj">CNPJ do fornecedor</label><input id="cnpj" autocomplete="off" maxlength="18" inputmode="numeric">
+    <label for="uasg">UASG</label><input id="uasg" autocomplete="off" maxlength="6" inputmode="numeric">
+    <label for="number">Número do pregão</label><input id="number" autocomplete="off" maxlength="5" inputmode="numeric">
+    <label for="year">Ano</label><input id="year" autocomplete="off" maxlength="4" inputmode="numeric">
+    <label for="purchaseId">Identificador compra da URL</label><input id="purchaseId" autocomplete="off" maxlength="17" inputmode="numeric">
+  </fieldset>
+  <button id="read" type="button">Ler contexto da aba atual</button>
+  <button id="adopt" type="button" hidden>Usar tentativa de leitura do LicitaPlena</button>
+  <p id="result" role="status" aria-live="polite">Nenhuma leitura realizada.</p>
+  <p>Conferência pontual, não monitoramento. Trocar de página ou contexto exige nova leitura. Nenhuma autorização de escrita é criada.</p>
+  <script type="module" src="popup.mjs"></script>
+</body></html>

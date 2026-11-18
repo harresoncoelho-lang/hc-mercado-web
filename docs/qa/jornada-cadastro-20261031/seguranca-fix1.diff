@@ -1,0 +1,40 @@
+diff --git a/C:/Users/harre/AppData/Local/LicitaPlena/jornada-cadastro-t2-fix1-baseline-20261031/verificar_kit_prepublicacao.sql b/supabase/verificar_kit_prepublicacao.sql
+index 1471875..77e0bae 100644
+--- a/C:/Users/harre/AppData/Local/LicitaPlena/jornada-cadastro-t2-fix1-baseline-20261031/verificar_kit_prepublicacao.sql
++++ b/supabase/verificar_kit_prepublicacao.sql
+@@ -10,6 +10,9 @@ declare
+  rpc oid;
+  funcao_trigger oid;
+ begin
++ if ((pg_catalog.current_schemas(true))[1] operator(pg_catalog.=) 'pg_catalog'::pg_catalog.name) is not true then
++  raise exception 'Kit pré-publicação: search_path deve resolver pg_catalog antes dos demais schemas';
++ end if;
+  select c.* into tabela from pg_catalog.pg_class c
+  join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+  where n.nspname='public' and c.relname='operacao_kit_documentos';
+@@ -29,6 +32,13 @@ begin
+   raise exception 'Kit pré-publicação: deve existir somente a policy operacao_kit_documentos_select_empresa';
+  end if;
+  select p.* into politica from pg_catalog.pg_policy p where p.polrelid=tabela.oid;
++ -- O deparser só pode omitir schemas quando os objetos públicos esperados são visíveis.
++ if pg_catalog.pg_function_is_visible(pg_catalog.to_regprocedure('public.pode_acessar_empresa_operacao(uuid,uuid)')) is not true
++ or pg_catalog.pg_table_is_visible(pg_catalog.to_regclass('public.clientes')) is not true
++ or pg_catalog.pg_table_is_visible(pg_catalog.to_regclass('public.operacao_empresas')) is not true
++ or pg_catalog.pg_table_is_visible(tabela.oid) is not true then
++  raise exception 'Kit pré-publicação: policy com resolução ambígua dos objetos públicos esperados';
++ end if;
+  -- Comparação integral: procurar nomes com LIKE aceitaria uma policy acrescida de OR true.
+  if politica.polname<>'operacao_kit_documentos_select_empresa' or politica.polcmd<>'r'
+  or not politica.polpermissive or politica.polwithcheck is not null
+diff --git a/C:/Users/harre/AppData/Local/LicitaPlena/jornada-cadastro-t2-fix1-baseline-20261031/testar-kit-persistencia-local.cjs b/docs/qa/testar-kit-persistencia-local.cjs
+index a456add..58322fa 100644
+--- a/C:/Users/harre/AppData/Local/LicitaPlena/jornada-cadastro-t2-fix1-baseline-20261031/testar-kit-persistencia-local.cjs
++++ b/docs/qa/testar-kit-persistencia-local.cjs
+@@ -95,6 +95,7 @@ async function testarPersistencia() {
+    ['policy adicional', 'create policy permissiva_extra on public.operacao_kit_documentos for select to authenticated using(true)', /policy/i],
+    ['policy conhecida permissiva', 'alter policy operacao_kit_documentos_select_empresa on public.operacao_kit_documentos using(true)', /policy/i],
+    ['policy OR true', "alter policy operacao_kit_documentos_select_empresa on public.operacao_kit_documentos using(public.pode_acessar_empresa_operacao(organizacao_id,empresa_id) or true)", /policy/i],
++   ['search_path precede pg_catalog', 'set local search_path=public,pg_catalog', /search_path/i],
+    ['policy com helper homônimo', `create schema kit_shadow;
+     create function kit_shadow.pode_acessar_empresa_operacao(uuid,uuid) returns boolean language sql as $$select true$$;
+     alter policy operacao_kit_documentos_select_empresa on public.operacao_kit_documentos using(

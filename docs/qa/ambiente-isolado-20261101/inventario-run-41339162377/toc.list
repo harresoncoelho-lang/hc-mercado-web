@@ -1,0 +1,827 @@
+;
+; Archive created at 2026-10-31 02:20:43 UTC
+;     dbname: licitaplena_qa_ui_v2
+;     TOC Entries: 817
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 17.11
+;     Dumped by pg_dump version: 17.11
+;
+;
+; Selected TOC Entries:
+;
+6; 2615 19365 SCHEMA - auth supabase_admin
+4649; 0 0 ACL - SCHEMA auth supabase_admin
+7; 2615 19366 SCHEMA - extensions postgres
+4650; 0 0 ACL - SCHEMA extensions postgres
+4651; 0 0 ACL - SCHEMA public pg_database_owner
+8; 2615 19367 SCHEMA - storage supabase_admin
+4652; 0 0 ACL - SCHEMA storage supabase_admin
+2; 3079 20264 EXTENSION - pg_trgm 
+4653; 0 0 COMMENT - EXTENSION pg_trgm 
+1016; 1247 19369 TYPE auth aal_level supabase_auth_admin
+1019; 1247 19376 TYPE auth code_challenge_method supabase_auth_admin
+1022; 1247 19382 TYPE auth factor_status supabase_auth_admin
+1025; 1247 19388 TYPE auth factor_type supabase_auth_admin
+1028; 1247 19398 TYPE auth oauth_authorization_status supabase_auth_admin
+1031; 1247 19408 TYPE auth oauth_client_type supabase_auth_admin
+1034; 1247 19414 TYPE auth oauth_registration_type supabase_auth_admin
+1037; 1247 19420 TYPE auth oauth_response_type supabase_auth_admin
+1040; 1247 19424 TYPE auth one_time_token_type supabase_auth_admin
+4654; 0 0 ACL public FUNCTION gtrgm_in(cstring) supabase_admin
+4655; 0 0 ACL public FUNCTION gtrgm_out(public.gtrgm) supabase_admin
+1043; 1247 19438 TYPE storage buckettype supabase_storage_admin
+354; 1255 19445 FUNCTION auth email() supabase_auth_admin
+4656; 0 0 COMMENT auth FUNCTION email() supabase_auth_admin
+4657; 0 0 ACL auth FUNCTION email() supabase_auth_admin
+331; 1255 19446 FUNCTION auth jwt() supabase_auth_admin
+4658; 0 0 ACL auth FUNCTION jwt() supabase_auth_admin
+379; 1255 19447 FUNCTION auth role() supabase_auth_admin
+4659; 0 0 COMMENT auth FUNCTION role() supabase_auth_admin
+4660; 0 0 ACL auth FUNCTION role() supabase_auth_admin
+357; 1255 19448 FUNCTION auth uid() supabase_auth_admin
+4661; 0 0 COMMENT auth FUNCTION uid() supabase_auth_admin
+4662; 0 0 ACL auth FUNCTION uid() supabase_auth_admin
+397; 1255 19449 FUNCTION extensions grant_pg_cron_access() supabase_admin
+4663; 0 0 COMMENT extensions FUNCTION grant_pg_cron_access() supabase_admin
+4664; 0 0 ACL extensions FUNCTION grant_pg_cron_access() supabase_admin
+368; 1255 19450 FUNCTION extensions grant_pg_graphql_access() supabase_admin
+4665; 0 0 COMMENT extensions FUNCTION grant_pg_graphql_access() supabase_admin
+4666; 0 0 ACL extensions FUNCTION grant_pg_graphql_access() supabase_admin
+390; 1255 19451 FUNCTION extensions grant_pg_net_access() supabase_admin
+4667; 0 0 COMMENT extensions FUNCTION grant_pg_net_access() supabase_admin
+4668; 0 0 ACL extensions FUNCTION grant_pg_net_access() supabase_admin
+363; 1255 19452 FUNCTION extensions pgrst_ddl_watch() supabase_admin
+4669; 0 0 ACL extensions FUNCTION pgrst_ddl_watch() supabase_admin
+304; 1255 19453 FUNCTION extensions pgrst_drop_watch() supabase_admin
+4670; 0 0 ACL extensions FUNCTION pgrst_drop_watch() supabase_admin
+380; 1255 19454 FUNCTION extensions set_graphql_placeholder() supabase_admin
+4671; 0 0 COMMENT extensions FUNCTION set_graphql_placeholder() supabase_admin
+4672; 0 0 ACL extensions FUNCTION set_graphql_placeholder() supabase_admin
+391; 1255 20826 FUNCTION public aceitar_convite_empresa_operacao(uuid) supabase_admin
+4673; 0 0 ACL public FUNCTION aceitar_convite_empresa_operacao(p_token uuid) supabase_admin
+372; 1255 20772 FUNCTION public acesso_arquivo_operacao(text) supabase_admin
+4674; 0 0 ACL public FUNCTION acesso_arquivo_operacao(p_caminho text) supabase_admin
+398; 1255 41941 FUNCTION public arquivo_no_escopo_operacao(text, uuid, uuid) supabase_admin
+4675; 0 0 ACL public FUNCTION arquivo_no_escopo_operacao(p_caminho text, p_org uuid, p_empresa uuid) supabase_admin
+339; 1255 20639 FUNCTION public bootstrap_operacao() supabase_admin
+4676; 0 0 ACL public FUNCTION bootstrap_operacao() supabase_admin
+320; 1255 20760 FUNCTION public configurar_limite_cnpjs_cliente(uuid, integer) supabase_admin
+4677; 0 0 ACL public FUNCTION configurar_limite_cnpjs_cliente(p_usuario_id uuid, p_limite integer) supabase_admin
+287; 1259 33746 TABLE public operacao_identificacao_empresa supabase_admin
+4678; 0 0 ACL public TABLE operacao_identificacao_empresa supabase_admin
+341; 1255 33773 FUNCTION public confirmar_identificacao_empresa(uuid, uuid, text, text, jsonb, jsonb) supabase_admin
+4679; 0 0 ACL public FUNCTION confirmar_identificacao_empresa(p_empresa uuid, p_usuario uuid, p_razao text, p_cnpj text, p_dados jsonb, p_proveniencia jsonb) supabase_admin
+328; 1255 20759 FUNCTION public consultar_limite_cnpjs_cliente(uuid) supabase_admin
+4680; 0 0 ACL public FUNCTION consultar_limite_cnpjs_cliente(p_usuario_id uuid) supabase_admin
+346; 1255 20231 FUNCTION public criar_cliente_no_cadastro() supabase_admin
+4681; 0 0 ACL public FUNCTION criar_cliente_no_cadastro() supabase_admin
+306; 1255 20825 FUNCTION public criar_convite_empresa_operacao(uuid, text, text) supabase_admin
+4682; 0 0 ACL public FUNCTION criar_convite_empresa_operacao(p_empresa_id uuid, p_email text, p_nome text) supabase_admin
+351; 1255 20364 FUNCTION public dashboard_estados_distintos() supabase_admin
+4683; 0 0 ACL public FUNCTION dashboard_estados_distintos() supabase_admin
+327; 1255 20365 FUNCTION public dashboard_estados_top(integer) supabase_admin
+4684; 0 0 ACL public FUNCTION dashboard_estados_top(limite integer) supabase_admin
+382; 1255 20366 FUNCTION public dashboard_segmentos_top(integer) supabase_admin
+4685; 0 0 ACL public FUNCTION dashboard_segmentos_top(limite integer) supabase_admin
+384; 1255 20638 FUNCTION public eh_membro_operacao(uuid) supabase_admin
+4686; 0 0 ACL public FUNCTION eh_membro_operacao(p_organizacao_id uuid) supabase_admin
+309; 1255 20757 FUNCTION public eh_owner_admin_operacao(uuid) supabase_admin
+4687; 0 0 ACL public FUNCTION eh_owner_admin_operacao(p_usuario_id uuid) supabase_admin
+356; 1255 41942 FUNCTION public escrita_arquivo_operacao(text) supabase_admin
+4688; 0 0 ACL public FUNCTION escrita_arquivo_operacao(p_caminho text) supabase_admin
+4689; 0 0 ACL public FUNCTION gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal) supabase_admin
+4690; 0 0 ACL public FUNCTION gin_extract_value_trgm(text, internal) supabase_admin
+4691; 0 0 ACL public FUNCTION gin_trgm_consistent(internal, smallint, text, integer, internal, internal, internal, internal) supabase_admin
+4692; 0 0 ACL public FUNCTION gin_trgm_triconsistent(internal, smallint, text, integer, internal, internal, internal) supabase_admin
+288; 1259 50131 TABLE public operacao_kit_documentos supabase_admin
+4693; 0 0 ACL public TABLE operacao_kit_documentos supabase_admin
+359; 1255 50169 FUNCTION public gravar_kit_documento(uuid, uuid, uuid, uuid, uuid, integer, text, text, jsonb, text, jsonb) supabase_admin
+4694; 0 0 ACL public FUNCTION gravar_kit_documento(p_documento uuid, p_empresa uuid, p_processo uuid, p_organizacao uuid, p_usuario uuid, p_versao integer, p_tipo text, p_acao text, p_dados jsonb, p_hash text, p_previa jsonb) supabase_admin
+4695; 0 0 ACL public FUNCTION gtrgm_compress(internal) supabase_admin
+4696; 0 0 ACL public FUNCTION gtrgm_consistent(internal, text, smallint, oid, internal) supabase_admin
+4697; 0 0 ACL public FUNCTION gtrgm_decompress(internal) supabase_admin
+4698; 0 0 ACL public FUNCTION gtrgm_distance(internal, text, smallint, oid, internal) supabase_admin
+4699; 0 0 ACL public FUNCTION gtrgm_options(internal) supabase_admin
+4700; 0 0 ACL public FUNCTION gtrgm_penalty(internal, internal, internal) supabase_admin
+4701; 0 0 ACL public FUNCTION gtrgm_picksplit(internal, internal) supabase_admin
+4702; 0 0 ACL public FUNCTION gtrgm_same(public.gtrgm, public.gtrgm, internal) supabase_admin
+4703; 0 0 ACL public FUNCTION gtrgm_union(internal, internal) supabase_admin
+322; 1255 33778 FUNCTION public identificacao_empresa_habilitada() supabase_admin
+4704; 0 0 ACL public FUNCTION identificacao_empresa_habilitada() supabase_admin
+313; 1255 20247 FUNCTION public incrementar_uso(uuid, text) supabase_admin
+4705; 0 0 ACL public FUNCTION incrementar_uso(p_usuario_id uuid, p_funcao text) supabase_admin
+334; 1255 33769 FUNCTION public invalidar_identificacao_empresa() supabase_admin
+4706; 0 0 ACL public FUNCTION invalidar_identificacao_empresa() supabase_admin
+355; 1255 50167 FUNCTION public kit_documento_escopo_imutavel() supabase_admin
+4707; 0 0 ACL public FUNCTION kit_documento_escopo_imutavel() supabase_admin
+353; 1255 20758 FUNCTION public limite_cnpjs_operacao() supabase_admin
+4708; 0 0 ACL public FUNCTION limite_cnpjs_operacao() supabase_admin
+340; 1255 20830 FUNCTION public listar_acessos_empresa_operacao() supabase_admin
+4709; 0 0 ACL public FUNCTION listar_acessos_empresa_operacao() supabase_admin
+350; 1255 20828 FUNCTION public listar_convites_empresa_operacao() supabase_admin
+4710; 0 0 ACL public FUNCTION listar_convites_empresa_operacao() supabase_admin
+335; 1255 20827 FUNCTION public listar_empresas_convite_operacao() supabase_admin
+4711; 0 0 ACL public FUNCTION listar_empresas_convite_operacao() supabase_admin
+369; 1255 20773 FUNCTION public meu_acesso_operacao() supabase_admin
+4712; 0 0 ACL public FUNCTION meu_acesso_operacao() supabase_admin
+305; 1255 20423 FUNCTION public oportunidades_para_dossies(integer, integer, date, date, integer) supabase_admin
+4713; 0 0 ACL public FUNCTION oportunidades_para_dossies(p_versao integer, p_max_tentativas integer, p_desde date, p_hoje date, p_limite integer) supabase_admin
+348; 1255 20770 FUNCTION public pode_acessar_empresa_operacao(uuid, uuid) supabase_admin
+4714; 0 0 ACL public FUNCTION pode_acessar_empresa_operacao(p_org uuid, p_empresa uuid) supabase_admin
+295; 1255 20771 FUNCTION public pode_acessar_processo_operacao(uuid, uuid) supabase_admin
+4715; 0 0 ACL public FUNCTION pode_acessar_processo_operacao(p_org uuid, p_processo uuid) supabase_admin
+301; 1255 41939 FUNCTION public pode_escrever_empresa_operacao(uuid, uuid) supabase_admin
+4716; 0 0 ACL public FUNCTION pode_escrever_empresa_operacao(p_org uuid, p_empresa uuid) supabase_admin
+371; 1255 41938 FUNCTION public pode_escrever_org_operacao(uuid) supabase_admin
+4717; 0 0 ACL public FUNCTION pode_escrever_org_operacao(p_org uuid) supabase_admin
+376; 1255 41940 FUNCTION public pode_escrever_processo_operacao(uuid, uuid) supabase_admin
+4718; 0 0 ACL public FUNCTION pode_escrever_processo_operacao(p_org uuid, p_processo uuid) supabase_admin
+293; 1255 41969 FUNCTION public preservar_escopo_operacao() supabase_admin
+4719; 0 0 ACL public FUNCTION preservar_escopo_operacao() supabase_admin
+362; 1255 20823 FUNCTION public proteger_status_cliente_operacao() supabase_admin
+4720; 0 0 ACL public FUNCTION proteger_status_cliente_operacao() supabase_admin
+345; 1255 20363 FUNCTION public resumo_inteligencia_mercado(text[], integer, text) supabase_admin
+4721; 0 0 ACL public FUNCTION resumo_inteligencia_mercado(p_termos text[], p_dias integer, p_uf text) supabase_admin
+396; 1255 20831 FUNCTION public revogar_acesso_empresa_operacao(uuid) supabase_admin
+4722; 0 0 ACL public FUNCTION revogar_acesso_empresa_operacao(p_usuario_id uuid) supabase_admin
+395; 1255 20829 FUNCTION public revogar_convite_empresa_operacao(uuid) supabase_admin
+4723; 0 0 ACL public FUNCTION revogar_convite_empresa_operacao(p_convite_id uuid) supabase_admin
+4724; 0 0 ACL public FUNCTION set_limit(real) supabase_admin
+4725; 0 0 ACL public FUNCTION show_limit() supabase_admin
+4726; 0 0 ACL public FUNCTION show_trgm(text) supabase_admin
+4727; 0 0 ACL public FUNCTION similarity(text, text) supabase_admin
+4728; 0 0 ACL public FUNCTION similarity_dist(text, text) supabase_admin
+4729; 0 0 ACL public FUNCTION similarity_op(text, text) supabase_admin
+4730; 0 0 ACL public FUNCTION strict_word_similarity(text, text) supabase_admin
+4731; 0 0 ACL public FUNCTION strict_word_similarity_commutator_op(text, text) supabase_admin
+4732; 0 0 ACL public FUNCTION strict_word_similarity_dist_commutator_op(text, text) supabase_admin
+4733; 0 0 ACL public FUNCTION strict_word_similarity_dist_op(text, text) supabase_admin
+4734; 0 0 ACL public FUNCTION strict_word_similarity_op(text, text) supabase_admin
+358; 1255 20769 FUNCTION public tem_vinculo_operacao(uuid) supabase_admin
+4735; 0 0 ACL public FUNCTION tem_vinculo_operacao(p_organizacao_id uuid) supabase_admin
+324; 1255 41972 FUNCTION public validar_arquivo_processo_operacao() supabase_admin
+4736; 0 0 ACL public FUNCTION validar_arquivo_processo_operacao() supabase_admin
+326; 1255 20761 FUNCTION public verificar_limite_cnpjs_operacao() supabase_admin
+4737; 0 0 ACL public FUNCTION verificar_limite_cnpjs_operacao() supabase_admin
+4738; 0 0 ACL public FUNCTION word_similarity(text, text) supabase_admin
+4739; 0 0 ACL public FUNCTION word_similarity_commutator_op(text, text) supabase_admin
+4740; 0 0 ACL public FUNCTION word_similarity_dist_commutator_op(text, text) supabase_admin
+4741; 0 0 ACL public FUNCTION word_similarity_dist_op(text, text) supabase_admin
+4742; 0 0 ACL public FUNCTION word_similarity_op(text, text) supabase_admin
+385; 1255 19455 FUNCTION storage allow_any_operation(text[]) supabase_storage_admin
+389; 1255 19456 FUNCTION storage allow_only_operation(text) supabase_storage_admin
+294; 1255 19457 FUNCTION storage can_insert_object(text, text, uuid, jsonb) supabase_storage_admin
+316; 1255 19458 FUNCTION storage enforce_bucket_lifecycle_service_role() supabase_storage_admin
+394; 1255 19459 FUNCTION storage enforce_bucket_name_length() supabase_storage_admin
+370; 1255 19460 FUNCTION storage extension(text) supabase_storage_admin
+377; 1255 19461 FUNCTION storage filename(text) supabase_storage_admin
+319; 1255 19462 FUNCTION storage foldername(text) supabase_storage_admin
+333; 1255 19463 FUNCTION storage get_common_prefix(text, text, text) supabase_storage_admin
+332; 1255 19464 FUNCTION storage get_size_by_bucket() supabase_storage_admin
+393; 1255 19465 FUNCTION storage list_multipart_uploads_with_delimiter(text, text, text, integer, text, text) supabase_storage_admin
+290; 1255 19466 FUNCTION storage list_objects_with_delimiter(text, text, text, integer, text, text, text) supabase_storage_admin
+381; 1255 19469 FUNCTION storage operation() supabase_storage_admin
+342; 1255 19470 FUNCTION storage protect_bucket_control_columns() supabase_storage_admin
+338; 1255 19471 FUNCTION storage protect_delete() supabase_storage_admin
+367; 1255 19472 FUNCTION storage search(text, text, integer, integer, integer, text, text, text) supabase_storage_admin
+378; 1255 19475 FUNCTION storage search_by_timestamp(text, text, integer, integer, text, text, text, text) supabase_storage_admin
+299; 1255 19476 FUNCTION storage search_v2(text, text, integer, integer, text, text, text, text) supabase_storage_admin
+312; 1255 19477 FUNCTION storage update_updated_at_column() supabase_storage_admin
+221; 1259 19478 TABLE auth audit_log_entries supabase_auth_admin
+4743; 0 0 COMMENT auth TABLE audit_log_entries supabase_auth_admin
+4744; 0 0 ACL auth TABLE audit_log_entries supabase_auth_admin
+222; 1259 19484 TABLE auth custom_oauth_providers supabase_auth_admin
+4745; 0 0 ACL auth TABLE custom_oauth_providers supabase_auth_admin
+223; 1259 19519 TABLE auth flow_state supabase_auth_admin
+4746; 0 0 COMMENT auth TABLE flow_state supabase_auth_admin
+4747; 0 0 ACL auth TABLE flow_state supabase_auth_admin
+224; 1259 19525 TABLE auth identities supabase_auth_admin
+4748; 0 0 COMMENT auth TABLE identities supabase_auth_admin
+4749; 0 0 COMMENT auth COLUMN identities.email supabase_auth_admin
+4750; 0 0 ACL auth TABLE identities supabase_auth_admin
+225; 1259 19532 TABLE auth instances supabase_auth_admin
+4751; 0 0 COMMENT auth TABLE instances supabase_auth_admin
+4752; 0 0 ACL auth TABLE instances supabase_auth_admin
+226; 1259 19537 TABLE auth mfa_amr_claims supabase_auth_admin
+4753; 0 0 COMMENT auth TABLE mfa_amr_claims supabase_auth_admin
+4754; 0 0 ACL auth TABLE mfa_amr_claims supabase_auth_admin
+227; 1259 19542 TABLE auth mfa_challenges supabase_auth_admin
+4755; 0 0 COMMENT auth TABLE mfa_challenges supabase_auth_admin
+4756; 0 0 ACL auth TABLE mfa_challenges supabase_auth_admin
+228; 1259 19547 TABLE auth mfa_factors supabase_auth_admin
+4757; 0 0 COMMENT auth TABLE mfa_factors supabase_auth_admin
+4758; 0 0 COMMENT auth COLUMN mfa_factors.last_webauthn_challenge_data supabase_auth_admin
+4759; 0 0 ACL auth TABLE mfa_factors supabase_auth_admin
+229; 1259 19552 TABLE auth mfa_recovery_code_sets supabase_auth_admin
+4760; 0 0 ACL auth TABLE mfa_recovery_code_sets supabase_auth_admin
+230; 1259 19559 TABLE auth mfa_recovery_codes supabase_auth_admin
+4761; 0 0 ACL auth TABLE mfa_recovery_codes supabase_auth_admin
+231; 1259 19565 TABLE auth oauth_authorizations supabase_auth_admin
+4762; 0 0 ACL auth TABLE oauth_authorizations supabase_auth_admin
+232; 1259 19582 TABLE auth oauth_client_states supabase_auth_admin
+4763; 0 0 COMMENT auth TABLE oauth_client_states supabase_auth_admin
+4764; 0 0 ACL auth TABLE oauth_client_states supabase_auth_admin
+233; 1259 19587 TABLE auth oauth_clients supabase_auth_admin
+4765; 0 0 ACL auth TABLE oauth_clients supabase_auth_admin
+234; 1259 19599 TABLE auth oauth_consents supabase_auth_admin
+4766; 0 0 ACL auth TABLE oauth_consents supabase_auth_admin
+235; 1259 19608 TABLE auth one_time_tokens supabase_auth_admin
+4767; 0 0 ACL auth TABLE one_time_tokens supabase_auth_admin
+236; 1259 19616 TABLE auth refresh_tokens supabase_auth_admin
+4768; 0 0 COMMENT auth TABLE refresh_tokens supabase_auth_admin
+4769; 0 0 ACL auth TABLE refresh_tokens supabase_auth_admin
+237; 1259 19621 SEQUENCE auth refresh_tokens_id_seq supabase_auth_admin
+4770; 0 0 SEQUENCE OWNED BY auth refresh_tokens_id_seq supabase_auth_admin
+4771; 0 0 ACL auth SEQUENCE refresh_tokens_id_seq supabase_auth_admin
+238; 1259 19622 TABLE auth saml_providers supabase_auth_admin
+4772; 0 0 COMMENT auth TABLE saml_providers supabase_auth_admin
+4773; 0 0 ACL auth TABLE saml_providers supabase_auth_admin
+239; 1259 19630 TABLE auth saml_relay_states supabase_auth_admin
+4774; 0 0 COMMENT auth TABLE saml_relay_states supabase_auth_admin
+4775; 0 0 ACL auth TABLE saml_relay_states supabase_auth_admin
+240; 1259 19636 TABLE auth schema_migrations supabase_auth_admin
+4776; 0 0 COMMENT auth TABLE schema_migrations supabase_auth_admin
+4777; 0 0 ACL auth TABLE schema_migrations supabase_auth_admin
+241; 1259 19639 TABLE auth scim_tokens supabase_auth_admin
+4778; 0 0 ACL auth TABLE scim_tokens supabase_auth_admin
+242; 1259 19648 TABLE auth scim_users supabase_auth_admin
+4779; 0 0 ACL auth TABLE scim_users supabase_auth_admin
+243; 1259 19658 TABLE auth sessions supabase_auth_admin
+4780; 0 0 COMMENT auth TABLE sessions supabase_auth_admin
+4781; 0 0 COMMENT auth COLUMN sessions.not_after supabase_auth_admin
+4782; 0 0 COMMENT auth COLUMN sessions.refresh_token_hmac_key supabase_auth_admin
+4783; 0 0 COMMENT auth COLUMN sessions.refresh_token_counter supabase_auth_admin
+4784; 0 0 ACL auth TABLE sessions supabase_auth_admin
+244; 1259 19664 TABLE auth sso_domains supabase_auth_admin
+4785; 0 0 COMMENT auth TABLE sso_domains supabase_auth_admin
+4786; 0 0 ACL auth TABLE sso_domains supabase_auth_admin
+245; 1259 19670 TABLE auth sso_providers supabase_auth_admin
+4787; 0 0 COMMENT auth TABLE sso_providers supabase_auth_admin
+4788; 0 0 COMMENT auth COLUMN sso_providers.resource_id supabase_auth_admin
+4789; 0 0 ACL auth TABLE sso_providers supabase_auth_admin
+246; 1259 19676 TABLE auth users supabase_auth_admin
+4790; 0 0 COMMENT auth TABLE users supabase_auth_admin
+4791; 0 0 COMMENT auth COLUMN users.is_sso_user supabase_auth_admin
+4792; 0 0 ACL auth TABLE users supabase_auth_admin
+247; 1259 19691 TABLE auth webauthn_challenges supabase_auth_admin
+4793; 0 0 ACL auth TABLE webauthn_challenges supabase_auth_admin
+248; 1259 19699 TABLE auth webauthn_credentials supabase_auth_admin
+4794; 0 0 ACL auth TABLE webauthn_credentials supabase_auth_admin
+260; 1259 20183 TABLE public admins supabase_admin
+4795; 0 0 ACL public TABLE admins supabase_admin
+259; 1259 20166 TABLE public clientes supabase_admin
+4796; 0 0 ACL public TABLE clientes supabase_admin
+268; 1259 20380 TABLE public comprasgov_resultados supabase_admin
+4797; 0 0 ACL public TABLE comprasgov_resultados supabase_admin
+265; 1259 20252 TABLE public contratos supabase_admin
+4798; 0 0 ACL public TABLE contratos supabase_admin
+261; 1259 20193 TABLE public dados_robo supabase_admin
+4799; 0 0 ACL public TABLE dados_robo supabase_admin
+269; 1259 20395 TABLE public dossies_editais supabase_admin
+4800; 0 0 ACL public TABLE dossies_editais supabase_admin
+270; 1259 20410 TABLE public fila_dossies supabase_admin
+4801; 0 0 ACL public TABLE fila_dossies supabase_admin
+263; 1259 20215 TABLE public lembretes supabase_admin
+4802; 0 0 ACL public TABLE lembretes supabase_admin
+262; 1259 20201 TABLE public logs_boletim supabase_admin
+4803; 0 0 ACL public TABLE logs_boletim supabase_admin
+266; 1259 20347 TABLE public mercado_atas supabase_admin
+4804; 0 0 ACL public TABLE mercado_atas supabase_admin
+277; 1259 20536 TABLE public operacao_agenda supabase_admin
+4805; 0 0 ACL public TABLE operacao_agenda supabase_admin
+284; 1259 20720 TABLE public operacao_anexos_processo supabase_admin
+4806; 0 0 ACL public TABLE operacao_anexos_processo supabase_admin
+283; 1259 20700 TABLE public operacao_contratos supabase_admin
+4807; 0 0 ACL public TABLE operacao_contratos supabase_admin
+286; 1259 20795 TABLE public operacao_convites_empresa supabase_admin
+4808; 0 0 ACL public TABLE operacao_convites_empresa supabase_admin
+275; 1259 20493 TABLE public operacao_documentos supabase_admin
+4809; 0 0 ACL public TABLE operacao_documentos supabase_admin
+280; 1259 20611 TABLE public operacao_empenhos supabase_admin
+4810; 0 0 ACL public TABLE operacao_empenhos supabase_admin
+273; 1259 20460 TABLE public operacao_empresas supabase_admin
+4811; 0 0 ACL public TABLE operacao_empresas supabase_admin
+281; 1259 20659 TABLE public operacao_itens_resultado supabase_admin
+4812; 0 0 ACL public TABLE operacao_itens_resultado supabase_admin
+285; 1259 20745 TABLE public operacao_limites_cnpj supabase_admin
+4813; 0 0 ACL public TABLE operacao_limites_cnpj supabase_admin
+272; 1259 20440 TABLE public operacao_membros supabase_admin
+4814; 0 0 ACL public TABLE operacao_membros supabase_admin
+282; 1259 20683 TABLE public operacao_ocorrencias supabase_admin
+4815; 0 0 ACL public TABLE operacao_ocorrencias supabase_admin
+271; 1259 20424 TABLE public operacao_organizacoes supabase_admin
+4816; 0 0 ACL public TABLE operacao_organizacoes supabase_admin
+279; 1259 20590 TABLE public operacao_prazos_processo supabase_admin
+4817; 0 0 ACL public TABLE operacao_prazos_processo supabase_admin
+278; 1259 20557 TABLE public operacao_processos supabase_admin
+4818; 0 0 ACL public TABLE operacao_processos supabase_admin
+276; 1259 20519 TABLE public operacao_renovacoes_documento supabase_admin
+4819; 0 0 ACL public TABLE operacao_renovacoes_documento supabase_admin
+274; 1259 20477 TABLE public operacao_tipos_documento supabase_admin
+4820; 0 0 ACL public TABLE operacao_tipos_documento supabase_admin
+267; 1259 20367 TABLE public oportunidades_abertas supabase_admin
+4821; 0 0 ACL public TABLE oportunidades_abertas supabase_admin
+264; 1259 20232 TABLE public uso_diario supabase_admin
+4822; 0 0 ACL public TABLE uso_diario supabase_admin
+249; 1259 19713 TABLE storage buckets supabase_storage_admin
+4823; 0 0 COMMENT storage COLUMN buckets.owner supabase_storage_admin
+4824; 0 0 ACL storage TABLE buckets supabase_storage_admin
+250; 1259 19730 TABLE storage buckets_analytics supabase_storage_admin
+4825; 0 0 ACL storage TABLE buckets_analytics supabase_storage_admin
+251; 1259 19740 TABLE storage buckets_vectors supabase_storage_admin
+4826; 0 0 ACL storage TABLE buckets_vectors supabase_storage_admin
+252; 1259 19748 TABLE storage iceberg_namespaces supabase_storage_admin
+4827; 0 0 ACL storage TABLE iceberg_namespaces supabase_storage_admin
+253; 1259 19757 TABLE storage iceberg_tables supabase_storage_admin
+4828; 0 0 ACL storage TABLE iceberg_tables supabase_storage_admin
+254; 1259 19765 TABLE storage migrations supabase_storage_admin
+255; 1259 19769 TABLE storage objects supabase_storage_admin
+4829; 0 0 COMMENT storage COLUMN objects.owner supabase_storage_admin
+4830; 0 0 ACL storage TABLE objects supabase_storage_admin
+256; 1259 19781 TABLE storage s3_multipart_uploads supabase_storage_admin
+4831; 0 0 ACL storage TABLE s3_multipart_uploads supabase_storage_admin
+257; 1259 19788 TABLE storage s3_multipart_uploads_parts supabase_storage_admin
+4832; 0 0 ACL storage TABLE s3_multipart_uploads_parts supabase_storage_admin
+258; 1259 19796 TABLE storage vector_indexes supabase_storage_admin
+4833; 0 0 ACL storage TABLE vector_indexes supabase_storage_admin
+3711; 2604 19804 DEFAULT auth refresh_tokens id supabase_auth_admin
+4574; 0 19478 TABLE DATA auth audit_log_entries supabase_auth_admin
+4575; 0 19484 TABLE DATA auth custom_oauth_providers supabase_auth_admin
+4576; 0 19519 TABLE DATA auth flow_state supabase_auth_admin
+4577; 0 19525 TABLE DATA auth identities supabase_auth_admin
+4578; 0 19532 TABLE DATA auth instances supabase_auth_admin
+4579; 0 19537 TABLE DATA auth mfa_amr_claims supabase_auth_admin
+4580; 0 19542 TABLE DATA auth mfa_challenges supabase_auth_admin
+4581; 0 19547 TABLE DATA auth mfa_factors supabase_auth_admin
+4582; 0 19552 TABLE DATA auth mfa_recovery_code_sets supabase_auth_admin
+4583; 0 19559 TABLE DATA auth mfa_recovery_codes supabase_auth_admin
+4584; 0 19565 TABLE DATA auth oauth_authorizations supabase_auth_admin
+4585; 0 19582 TABLE DATA auth oauth_client_states supabase_auth_admin
+4586; 0 19587 TABLE DATA auth oauth_clients supabase_auth_admin
+4587; 0 19599 TABLE DATA auth oauth_consents supabase_auth_admin
+4588; 0 19608 TABLE DATA auth one_time_tokens supabase_auth_admin
+4589; 0 19616 TABLE DATA auth refresh_tokens supabase_auth_admin
+4591; 0 19622 TABLE DATA auth saml_providers supabase_auth_admin
+4592; 0 19630 TABLE DATA auth saml_relay_states supabase_auth_admin
+4593; 0 19636 TABLE DATA auth schema_migrations supabase_auth_admin
+4594; 0 19639 TABLE DATA auth scim_tokens supabase_auth_admin
+4595; 0 19648 TABLE DATA auth scim_users supabase_auth_admin
+4596; 0 19658 TABLE DATA auth sessions supabase_auth_admin
+4597; 0 19664 TABLE DATA auth sso_domains supabase_auth_admin
+4598; 0 19670 TABLE DATA auth sso_providers supabase_auth_admin
+4599; 0 19676 TABLE DATA auth users supabase_auth_admin
+4600; 0 19691 TABLE DATA auth webauthn_challenges supabase_auth_admin
+4601; 0 19699 TABLE DATA auth webauthn_credentials supabase_auth_admin
+4613; 0 20183 TABLE DATA public admins supabase_admin
+4612; 0 20166 TABLE DATA public clientes supabase_admin
+4621; 0 20380 TABLE DATA public comprasgov_resultados supabase_admin
+4618; 0 20252 TABLE DATA public contratos supabase_admin
+4614; 0 20193 TABLE DATA public dados_robo supabase_admin
+4622; 0 20395 TABLE DATA public dossies_editais supabase_admin
+4623; 0 20410 TABLE DATA public fila_dossies supabase_admin
+4616; 0 20215 TABLE DATA public lembretes supabase_admin
+4615; 0 20201 TABLE DATA public logs_boletim supabase_admin
+4619; 0 20347 TABLE DATA public mercado_atas supabase_admin
+4630; 0 20536 TABLE DATA public operacao_agenda supabase_admin
+4637; 0 20720 TABLE DATA public operacao_anexos_processo supabase_admin
+4636; 0 20700 TABLE DATA public operacao_contratos supabase_admin
+4639; 0 20795 TABLE DATA public operacao_convites_empresa supabase_admin
+4628; 0 20493 TABLE DATA public operacao_documentos supabase_admin
+4633; 0 20611 TABLE DATA public operacao_empenhos supabase_admin
+4626; 0 20460 TABLE DATA public operacao_empresas supabase_admin
+4640; 0 33746 TABLE DATA public operacao_identificacao_empresa supabase_admin
+4634; 0 20659 TABLE DATA public operacao_itens_resultado supabase_admin
+4641; 0 50131 TABLE DATA public operacao_kit_documentos supabase_admin
+4638; 0 20745 TABLE DATA public operacao_limites_cnpj supabase_admin
+4625; 0 20440 TABLE DATA public operacao_membros supabase_admin
+4635; 0 20683 TABLE DATA public operacao_ocorrencias supabase_admin
+4624; 0 20424 TABLE DATA public operacao_organizacoes supabase_admin
+4632; 0 20590 TABLE DATA public operacao_prazos_processo supabase_admin
+4631; 0 20557 TABLE DATA public operacao_processos supabase_admin
+4629; 0 20519 TABLE DATA public operacao_renovacoes_documento supabase_admin
+4627; 0 20477 TABLE DATA public operacao_tipos_documento supabase_admin
+4620; 0 20367 TABLE DATA public oportunidades_abertas supabase_admin
+4617; 0 20232 TABLE DATA public uso_diario supabase_admin
+4602; 0 19713 TABLE DATA storage buckets supabase_storage_admin
+4603; 0 19730 TABLE DATA storage buckets_analytics supabase_storage_admin
+4604; 0 19740 TABLE DATA storage buckets_vectors supabase_storage_admin
+4605; 0 19748 TABLE DATA storage iceberg_namespaces supabase_storage_admin
+4606; 0 19757 TABLE DATA storage iceberg_tables supabase_storage_admin
+4607; 0 19765 TABLE DATA storage migrations supabase_storage_admin
+4608; 0 19769 TABLE DATA storage objects supabase_storage_admin
+4609; 0 19781 TABLE DATA storage s3_multipart_uploads supabase_storage_admin
+4610; 0 19788 TABLE DATA storage s3_multipart_uploads_parts supabase_storage_admin
+4611; 0 19796 TABLE DATA storage vector_indexes supabase_storage_admin
+4834; 0 0 SEQUENCE SET auth refresh_tokens_id_seq supabase_auth_admin
+3974; 2606 19806 CONSTRAINT auth mfa_amr_claims amr_id_pk supabase_auth_admin
+3950; 2606 19808 CONSTRAINT auth audit_log_entries audit_log_entries_pkey supabase_auth_admin
+3956; 2606 19810 CONSTRAINT auth custom_oauth_providers custom_oauth_providers_identifier_key supabase_auth_admin
+3958; 2606 19812 CONSTRAINT auth custom_oauth_providers custom_oauth_providers_pkey supabase_auth_admin
+3962; 2606 19814 CONSTRAINT auth flow_state flow_state_pkey supabase_auth_admin
+3967; 2606 19816 CONSTRAINT auth identities identities_pkey supabase_auth_admin
+3969; 2606 19818 CONSTRAINT auth identities identities_provider_id_provider_unique supabase_auth_admin
+3972; 2606 19820 CONSTRAINT auth instances instances_pkey supabase_auth_admin
+3976; 2606 19822 CONSTRAINT auth mfa_amr_claims mfa_amr_claims_session_id_authentication_method_pkey supabase_auth_admin
+3979; 2606 19824 CONSTRAINT auth mfa_challenges mfa_challenges_pkey supabase_auth_admin
+3982; 2606 19826 CONSTRAINT auth mfa_factors mfa_factors_last_challenged_at_key supabase_auth_admin
+3984; 2606 19828 CONSTRAINT auth mfa_factors mfa_factors_pkey supabase_auth_admin
+3989; 2606 19830 CONSTRAINT auth mfa_recovery_code_sets mfa_recovery_code_sets_mfa_factor_id_key supabase_auth_admin
+3991; 2606 19832 CONSTRAINT auth mfa_recovery_code_sets mfa_recovery_code_sets_pkey supabase_auth_admin
+3993; 2606 19834 CONSTRAINT auth mfa_recovery_code_sets mfa_recovery_code_sets_user_id_key supabase_auth_admin
+3995; 2606 19836 CONSTRAINT auth mfa_recovery_codes mfa_recovery_codes_pkey supabase_auth_admin
+3999; 2606 19838 CONSTRAINT auth oauth_authorizations oauth_authorizations_authorization_code_key supabase_auth_admin
+4001; 2606 19840 CONSTRAINT auth oauth_authorizations oauth_authorizations_authorization_id_key supabase_auth_admin
+4003; 2606 19842 CONSTRAINT auth oauth_authorizations oauth_authorizations_pkey supabase_auth_admin
+4006; 2606 19844 CONSTRAINT auth oauth_client_states oauth_client_states_pkey supabase_auth_admin
+4009; 2606 19846 CONSTRAINT auth oauth_clients oauth_clients_pkey supabase_auth_admin
+4013; 2606 19848 CONSTRAINT auth oauth_consents oauth_consents_pkey supabase_auth_admin
+4015; 2606 19850 CONSTRAINT auth oauth_consents oauth_consents_user_client_unique supabase_auth_admin
+4018; 2606 19852 CONSTRAINT auth one_time_tokens one_time_tokens_pkey supabase_auth_admin
+4026; 2606 19854 CONSTRAINT auth refresh_tokens refresh_tokens_pkey supabase_auth_admin
+4029; 2606 19856 CONSTRAINT auth refresh_tokens refresh_tokens_token_unique supabase_auth_admin
+4032; 2606 19858 CONSTRAINT auth saml_providers saml_providers_entity_id_key supabase_auth_admin
+4034; 2606 19860 CONSTRAINT auth saml_providers saml_providers_pkey supabase_auth_admin
+4039; 2606 19862 CONSTRAINT auth saml_relay_states saml_relay_states_pkey supabase_auth_admin
+4042; 2606 19864 CONSTRAINT auth schema_migrations schema_migrations_pkey supabase_auth_admin
+4045; 2606 19866 CONSTRAINT auth scim_tokens scim_tokens_pkey supabase_auth_admin
+4054; 2606 19868 CONSTRAINT auth scim_users scim_users_pkey supabase_auth_admin
+4063; 2606 19870 CONSTRAINT auth sessions sessions_pkey supabase_auth_admin
+4068; 2606 19872 CONSTRAINT auth sso_domains sso_domains_pkey supabase_auth_admin
+4071; 2606 19874 CONSTRAINT auth sso_providers sso_providers_pkey supabase_auth_admin
+4084; 2606 19876 CONSTRAINT auth users users_phone_key supabase_auth_admin
+4086; 2606 19878 CONSTRAINT auth users users_pkey supabase_auth_admin
+4089; 2606 19880 CONSTRAINT auth webauthn_challenges webauthn_challenges_pkey supabase_auth_admin
+4093; 2606 19882 CONSTRAINT auth webauthn_credentials webauthn_credentials_pkey supabase_auth_admin
+4134; 2606 20192 CONSTRAINT public admins admins_pkey supabase_admin
+4132; 2606 20177 CONSTRAINT public clientes clientes_pkey supabase_admin
+4164; 2606 20388 CONSTRAINT public comprasgov_resultados comprasgov_resultados_pkey supabase_admin
+4147; 2606 20260 CONSTRAINT public contratos contratos_pkey supabase_admin
+4136; 2606 20200 CONSTRAINT public dados_robo dados_robo_pkey supabase_admin
+4167; 2606 20407 CONSTRAINT public dossies_editais dossies_editais_pkey supabase_admin
+4171; 2606 20420 CONSTRAINT public fila_dossies fila_dossies_pkey supabase_admin
+4140; 2606 20223 CONSTRAINT public lembretes lembretes_pkey supabase_admin
+4138; 2606 20209 CONSTRAINT public logs_boletim logs_boletim_pkey supabase_admin
+4151; 2606 20358 CONSTRAINT public mercado_atas mercado_atas_pkey supabase_admin
+4194; 2606 20545 CONSTRAINT public operacao_agenda operacao_agenda_pkey supabase_admin
+4225; 2606 20729 CONSTRAINT public operacao_anexos_processo operacao_anexos_processo_pkey supabase_admin
+4219; 2606 20711 CONSTRAINT public operacao_contratos operacao_contratos_pkey supabase_admin
+4221; 2606 20713 CONSTRAINT public operacao_contratos operacao_contratos_processo_id_numero_key supabase_admin
+4229; 2606 20805 CONSTRAINT public operacao_convites_empresa operacao_convites_empresa_pkey supabase_admin
+4231; 2606 20807 CONSTRAINT public operacao_convites_empresa operacao_convites_empresa_token_key supabase_admin
+4189; 2606 20502 CONSTRAINT public operacao_documentos operacao_documentos_pkey supabase_admin
+4206; 2606 20624 CONSTRAINT public operacao_empenhos operacao_empenhos_pkey supabase_admin
+4208; 2606 20626 CONSTRAINT public operacao_empenhos operacao_empenhos_processo_id_numero_key supabase_admin
+4180; 2606 20471 CONSTRAINT public operacao_empresas operacao_empresas_organizacao_id_cnpj_key supabase_admin
+4182; 2606 20469 CONSTRAINT public operacao_empresas operacao_empresas_pkey supabase_admin
+4233; 2606 33757 CONSTRAINT public operacao_identificacao_empresa operacao_identificacao_empresa_pkey supabase_admin
+4211; 2606 20674 CONSTRAINT public operacao_itens_resultado operacao_itens_resultado_pkey supabase_admin
+4213; 2606 20676 CONSTRAINT public operacao_itens_resultado operacao_itens_resultado_processo_id_tipo_identificador_key supabase_admin
+4236; 2606 50144 CONSTRAINT public operacao_kit_documentos operacao_kit_documentos_pkey supabase_admin
+4227; 2606 20751 CONSTRAINT public operacao_limites_cnpj operacao_limites_cnpj_pkey supabase_admin
+4177; 2606 20449 CONSTRAINT public operacao_membros operacao_membros_pkey supabase_admin
+4216; 2606 20693 CONSTRAINT public operacao_ocorrencias operacao_ocorrencias_pkey supabase_admin
+4173; 2606 20434 CONSTRAINT public operacao_organizacoes operacao_organizacoes_owner_id_key supabase_admin
+4175; 2606 20432 CONSTRAINT public operacao_organizacoes operacao_organizacoes_pkey supabase_admin
+4203; 2606 20599 CONSTRAINT public operacao_prazos_processo operacao_prazos_processo_pkey supabase_admin
+4201; 2606 20571 CONSTRAINT public operacao_processos operacao_processos_pkey supabase_admin
+4191; 2606 20525 CONSTRAINT public operacao_renovacoes_documento operacao_renovacoes_documento_pkey supabase_admin
+4184; 2606 20487 CONSTRAINT public operacao_tipos_documento operacao_tipos_documento_organizacao_id_nome_key supabase_admin
+4186; 2606 20485 CONSTRAINT public operacao_tipos_documento operacao_tipos_documento_pkey supabase_admin
+4156; 2606 20375 CONSTRAINT public oportunidades_abertas oportunidades_abertas_pkey supabase_admin
+4142; 2606 20240 CONSTRAINT public uso_diario uso_diario_pkey supabase_admin
+4099; 2606 19884 CONSTRAINT storage buckets_analytics buckets_analytics_pkey supabase_storage_admin
+4097; 2606 19886 CONSTRAINT storage buckets buckets_pkey supabase_storage_admin
+4102; 2606 19888 CONSTRAINT storage buckets_vectors buckets_vectors_pkey supabase_storage_admin
+4104; 2606 19890 CONSTRAINT storage iceberg_namespaces iceberg_namespaces_pkey supabase_storage_admin
+4107; 2606 19892 CONSTRAINT storage iceberg_tables iceberg_tables_pkey supabase_storage_admin
+4111; 2606 19894 CONSTRAINT storage migrations migrations_name_key supabase_storage_admin
+4113; 2606 19896 CONSTRAINT storage migrations migrations_pkey supabase_storage_admin
+4122; 2606 19898 CONSTRAINT storage objects objects_pkey supabase_storage_admin
+4127; 2606 19900 CONSTRAINT storage s3_multipart_uploads_parts s3_multipart_uploads_parts_pkey supabase_storage_admin
+4125; 2606 19902 CONSTRAINT storage s3_multipart_uploads s3_multipart_uploads_pkey supabase_storage_admin
+4130; 2606 19904 CONSTRAINT storage vector_indexes vector_indexes_pkey supabase_storage_admin
+3951; 1259 19905 INDEX auth audit_logs_instance_id_idx supabase_auth_admin
+4074; 1259 19906 INDEX auth confirmation_token_idx supabase_auth_admin
+3952; 1259 19907 INDEX auth custom_oauth_providers_created_at_idx supabase_auth_admin
+3953; 1259 19908 INDEX auth custom_oauth_providers_enabled_idx supabase_auth_admin
+3954; 1259 19909 INDEX auth custom_oauth_providers_identifier_idx supabase_auth_admin
+3959; 1259 19910 INDEX auth custom_oauth_providers_provider_type_idx supabase_auth_admin
+4075; 1259 19911 INDEX auth email_change_token_current_idx supabase_auth_admin
+4076; 1259 19912 INDEX auth email_change_token_new_idx supabase_auth_admin
+3980; 1259 19913 INDEX auth factor_id_created_at_idx supabase_auth_admin
+3960; 1259 19914 INDEX auth flow_state_created_at_idx supabase_auth_admin
+3965; 1259 19915 INDEX auth identities_email_idx supabase_auth_admin
+4835; 0 0 COMMENT auth INDEX identities_email_idx supabase_auth_admin
+3970; 1259 19916 INDEX auth identities_user_id_idx supabase_auth_admin
+3963; 1259 19917 INDEX auth idx_auth_code supabase_auth_admin
+4004; 1259 19918 INDEX auth idx_oauth_client_states_created_at supabase_auth_admin
+3964; 1259 19919 INDEX auth idx_user_id_auth_method supabase_auth_admin
+3977; 1259 19920 INDEX auth mfa_challenge_created_at_idx supabase_auth_admin
+3985; 1259 19921 INDEX auth mfa_factors_user_friendly_name_unique supabase_auth_admin
+3986; 1259 19922 INDEX auth mfa_factors_user_id_idx supabase_auth_admin
+3996; 1259 19923 INDEX auth mfa_recovery_codes_set_id_idx supabase_auth_admin
+3997; 1259 19924 INDEX auth oauth_auth_pending_exp_idx supabase_auth_admin
+4007; 1259 19925 INDEX auth oauth_clients_deleted_at_idx supabase_auth_admin
+4010; 1259 19926 INDEX auth oauth_consents_active_client_idx supabase_auth_admin
+4011; 1259 19927 INDEX auth oauth_consents_active_user_client_idx supabase_auth_admin
+4016; 1259 19928 INDEX auth oauth_consents_user_order_idx supabase_auth_admin
+4019; 1259 19929 INDEX auth one_time_tokens_relates_to_hash_idx supabase_auth_admin
+4020; 1259 19930 INDEX auth one_time_tokens_token_hash_hash_idx supabase_auth_admin
+4021; 1259 19931 INDEX auth one_time_tokens_user_id_token_type_key supabase_auth_admin
+4077; 1259 19932 INDEX auth reauthentication_token_idx supabase_auth_admin
+4078; 1259 19933 INDEX auth recovery_token_idx supabase_auth_admin
+4022; 1259 19934 INDEX auth refresh_tokens_instance_id_idx supabase_auth_admin
+4023; 1259 19935 INDEX auth refresh_tokens_instance_id_user_id_idx supabase_auth_admin
+4024; 1259 19936 INDEX auth refresh_tokens_parent_idx supabase_auth_admin
+4027; 1259 19937 INDEX auth refresh_tokens_session_id_revoked_idx supabase_auth_admin
+4030; 1259 19938 INDEX auth refresh_tokens_updated_at_idx supabase_auth_admin
+4035; 1259 19939 INDEX auth saml_providers_sso_provider_id_idx supabase_auth_admin
+4036; 1259 19940 INDEX auth saml_relay_states_created_at_idx supabase_auth_admin
+4037; 1259 19941 INDEX auth saml_relay_states_for_email_idx supabase_auth_admin
+4040; 1259 19942 INDEX auth saml_relay_states_sso_provider_id_idx supabase_auth_admin
+4043; 1259 19943 INDEX auth scim_tokens_expires_at_idx supabase_auth_admin
+4046; 1259 19944 INDEX auth scim_tokens_revoked_at_idx supabase_auth_admin
+4047; 1259 19945 INDEX auth scim_tokens_sso_provider_id_idx supabase_auth_admin
+4048; 1259 19946 INDEX auth scim_tokens_token_hash_key supabase_auth_admin
+4049; 1259 19947 INDEX auth scim_users_created_at_idx supabase_auth_admin
+4050; 1259 19948 INDEX auth scim_users_deleted_at_idx supabase_auth_admin
+4051; 1259 19949 INDEX auth scim_users_external_id_key supabase_auth_admin
+4052; 1259 19950 INDEX auth scim_users_id_idx supabase_auth_admin
+4055; 1259 19951 INDEX auth scim_users_sso_provider_id_idx supabase_auth_admin
+4056; 1259 19952 INDEX auth scim_users_updated_at_idx supabase_auth_admin
+4057; 1259 19953 INDEX auth scim_users_user_id_idx supabase_auth_admin
+4058; 1259 19954 INDEX auth scim_users_user_name_idx supabase_auth_admin
+4059; 1259 19955 INDEX auth scim_users_user_name_key supabase_auth_admin
+4060; 1259 19956 INDEX auth sessions_not_after_idx supabase_auth_admin
+4061; 1259 19957 INDEX auth sessions_oauth_client_id_idx supabase_auth_admin
+4064; 1259 19958 INDEX auth sessions_user_id_idx supabase_auth_admin
+4066; 1259 19959 INDEX auth sso_domains_domain_idx supabase_auth_admin
+4069; 1259 19960 INDEX auth sso_domains_sso_provider_id_idx supabase_auth_admin
+4072; 1259 19961 INDEX auth sso_providers_resource_id_idx supabase_auth_admin
+4073; 1259 19962 INDEX auth sso_providers_resource_id_pattern_idx supabase_auth_admin
+3987; 1259 19963 INDEX auth unique_phone_factor_per_user supabase_auth_admin
+4065; 1259 19964 INDEX auth user_id_created_at_idx supabase_auth_admin
+4079; 1259 19965 INDEX auth users_email_partial_key supabase_auth_admin
+4836; 0 0 COMMENT auth INDEX users_email_partial_key supabase_auth_admin
+4080; 1259 19966 INDEX auth users_instance_id_email_idx supabase_auth_admin
+4081; 1259 19967 INDEX auth users_instance_id_idx supabase_auth_admin
+4082; 1259 19968 INDEX auth users_is_anonymous_idx supabase_auth_admin
+4087; 1259 19969 INDEX auth webauthn_challenges_expires_at_idx supabase_auth_admin
+4090; 1259 19970 INDEX auth webauthn_challenges_user_id_idx supabase_auth_admin
+4091; 1259 19971 INDEX auth webauthn_credentials_credential_id_key supabase_auth_admin
+4094; 1259 19972 INDEX auth webauthn_credentials_user_id_idx supabase_auth_admin
+4159; 1259 20392 INDEX public comprasgov_resultados_compra_idx supabase_admin
+4160; 1259 20389 INDEX public comprasgov_resultados_data_idx supabase_admin
+4161; 1259 20393 INDEX public comprasgov_resultados_descricao_item_trgm_idx supabase_admin
+4162; 1259 20390 INDEX public comprasgov_resultados_fornecedor_idx supabase_admin
+4165; 1259 20391 INDEX public comprasgov_resultados_uf_idx supabase_admin
+4143; 1259 20262 INDEX public contratos_cnpj_fornecedor_idx supabase_admin
+4144; 1259 20263 INDEX public contratos_data_assinatura_idx supabase_admin
+4145; 1259 20345 INDEX public contratos_objeto_trgm_idx supabase_admin
+4148; 1259 20261 INDEX public contratos_uf_idx supabase_admin
+4168; 1259 20408 INDEX public dossies_editais_status_atualizado_idx supabase_admin
+4169; 1259 20421 INDEX public fila_dossies_pendentes_idx supabase_admin
+4149; 1259 20361 INDEX public mercado_atas_objeto_trgm_idx supabase_admin
+4152; 1259 20360 INDEX public mercado_atas_segmentos_idx supabase_admin
+4153; 1259 20359 INDEX public mercado_atas_uf_orgao_idx supabase_admin
+4192; 1259 20556 INDEX public operacao_agenda_organizacao_vencimento_idx supabase_admin
+4223; 1259 20735 INDEX public operacao_anexos_processo_idx supabase_admin
+4222; 1259 20719 INDEX public operacao_contratos_processo_idx supabase_admin
+4187; 1259 20518 INDEX public operacao_documentos_empresa_vencimento_idx supabase_admin
+4209; 1259 20637 INDEX public operacao_empenhos_processo_status_idx supabase_admin
+4178; 1259 20763 INDEX public operacao_empresas_id_org_idx supabase_admin
+4214; 1259 20682 INDEX public operacao_itens_resultado_processo_idx supabase_admin
+4234; 1259 50165 INDEX public operacao_kit_documentos_escopo_idx supabase_admin
+4217; 1259 20699 INDEX public operacao_ocorrencias_processo_data_idx supabase_admin
+4204; 1259 20610 INDEX public operacao_prazos_processo_vencimento_idx supabase_admin
+4195; 1259 20587 INDEX public operacao_processos_empresa_status_idx supabase_admin
+4196; 1259 50130 INDEX public operacao_processos_id_empresa_org_idx supabase_admin
+4197; 1259 20658 INDEX public operacao_processos_id_org_idx supabase_admin
+4198; 1259 20588 INDEX public operacao_processos_organizacao_sessao_idx supabase_admin
+4199; 1259 20589 INDEX public operacao_processos_origem_externa_unica_idx supabase_admin
+4154; 1259 20378 INDEX public oportunidades_abertas_encerramento_idx supabase_admin
+4157; 1259 20377 INDEX public oportunidades_abertas_publicacao_idx supabase_admin
+4158; 1259 20376 INDEX public oportunidades_abertas_uf_idx supabase_admin
+4095; 1259 19973 INDEX storage bname supabase_storage_admin
+4114; 1259 19974 INDEX storage bucketid_objname supabase_storage_admin
+4100; 1259 19975 INDEX storage buckets_analytics_unique_name_idx supabase_storage_admin
+4105; 1259 19976 INDEX storage idx_iceberg_namespaces_bucket_id supabase_storage_admin
+4108; 1259 19977 INDEX storage idx_iceberg_tables_location supabase_storage_admin
+4109; 1259 19978 INDEX storage idx_iceberg_tables_namespace_id supabase_storage_admin
+4123; 1259 19979 INDEX storage idx_multipart_uploads_list supabase_storage_admin
+4115; 1259 19980 INDEX storage idx_objects_bucket_id_name supabase_storage_admin
+4116; 1259 19981 INDEX storage idx_objects_bucket_id_name_lower supabase_storage_admin
+4117; 1259 19982 INDEX storage idx_objects_current_version supabase_storage_admin
+4118; 1259 19983 INDEX storage idx_objects_null_version supabase_storage_admin
+4119; 1259 19984 INDEX storage name_prefix_search supabase_storage_admin
+4120; 1259 19985 INDEX storage objects_bucket_id_name_version_key supabase_storage_admin
+4128; 1259 19986 INDEX storage vector_indexes_name_bucket_id_idx supabase_storage_admin
+4312; 2620 20886 TRIGGER auth users qa_criar_cliente_no_cadastro supabase_auth_admin
+4837; 0 0 COMMENT auth TRIGGER qa_criar_cliente_no_cadastro ON users supabase_auth_admin
+4322; 2620 33790 TRIGGER public operacao_empresas identificacao_cadastro_alterado supabase_admin
+4324; 2620 33788 TRIGGER public operacao_documentos identificacao_documento_alterado supabase_admin
+4328; 2620 50174 TRIGGER public operacao_kit_documentos kit_documento_escopo_imutavel supabase_admin
+4323; 2620 20863 TRIGGER public operacao_empresas operacao_empresas_limite_cnpjs supabase_admin
+4325; 2620 42001 TRIGGER public operacao_documentos preservar_escopo_operacao supabase_admin
+4326; 2620 42002 TRIGGER public operacao_processos preservar_escopo_operacao supabase_admin
+4321; 2620 20885 TRIGGER public clientes proteger_status_cliente_operacao supabase_admin
+4327; 2620 42003 TRIGGER public operacao_anexos_processo validar_arquivo_processo_operacao supabase_admin
+4313; 2620 19987 TRIGGER storage buckets enforce_bucket_name_length_trigger supabase_storage_admin
+4318; 2620 33789 TRIGGER storage objects identificacao_arquivo_alterado supabase_storage_admin
+4314; 2620 19988 TRIGGER storage buckets protect_bucket_control_insert supabase_storage_admin
+4315; 2620 19989 TRIGGER storage buckets protect_bucket_control_update supabase_storage_admin
+4316; 2620 19990 TRIGGER storage buckets protect_bucket_control_update_role supabase_storage_admin
+4317; 2620 19991 TRIGGER storage buckets protect_buckets_delete supabase_storage_admin
+4319; 2620 19992 TRIGGER storage objects protect_objects_delete supabase_storage_admin
+4320; 2620 19993 TRIGGER storage objects update_objects_updated_at supabase_storage_admin
+4237; 2606 19994 FK CONSTRAINT auth identities identities_user_id_fkey supabase_auth_admin
+4238; 2606 19999 FK CONSTRAINT auth mfa_amr_claims mfa_amr_claims_session_id_fkey supabase_auth_admin
+4239; 2606 20004 FK CONSTRAINT auth mfa_challenges mfa_challenges_auth_factor_id_fkey supabase_auth_admin
+4240; 2606 20009 FK CONSTRAINT auth mfa_factors mfa_factors_user_id_fkey supabase_auth_admin
+4241; 2606 20014 FK CONSTRAINT auth mfa_recovery_code_sets mfa_recovery_code_sets_mfa_factor_id_fkey supabase_auth_admin
+4242; 2606 20019 FK CONSTRAINT auth mfa_recovery_code_sets mfa_recovery_code_sets_user_id_fkey supabase_auth_admin
+4243; 2606 20024 FK CONSTRAINT auth mfa_recovery_codes mfa_recovery_codes_mfa_recovery_code_set_id_fkey supabase_auth_admin
+4244; 2606 20029 FK CONSTRAINT auth oauth_authorizations oauth_authorizations_client_id_fkey supabase_auth_admin
+4245; 2606 20034 FK CONSTRAINT auth oauth_authorizations oauth_authorizations_user_id_fkey supabase_auth_admin
+4246; 2606 20039 FK CONSTRAINT auth oauth_consents oauth_consents_client_id_fkey supabase_auth_admin
+4247; 2606 20044 FK CONSTRAINT auth oauth_consents oauth_consents_user_id_fkey supabase_auth_admin
+4248; 2606 20049 FK CONSTRAINT auth one_time_tokens one_time_tokens_user_id_fkey supabase_auth_admin
+4249; 2606 20054 FK CONSTRAINT auth refresh_tokens refresh_tokens_session_id_fkey supabase_auth_admin
+4250; 2606 20059 FK CONSTRAINT auth saml_providers saml_providers_sso_provider_id_fkey supabase_auth_admin
+4251; 2606 20064 FK CONSTRAINT auth saml_relay_states saml_relay_states_flow_state_id_fkey supabase_auth_admin
+4252; 2606 20069 FK CONSTRAINT auth saml_relay_states saml_relay_states_sso_provider_id_fkey supabase_auth_admin
+4253; 2606 20074 FK CONSTRAINT auth scim_tokens scim_tokens_sso_provider_id_fkey supabase_auth_admin
+4254; 2606 20079 FK CONSTRAINT auth scim_users scim_users_sso_provider_id_fkey supabase_auth_admin
+4255; 2606 20084 FK CONSTRAINT auth scim_users scim_users_user_id_fkey supabase_auth_admin
+4256; 2606 20089 FK CONSTRAINT auth sessions sessions_oauth_client_id_fkey supabase_auth_admin
+4257; 2606 20094 FK CONSTRAINT auth sessions sessions_user_id_fkey supabase_auth_admin
+4258; 2606 20099 FK CONSTRAINT auth sso_domains sso_domains_sso_provider_id_fkey supabase_auth_admin
+4259; 2606 20104 FK CONSTRAINT auth webauthn_challenges webauthn_challenges_user_id_fkey supabase_auth_admin
+4260; 2606 20109 FK CONSTRAINT auth webauthn_credentials webauthn_credentials_user_id_fkey supabase_auth_admin
+4269; 2606 20178 FK CONSTRAINT public clientes clientes_id_fkey supabase_admin
+4271; 2606 20224 FK CONSTRAINT public lembretes lembretes_cliente_id_fkey supabase_admin
+4270; 2606 20210 FK CONSTRAINT public logs_boletim logs_boletim_cliente_id_fkey supabase_admin
+4285; 2606 20551 FK CONSTRAINT public operacao_agenda operacao_agenda_empresa_id_fkey supabase_admin
+4286; 2606 41953 FK CONSTRAINT public operacao_agenda operacao_agenda_escopo_fk supabase_admin
+4287; 2606 20546 FK CONSTRAINT public operacao_agenda operacao_agenda_organizacao_id_fkey supabase_admin
+4301; 2606 20730 FK CONSTRAINT public operacao_anexos_processo operacao_anexos_processo_processo_id_organizacao_id_fkey supabase_admin
+4300; 2606 20714 FK CONSTRAINT public operacao_contratos operacao_contratos_processo_id_organizacao_id_fkey supabase_admin
+4303; 2606 20813 FK CONSTRAINT public operacao_convites_empresa operacao_convites_empresa_criado_por_fkey supabase_admin
+4304; 2606 20818 FK CONSTRAINT public operacao_convites_empresa operacao_convites_empresa_empresa_id_organizacao_id_fkey supabase_admin
+4305; 2606 20808 FK CONSTRAINT public operacao_convites_empresa operacao_convites_empresa_organizacao_id_fkey supabase_admin
+4279; 2606 20513 FK CONSTRAINT public operacao_documentos operacao_documentos_criado_por_fkey supabase_admin
+4280; 2606 20508 FK CONSTRAINT public operacao_documentos operacao_documentos_empresa_id_fkey supabase_admin
+4281; 2606 41943 FK CONSTRAINT public operacao_documentos operacao_documentos_escopo_fk supabase_admin
+4282; 2606 20503 FK CONSTRAINT public operacao_documentos operacao_documentos_organizacao_id_fkey supabase_admin
+4295; 2606 41963 FK CONSTRAINT public operacao_empenhos operacao_empenhos_escopo_fk supabase_admin
+4296; 2606 20627 FK CONSTRAINT public operacao_empenhos operacao_empenhos_organizacao_id_fkey supabase_admin
+4297; 2606 20632 FK CONSTRAINT public operacao_empenhos operacao_empenhos_processo_id_fkey supabase_admin
+4277; 2606 20472 FK CONSTRAINT public operacao_empresas operacao_empresas_organizacao_id_fkey supabase_admin
+4306; 2606 33758 FK CONSTRAINT public operacao_identificacao_empresa operacao_identificacao_empresa_confirmado_por_fkey supabase_admin
+4307; 2606 33763 FK CONSTRAINT public operacao_identificacao_empresa operacao_identificacao_empresa_empresa_id_organizacao_id_fkey supabase_admin
+4298; 2606 20677 FK CONSTRAINT public operacao_itens_resultado operacao_itens_resultado_processo_id_organizacao_id_fkey supabase_admin
+4308; 2606 50150 FK CONSTRAINT public operacao_kit_documentos operacao_kit_documentos_atualizado_por_fkey supabase_admin
+4309; 2606 50145 FK CONSTRAINT public operacao_kit_documentos operacao_kit_documentos_criado_por_fkey supabase_admin
+4310; 2606 50160 FK CONSTRAINT public operacao_kit_documentos operacao_kit_documentos_processo_id_empresa_id_organizacao_fkey supabase_admin
+4311; 2606 50155 FK CONSTRAINT public operacao_kit_documentos operacao_kit_documentos_revisado_por_fkey supabase_admin
+4302; 2606 20752 FK CONSTRAINT public operacao_limites_cnpj operacao_limites_cnpj_usuario_id_fkey supabase_admin
+4274; 2606 20764 FK CONSTRAINT public operacao_membros operacao_membros_empresa_org_fk supabase_admin
+4275; 2606 20450 FK CONSTRAINT public operacao_membros operacao_membros_organizacao_id_fkey supabase_admin
+4276; 2606 20455 FK CONSTRAINT public operacao_membros operacao_membros_usuario_id_fkey supabase_admin
+4299; 2606 20694 FK CONSTRAINT public operacao_ocorrencias operacao_ocorrencias_processo_id_organizacao_id_fkey supabase_admin
+4273; 2606 20435 FK CONSTRAINT public operacao_organizacoes operacao_organizacoes_owner_id_fkey supabase_admin
+4292; 2606 41958 FK CONSTRAINT public operacao_prazos_processo operacao_prazos_processo_escopo_fk supabase_admin
+4293; 2606 20600 FK CONSTRAINT public operacao_prazos_processo operacao_prazos_processo_organizacao_id_fkey supabase_admin
+4294; 2606 20605 FK CONSTRAINT public operacao_prazos_processo operacao_prazos_processo_processo_id_fkey supabase_admin
+4288; 2606 20582 FK CONSTRAINT public operacao_processos operacao_processos_criado_por_fkey supabase_admin
+4289; 2606 20577 FK CONSTRAINT public operacao_processos operacao_processos_empresa_id_fkey supabase_admin
+4290; 2606 41948 FK CONSTRAINT public operacao_processos operacao_processos_escopo_fk supabase_admin
+4291; 2606 20572 FK CONSTRAINT public operacao_processos operacao_processos_organizacao_id_fkey supabase_admin
+4283; 2606 20526 FK CONSTRAINT public operacao_renovacoes_documento operacao_renovacoes_documento_documento_id_fkey supabase_admin
+4284; 2606 20531 FK CONSTRAINT public operacao_renovacoes_documento operacao_renovacoes_documento_registrado_por_fkey supabase_admin
+4278; 2606 20488 FK CONSTRAINT public operacao_tipos_documento operacao_tipos_documento_organizacao_id_fkey supabase_admin
+4272; 2606 20241 FK CONSTRAINT public uso_diario uso_diario_usuario_id_fkey supabase_admin
+4261; 2606 20114 FK CONSTRAINT storage iceberg_namespaces iceberg_namespaces_catalog_id_fkey supabase_storage_admin
+4262; 2606 20119 FK CONSTRAINT storage iceberg_tables iceberg_tables_catalog_id_fkey supabase_storage_admin
+4263; 2606 20124 FK CONSTRAINT storage iceberg_tables iceberg_tables_namespace_id_fkey supabase_storage_admin
+4264; 2606 20129 FK CONSTRAINT storage objects objects_bucketId_fkey supabase_storage_admin
+4265; 2606 20134 FK CONSTRAINT storage s3_multipart_uploads s3_multipart_uploads_bucket_id_fkey supabase_storage_admin
+4266; 2606 20139 FK CONSTRAINT storage s3_multipart_uploads_parts s3_multipart_uploads_parts_bucket_id_fkey supabase_storage_admin
+4267; 2606 20144 FK CONSTRAINT storage s3_multipart_uploads_parts s3_multipart_uploads_parts_upload_id_fkey supabase_storage_admin
+4268; 2606 20149 FK CONSTRAINT storage vector_indexes vector_indexes_bucket_id_fkey supabase_storage_admin
+4474; 0 19478 ROW SECURITY auth audit_log_entries supabase_auth_admin
+4475; 0 19519 ROW SECURITY auth flow_state supabase_auth_admin
+4476; 0 19525 ROW SECURITY auth identities supabase_auth_admin
+4477; 0 19532 ROW SECURITY auth instances supabase_auth_admin
+4478; 0 19537 ROW SECURITY auth mfa_amr_claims supabase_auth_admin
+4479; 0 19542 ROW SECURITY auth mfa_challenges supabase_auth_admin
+4480; 0 19547 ROW SECURITY auth mfa_factors supabase_auth_admin
+4481; 0 19608 ROW SECURITY auth one_time_tokens supabase_auth_admin
+4482; 0 19616 ROW SECURITY auth refresh_tokens supabase_auth_admin
+4483; 0 19622 ROW SECURITY auth saml_providers supabase_auth_admin
+4484; 0 19630 ROW SECURITY auth saml_relay_states supabase_auth_admin
+4485; 0 19636 ROW SECURITY auth schema_migrations supabase_auth_admin
+4486; 0 19658 ROW SECURITY auth sessions supabase_auth_admin
+4487; 0 19664 ROW SECURITY auth sso_domains supabase_auth_admin
+4488; 0 19670 ROW SECURITY auth sso_providers supabase_auth_admin
+4489; 0 19676 ROW SECURITY auth users supabase_auth_admin
+4501; 0 20183 ROW SECURITY public admins supabase_admin
+4533; 3256 20837 POLICY public admins admins_select_proprio supabase_admin
+4500; 0 20166 ROW SECURITY public clientes supabase_admin
+4532; 3256 20836 POLICY public clientes clientes_insert_proprio supabase_admin
+4542; 3256 20834 POLICY public clientes clientes_select_proprio supabase_admin
+4531; 3256 20835 POLICY public clientes clientes_update_proprio supabase_admin
+4509; 0 20380 ROW SECURITY public comprasgov_resultados supabase_admin
+4547; 3256 20841 POLICY public comprasgov_resultados comprasgov_resultados_select_autenticado supabase_admin
+4506; 0 20252 ROW SECURITY public contratos supabase_admin
+4544; 3256 20838 POLICY public contratos contratos_select_autenticado supabase_admin
+4502; 0 20193 ROW SECURITY public dados_robo supabase_admin
+4530; 3256 20893 POLICY public dados_robo dados_robo_qa_publicos supabase_admin
+4510; 0 20395 ROW SECURITY public dossies_editais supabase_admin
+4548; 3256 20842 POLICY public dossies_editais dossies_editais_select_autenticado supabase_admin
+4511; 0 20410 ROW SECURITY public fila_dossies supabase_admin
+4535; 3256 33787 POLICY public operacao_identificacao_empresa identificacao_empresa_leitura supabase_admin
+4504; 0 20215 ROW SECURITY public lembretes supabase_admin
+4540; 3256 20832 POLICY public lembretes lembretes_qa_proprios supabase_admin
+4503; 0 20201 ROW SECURITY public logs_boletim supabase_admin
+4507; 0 20347 ROW SECURITY public mercado_atas supabase_admin
+4545; 3256 20839 POLICY public mercado_atas mercado_atas_select_autenticado supabase_admin
+4518; 0 20536 ROW SECURITY public operacao_agenda supabase_admin
+4543; 3256 42008 POLICY public operacao_agenda operacao_agenda_da_empresa supabase_admin
+4549; 3256 42009 POLICY public operacao_agenda operacao_agenda_da_empresa_escrita supabase_admin
+4563; 3256 42022 POLICY public operacao_anexos_processo operacao_anexos_da_empresa supabase_admin
+4564; 3256 42023 POLICY public operacao_anexos_processo operacao_anexos_da_empresa_escrita supabase_admin
+4525; 0 20720 ROW SECURITY public operacao_anexos_processo supabase_admin
+4524; 0 20700 ROW SECURITY public operacao_contratos supabase_admin
+4560; 3256 42020 POLICY public operacao_contratos operacao_contratos_da_empresa supabase_admin
+4561; 3256 42021 POLICY public operacao_contratos operacao_contratos_da_empresa_escrita supabase_admin
+4527; 0 20795 ROW SECURITY public operacao_convites_empresa supabase_admin
+4516; 0 20493 ROW SECURITY public operacao_documentos supabase_admin
+4538; 3256 42006 POLICY public operacao_documentos operacao_documentos_da_empresa supabase_admin
+4539; 3256 42007 POLICY public operacao_documentos operacao_documentos_da_empresa_escrita supabase_admin
+4521; 0 20611 ROW SECURITY public operacao_empenhos supabase_admin
+4554; 3256 42014 POLICY public operacao_empenhos operacao_empenhos_da_empresa supabase_admin
+4555; 3256 42015 POLICY public operacao_empenhos operacao_empenhos_da_empresa_escrita supabase_admin
+4514; 0 20460 ROW SECURITY public operacao_empresas supabase_admin
+4536; 3256 42004 POLICY public operacao_empresas operacao_empresas_escrita supabase_admin
+4570; 3256 20866 POLICY public operacao_empresas operacao_empresas_leitura supabase_admin
+4528; 0 33746 ROW SECURITY public operacao_identificacao_empresa supabase_admin
+4556; 3256 42016 POLICY public operacao_itens_resultado operacao_itens_da_empresa supabase_admin
+4557; 3256 42017 POLICY public operacao_itens_resultado operacao_itens_da_empresa_escrita supabase_admin
+4522; 0 20659 ROW SECURITY public operacao_itens_resultado supabase_admin
+4529; 0 50131 ROW SECURITY public operacao_kit_documentos supabase_admin
+4534; 3256 50173 POLICY public operacao_kit_documentos operacao_kit_documentos_select_empresa supabase_admin
+4526; 0 20745 ROW SECURITY public operacao_limites_cnpj supabase_admin
+4513; 0 20440 ROW SECURITY public operacao_membros supabase_admin
+4569; 3256 20865 POLICY public operacao_membros operacao_membros_da_org supabase_admin
+4523; 0 20683 ROW SECURITY public operacao_ocorrencias supabase_admin
+4558; 3256 42018 POLICY public operacao_ocorrencias operacao_ocorrencias_da_empresa supabase_admin
+4559; 3256 42019 POLICY public operacao_ocorrencias operacao_ocorrencias_da_empresa_escrita supabase_admin
+4512; 0 20424 ROW SECURITY public operacao_organizacoes supabase_admin
+4568; 3256 20864 POLICY public operacao_organizacoes operacao_organizacoes_proprias supabase_admin
+4552; 3256 42012 POLICY public operacao_prazos_processo operacao_prazos_da_empresa supabase_admin
+4553; 3256 42013 POLICY public operacao_prazos_processo operacao_prazos_da_empresa_escrita supabase_admin
+4520; 0 20590 ROW SECURITY public operacao_prazos_processo supabase_admin
+4519; 0 20557 ROW SECURITY public operacao_processos supabase_admin
+4550; 3256 42010 POLICY public operacao_processos operacao_processos_da_empresa supabase_admin
+4551; 3256 42011 POLICY public operacao_processos operacao_processos_da_empresa_escrita supabase_admin
+4565; 3256 42025 POLICY public operacao_renovacoes_documento operacao_renovacoes_da_empresa supabase_admin
+4566; 3256 42026 POLICY public operacao_renovacoes_documento operacao_renovacoes_da_empresa_escrita supabase_admin
+4517; 0 20519 ROW SECURITY public operacao_renovacoes_documento supabase_admin
+4515; 0 20477 ROW SECURITY public operacao_tipos_documento supabase_admin
+4537; 3256 42005 POLICY public operacao_tipos_documento operacao_tipos_escrita supabase_admin
+4562; 3256 20868 POLICY public operacao_tipos_documento operacao_tipos_leitura supabase_admin
+4508; 0 20367 ROW SECURITY public oportunidades_abertas supabase_admin
+4546; 3256 20840 POLICY public oportunidades_abertas oportunidades_abertas_select_autenticado supabase_admin
+4505; 0 20232 ROW SECURITY public uso_diario supabase_admin
+4541; 3256 20833 POLICY public uso_diario uso_diario_select_proprio supabase_admin
+4490; 0 19713 ROW SECURITY storage buckets supabase_storage_admin
+4491; 0 19730 ROW SECURITY storage buckets_analytics supabase_storage_admin
+4492; 0 19740 ROW SECURITY storage buckets_vectors supabase_storage_admin
+4493; 0 19748 ROW SECURITY storage iceberg_namespaces supabase_storage_admin
+4494; 0 19757 ROW SECURITY storage iceberg_tables supabase_storage_admin
+4495; 0 19765 ROW SECURITY storage migrations supabase_storage_admin
+4496; 0 19769 ROW SECURITY storage objects supabase_storage_admin
+4572; 3256 42029 POLICY storage objects operacao_arquivos_atualizacao supabase_storage_admin
+4567; 3256 42028 POLICY storage objects operacao_arquivos_envio supabase_storage_admin
+4573; 3256 42030 POLICY storage objects operacao_arquivos_exclusao supabase_storage_admin
+4571; 3256 20881 POLICY storage objects operacao_arquivos_leitura supabase_storage_admin
+4497; 0 19781 ROW SECURITY storage s3_multipart_uploads supabase_storage_admin
+4498; 0 19788 ROW SECURITY storage s3_multipart_uploads_parts supabase_storage_admin
+4499; 0 19796 ROW SECURITY storage vector_indexes supabase_storage_admin
+2457; 826 20154 DEFAULT ACL auth DEFAULT PRIVILEGES FOR SEQUENCES supabase_auth_admin
+2458; 826 20155 DEFAULT ACL auth DEFAULT PRIVILEGES FOR FUNCTIONS supabase_auth_admin
+2459; 826 20156 DEFAULT ACL auth DEFAULT PRIVILEGES FOR TABLES supabase_auth_admin
+2460; 826 20157 DEFAULT ACL extensions DEFAULT PRIVILEGES FOR SEQUENCES supabase_admin
+2461; 826 20158 DEFAULT ACL extensions DEFAULT PRIVILEGES FOR FUNCTIONS supabase_admin
+2462; 826 20159 DEFAULT ACL extensions DEFAULT PRIVILEGES FOR TABLES supabase_admin
+2467; 826 20164 DEFAULT ACL public DEFAULT PRIVILEGES FOR SEQUENCES supabase_admin
+2468; 826 20165 DEFAULT ACL public DEFAULT PRIVILEGES FOR FUNCTIONS supabase_admin
+2466; 826 20163 DEFAULT ACL public DEFAULT PRIVILEGES FOR TABLES supabase_admin
+2463; 826 20160 DEFAULT ACL storage DEFAULT PRIVILEGES FOR SEQUENCES postgres
+2464; 826 20161 DEFAULT ACL storage DEFAULT PRIVILEGES FOR FUNCTIONS postgres
+2465; 826 20162 DEFAULT ACL storage DEFAULT PRIVILEGES FOR TABLES postgres

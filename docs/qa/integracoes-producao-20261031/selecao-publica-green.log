@@ -1,0 +1,23 @@
+✔ CAPAG corresponde ao ente municipal e UF, sem emprestar nota a federal ou Câmara (3.0676ms)
+✔ CAPAG sem nota ou sem base informa ausência e nunca converte N.D. em aprovação (4.3975ms)
+✔ snapshot CAPAG real conserva data e indicadores oficiais de Jutaí (45.6921ms)
+✔ CAPAG real de Sant'Ana aceita apóstrofo convencional sem perder a identidade do ente (31.6064ms)
+✔ CAPAG cobre 26 UFs e todas as notas em pregão e dispensa, sem depender do edital de Jutaí (432.6948ms)
+✔ CAPAG recusa entes independentes e homônimos sem confirmação inequívoca (0.5196ms)
+✔ build local inclui o módulo CAPAG e o painel usa a mesma integração em qualquer modalidade (8.1533ms)
+✔ CAPAG aparece com PNCP pendente em novos pregões e dispensas, inclusive resumo em cache (19.3537ms)
+✔ consulta CAPAG atrasada não altera outro edital e indisponibilidade tem motivo visível (5.2356ms)
+✔ módulos do resumo têm versão por conteúdo para evitar JS antigo no navegador (25.9608ms)
+✔ o publico inclui as páginas, os assets referenciados e o _headers, sem arquivos de ferramenta (3.2595ms)
+✔ todo src/href local das páginas existe no publico (99.4944ms)
+✔ _headers traz o CSP do netlify.toml e desanexa o Cache-Control em /data/* (4.382ms)
+✔ build publica somente os cinco dados aprovados e preserva o histórico de origem (122.093ms)
+✔ build interrompe quando falta dado público obrigatório, sem copiar dados desconhecidos (48.3786ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 824.304

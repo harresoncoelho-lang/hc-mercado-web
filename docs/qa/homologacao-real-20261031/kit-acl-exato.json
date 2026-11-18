@@ -1,0 +1,165 @@
+{
+  "roles": [
+    {
+      "role": "supabase_admin",
+      "superuser": true,
+      "inherit": true,
+      "create_role": true,
+      "create_db": true,
+      "login": true,
+      "replication": true,
+      "bypass_rls": true
+    },
+    {
+      "role": "postgres",
+      "superuser": false,
+      "inherit": true,
+      "create_role": true,
+      "create_db": true,
+      "login": true,
+      "replication": true,
+      "bypass_rls": true
+    },
+    {
+      "role": "service_role",
+      "superuser": false,
+      "inherit": true,
+      "create_role": false,
+      "create_db": false,
+      "login": false,
+      "replication": false,
+      "bypass_rls": true
+    }
+  ],
+  "memberships": [
+    {
+      "role": "pg_read_all_data",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "pg_monitor",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "pg_signal_backend",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "pg_create_subscription",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "authenticated",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "anon",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "service_role",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "supabase_privileged_role",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": false,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "authenticator",
+      "member": "postgres",
+      "grantor": "supabase_admin",
+      "admin_option": true,
+      "inherit_option": true,
+      "set_option": true
+    },
+    {
+      "role": "service_role",
+      "member": "authenticator",
+      "grantor": "supabase_admin",
+      "admin_option": false,
+      "inherit_option": false,
+      "set_option": true
+    }
+  ],
+  "default_acl": [
+    {
+      "owner": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}"
+    },
+    {
+      "owner": "supabase_admin",
+      "schema": "public",
+      "object_type": "S",
+      "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}"
+    },
+    {
+      "owner": "supabase_admin",
+      "schema": "public",
+      "object_type": "f",
+      "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}"
+    }
+  ],
+  "kit_table": [
+    {
+      "table": "operacao_kit_documentos",
+      "owner": "supabase_admin",
+      "acl": "{supabase_admin=arwdDxtm/supabase_admin,postgres=arwdDxtm/supabase_admin,authenticated=r/supabase_admin,service_role=r/supabase_admin}",
+      "rls": true
+    }
+  ],
+  "kit_columns_acl": [],
+  "kit_functions": [
+    {
+      "function": "gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)",
+      "owner": "supabase_admin",
+      "acl": "{supabase_admin=X/supabase_admin,postgres=X/supabase_admin,service_role=X/supabase_admin}",
+      "config": [
+        "search_path=pg_catalog, pg_temp"
+      ],
+      "security_definer": true
+    },
+    {
+      "function": "kit_documento_escopo_imutavel()",
+      "owner": "supabase_admin",
+      "acl": "{supabase_admin=X/supabase_admin,postgres=X/supabase_admin,service_role=X/supabase_admin}",
+      "config": [
+        "search_path=pg_catalog, pg_temp"
+      ],
+      "security_definer": false
+    }
+  ]
+}

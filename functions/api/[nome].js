@@ -1,3 +1,5 @@
+import * as importacaoPncp from "../../netlify/functions/importar-item-pncp.js";
+import * as vinculoCompraPortal from "../../netlify/functions/vinculo-compra-portal.js";
 // Rota única do Cloudflare Pages Functions: /api/<nome> -> handler Netlify de mesmo nome.
 //
 // Por quê: o site saiu do Netlify (conta suspensa) para o Cloudflare Pages gratuito, e o front-end
@@ -31,8 +33,12 @@ import * as m15 from "../../netlify/functions/enviar-duvida.js";
 
 import * as m16 from "../../netlify/functions/empresa-identificacao.js";
 import * as m17 from "../../netlify/functions/decisao-oportunidade.js";
+import * as m18 from "../../netlify/functions/kit-documentos.js";
 
 const ROTAS = {
+  "vinculo-compra-portal": vinculoCompraPortal,
+  "importar-item-pncp": importacaoPncp,
+  "kit-documentos": m18,
   "decisao-oportunidade": m17,
   "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,

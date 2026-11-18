@@ -1,0 +1,122 @@
+/* LicitaPlena — generated from tokens.json */
+:root, [data-theme="light"] {
+  --surface-page: #f6f8fc; /* Fundo cinza muito leve da aplicação, atrás de painéis e listas. */
+  --surface-default: #ffffff; /* Superfície principal: cartões, tabelas, formulários. */
+  --surface-raised: #ffffff; /* Superfícies sobrepostas: drawer, modal, menus. */
+  --surface-sunken: #f1f4fa; /* Cabeçalhos de tabela, linhas em hover, áreas de carregamento. */
+  --border-default: #e3e8f0; /* Separadores e bordas de cartões e tabelas. */
+  --border-strong: #7a879b; /* Bordas de campos, checkbox e botões secundários. */
+  --text-primary: #172033; /* Texto principal e títulos. Sobre surface-default e surface-page. */
+  --text-secondary: #58657a; /* Texto de apoio, rótulos auxiliares, metadados. Sobre surface-default e surface-page. */
+  --text-disabled: #8a94a6; /* Texto de controles desativados. Não usar para informação necessária. */
+  --brand-navy: #071b70; /* Azul-marinho da marca. Logotipo e identidade; não é cor de ação. */
+  --brand-blue: #3772f8; /* Azul da marca. Foco, seleção e elementos gráficos; não usar como cor de texto sobre branco. */
+  --action-strong: #2255e0; /* Fundo do botão primário e da ação principal. Branco sobre #2255E0 ≈ 6,1:1. */
+  --action-strong-hover: #1a46c4; /* Estado hover do botão primário. */
+  --action-on: #ffffff; /* Texto e ícone sobre action-strong. */
+  --action-text: #2255e0; /* Texto de link e botão terciário. Sobre branco ≈ 6,1:1. */
+  --action-tint: #e8effe; /* Seleção de linha, item ativo de navegação, opção marcada. */
+  --focus-ring: #3772f8; /* Anel de foco visível: 2px com deslocamento de 2px. */
+  --success-text: #0e6b4a; /* Texto e ícone de sucesso. Sobre success-bg ≈ 5,8:1. */
+  --success-bg: #e7f5ee; /* Fundo de chip e aviso de sucesso. */
+  --success-border: #a9dcc3; /* Borda de chip e aviso de sucesso. */
+  --attention-text: #8a4b00; /* Texto e ícone de atenção (prazo próximo, pendência). Sobre attention-bg ≈ 6,2:1. */
+  --attention-bg: #fff4e0; /* Fundo de chip e aviso de atenção. */
+  --attention-border: #f0cf95; /* Borda de chip e aviso de atenção. */
+  --error-text: #b42318; /* Texto e ícone de erro (vencido, campo inválido). Sobre error-bg ≈ 5,7:1. */
+  --error-bg: #fdecea; /* Fundo de chip e aviso de erro. */
+  --error-border: #f2b8b2; /* Borda de campo inválido e aviso de erro. */
+  --error-strong: #b42318; /* Fundo do botão destrutivo. */
+  --error-on: #ffffff; /* Texto sobre error-strong. */
+  --info-text: #1f4fb8; /* Texto e ícone informativo (em análise, sincronizando). Sobre info-bg ≈ 6,5:1. */
+  --info-bg: #eaf1fe; /* Fundo de chip e aviso informativo. */
+  --info-border: #b9ccf5; /* Borda de chip e aviso informativo. */
+  --shadow-overlay: 0 12px 32px rgba(23,32,51,0.12), 0 1px 2px rgba(23,32,51,0.08); /* Única sombra do sistema: apenas para drawer, modal e menus sobrepostos. */
+}
+[data-theme="dark"] {
+  --surface-page: #0b1020;
+  --surface-default: #0e1524;
+  --surface-raised: #141c2f;
+  --surface-sunken: #111829;
+  --border-default: #243049;
+  --border-strong: #7786a0;
+  --text-primary: #e6ebf5;
+  --text-secondary: #a3aec2;
+  --text-disabled: #5f6b82;
+  --brand-navy: #071b70;
+  --brand-blue: #3772f8;
+  --action-strong: #5e8bff;
+  --action-strong-hover: #7ca3ff;
+  --action-on: #0b1020;
+  --action-text: #8db0ff;
+  --action-tint: #17264a;
+  --focus-ring: #5e8bff;
+  --success-text: #7fd9b0;
+  --success-bg: #0f2e24;
+  --success-border: #1f5a45;
+  --attention-text: #f5c77a;
+  --attention-bg: #2e2110;
+  --attention-border: #5c4220;
+  --error-text: #ff9c92;
+  --error-bg: #3a1816;
+  --error-border: #6b2a24;
+  --error-strong: #ff9c92;
+  --error-on: #3a0f0b;
+  --info-text: #9dbbff;
+  --info-bg: #14213f;
+  --info-border: #2a3f6e;
+  --shadow-overlay: 0 12px 32px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.4);
+}
+:root {
+  --space-4: 4px; /* Espaço mínimo entre ícone e texto. */
+  --space-8: 8px; /* Espaço interno de chips e grupos compactos. */
+  --space-12: 12px; /* Espaço entre controles relacionados. */
+  --space-16: 16px; /* Padding padrão de cartões e campos. */
+  --space-24: 24px; /* Separação entre blocos de uma seção. */
+  --space-32: 32px; /* Separação entre seções de página. */
+  --space-48: 48px; /* Respiro entre grandes áreas da tela. */
+  --radius-control: 6px; /* Botões, campos, chips, checkbox. */
+  --radius-card: 10px; /* Cartões de oportunidade e documento, tabelas. */
+  --radius-modal: 14px; /* Modais e drawers. */
+  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text-title: 600 28px/36px var(--font-sans); /* Título de página. Uma por tela. */
+  --text-section: 600 20px/28px var(--font-sans); /* Título de seção ou de painel. */
+  --text-body-lg: 400 16px/24px var(--font-sans); /* Texto de leitura em destaque, descrições de oportunidade. */
+  --text-body: 400 14px/22px var(--font-sans); /* Corpo padrão de interface, tabelas e formulários. */
+  --text-label: 500 12px/16px var(--font-sans); /* Rótulos de campo, metadados, cabeçalhos de coluna. */
+}
+.title {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.section {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.body-lg {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.label {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0;
+}

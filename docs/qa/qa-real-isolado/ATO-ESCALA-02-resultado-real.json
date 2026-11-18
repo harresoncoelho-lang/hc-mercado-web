@@ -1,0 +1,36 @@
+{
+  "status": "QA_ESCALA_DIAGNOSTICO_ROLLBACK_OK",
+  "corpoReal": "a1c37914704cdb3dce5fb6dc056e9896",
+  "searchPath": "\"\\$user\", public, extensions",
+  "corpoCoincide": true,
+  "corpoEsperado": "a1c37914704cdb3dce5fb6dc056e9896",
+  "metadataAntes": {
+    "acl": [
+      "postgres=X/postgres",
+      "service_role=X/postgres"
+    ],
+    "owner": "16384",
+    "config": [
+      "search_path=pg_catalog, pg_temp"
+    ],
+    "rettype": "18494",
+    "security": true
+  },
+  "metadataDepois": {
+    "acl": [
+      "postgres=X/postgres",
+      "service_role=X/postgres"
+    ],
+    "owner": "16384",
+    "config": [
+      "search_path=pg_catalog, pg_temp"
+    ],
+    "rettype": "18494",
+    "security": true
+  },
+  "serverEncoding": "UTF8",
+  "metadataCoincide": true,
+  "candidatoPayloadMd5": "734dd791818e141c7b62dd6ca7c62a9d",
+  "baselineRestauradaMd5": "64c94369bded0ca5721959406a8d5434",
+  "definicaoCandidataMd5": "30ed507d50e613bbf91a6a974082e400"
+}

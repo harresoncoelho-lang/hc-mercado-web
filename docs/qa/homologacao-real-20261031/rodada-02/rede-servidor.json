@@ -1,0 +1,1121 @@
+{
+  "data": "2026-10-31T02:37:13.745Z",
+  "eventos": [
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/user",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/user",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/user",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/user",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/identificacao_empresa_habilitada",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/identificacao_empresa_habilitada",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_kit_documentos",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/rpc/gravar_kit_documento",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/rpc/gravar_kit_documento",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/rpc/gravar_kit_documento",
+      "status": 401
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/user",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 422
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 204
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 204
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 422
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 204
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/confirmar_identificacao_empresa",
+      "status": 403
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/authenticated/operacao-documentos/f0313e12-32d0-4741-8479-a5655622fcce/95ec34ac-3fde-413e-b6c5-e5af7d3b5991/498c49f8-490a-4d7b-aac1-f2ee29294226-cartao-kit-qa.pdf",
+      "status": 400
+    },
+    {
+      "rota": "/storage/v1/object/authenticated/operacao-documentos/f0313e12-32d0-4741-8479-a5655622fcce/95ec34ac-3fde-413e-b6c5-e5af7d3b5991/498c49f8-490a-4d7b-aac1-f2ee29294226-cartao-kit-qa.pdf",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos/f0313e12-32d0-4741-8479-a5655622fcce/95ec34ac-3fde-413e-b6c5-e5af7d3b5991/498c49f8-490a-4d7b-aac1-f2ee29294226-cartao-kit-qa.pdf",
+      "status": 400
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos/f0313e12-32d0-4741-8479-a5655622fcce/95ec34ac-3fde-413e-b6c5-e5af7d3b5991/498c49f8-490a-4d7b-aac1-f2ee29294226-cartao-kit-qa.pdf",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos/f0313e12-32d0-4741-8479-a5655622fcce/95ec34ac-3fde-413e-b6c5-e5af7d3b5991/498c49f8-490a-4d7b-aac1-f2ee29294226-cartao-kit-qa.pdf",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 422
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/meu_acesso_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_agenda",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/limite_cnpjs_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/meu_acesso_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_agenda",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/limite_cnpjs_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_processos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_prazos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_contratos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empenhos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_anexos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_ocorrencias",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/meu_acesso_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_agenda",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/limite_cnpjs_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_processos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_prazos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empenhos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_contratos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_anexos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_ocorrencias",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_processos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empenhos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_prazos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_contratos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_ocorrencias",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_anexos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_processos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_prazos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empenhos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_ocorrencias",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_anexos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_contratos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_processos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_prazos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empenhos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_ocorrencias",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_contratos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_anexos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_processos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_prazos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_contratos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empenhos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_anexos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_ocorrencias",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/meu_acesso_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_agenda",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/limite_cnpjs_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/clientes",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/bootstrap_operacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empresas",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_processos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_prazos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_empenhos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_contratos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_ocorrencias",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_anexos_processo",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/d61f061b-869b-44c6-aa4a-44ecdac30491",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/9f74a5f4-7d2c-4077-8ffd-bbb1baa6ff90",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/848cb7a4-7b11-4b96-b5b8-2958b62a7e7a",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/810dd3a9-4264-4515-807f-6bd0ccfc9989",
+      "status": 200
+    }
+  ]
+}

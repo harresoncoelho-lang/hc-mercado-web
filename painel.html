@@ -5238,19 +5238,17 @@
 
     // Substitui data/oportunidades_abertas.json (nacional) e data/boletim/{UF}.json (por
     // estado) — ambos vinham de arquivos comitados a cada execução do robô, o que disparava
-    // um deploy completo no Netlify por commit. Devolve {registros: [...]}, ou null em erro,
-    // que era o contrato dos arquivos antigos, pra não mudar nenhum consumidor. Sem
-    // "estados", devolve a base nacional inteira (mesmo comportamento do antigo
-    // data/oportunidades_abertas.json); com "estados", filtra por UF E pela mesma janela de
-    // recência que data/boletim/{UF}.json usava (publicado nos últimos 3 dias OU ainda com
-    // proposta aberta) — ver gravarBoletinsPorUf, removida de scripts/atualizar_dados.js.
-    async function carregarOportunidadesSupabase(estados = []) {
-      const chaveCache = JSON.stringify({ estados: [...estados].sort() });
+    // um deploy completo no Netlify por commit. Devolve registros e limiteAtingido, ou null
+    // em erro. Sem "estados", consulta o recorte nacional até o teto de segurança.
+    // A recência por UF permanece padrão para o boletim (últimos 3 dias OU proposta aberta);
+    // Radar e diagnóstico a desativam para preservar sua busca histórica.
+    async function carregarOportunidadesSupabase(estados = [], recenciaBoletim = true) {
+      const chaveCache = JSON.stringify({ estados: [...estados].sort(), recenciaBoletim });
       const entradaCache = cacheOportunidadesSupabase.get(chaveCache);
       if (entradaCache && (Date.now() - entradaCache.em) < CACHE_OPORTUNIDADES_TTL_MS) {
         return entradaCache.resultado;
       }
-      const resultado = await consultarOportunidadesSupabase(estados);
+      const resultado = await consultarOportunidadesSupabase(estados, recenciaBoletim);
       // Só memoiza sucesso: cachear null/erro por 5 min prendia a sessão inteira num
       // "sem dados" mesmo que uma tentativa seguinte funcionasse (mesmo cuidado que
       // consultarContratosSupabase já toma retornando antes do .set() no caminho de erro).
@@ -5258,7 +5256,7 @@
       return resultado;
     }
 
-    async function consultarOportunidadesSupabase(estados) {
+    async function consultarOportunidadesSupabase(estados, recenciaBoletim = true) {
       try {
         await aguardarSupabaseAutenticado();
         const registros = [];
@@ -5272,14 +5270,16 @@
           // Ordenar pela chave primária é o que deixa a paginação estável: sem ORDER BY o
           // Postgres não garante a mesma ordem entre páginas, e linhas poderiam repetir ou
           // sumir de uma .range() pra seguinte.
-          let query = window.__sbClient.from("oportunidades_abertas").select("dado").order("chave").range(inicio, fim);
+          let query = window.__sbClient.from("oportunidades_abertas").select("dado").order("chave");
           if (estados.length > 0) {
             query = query.in("uf", estados);
-            const cortePublicacaoIso = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-            const agoraIso = new Date().toISOString().slice(0, 10);
-            query = query.or(`publicacao.gte.${cortePublicacaoIso},publicacao.is.null,encerramento.gte.${agoraIso}`);
+            if (recenciaBoletim) {
+              const cortePublicacaoIso = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+              const agoraIso = new Date().toISOString().slice(0, 10);
+              query = query.or(`publicacao.gte.${cortePublicacaoIso},publicacao.is.null,encerramento.gte.${agoraIso}`);
+            }
           }
-          const { data, error } = await query;
+          const { data, error } = await query.range(inicio, fim);
           if (error) {
             console.error("[oportunidades_abertas] erro na consulta:", error);
             return null;
@@ -5289,7 +5289,7 @@
           if (pagina.length === 0) break;
           inicio += pagina.length;
         }
-        return { registros };
+        return { registros, limiteAtingido: registros.length >= LIMITE_OPORTUNIDADES_SUPABASE };
       } catch (e) {
         return null;
       }
@@ -6724,9 +6724,12 @@
       const falhaConexao = resp.falhaConexao;
       let avisoFonte = "";
 
-      const cache = await carregarOportunidadesSupabase();
+      const cache = await carregarOportunidadesSupabase(ufs, false);
       if (cache && Array.isArray(cache.registros) && cache.registros.length > 0) {
         resultados = mesclarComCacheRobo(resultados, cache.registros, ufs, palavras);
+      }
+      if (cache?.limiteAtingido) {
+        avisoFonte = `<div class="aviso">O complemento da base salva está limitado a ${LIMITE_OPORTUNIDADES_SUPABASE.toLocaleString("pt-BR")} registros. Algumas oportunidades podem não aparecer nesse complemento; a busca ao vivo no PNCP é independente.</div>`;
       }
 
       resultados = resultados
@@ -6797,7 +6800,7 @@
       }
       if (!falhaConexao) salvarResultadoOportunidades(chaveFiltro, resultados, avisoConexao);
       const ids = (lista) => lista.map(idOportunidade).sort().join("|");
-      if (anterior && resultados.length && ids(resultados) === ids(anterior.resultados)) {
+      if (anterior && resultados.length && ids(resultados) === ids(anterior.resultados) && avisoConexao === (anterior.aviso || "")) {
         // Nada novo: mantém a lista na tela (rolagem, filtro rápido) e só confirma a conferência.
         definirNotaResultadoOportunidades(alvo, `Conferido no PNCP às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · nenhuma novidade.`);
         return;
@@ -7502,6 +7505,9 @@
     if (d.amostra && d.amostra.ufOportunidadesFalhouHoje) {
       html += `<div class="aviso">A coleta de oportunidades abertas para ${escapeHtml(d.uf || "")} falhou na última execução do robô (o PNCP não respondeu para esse estado). Ela será tentada novamente na próxima atualização diária.</div>`;
     }
+    if (d.amostra && d.amostra.limiteOportunidadesAtingido) {
+      html += `<div class="aviso">Consulta à base salva limitada a ${LIMITE_OPORTUNIDADES_SUPABASE.toLocaleString("pt-BR")} registros. Algumas oportunidades podem não aparecer.</div>`;
+    }
 
     let totalNacional = 0, totalRegional = 0;
     for (const c of (d.encontradosNacional || d.encontrados)) {
@@ -7925,7 +7931,7 @@
       // Metadados e fontes auxiliares são independentes da consulta de contratos. Iniciar
       // tudo junto reduz o tempo percebido até o relatório sem aumentar chamadas à API.
       const metaContratosPromise = carregarMeta("data/contratos_meta.json");
-      const cacheOpPromise = carregarOportunidadesSupabase();
+      const cacheOpPromise = carregarOportunidadesSupabase(uf ? [uf] : [], false);
       const cacheMercadoPromise = carregarMercadoSegmentos(palavras, uf || null);
       const resumoPromise = carregarResumoInteligenciaMercado(palavras, dias, uf);
       resumoPromise.then((resumo) => {
@@ -8054,6 +8060,7 @@
           totalPaginasDisponiveis: totalPaginas,
           falhaConexao: falhaConexao || falhaConexaoOportunidades,
           ufOportunidadesFalhouHoje,
+          limiteOportunidadesAtingido: !!cacheOp?.limiteAtingido,
           consultaTruncada,
           totalCorrespondente,
           totalRetornado,

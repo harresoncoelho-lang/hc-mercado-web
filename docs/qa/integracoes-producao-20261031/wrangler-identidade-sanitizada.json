@@ -1,0 +1,20 @@
+{
+  "command": "wrangler whoami --json",
+  "utc": "2026-10-30T23:51:27.1481008-03:00",
+  "exitCode": 0,
+  "jsonValido": true,
+  "autenticado": true,
+  "tipoAuth": "OAuth Token",
+  "numeroContas": 1,
+  "permissoes": [
+    "user:read",
+    "offline_access",
+    "account:read",
+    "workers_scripts:write",
+    "pages:write",
+    "ai:write"
+  ],
+  "erroAutenticacao": false,
+  "outputBrutoPersistidoPeloRoteiro": false,
+  "logsNativosWranglerNaoInspecionados": true
+}

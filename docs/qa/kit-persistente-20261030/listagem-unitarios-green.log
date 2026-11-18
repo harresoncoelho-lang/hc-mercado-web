@@ -1,0 +1,11 @@
+✔ geração descarta respostas antigas mesmo no ciclo A → B → A e após fechar (2.3054ms)
+✔ qualquer alteração invalida hash e revisão e impede exportação sem nova prévia (1.4955ms)
+✔ revisão histórica e clique local não autorizam exportar; confirmação exige peça, versão e geração atuais (0.8525ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 91.9631

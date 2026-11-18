@@ -1,0 +1,174 @@
+inventario	Set up job	﻿2026-11-01T18:56:33.1154011Z Current runner version: '2.338.2'
+inventario	Set up job	2026-11-01T18:56:33.1210600Z ##[group]Runner Image Provisioner
+inventario	Set up job	2026-11-01T18:56:33.1212009Z Hosted Compute Agent
+inventario	Set up job	2026-11-01T18:56:33.1213018Z Version: 20261021.618
+inventario	Set up job	2026-11-01T18:56:33.1214248Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+inventario	Set up job	2026-11-01T18:56:33.1215697Z Build Date: 2026-10-21T00:45:21Z
+inventario	Set up job	2026-11-01T18:56:33.1217053Z Worker ID: {e336441c-483f-499b-9a0a-6fe0dcacf928}
+inventario	Set up job	2026-11-01T18:56:33.1219175Z Region: eastus
+inventario	Set up job	2026-11-01T18:56:33.1240647Z Cloud: Azure
+inventario	Set up job	2026-11-01T18:56:33.1241852Z ##[endgroup]
+inventario	Set up job	2026-11-01T18:56:33.1244213Z ##[group]Operating System
+inventario	Set up job	2026-11-01T18:56:33.1245276Z Ubuntu
+inventario	Set up job	2026-11-01T18:56:33.1246332Z 24.04.5
+inventario	Set up job	2026-11-01T18:56:33.1247275Z LTS
+inventario	Set up job	2026-11-01T18:56:33.1248235Z ##[endgroup]
+inventario	Set up job	2026-11-01T18:56:33.1249200Z ##[group]Runner Image
+inventario	Set up job	2026-11-01T18:56:33.1252788Z Image: ubuntu-24.04
+inventario	Set up job	2026-11-01T18:56:33.1254058Z Version: 20261025.353.1
+inventario	Set up job	2026-11-01T18:56:33.1256046Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+inventario	Set up job	2026-11-01T18:56:33.1259123Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+inventario	Set up job	2026-11-01T18:56:33.1277247Z ##[endgroup]
+inventario	Set up job	2026-11-01T18:56:33.1279266Z ##[group]GITHUB_TOKEN Permissions
+inventario	Set up job	2026-11-01T18:56:33.1282550Z Contents: read
+inventario	Set up job	2026-11-01T18:56:33.1283585Z Metadata: read
+inventario	Set up job	2026-11-01T18:56:33.1284640Z ##[endgroup]
+inventario	Set up job	2026-11-01T18:56:33.1287589Z Secret source: Actions
+inventario	Set up job	2026-11-01T18:56:33.1289281Z Cache mode: write
+inventario	Set up job	2026-11-01T18:56:33.1290841Z Prepare workflow directory
+inventario	Set up job	2026-11-01T18:56:33.2302380Z Prepare all required actions
+inventario	Set up job	2026-11-01T18:56:33.2413327Z Getting action download info
+inventario	Set up job	2026-11-01T18:56:33.4354560Z Download action repository 'actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683' (SHA:11bd71901bbe5b1630ceea73d27597364c9af683)
+inventario	Set up job	2026-11-01T18:56:33.5953086Z Download action repository 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+inventario	Set up job	2026-11-01T18:56:33.8103627Z Complete job name: inventario
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	﻿2026-11-01T18:56:33.9018054Z ##[group]Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9019141Z with:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9019611Z   persist-credentials: false
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9020353Z   fetch-depth: 1
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9020933Z   repository: harresoncoelho-lang/licitaplena-homologacao
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9025122Z   token: ***
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9025565Z   ssh-strict: true
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9026010Z   ssh-user: git
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9026440Z   clean: true
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9026903Z   sparse-checkout-cone-mode: true
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9027438Z   fetch-tags: false
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9027898Z   show-progress: true
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9028354Z   lfs: false
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9028770Z   submodules: false
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9029223Z   set-safe-directory: true
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9029955Z env:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9030562Z   PYTHONDONTWRITEBYTECODE: 1
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:33.9031081Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3607059Z Syncing repository: harresoncoelho-lang/licitaplena-homologacao
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3615953Z ##[group]Getting Git version info
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3618149Z Working directory is '/home/runner/work/licitaplena-homologacao/licitaplena-homologacao'
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3628198Z [command]/usr/bin/git version
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3629501Z git version 2.56.0
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3633972Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3641707Z Temporarily overriding HOME='/home/runner/work/_temp/58b63778-8187-40e0-a104-a196cef62458' before making global git config changes
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3645009Z Adding repository directory to the temporary git global config as a safe directory
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3648058Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/licitaplena-homologacao/licitaplena-homologacao
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3671970Z Deleting the contents of '/home/runner/work/licitaplena-homologacao/licitaplena-homologacao'
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3677229Z ##[group]Initializing the repository
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3679219Z [command]/usr/bin/git init /home/runner/work/licitaplena-homologacao/licitaplena-homologacao
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3682385Z hint: Using 'master' as the name for the initial branch. This default branch name
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3684675Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3686866Z hint: to use in all of your new repositories, which will suppress this warning,
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3688641Z hint: call:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3689661Z hint:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3691542Z hint: 	git config --global init.defaultBranch <name>
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3693163Z hint:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3694645Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3696922Z hint: 'development'. The just-created branch can be renamed via this command:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3698746Z hint:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3699829Z hint: 	git branch -m <name>
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3715838Z hint:
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3717447Z hint: Disable this message with "git config set advice.defaultBranchName false"
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3720337Z Initialized empty Git repository in /home/runner/work/licitaplena-homologacao/licitaplena-homologacao/.git/
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3726695Z [command]/usr/bin/git remote add origin https://github.com/harresoncoelho-lang/licitaplena-homologacao
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3731428Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3733298Z ##[group]Disabling automatic garbage collection
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3734922Z [command]/usr/bin/git config --local gc.auto 0
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3739251Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3741389Z ##[group]Setting up auth
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3894604Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.3900275Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.4305483Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.4311774Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.4497887Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.4551532Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.4553631Z ##[group]Fetching the repository
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.4566448Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +c08feeabe25ff3d726e9373b4d1a92147a99885f:refs/remotes/origin/main
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8733496Z From https://github.com/harresoncoelho-lang/licitaplena-homologacao
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8742389Z  * [new ref]         c08feeabe25ff3d726e9373b4d1a92147a99885f -> origin/main
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8748323Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8750941Z ##[group]Determining the checkout info
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8753780Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8755849Z [command]/usr/bin/git sparse-checkout disable
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8822290Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8867024Z ##[group]Checking out the ref
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8882769Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8959058Z Switched to a new branch 'main'
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8966289Z branch 'main' set up to track 'origin/main'.
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.8980008Z ##[endgroup]
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9031618Z [command]/usr/bin/git log -1 --format=%H
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9092296Z c08feeabe25ff3d726e9373b4d1a92147a99885f
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9100407Z ##[group]Removing auth
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9103706Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9142323Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9399251Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9437948Z http.https://github.com/.extraheader
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9449679Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9498638Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+inventario	Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:34.9757875Z ##[endgroup]
+inventario	Verificar guardas sem executar Docker	﻿2026-11-01T18:56:35.0022057Z ##[group]Run python3 -B -m unittest -q test_inventory.py
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.0023983Z ^[[36;1mpython3 -B -m unittest -q test_inventory.py^[[0m
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.0049098Z shell: /usr/bin/bash -e {0}
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.0050553Z env:
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.0051576Z   PYTHONDONTWRITEBYTECODE: 1
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.0052781Z ##[endgroup]
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.1481383Z ----------------------------------------------------------------------
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.1484830Z Ran 8 tests in 0.045s
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.1487695Z 
+inventario	Verificar guardas sem executar Docker	2026-11-01T18:56:35.1488338Z OK
+inventario	Extrair inventario sem banco e sem rede no container	﻿2026-11-01T18:56:35.1684888Z ##[group]Run python3 -B inventory.py
+inventario	Extrair inventario sem banco e sem rede no container	2026-11-01T18:56:35.1686312Z ^[[36;1mpython3 -B inventory.py^[[0m
+inventario	Extrair inventario sem banco e sem rede no container	2026-11-01T18:56:35.1708171Z shell: /usr/bin/bash -e {0}
+inventario	Extrair inventario sem banco e sem rede no container	2026-11-01T18:56:35.1709281Z env:
+inventario	Extrair inventario sem banco e sem rede no container	2026-11-01T18:56:35.1710474Z   PYTHONDONTWRITEBYTECODE: 1
+inventario	Extrair inventario sem banco e sem rede no container	2026-11-01T18:56:35.1711627Z ##[endgroup]
+inventario	Extrair inventario sem banco e sem rede no container	2026-11-01T18:56:44.5724063Z {"status": "inventory_complete", "toc_entries": 812, "source_sha256": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c", "restoration_executed": false}
+inventario	Preservar evidencias privadas por um dia	﻿2026-11-01T18:56:44.5993095Z ##[group]Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5993557Z with:
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5993782Z   name: inventario-ficticio-41339162377
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5994225Z   path: evidence/report.json
+inventario	Preservar evidencias privadas por um dia	evidence/version.txt
+inventario	Preservar evidencias privadas por um dia	evidence/toc.list
+inventario	Preservar evidencias privadas por um dia	evidence/schema.sql
+inventario	Preservar evidencias privadas por um dia	
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5994694Z   if-no-files-found: warn
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5994934Z   retention-days: 1
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5995148Z   compression-level: 6
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5995373Z   overwrite: false
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5995599Z   include-hidden-files: false
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5995841Z env:
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5996062Z   PYTHONDONTWRITEBYTECODE: 1
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.5996316Z ##[endgroup]
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.7851530Z (node:2491) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.7861227Z (Use `node --trace-deprecation ...` to show where the warning was created)
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.8022458Z Multiple search paths detected. Calculating the least common ancestor of all paths
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.8042044Z The least common ancestor is /home/runner/work/licitaplena-homologacao/licitaplena-homologacao/evidence. This will be the root directory of the artifact
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.8044993Z With the provided path, there will be 4 files uploaded
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.8047440Z Artifact name is valid!
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:44.8048133Z Root directory input is valid!
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.0300931Z Beginning upload of artifact content to blob storage
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.0808349Z (node:2491) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.1324245Z Uploaded bytes 51904
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.1494091Z Finished uploading artifact content to blob storage!
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.1495723Z SHA256 digest of uploaded artifact zip is b0ca3ad2d5a90738d8573e9ad3ebc4eb6b66903a47c4c91500a22e6b6f97243a
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.1497205Z Finalizing artifact upload
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.5788629Z Artifact inventario-ficticio-41339162377.zip successfully finalized. Artifact ID 13095469845
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.5791446Z Artifact inventario-ficticio-41339162377 has been successfully uploaded! Final size is 51904 bytes. Artifact ID is 13095469845
+inventario	Preservar evidencias privadas por um dia	2026-11-01T18:56:45.5798365Z Artifact download URL: https://github.com/harresoncoelho-lang/licitaplena-homologacao/actions/runs/41339162377/artifacts/13095469845
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	﻿2026-11-01T18:56:45.6006273Z Post job cleanup.
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.6987660Z [command]/usr/bin/git version
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7059648Z git version 2.56.0
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7132349Z Temporarily overriding HOME='/home/runner/work/_temp/c0cfe41f-3586-45cf-890b-60f96201a389' before making global git config changes
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7133844Z Adding repository directory to the temporary git global config as a safe directory
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7135311Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/licitaplena-homologacao/licitaplena-homologacao
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7181360Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7271408Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7694134Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+inventario	Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683	2026-11-01T18:56:45.7779362Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+inventario	Complete job	﻿2026-11-01T18:56:45.8732059Z Cleaning up orphan processes
+inventario	Complete job	2026-11-01T18:56:45.9153791Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683, actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

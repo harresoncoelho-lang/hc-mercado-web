@@ -1,0 +1,333 @@
+{
+  "data": "2026-10-28T02:01:16.595Z",
+  "eventos": [
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 403
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 404
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 404
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 401
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 403
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/authenticated/operacao-documentos/ce0ae240-ba84-4fa0-8cc0-5202bcef69c3/7db74e61-004e-4fe3-82b7-27efec158054/0e992ea6-5133-4c74-883a-ae04fa4e07f2-cartao-qa.pdf",
+      "status": 400
+    },
+    {
+      "rota": "/rest/v1/operacao_documentos",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/authenticated/operacao-documentos/ce0ae240-ba84-4fa0-8cc0-5202bcef69c3/7db74e61-004e-4fe3-82b7-27efec158054/0e992ea6-5133-4c74-883a-ae04fa4e07f2-cartao-qa.pdf",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 422
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/confirmar_identificacao_empresa",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_identificacao_empresa",
+      "status": 403
+    },
+    {
+      "rota": "/rest/v1/operacao_identificacao_empresa",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos/ce0ae240-ba84-4fa0-8cc0-5202bcef69c3/7db74e61-004e-4fe3-82b7-27efec158054/0e992ea6-5133-4c74-883a-ae04fa4e07f2-cartao-qa.pdf",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 409
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/df5375bc-de4d-4ab3-abd2-e3fa17047fdf",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/97611782-a9ed-4d30-91dd-3308f3cea1b6",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/e782b5c7-e40b-4ed1-9b84-cb04a29b5db1",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/token",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/identificacao_empresa_habilitada",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/identificacao_empresa_habilitada",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 401
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 403
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 422
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 404
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 204
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/operacao_itens_resultado",
+      "status": 200
+    },
+    {
+      "rota": "/rest/v1/rpc/confirmar_identificacao_empresa",
+      "status": 403
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/empresa-identificacao",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/authenticated/operacao-documentos/8f9c8a8c-9b3a-4c37-a9d8-baa0e3d45af5/04b8b6d7-4e78-4ce5-92d1-bc3617b7dea9/3aff28f5-6fbf-4772-83bf-b914fc55d372-cartao-kit-qa.pdf",
+      "status": 400
+    },
+    {
+      "rota": "/storage/v1/object/authenticated/operacao-documentos/8f9c8a8c-9b3a-4c37-a9d8-baa0e3d45af5/04b8b6d7-4e78-4ce5-92d1-bc3617b7dea9/3aff28f5-6fbf-4772-83bf-b914fc55d372-cartao-kit-qa.pdf",
+      "status": 200
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos/8f9c8a8c-9b3a-4c37-a9d8-baa0e3d45af5/04b8b6d7-4e78-4ce5-92d1-bc3617b7dea9/3aff28f5-6fbf-4772-83bf-b914fc55d372-cartao-kit-qa.pdf",
+      "status": 400
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos/8f9c8a8c-9b3a-4c37-a9d8-baa0e3d45af5/04b8b6d7-4e78-4ce5-92d1-bc3617b7dea9/3aff28f5-6fbf-4772-83bf-b914fc55d372-cartao-kit-qa.pdf",
+      "status": 200
+    },
+    {
+      "rota": "/api/kit-documentos",
+      "status": 409
+    },
+    {
+      "rota": "/storage/v1/object/operacao-documentos",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/835c21bb-f17a-4761-8836-330c47b42c31",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/5cac6c84-0bdc-47df-b747-60af9fe7ec2f",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/233667b6-5ca8-4aee-8bf0-9aff58232db0",
+      "status": 200
+    },
+    {
+      "rota": "/auth/v1/admin/users/977401c0-8fbd-47da-92ce-055f37a4ec2d",
+      "status": 200
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+PASS R1 A→B→A: gravação antiga descartada, nada salvo em A
+PASS R1 controle: nova gravação em A salva normalmente
+PASS R2 P1→P2→P1: gravação antiga descartada
+PASS R3 sair→entrar antes de 500 ms: gravação descartada
+PASS R4 troca de modelo libera Salvar e remove "Gravando" imediatamente
+PASS R4 gravação do modelo anterior não é salva depois da troca
+PASS R5 op1 vencida não libera op2 (Salvar continua ocupado)
+PASS R5 op2 conclui e salva apenas a proposta
+PASS R5 após op2 concluir, Salvar volta a ficar disponível
+PASS R6 editor→leitor durante gravação: nada é comitado
+PASS R7 leitor e volta a editor: gravação anterior não é retomada
+PASS R10 End: aba Peças salvas inteira visível (claro 375px)
+PASS R10 End: página não desloca na vertical (claro 375px)
+PASS R10 Home: aba Cadastro visível e página estável (claro 375px)
+PASS R10 End: aba Peças salvas inteira visível (escuro 375px)
+PASS R10 End: página não desloca na vertical (escuro 375px)
+PASS R10 Home: aba Cadastro visível e página estável (escuro 375px)
+PASS R10 End: aba Peças salvas inteira visível (claro 630px)
+PASS R10 End: página não desloca na vertical (claro 630px)
+PASS R10 Home: aba Cadastro visível e página estável (claro 630px)
+PASS R10 End: aba Peças salvas inteira visível (escuro 630px)
+PASS R10 End: página não desloca na vertical (escuro 630px)
+PASS R10 Home: aba Cadastro visível e página estável (escuro 630px)
+PASS R10 End: aba Peças salvas inteira visível (claro 704px)
+PASS R10 End: página não desloca na vertical (claro 704px)
+PASS R10 Home: aba Cadastro visível e página estável (claro 704px)
+PASS R10 End: aba Peças salvas inteira visível (escuro 704px)
+PASS R10 End: página não desloca na vertical (escuro 704px)
+PASS R10 Home: aba Cadastro visível e página estável (escuro 704px)
+SUMMARY pass=29 fail=0

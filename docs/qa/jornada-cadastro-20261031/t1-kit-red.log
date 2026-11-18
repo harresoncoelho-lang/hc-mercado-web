@@ -1,0 +1,16 @@
+FALHOU atalho do kit preserva rascunho e retorna ao processo autorizado: locator.click: Timeout 4500ms exceeded.
+Call log:
+  - waiting for getByRole('link', { name: 'Conferir dados da empresa (nova aba)' })
+
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+browserContext.waitForEvent: Target page, context or browser has been closed
+    at C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\jornada-cadastro-20261031\t1-navegador.cjs:87:30
+    at async caso (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\jornada-cadastro-20261031\t1-navegador.cjs:20:11)
+    at async verificar (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\jornada-cadastro-20261031\t1-navegador.cjs:81:5) {
+  log: []
+}
+
+Node.js v24.22.0

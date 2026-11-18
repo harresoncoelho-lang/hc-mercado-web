@@ -1,0 +1,22 @@
+FALHOU atalho do kit preserva rascunho e retorna ao processo autorizado: Expected values to be strictly equal:
+
+'' !== 'd-titulo'
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'atalho do kit preserva rascunho e retorna ao processo autorizado: Expected values to be strictly equal:\n' +
++     '\n' +
++     "'' !== 'd-titulo'\n"
++ ]
+- []
+
+    at verificar (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\jornada-cadastro-20261031\t1-navegador.cjs:140:73) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

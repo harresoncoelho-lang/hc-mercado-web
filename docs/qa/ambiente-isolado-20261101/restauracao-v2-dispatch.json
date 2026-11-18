@@ -1,0 +1,11 @@
+{
+  "repository": "harresoncoelho-lang/licitaplena-homologacao",
+  "head": "702663b5af7551896551eef253a7f425d144bc5d",
+  "requestedUtc": "2026-11-01T16:22:59.9752379-03:00",
+  "workflow": "restauracao.yml",
+  "status": "dispatch_accepted",
+  "private": true,
+  "production": false,
+  "costGuard": "Franquia US$0,01/12 e budget extra0 confirmados",
+  "runId": 41341452270
+}

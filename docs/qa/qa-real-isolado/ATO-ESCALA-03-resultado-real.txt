@@ -1,0 +1,8 @@
+status
+md5_definicao
+md5_corpo
+acl
+QA_ESCALA_APLICADA
+30ed507d50e613bbf91a6a974082e400
+a1c37914704cdb3dce5fb6dc056e9896
+{postgres=X/postgres,service_role=X/postgres}

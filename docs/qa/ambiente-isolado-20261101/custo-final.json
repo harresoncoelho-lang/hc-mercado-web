@@ -1,0 +1,13 @@
+{
+  "observadoEm": "2026-11-01T19:44:30.724Z",
+  "fonte": "GitHub Billing, Actions, mês atual",
+  "conta": "harresoncoelho-lang",
+  "faturavelUSD": 0,
+  "computeUsadoUSD": 0.03,
+  "computeIncluidoUSD": 12,
+  "storageUsadoGB": 0,
+  "storageIncluidoGB": 0.5,
+  "cobrancaConfiguradaNestaEtapa": false,
+  "limite": "Leitura do painel no encerramento; orçamento adicional existente permaneceu zero.",
+  "captura": "github-franquia-final.jpg"
+}

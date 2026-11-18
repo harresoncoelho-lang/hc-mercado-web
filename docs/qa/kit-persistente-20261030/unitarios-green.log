@@ -1,0 +1,31 @@
+✔ sessão ausente e ambiente fechado não geram documentos (4.489ms)
+✔ rascunhos incompletos salvam, reabrem e coexistem; criação é idempotente (33.9987ms)
+✔ persistência rejeita campos forjados, referências cruzadas e conflitos sem sobrescrever (10.3554ms)
+✔ peça persistida exige confirmação própria; preço, perfil, fontes e usuário invalidam revisão (27.5425ms)
+✔ persistência aplica autorização a listar, abrir, salvar e confirmar (4.1765ms)
+✔ cada peça e cada operador confirmam revisão própria; reabrir preserva histórico (14.7015ms)
+✔ hash persistido vincula a revisão à peça e à versão mesmo com conteúdo idêntico (6.3669ms)
+✔ fonte PDF alterada torna revisão persistida obsoleta e bloqueia exportação (5.596ms)
+✔ salvar valida limites e estrutura sem exigir campos completos (9.8262ms)
+✔ consulta, preparação e exportação revalidam dados; hash obsoleto falha (5.3019ms)
+✔ papel, aprovação, empresa e referências cruzadas falham fechadas (1.9967ms)
+✔ gate, identificação ausente/invalidada e PDF substituído bloqueiam exportação (2.4484ms)
+✔ perfil incompleto vira pendência; cliente não substitui cadastro ou preços (1.9339ms)
+✔ PDF válido tem hash rechecado a cada exportação e referências de outra empresa bloqueiam (7.2634ms)
+✔ decimal exato rejeita formatos e precisão inválidos; arredonda cada item (1.8161ms)
+✔ declaração mantém texto literal e recusa variáveis desconhecidas/XML inválido (1.5629ms)
+✔ proposta usa somente item persistido, condições obrigatórias e hash estável (1.0106ms)
+✔ quantidade apresentada em pt-BR conserva valor e total exato (18.9346ms)
+✔ DOCX reutilizado contém texto literal escapado e título (221.3547ms)
+✔ DOCX da declaração preserva linhas vazias e não altera minuta legada (2.9647ms)
+✔ geração descarta respostas antigas mesmo no ciclo A → B → A e após fechar (2.5712ms)
+✔ qualquer alteração invalida hash e revisão e impede exportação sem nova prévia (2.5538ms)
+✔ revisão histórica e clique local não autorizam exportar; confirmação exige peça, versão e geração atuais (1.6307ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 393.8843

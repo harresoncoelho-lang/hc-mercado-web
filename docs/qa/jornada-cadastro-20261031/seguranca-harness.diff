@@ -1,0 +1,69 @@
+diff --git "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\jornada-cadastro-baseline-20261031\\docs\\qa\\testar-kit-persistencia-local.cjs" "b/docs\\qa\\testar-kit-persistencia-local.cjs"
+index 8b5ad31..dbfb750 100644
+--- "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\jornada-cadastro-baseline-20261031\\docs\\qa\\testar-kit-persistencia-local.cjs"
++++ "b/docs\\qa\\testar-kit-persistencia-local.cjs"
+@@ -69,7 +69,63 @@ async function testarPersistencia() {
+   await role('anon');await deny(()=>db.query('select id from operacao_kit_documentos'),'42501');await deny(()=>rpc(),'42501');
+   await role('postgres');await deny(()=>db.query('update operacao_kit_documentos set empresa_id=$1 where id=$2',[outra,doc]),'PT409');
+   await deny(()=>db.query("insert into operacao_kit_documentos(id,organizacao_id,empresa_id,processo_id,tipo,dados,criado_por,atualizado_por) values($1,$2,$3,$4,'declaracao',$5,$6,$6)",[id(95),org,outra,proc,dados,owner]),'23503');
+-  return {checks,mensagem:`SQL real PGlite: ${checks} verificações aprovadas; migração aplicada duas vezes, CAS, idempotência, RLS, RPC, escopo e validação.`};
++  const checksOriginais=checks;
++  // Reproduz a lacuna anterior sem expor conteúdo: readiness de identificação não verifica o kit.
++  await db.exec('begin; alter table public.operacao_kit_documentos disable row level security');
++  try{
++   await role('authenticated',outsider);
++   ok((await db.query('select public.identificacao_empresa_habilitada() as pronto')).rows[0].pronto,true);
++   ok((await db.query('select count(*)::integer as total from public.operacao_kit_documentos')).rows[0].total,2);
++  }finally{await db.exec('rollback');await role('postgres');}
++  console.log(`Lacuna reproduzida somente na fixture: readiness=true com RLS do kit desligada; outsider lê 2 peças. ${checksOriginais} verificações originais aprovadas.`);
++  assert(fs.existsSync(path.join(__dirname,'../../supabase/verificar_kit_prepublicacao.sql')),'Gate somente leitura do kit deve existir');
++  const gate=sql('verificar_kit_prepublicacao.sql');
++  const verificar=async()=>{
++   const result=await db.exec(gate);
++   ok(result.flatMap(r=>r.rows).some(r=>r.status==='KIT_PREPUBLICACAO_OK'),true);
++  };
++  // O próprio PostgreSQL recusa escritas do verificador em uma transação somente leitura.
++  await db.exec('begin read only');
++  try{await verificar();}finally{await db.exec('rollback');}
++  const assinatura='public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)';
++  const casos=[
++   ['tabela ausente', 'alter table public.operacao_kit_documentos rename to kit_ausente', /tabela/i],
++   ['RLS desligada', 'alter table public.operacao_kit_documentos disable row level security', /RLS/i],
++   ['policy ausente', 'drop policy operacao_kit_documentos_select_empresa on public.operacao_kit_documentos', /policy/i],
++   ['policy adicional', 'create policy permissiva_extra on public.operacao_kit_documentos for select to authenticated using(true)', /policy/i],
++   ['policy conhecida permissiva', 'alter policy operacao_kit_documentos_select_empresa on public.operacao_kit_documentos using(true)', /policy/i],
++   ['policy OR true', "alter policy operacao_kit_documentos_select_empresa on public.operacao_kit_documentos using(public.pode_acessar_empresa_operacao(organizacao_id,empresa_id) or true)", /policy/i],
++   ['policy para PUBLIC', 'alter policy operacao_kit_documentos_select_empresa on public.operacao_kit_documentos to public', /policy/i],
++   ['SELECT público', 'grant select on public.operacao_kit_documentos to public', /privil.gio/i],
++   ['SELECT obrigatório ausente', 'revoke select on public.operacao_kit_documentos from authenticated', /privil.gio/i],
++   ['coluna SELECT para anon', 'grant select(dados) on public.operacao_kit_documentos to anon', /privil.gio/i],
++   ['DML herdado', 'create role kit_editor; grant update on public.operacao_kit_documentos to kit_editor; grant kit_editor to authenticated', /privil.gio/i],
++   ['RPC ausente', `alter function ${assinatura} rename to gravar_kit_ausente`, /RPC/i],
++   ['RPC sobrecarregada', 'create function public.gravar_kit_documento(text) returns text language sql as $$select $1$$', /RPC/i],
++   ['RPC sem definer', `alter function ${assinatura} security invoker`, /RPC/i],
++   ['RPC search_path inseguro', `alter function ${assinatura} set search_path=public`, /RPC/i],
++   ['RPC service_role sem EXECUTE', `revoke execute on function ${assinatura} from service_role`, /RPC.*EXECUTE/i],
++   ['trigger desligado', 'alter table public.operacao_kit_documentos disable trigger kit_documento_escopo_imutavel', /trigger/i],
++   ['trigger ausente', 'drop trigger kit_documento_escopo_imutavel on public.operacao_kit_documentos', /trigger/i],
++   ['trigger adicional', 'create trigger kit_extra before update on public.operacao_kit_documentos for each row execute function public.kit_documento_escopo_imutavel()', /trigger/i],
++   ['trigger função search_path inseguro', 'alter function public.kit_documento_escopo_imutavel() set search_path=public', /trigger/i],
++   ['trigger função EXECUTE público', 'grant execute on function public.kit_documento_escopo_imutavel() to public', /trigger.*EXECUTE/i]
++  ];
++  for(const quem of ['public','anon','authenticated','service_role']){
++   for(const privilegio of ['insert','update','delete','truncate','references','trigger'])casos.push([`${privilegio} para ${quem}`,`grant ${privilegio} on public.operacao_kit_documentos to ${quem}`,/privil.gio/i]);
++   for(const privilegio of ['insert','update','references'])casos.push([`${privilegio} por coluna para ${quem}`,`grant ${privilegio}(dados) on public.operacao_kit_documentos to ${quem}`,/privil.gio/i]);
++  }
++  for(const quem of ['public','anon','authenticated'])casos.push([`RPC EXECUTE para ${quem}`,`grant execute on function ${assinatura} to ${quem}`,/RPC.*EXECUTE/i]);
++  for(const [nome,desconfigurar,diagnostico] of casos){
++   await db.exec('begin');
++   try{
++    await db.exec(desconfigurar);
++    await assert.rejects(()=>db.exec(gate),e=>e.code==='P0001'&&/Kit pré-publicação:/.test(e.message)&&diagnostico.test(e.message),nome);
++    checks++;
++   }finally{await db.exec('rollback');}
++   await verificar();
++  }
++  return {checks,checksOriginais,casosGate:casos.length,mensagem:`SQL real PGlite: ${checks} verificações aprovadas (${checksOriginais} originais); migração aplicada duas vezes, lacuna anterior reproduzida e gate somente leitura aprovado com ${casos.length} desconfigurações rejeitadas e revertidas somente na fixture.`};
+  }finally{await db.close();}
+ }
+ module.exports={testarPersistencia};

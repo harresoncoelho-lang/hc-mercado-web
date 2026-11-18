@@ -1,0 +1,17 @@
+{
+  "ambiente": "PGlite em memória; fixture local, não produção",
+  "checks": 13,
+  "aprovado": true,
+  "fontes": [
+    "operacao_licitacoes.sql",
+    "operacao_acompanhamento.sql",
+    "limite_cnpjs_operacao.sql",
+    "acesso_empresa_convites.sql",
+    "operacao_itens_valores_unitarios.sql",
+    "operacao_itens_marca_modelo.sql",
+    "identificacao_empresa.sql",
+    "seguranca_operacao.sql",
+    "kit_documentos.sql"
+  ],
+  "hashCatalogoLocal": "cd45ee291fbdda4530f2891394bf1c10"
+}

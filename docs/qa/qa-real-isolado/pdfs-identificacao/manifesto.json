@@ -1,0 +1,26 @@
+[
+  {
+    "arquivo": "C:\\Users\\harre\\AppData\\Local\\Packages\\OpenAI.Codex_2p2nqsd0c76g0\\LocalCache\\Local\\LicitaPlena\\design-modulo-um\\docs\\qa\\qa-real-isolado\\pdfs-identificacao\\identificacao-qa-ui-a-ficticia.pdf",
+    "bytes": 75450,
+    "sha256": "e36e4886b84f6bafd61cd5cbf41b9b4921b03c5c333d5520724e5a396ad022fa",
+    "campos": {
+      "razaoSocial": "QA UI A FICTÍCIA",
+      "cnpj": "11.222.333/0001-81",
+      "endereco": "Rua Ficticia A, 100 - Cidade Exemplo",
+      "representante": "Pessoa Ficticia A",
+      "cargo": "Representante de Teste"
+    }
+  },
+  {
+    "arquivo": "C:\\Users\\harre\\AppData\\Local\\Packages\\OpenAI.Codex_2p2nqsd0c76g0\\LocalCache\\Local\\LicitaPlena\\design-modulo-um\\docs\\qa\\qa-real-isolado\\pdfs-identificacao\\identificacao-qa-ui-b-ficticia.pdf",
+    "bytes": 75453,
+    "sha256": "c0505565fac27108ba24ab033b738bd17b76f7ce625cf761509ad4c8fb4326eb",
+    "campos": {
+      "razaoSocial": "QA UI B FICTÍCIA",
+      "cnpj": "12.345.678/0001-95",
+      "endereco": "Rua Ficticia B, 100 - Cidade Exemplo",
+      "representante": "Pessoa Ficticia B",
+      "cargo": "Representante de Teste"
+    }
+  }
+]

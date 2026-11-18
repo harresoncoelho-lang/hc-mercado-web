@@ -1,0 +1,39 @@
+Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   {
++     concedente: 'postgres',
++     esquema: 'public',
++     grant_option: false,
++     objeto: 'invalidar_identificacao_empresa()',
++     papel: 'PUBLIC',
++     privilegio: 'EXECUTE'
++   },
++   {
++     concedente: 'postgres',
++     esquema: 'public',
++     grant_option: false,
++     objeto: 'invalidar_identificacao_empresa()',
++     papel: 'anon',
++     privilegio: 'EXECUTE'
++   },
++   {
++     concedente: 'postgres',
++     esquema: 'public',
++     grant_option: false,
++     objeto: 'invalidar_identificacao_empresa()',
++     papel: 'authenticated',
++     privilegio: 'EXECUTE'
++   },
++   {
++     concedente: 'postgres',
++     esquema: 'public',
++     grant_option: false,
++     objeto: 'invalidar_identificacao_empresa()',
++     papel: 'service_role',
++     privilegio: 'EXECUTE'
++   }
++ ]
+- []
+

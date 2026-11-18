@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "LicitaPlena — leitura de contexto (protótipo)",
+  "version": "0.1.0",
+  "description": "Conferência manual e local de CNPJ e pregão. Não envia propostas ou lances.",
+  "permissions": ["activeTab", "scripting"],
+  "action": { "default_title": "Conferir contexto — somente leitura", "default_popup": "popup.html" },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'" }
+}

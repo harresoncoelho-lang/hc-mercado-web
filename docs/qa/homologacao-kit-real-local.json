@@ -1,0 +1,19 @@
+{
+  "data": "2026-10-28T02:01:18.062Z",
+  "aprovado": true,
+  "results": [
+    "PostgreSQL17/Auth/PostgREST16/Storage reais; portas apenas loopback",
+    "Gate real aprovado e projeções numeric::text preservadas pelo PostgREST",
+    "Auth e escopo: anonimo, pendente, leitor, outro tenant e CNPJ/processo cruzados bloqueados",
+    "Declaracoes DOCX reais por CNPJ, revisao obrigatoria e hash adulterado rejeitado",
+    "Proposta 0,125 x0,12 +3 x1,23 =3,71; mudanca de preco invalida exportacao",
+    "RLS real bloqueia escrita de leitor; RPC de confirmacao exclusiva do backend",
+    "Storage privado real: download permitido por escopo, leitor nao sobrescreve, hash da fonte invalida DOCX"
+  ],
+  "limpezaVerificada": {
+    "usuarios": 4,
+    "organizacoes": 2,
+    "arquivos": 1
+  },
+  "limites": "Base ficticia, schema-base reconstruido. Sem producao, SMTP, IA ou coleta."
+}

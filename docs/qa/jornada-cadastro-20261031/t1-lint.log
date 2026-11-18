@@ -1,0 +1,7 @@
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\operacao_identificacao.test.js
+  53:47  error  'setImmediate' is not defined  no-undef
+
+✖ 1 problem (1 error, 0 warnings)
+
+ESLint focal: exit 0

@@ -7,7 +7,8 @@
 <link rel="icon" type="image/png" href="favicon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="operacao-acompanhamento.js"></script><script src="operacao-acompanhamento-ui.js"></script><script src="operacao-edital.js"></script><script src="operacao-relatorio.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script>
+<script src="operacao-identificacao.js"></script><script src="operacao-acompanhamento.js"></script><script src="operacao-acompanhamento-ui.js"></script><script src="operacao-edital.js"></script><script src="operacao-relatorio.js"></script><script src="kit-documentos-ui.js"></script><link rel="stylesheet" href="kit-documentos.css">
 <script>try{if(localStorage.getItem("licitaplena_tema")==="claro")document.documentElement.classList.add("tema-claro");}catch(e){}</script>
 <style>
 header .marca{color:#fff;text-decoration:none}header .tema-icone{width:36px;height:36px;padding:0;border-radius:50%;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:17px;line-height:1}
@@ -55,12 +56,15 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
 (() => {
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const estado = { orgId:null, empresaId:null, empresas:[], processos:[], documentos:[], prazos:[], empenhos:[], itens:[], ocorrencias:[], contratos:[], anexos:[], detalhesCarregados:false, erroDetalhes:false };
+  let kitDocumentos = null, usuarioSessao;
   const itensOficiais = new Map();
   const consultasItens = new Set();
   const falhasItens = new Map();
   const paginasItens = new Map();
   const paginaAtualItens = new Map();
   const itensAbertos = new Set();
+  let contextoLinkPendente = true, geracaoCarregamento = 0;
+  let processoPendente = new URLSearchParams(location.search).get("processo");
   let origemPendente = new URLSearchParams(location.search).get("origem");
   const $ = id => document.getElementById(id), esc = v => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const dinheiro = v => Number(v || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"}), data = v => v ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? `${v}T12:00:00` : v).toLocaleDateString("pt-BR") : "—";
@@ -68,7 +72,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   const prazoUrgente = v => Math.ceil((new Date(v) - new Date()) / 86400000) <= 3;
   const rotuloStatus = s => ({triagem:"Triagem",preparacao:"Preparação",proposta_enviada:"Proposta enviada",sessao:"Sessão",habilitacao:"Habilitação",recurso:"Recurso",homologado:"Homologado",contratado:"Contratado",perdido:"Perdido",arquivado:"Arquivado",emitido:"Emitido",em_execucao:"Em execução",entregue:"Entregue",recebido:"Recebido",pago:"Pago",cancelado:"Cancelado",nao_apurado:"Não apurado",nao_participou:"Não participou",em_disputa:"Em disputa",sem_vitoria:"Participou sem vencer",vitoria_sem_detalhamento:"Ganhou — itens pendentes de detalhamento",vitoria_parcial:"Vitória parcial",vitoria_total:"Vitória total",revogado_anulado:"Revogado / anulado",em_analise:"Em análise",participar:"Participar",nao_participar:"Não participar"}[s] || s);
   const linkSeguro = v => { try { const u = new URL(v); return ["https:","http:"].includes(u.protocol) ? u.href : ""; } catch { return ""; } };
-  function aviso(texto,tipo="info"){const e=$("aviso");e.textContent=texto;e.className=`aviso ${tipo}`;} function fecharAviso(){$("aviso").className="aviso";} function abrir(id){$(id).classList.add("aberto");} function fechar(id){$(id).classList.remove("aberto");}
+  function aviso(texto,tipo="info"){const e=$("aviso");e.textContent=texto;e.className=`aviso ${tipo}`;} function fecharAviso(){$("aviso").className="aviso";} function abrir(id){$(id).classList.add("aberto");} function fechar(id){if(id==="modal-dossie"){kitDocumentos?.fechar();kitDocumentos=null;}$(id).classList.remove("aberto");}
   function numero(v){if(v==null||v==="")return null;const n=Number(v);return Number.isFinite(n) && n >= 0 ? n : null;} function calcularMinimo(f){const base=(numero(f.get("custo_direto"))||0)+(numero(f.get("frete"))||0), pct=(numero(f.get("tributos_percentual"))||0)+(numero(f.get("garantia_percentual"))||0)+(numero(f.get("margem_percentual"))||0); return base && pct < 100 ? Number((base/(1-pct/100)).toFixed(2)) : null;}
   function dataLocal(v){if(!v)return "";const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
   function renderizarItensOficiais(processo){
@@ -82,8 +86,8 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     const cabecalho=`<button type="button" class="btn" data-alternar-itens="${processo.id}" aria-expanded="${aberto}">${aberto?"▾ Fechar":"▸ Abrir"} itens oficiais${dados?` · página ${pagina}`:""}</button>`;
     if(!aberto){alvo.innerHTML=cabecalho;return;}
     const erro=falhasItens.get(processo.id);
-    const conteudo=consultasItens.has(processo.id)?'<p class="nota">Carregando esta página de itens do PNCP…</p>':erro?`<p class="nota">${esc(erro)} <button type="button" class="btn" data-retry-itens="${processo.id}">Tentar novamente</button></p>`:dados?`<div class="itens-lista">${itens.length?itens.map((item,indice)=>`<div class="linha-registro"><strong>Item ${esc(item.numero)}</strong><small>${esc(item.descricao||"Sem descrição")} · ${esc(item.quantidade??"—")} ${esc(item.unidade||"")}</small>${registrados.has(String(item.numero))?'<span class="tag">Resultado em acompanhamento</span>':`<button type="button" class="btn" data-acompanhar-item="${indice}">Registrar resultado</button>`}</div>`).join(""):'<p class="nota">Nenhum item nesta página.</p>'}</div><div class="acoes-bloco"><button type="button" class="btn" data-pagina-itens="${pagina-1}" ${pagina===1?"disabled":""}>Anterior</button><span>Página ${pagina} · ${itens.length} itens</span><button type="button" class="btn" data-pagina-itens="${pagina+1}" ${dados.proximaPagina?"":"disabled"}>Próxima</button><label class="ir-item">Ir ao item nº <input type="number" id="numero-item-busca" min="1" step="1" placeholder="Ex.: 900"></label><button type="button" class="btn" data-buscar-item>Ir</button></div>`:'<p class="nota">Abra a lista para consultar os itens.</p>';
-    alvo.innerHTML=`${cabecalho}<p class="nota">Itens do PNCP, 100 por página. Selecione um item para registrar o resultado, marca e modelo; a lista pode ser fechada a qualquer momento.</p>${conteudo}`;
+    const conteudo=consultasItens.has(processo.id)?'<p class="nota">Carregando esta página de itens do PNCP…</p>':erro?`<p class="nota">${esc(erro)} <button type="button" class="btn" data-retry-itens="${processo.id}">Tentar novamente</button></p>`:dados?`<div class="itens-lista">${itens.length?itens.map((item,indice)=>`<div class="linha-registro"><strong>Item ${esc(item.numero)}</strong><small>${esc(item.descricao||"Sem descrição")} · ${esc(item.quantidade??"—")} ${esc(item.unidade||"")}</small>${registrados.has(String(item.numero))?`<span class="tag">Item cadastrado</span><button type="button" class="btn" data-acompanhar-item="${indice}">Conferir origem PNCP</button>`:`<button type="button" class="btn" data-acompanhar-item="${indice}">Importar item com origem PNCP</button>`}</div>`).join(""):'<p class="nota">Nenhum item nesta página.</p>'}</div><div class="acoes-bloco"><button type="button" class="btn" data-pagina-itens="${pagina-1}" ${pagina===1?"disabled":""}>Anterior</button><span>Página ${pagina} · ${itens.length} itens</span><button type="button" class="btn" data-pagina-itens="${pagina+1}" ${dados.proximaPagina?"":"disabled"}>Próxima</button><label class="ir-item">Ir ao item nº <input type="number" id="numero-item-busca" min="1" step="1" placeholder="Ex.: 900"></label><button type="button" class="btn" data-buscar-item>Ir</button></div>`:'<p class="nota">Abra a lista para consultar os itens.</p>';
+    alvo.innerHTML=`${cabecalho}<p class="nota">Itens do PNCP, 100 por página. Importe um item com origem rastreável; depois informe sua oferta, marca e modelo no cadastro. Cadastro manual permanece disponível; a lista pode ser fechada a qualquer momento.</p>${conteudo}`;
   }
   async function carregarItensOficiais(processo,pagina=1){
     if(consultasItens.has(processo.id))return;
@@ -108,12 +112,15 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     }catch(erro){console.warn("Itens oficiais indisponíveis:",erro);falhasItens.set(processo.id,`Não foi possível consultar os itens: ${erro.message}.`);}
     finally{consultasItens.delete(processo.id);if($("modal-dossie").classList.contains("aberto")&&$("modal-dossie").dataset.processoId===processo.id)renderizarItensOficiais(processo);}
   }
-  async function autenticar(){const {data:{session}}=await sb.auth.getSession();if(!session){location.replace("login.html");return false;}const {data:cliente}=await sb.from("clientes").select("status").eq("id",session.user.id).maybeSingle();if(!cliente||cliente.status!=="aprovado"){await sb.auth.signOut();location.replace("login.html");return false;}return true;}
+  sb.auth.onAuthStateChange((_evento,sessao)=>{const usuario=sessao?.user?.id||null;if(usuarioSessao!==undefined&&usuario!==usuarioSessao){++geracaoCarregamento;processoPendente=null;fechar("modal-dossie");}usuarioSessao=usuario;});
+  async function autenticar(){const {data:{session}}=await sb.auth.getSession();usuarioSessao=session?.user?.id||null;if(!session){location.replace("login.html");return false;}const {data:cliente}=await sb.from("clientes").select("status").eq("id",session.user.id).maybeSingle();if(!cliente||cliente.status!=="aprovado"){await sb.auth.signOut();location.replace("login.html");return false;}return true;}
   async function iniciar(){if(!await autenticar())return;const {data:orgId,error}=await sb.rpc("bootstrap_operacao");if(error){aviso("A Central precisa da migração do Supabase. Execute supabase/operacao_licitacoes.sql e recarregue.","erro");return;}estado.orgId=orgId;await carregarEmpresas();}
-  async function carregarEmpresas(){const {data:empresas,error}=await sb.from("operacao_empresas").select("id,razao_social,cnpj").eq("organizacao_id",estado.orgId).eq("ativo",true).order("razao_social");if(error){aviso("Não foi possível carregar as empresas: "+error.message,"erro");return;}estado.empresas=empresas||[];$("empresa-atual").innerHTML=estado.empresas.map(e=>`<option value="${e.id}">${esc(e.razao_social)}${e.cnpj?` · ${esc(e.cnpj)}`:""}</option>`).join("");let preferida="";try{preferida=localStorage.getItem("licitaplena_empresa_operacional_id")||"";}catch(_){}estado.empresaId=estado.empresas.some(e=>e.id===estado.empresaId)?estado.empresaId:estado.empresas.some(e=>e.id===preferida)?preferida:estado.empresas[0]?.id;$("empresa-atual").value=estado.empresaId||"";await carregarTudo();}
+  async function carregarEmpresas(){const {data:empresas,error}=await sb.from("operacao_empresas").select("id,razao_social,cnpj").eq("organizacao_id",estado.orgId).eq("ativo",true).order("razao_social");if(error){aviso("Não foi possível carregar as empresas: "+error.message,"erro");return;}estado.empresas=empresas||[];$("empresa-atual").innerHTML=estado.empresas.map(e=>`<option value="${e.id}">${esc(e.razao_social)}${e.cnpj?` · ${esc(e.cnpj)}`:""}</option>`).join("");let preferida="";try{preferida=localStorage.getItem("licitaplena_empresa_operacional_id")||"";}catch(_){}const empresaLink=contextoLinkPendente?OperacaoIdentificacao.empresaDoLink(location.search,estado.empresas):undefined;contextoLinkPendente=false;estado.empresaId=empresaLink!==undefined?empresaLink:estado.empresas.some(e=>e.id===estado.empresaId)?estado.empresaId:estado.empresas.some(e=>e.id===preferida)?preferida:estado.empresas[0]?.id;$("empresa-atual").value=estado.empresaId||"";if(empresaLink===null){processoPendente=null;origemPendente=null;aviso("A empresa do link não está disponível no seu acesso. Selecione uma empresa autorizada.","erro");return;}await carregarTudo();}
   async function consultarTodas(montar){const todos=[];for(let inicio=0;;inicio+=500){let resposta;try{resposta=await montar().range(inicio,inicio+499);}catch(error){return {data:null,error};}const {data:pagina,error}=resposta;if(error)return {data:null,error};todos.push(...(pagina||[]));if(!pagina||pagina.length<500)return {data:todos,error:null};}}
   async function consultarPorProcessos(tabela,ids,ordem,ascendente=true){const todos=[];for(let indice=0;indice<ids.length;indice+=100){const bloco=ids.slice(indice,indice+100);const resposta=await consultarTodas(()=>sb.from(tabela).select("*").in("processo_id",bloco).order(ordem,{ascending:ascendente}).order("id"));if(resposta.error)return resposta;todos.push(...resposta.data);}return {data:todos,error:null};}
   async function carregarTudo(){
+    const geracao=++geracaoCarregamento, usuario=usuarioSessao;
+    kitDocumentos?.fechar();kitDocumentos=null;
     if(!estado.empresaId)return;
     const empresaId=estado.empresaId;
     fecharAviso();
@@ -121,7 +128,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
       consultarTodas(()=>sb.from("operacao_processos").select("*").eq("empresa_id",empresaId).order("criado_em",{ascending:false}).order("id")),
       consultarTodas(()=>sb.from("operacao_documentos").select("tipo,vencimento").eq("empresa_id",empresaId).order("tipo").order("id")),
     ]);
-    if(estado.empresaId!==empresaId)return;
+    if(estado.empresaId!==empresaId||geracao!==geracaoCarregamento||usuario!==usuarioSessao)return;
     let falha=[p,d].find(x=>x.error);
     if(falha){aviso("Não foi possível carregar o dossiê. Confira a migração operacao_acompanhamento.sql: "+falha.error.message,"erro");return;}
     estado.processos=p.data||[];estado.documentos=d.data||[];
@@ -137,7 +144,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
       consultarPorProcessos("operacao_contratos",ids,"criado_em",false),
       consultarPorProcessos("operacao_anexos_processo",ids,"criado_em",false),
     ]);
-    if(estado.empresaId!==empresaId)return;
+    if(estado.empresaId!==empresaId||geracao!==geracaoCarregamento||usuario!==usuarioSessao)return;
     falha=[pr,e,itens,ocorrencias,contratos,anexos].find(x=>x.error);
     if(falha){estado.erroDetalhes=true;renderizar();if($("modal-dossie").classList.contains("aberto"))abrirDossie($("modal-dossie").dataset.processoId);aviso("Não foi possível carregar o acompanhamento. Confira a migração operacao_acompanhamento.sql: "+falha.error.message,"erro");return;}
     estado.prazos=pr.data||[];estado.empenhos=e.data||[];
@@ -148,6 +155,13 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     abrirOrigemPendente();
   }
   function abrirOrigemPendente(){
+    if(processoPendente){
+      const id=processoPendente;processoPendente=null;
+      const processo=estado.processos.find(p=>p.id===id&&p.empresa_id===estado.empresaId);
+      if(processo){abrirDossie(processo.id);$("d-titulo").tabIndex=-1;$("d-titulo").focus();}
+      else aviso("O processo do link não está disponível para a empresa ativa.","erro");
+      return;
+    }
     if(!origemPendente)return;
     const processo=estado.processos.find(p=>p.origem_externa_id===origemPendente);
     origemPendente=null;
@@ -182,12 +196,44 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     const origem=linkSeguro(p.url_origem);
     $("d-titulo").textContent=p.objeto;
     $("d-subtitulo").textContent=[p.numero,p.orgao,p.modalidade,p.sistema,p.uasg?`UASG ${p.uasg}`:""].filter(Boolean).join(" · ")||"Dossiê privado";
-    $("d-conteudo").innerHTML=`<div class="dossie-grid"><div class="dado"><span>Órgão</span><b>${esc(p.orgao||"Não informado")}</b></div><div class="dado"><span>Publicação</span><b>${data(p.data_publicacao)}</b></div><div class="dado"><span>Sessão / abertura</span><b>${dataHora(p.data_sessao)}</b></div><div class="dado"><span>Estágio</span><b>${esc(rotuloStatus(p.status))}</b></div></div><div class="card" id="d-itens-edital"></div><div id="d-acompanhamento"></div><div class="acoes-dossie"><select id="d-status" aria-label="Estágio do processo"><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option><option value="arquivado">Arquivado</option></select><button class="btn" data-atualizar-status="${p.id}">Atualizar estágio</button><button class="btn" data-relatorio="${p.id}">Visualizar relatório</button>${origem?`<a class="btn" href="${esc(origem)}" target="_blank" rel="noopener">Abrir fonte oficial</a>`:""}</div>`;
+    $("d-conteudo").innerHTML=`<div class="dossie-grid"><div class="dado"><span>Órgão</span><b>${esc(p.orgao||"Não informado")}</b></div><div class="dado"><span>Publicação</span><b>${data(p.data_publicacao)}</b></div><div class="dado"><span>Sessão / abertura</span><b>${dataHora(p.data_sessao)}</b></div><div class="dado"><span>Estágio</span><b>${esc(rotuloStatus(p.status))}</b></div></div><div class="card" id="d-itens-edital"></div><div class="card" id="d-vinculo-compra"></div><div id="d-kit-documentos"></div><div id="d-acompanhamento"></div><div class="acoes-dossie"><select id="d-status" aria-label="Estágio do processo"><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option><option value="arquivado">Arquivado</option></select><button class="btn" data-atualizar-status="${p.id}">Atualizar estágio</button><button class="btn" data-relatorio="${p.id}">Visualizar relatório</button>${origem?`<a class="btn" href="${esc(origem)}" target="_blank" rel="noopener">Abrir fonte oficial</a>`:""}</div>`;
     $("d-status").value=p.status;
     $("modal-dossie").dataset.processoId=id;
     acompanhamento.renderizar(p);
+    kitDocumentos?.fechar();
+    kitDocumentos=LicitaKitDocumentos.montar({alvo:$("d-kit-documentos"),contexto:{empresaId:estado.empresaId,processoId:p.id},obterSessao:async()=>{const {data:{session}}=await sb.auth.getSession();return session?{userId:session.user.id,accessToken:session.access_token}:null;}});
     abrir("modal-dossie");
     renderizarItensOficiais(p);
+    void montarVinculoCompra(p);
+  }
+  async function montarVinculoCompra(p){
+    const alvo=$("d-vinculo-compra"), empresaId=estado.empresaId;
+    const vigente=()=>alvo.isConnected&&estado.empresaId===empresaId&&$("modal-dossie").dataset.processoId===p.id;
+    alvo.innerHTML='<h3>Vínculo com a compra no Compras.gov.br</h3><p>Confira a referência no portal. Esta revisão é uma declaração do responsável, não certificação do portal. O link de origem do dossiê será preservado.</p><p data-vinculo-status role="status" aria-live="polite">Consultando…</p><form data-vinculo-form hidden><label>URL da compra<input name="url" type="url" required maxlength="300"></label><label>Identificador da compra (17 dígitos)<input name="compra" required pattern="[0-9]{17}" maxlength="17"></label><label>Número do pregão<input name="numero" required pattern="[0-9]{1,5}" maxlength="5"></label><label>Ano<input name="ano" required pattern="[0-9]{4}" maxlength="4"></label><label><input name="conferido" type="checkbox" required> Conferi CNPJ, UASG, número, ano e compra na referência informada.</label><button class="btn" type="submit">Confirmar vínculo revisado</button></form>';
+    const status=alvo.querySelector('[data-vinculo-status]'),form=alvo.querySelector('form');let atual;let usuario=null;let geracao=0;
+    const enviar=async body=>{
+      const {data:{session}}=await sb.auth.getSession();
+      if(!vigente())throw Error('Contexto alterado.');
+      if(!session||usuario&&usuario!==session.user.id)throw Error('Sessão alterada.');usuario=session.user.id;
+      const r=await fetch('/api/vinculo-compra-portal',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({...body,empresaId,processoId:p.id})});
+      const data=await r.json();const fresh=await sb.auth.getSession();
+      if(!vigente()||fresh.data.session?.user.id!==usuario)throw Error('Contexto ou sessão alterados.');
+      if(!r.ok)throw Error(data.erro||'Não foi possível conferir o vínculo.');return data;
+    };
+    const mostrar=data=>{atual=data;status.textContent=`CNPJ: ${data.cnpj} · UASG: ${data.uasg||'não informada'} · Sistema: ${data.sistema||'não informado'}. ${data.vinculo?(data.vinculo.invalidado_em?'Revisão invalidada; confira novamente.':'Vínculo revisado pelo responsável.'):'Sem vínculo revisado.'}`;};
+    try{mostrar(await enviar({acao:'consultar'}));if(!vigente())return;
+      const v=atual.vinculo;if(v){for(const [key,field] of [['url','url_compra'],['compra','compra'],['numero','numero'],['ano','ano']])form.elements[key].value=v[field]||'';}
+      form.hidden=false;
+    }catch(e){if(vigente())status.textContent=e.message;return;}
+    form.addEventListener('input',()=>{geracao++;form.elements.conferido.checked=false;status.textContent='Dados editados. Confira a referência antes de confirmar.';});
+    form.elements.conferido.addEventListener('input',e=>e.stopPropagation());
+    form.addEventListener('submit',async e=>{e.preventDefault();if(!form.reportValidity()||!atual)return;
+      const button=form.querySelector('button');button.disabled=true;const inicio=geracao;
+      const dados=Object.fromEntries(['url','compra','numero','ano'].map(key=>[key,form.elements[key].value.trim()]));
+      try{const response=await enviar({acao:'confirmar',versaoEsperada:atual.versao,processoSnapshot:atual.processoSnapshot,dados});if(vigente()){if(inicio!==geracao){atual=null;form.hidden=true;status.textContent='Dados editados durante a confirmação. Reabra o dossiê para conferir o estado salvo.';return;}mostrar(response);form.elements.conferido.checked=false;}}
+      catch(error){if(vigente()){status.textContent=error.message;atual=null;form.hidden=true;}}
+      finally{button.disabled=false;}
+    });
   }
   async function visualizarRelatorio(id){
     if(!estado.detalhesCarregados){aviso("Aguarde o carregamento completo do acompanhamento antes de gerar o relatório.","erro");return;}
@@ -247,7 +293,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   document.querySelectorAll(".aba").forEach(b=>b.onclick=()=>{document.querySelectorAll(".aba").forEach(x=>x.classList.remove("ativa"));document.querySelectorAll(".painel").forEach(x=>x.classList.remove("ativo"));b.classList.add("ativa");$("aba-"+b.dataset.aba).classList.add("ativo");});
   $("lista-processos").addEventListener("click",e=>{const p=e.target.closest("[data-processo]");if(p)abrirDossie(p.dataset.processo);});
   $("d-conteudo").addEventListener("click",async e=>{const prazo=e.target.closest("[data-add-prazo]"),empenho=e.target.closest("[data-add-empenho]"),rel=e.target.closest("[data-relatorio]"),atualizar=e.target.closest("[data-atualizar-status]");if(prazo){$("form-prazo").reset();$("titulo-form-prazo").textContent="Novo prazo do processo";$("form-prazo").processo_id.value=prazo.dataset.addPrazo;fechar("modal-dossie");abrir("modal-prazo");}if(empenho){$("form-empenho").reset();$("titulo-form-empenho").textContent="Novo empenho";$("form-empenho").processo_id.value=empenho.dataset.addEmpenho;fechar("modal-dossie");abrir("modal-empenho");}if(rel)void visualizarRelatorio(rel.dataset.relatorio);if(atualizar){const {error}=await sb.from("operacao_processos").update({status:$("d-status").value,atualizado_em:new Date().toISOString()}).eq("id",atualizar.dataset.atualizarStatus);if(error){aviso("Não foi possível atualizar o estágio: "+error.message,"erro");return;}await carregarTudo();abrirDossie(atualizar.dataset.atualizarStatus);}});
-  $("d-conteudo").addEventListener("click",e=>{
+  $("d-conteudo").addEventListener("click",async e=>{
     const id=$("modal-dossie").dataset.processoId;
     const processo=estado.processos.find(item=>item.id===id);
     if(!processo)return;
@@ -269,14 +315,15 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     const indice=Number(acompanhar.dataset.acompanharItem);
     const item=itensOficiais.get(id)?.itens?.[indice];
     if(!item)return;
-    const form=$("form-item");
-    form.reset();
-    form.elements.namedItem("processo_id").value=id;
-    form.elements.namedItem("identificador").value=String(item.numero||"");
-    form.elements.namedItem("descricao").value=String(item.descricao||"").slice(0,500);
-    form.elements.namedItem("quantidade").value=item.quantidade??"";
-    acompanhamento.atualizarValoresItem();
-    fechar("modal-dossie");abrir("modal-item");
+    acompanhar.disabled=true;
+    try{
+      const {data:{session}}=await sb.auth.getSession();if(!session?.access_token)throw new Error('Sessão expirada. Entre novamente.');
+      const resposta=await fetch('/api/importar-item-pncp',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({empresaId:processo.empresa_id,processoId:id,numeroItem:Number(item.numero)})});
+      const resultado=await resposta.json();if(!resposta.ok)throw new Error(resultado.erro||'Importação indisponível.');
+      const {data:{session:atual}}=await sb.auth.getSession();if(atual?.user?.id!==session.user?.id||$("modal-dossie").dataset.processoId!==id)return;
+      await carregarTudo();aviso(resultado.mensagem,'sucesso');abrirDossie(id);
+    }catch(erro){aviso(erro.message||'Não foi possível importar o item.','erro');}
+    finally{acompanhar.disabled=false;}
   });
   acompanhamento.vincular();iniciar();
 })();
@@ -292,3 +339,4 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
 </script>
 </body>
 </html>
+

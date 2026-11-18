@@ -1,0 +1,12 @@
+{
+  "utc": "2026-10-31T02:54:53.557717+00:00",
+  "projetosListados": 1,
+  "projetoExcluidoPeloUsuario": false,
+  "nomeRelacionadoLicitaPlena": false,
+  "dominioLicitaPlenaListado": false,
+  "dominiosTemNaoPagesDev": false,
+  "sourceWrangler": "project.domains.join(\", \") sem filtro",
+  "semConsultaAoProjetoExcluido": true,
+  "nomeProjetoCandidato": "radar-sicaf-app",
+  "dominiosListados": "radar-sicaf-app.pages.dev"
+}

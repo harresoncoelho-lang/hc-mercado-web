@@ -1,0 +1,41 @@
+name: Inventario privado do dump ficticio
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: inventario-licitaplena
+  cancel-in-progress: false
+
+jobs:
+  inventario:
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verificar guardas sem executar Docker
+        run: python3 -B -m unittest -q test_inventory.py
+      - name: Extrair inventario sem banco e sem rede no container
+        run: python3 -B inventory.py
+      - name: Preservar evidencias privadas por um dia
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: inventario-ficticio-${{ github.run_id }}
+          path: |
+            evidence/report.json
+            evidence/version.txt
+            evidence/toc.list
+            evidence/schema.sql
+          if-no-files-found: warn
+          retention-days: 1
+          compression-level: 6

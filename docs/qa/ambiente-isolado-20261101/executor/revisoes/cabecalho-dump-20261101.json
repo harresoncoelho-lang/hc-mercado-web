@@ -1,0 +1,15 @@
+{
+  "observed_utc": "2026-11-01T18:48:25.5020047Z",
+  "source_sha256": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c",
+  "source_bytes": 505274,
+  "method": "bounded first-512-byte read; only printable version strings exported",
+  "header_bytes_read": 512,
+  "header_sha256": "2a1804b93e7dbbf3e93c3d1db78abbec48fabcee5e5ecd10fc562f264f403caf",
+  "custom_format_magic": true,
+  "version_strings": [
+    "17.11",
+    "17.11"
+  ],
+  "docker_started": false,
+  "sql_executed": false
+}

@@ -1,0 +1,77 @@
+{
+  "conclusion": "failure",
+  "createdAt": "2026-11-01T19:32:59Z",
+  "headSha": "a0a9c7e4b66ac36a564f4f9eafd97646bc6efbf1",
+  "jobs": [
+    {
+      "completedAt": "2026-11-01T19:33:44Z",
+      "conclusion": "failure",
+      "databaseId": 124954674918,
+      "name": "restauracao",
+      "startedAt": "2026-11-01T19:33:02Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-01T19:33:04Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-01T19:33:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-01T19:33:06Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 2,
+          "startedAt": "2026-11-01T19:33:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-01T19:33:07Z",
+          "conclusion": "success",
+          "name": "Conferir guardas locais",
+          "number": 3,
+          "startedAt": "2026-11-01T19:33:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-01T19:33:40Z",
+          "conclusion": "failure",
+          "name": "Restaurar em banco efemero sem rede",
+          "number": 4,
+          "startedAt": "2026-11-01T19:33:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-01T19:33:41Z",
+          "conclusion": "success",
+          "name": "Preservar evidencias privadas",
+          "number": 5,
+          "startedAt": "2026-11-01T19:33:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-01T19:33:42Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 10,
+          "startedAt": "2026-11-01T19:33:41Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-01T19:33:42Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 11,
+          "startedAt": "2026-11-01T19:33:42Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/harresoncoelho-lang/licitaplena-homologacao/actions/runs/41342288411/job/124954674918"
+    }
+  ],
+  "status": "completed",
+  "updatedAt": "2026-11-01T19:33:44Z",
+  "url": "https://github.com/harresoncoelho-lang/licitaplena-homologacao/actions/runs/41342288411"
+}

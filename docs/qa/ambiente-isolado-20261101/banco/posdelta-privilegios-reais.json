@@ -1,0 +1,435 @@
+{
+  "bucket": {
+    "id": "operacao-documentos",
+    "name": "operacao-documentos",
+    "public": false,
+    "objects": 0,
+    "file_size_limit": null,
+    "allowed_mime_types": null
+  },
+  "read_only": "on",
+  "resultado": "DELTA_STAGING_GATES_OK",
+  "observado_em": "2026-11-01T18:49:49.985081+00:00",
+  "usuarios_auth": 0,
+  "server_version": "PostgreSQL 17.11 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+  "objetos_storage": 0,
+  "execucao_funcoes": [
+    {
+      "papel": "anon",
+      "funcao": "public.confirmar_identificacao_empresa(uuid,uuid,text,text,jsonb,jsonb)",
+      "execute": false
+    },
+    {
+      "papel": "anon",
+      "funcao": "public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)",
+      "execute": false
+    },
+    {
+      "papel": "anon",
+      "funcao": "public.invalidar_identificacao_empresa()",
+      "execute": false
+    },
+    {
+      "papel": "anon",
+      "funcao": "public.kit_documento_escopo_imutavel()",
+      "execute": false
+    },
+    {
+      "papel": "anon",
+      "funcao": "public.preservar_escopo_operacao()",
+      "execute": false
+    },
+    {
+      "papel": "anon",
+      "funcao": "public.validar_arquivo_processo_operacao()",
+      "execute": false
+    },
+    {
+      "papel": "authenticated",
+      "funcao": "public.confirmar_identificacao_empresa(uuid,uuid,text,text,jsonb,jsonb)",
+      "execute": false
+    },
+    {
+      "papel": "authenticated",
+      "funcao": "public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)",
+      "execute": false
+    },
+    {
+      "papel": "authenticated",
+      "funcao": "public.invalidar_identificacao_empresa()",
+      "execute": false
+    },
+    {
+      "papel": "authenticated",
+      "funcao": "public.kit_documento_escopo_imutavel()",
+      "execute": false
+    },
+    {
+      "papel": "authenticated",
+      "funcao": "public.preservar_escopo_operacao()",
+      "execute": false
+    },
+    {
+      "papel": "authenticated",
+      "funcao": "public.validar_arquivo_processo_operacao()",
+      "execute": false
+    },
+    {
+      "papel": "service_role",
+      "funcao": "public.confirmar_identificacao_empresa(uuid,uuid,text,text,jsonb,jsonb)",
+      "execute": true
+    },
+    {
+      "papel": "service_role",
+      "funcao": "public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)",
+      "execute": true
+    },
+    {
+      "papel": "service_role",
+      "funcao": "public.invalidar_identificacao_empresa()",
+      "execute": false
+    },
+    {
+      "papel": "service_role",
+      "funcao": "public.kit_documento_escopo_imutavel()",
+      "execute": false
+    },
+    {
+      "papel": "service_role",
+      "funcao": "public.preservar_escopo_operacao()",
+      "execute": false
+    },
+    {
+      "papel": "service_role",
+      "funcao": "public.validar_arquivo_processo_operacao()",
+      "execute": false
+    }
+  ],
+  "privilegios_tabelas": [
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "DELETE"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "INSERT"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "MAINTAIN"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "REFERENCES"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "SELECT"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "SELECT WITH GRANT OPTION"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "TRIGGER"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "TRUNCATE"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "UPDATE"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "DELETE"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "INSERT"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "MAINTAIN"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "REFERENCES"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "SELECT"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "SELECT WITH GRANT OPTION"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "TRIGGER"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "TRUNCATE"
+    },
+    {
+      "papel": "anon",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "UPDATE"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "DELETE"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "INSERT"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "MAINTAIN"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "REFERENCES"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "SELECT"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "SELECT WITH GRANT OPTION"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "TRIGGER"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "TRUNCATE"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "UPDATE"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "DELETE"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "INSERT"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "MAINTAIN"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "REFERENCES"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": true,
+      "privilegio": "SELECT"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "SELECT WITH GRANT OPTION"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "TRIGGER"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "TRUNCATE"
+    },
+    {
+      "papel": "authenticated",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "UPDATE"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "DELETE"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "INSERT"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "MAINTAIN"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "REFERENCES"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "SELECT"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": false,
+      "privilegio": "SELECT WITH GRANT OPTION"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "TRIGGER"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "TRUNCATE"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_identificacao_empresa",
+      "permitido": true,
+      "privilegio": "UPDATE"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "DELETE"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "INSERT"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "MAINTAIN"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "REFERENCES"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": true,
+      "privilegio": "SELECT"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "SELECT WITH GRANT OPTION"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "TRIGGER"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "TRUNCATE"
+    },
+    {
+      "papel": "service_role",
+      "tabela": "public.operacao_kit_documentos",
+      "permitido": false,
+      "privilegio": "UPDATE"
+    }
+  ],
+  "tabelas_publicas_vazias": 21
+}

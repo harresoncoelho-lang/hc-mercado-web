@@ -1,0 +1,163 @@
+PASS T1 pacote inicial: confirmar bloqueado
+PASS T1 bloqueios listam atestado e proposta; certidão válida não bloqueia
+PASS T1 atestado vazio aparece Faltando
+PASS T1 nenhuma revisão automática antes de gerar prévia
+PASS T1 peça modelo sem prévia: pendente de revisão
+PASS T1 certidão válida do cofre já revisada (validade existente reaproveitada)
+PASS T1 atestado do cofre Faltando
+PASS T1 sem erro de página
+PASS T2 atestado deixou de bloquear após confirmação
+PASS T2 exigência atestado atendida pela peça do cofre
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T2 declaração revisada após prévia integral
+PASS T2 proposta continua pendente (revisar uma não revisa todas)
+PASS T2 confirmar bloqueado enquanto proposta não revisada
+PASS T2 voltar ao checklist conserva revisão válida da declaração
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T2 confirmar habilitado com seleção completa e peças revisadas
+PASS T2 pacote confirmado
+PASS T2 resumo mostra CNPJ, processo e versões
+PASS T2 pacote sem custos internos
+PASS T2 sem erro de página
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T3 desmarcar certidão: exigência continua Faltando
+PASS T3 seleção alterada desfaz pacote confirmado
+PASS T3 confirmar bloqueado sem certidão
+PASS T3 marcar de novo: exigência atendida
+PASS T3 seleção vazia bloqueia
+PASS T3 confirmar bloqueado com seleção vazia
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T4 remover declaração volta a Faltando
+PASS T4 reincluir: revisão válida da declaração preservada
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T5 alterar identidade desfaz pacote
+PASS T5 identidade invalida revisão da proposta
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T5 preço externo alterado desfaz pacote
+PASS T5 preço externo invalida revisão da proposta
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T5 documento descartado desfaz pacote e volta a Faltando
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T5 trocar documento (anexo) torna certidão Pendente de validação
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T5 custo interno não aplicado não altera pacote
+PASS T5 custo interno não altera preço externo
+PASS T5 aplicar preço sugerido invalida pacote
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T6 empresa B mostra pacote próprio (vazio)
+PASS T6 empresa B sem pacote confirmado
+PASS T6 A->B->A não ressuscita pacote
+PASS T6 A->B->A não ressuscita revisão da declaração
+PASS T6 processo 2: preços pendentes e pacote não confirmado
+PASS T6 volta ao processo 1 sem pacote ressuscitado
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T7 leitor: seleção desabilitada
+PASS T7 leitor: desmarcação programática revertida
+PASS T7 leitor: mensagem de acesso negado
+PASS T7 leitor não altera confirmação
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T7 sair e reentrar exige nova revisão e confirmação
+PASS T8 prévia tardia de empresa anterior não gera revisão
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T9 pacote confirmado sem custos
+PASS T10 Espaço desmarca peça e mantém foco
+PASS T10 Espaço remarca
+PASS T10 todas as seleções do pacote têm nome (label)
+PASS T10 Enter em Gerar prévia: foco vai ao título da prévia apresentada
+PASS T10 Enter em Confirmar revisão: peça revisada e foco no pacote (LI||mod:anexo3)
+PASS T10 foco visível (outline sólido com tokens ao vivo)
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 375px sem rolagem horizontal (0)
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 375px escuro sem rolagem horizontal (0)
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 704px sem rolagem horizontal (0)
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 704px escuro sem rolagem horizontal (0)
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 1280px sem rolagem horizontal (0)
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 1280px escuro sem rolagem horizontal (0)
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 chips do pacote (claro) contraste mínimo 5.36 ≥ 4,5:1
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS T11 chips do pacote (escuro) contraste mínimo 7.91 ≥ 4,5:1
+PASS T12 gerar prévia não revisa a peça
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T12 pacote confirmado antes de abrir peça
+PASS T12 abrir proposta sem alteração preserva revisão da declaração e pacote
+PASS T12 sem CNPJ: não há pacote nem consolidado
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T13 Enter em Confirmar pacote: confirmado e foco preservado (H3|pkH|)
+PASS T13 Enter em Abrir modelo: foco vai ao modelo na aba Modelos
+PASS T13 abrir modelo sem alteração mantém pacote confirmado
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T14 base: pacote confirmado antes da remoção de correspondência
+PASS T14 exigência sem peça correspondente fica Faltando sem referência inventada
+PASS T14 pacote confirmado é desfeito e confirmação bloqueada
+PASS T14 bloqueio aparece na lista de pendências
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS T14 sem correspondência antes da confirmação: confirmar continua bloqueado
+PASS T14 cofre publicado intacto (certidão continua no cofre)
+PASS N1 gerar: aba Prévia visível e documento renderizado visível
+PASS N1 texto apresentado traz CNPJ, processo e modelo
+PASS N1 texto apresentado traz fonte e versão da peça
+PASS N1 confirmação habilitada somente com documento apresentado
+PASS N1 gerar não marca a peça como Revisada
+PASS N1 foco no título da prévia apresentada
+PASS N2 voltar sem revisar mantém peça pendente
+PASS N2 foco volta à linha da peça no pacote
+PASS N2 caixa de revisão some após voltar
+PASS N3 confirmação forjada sem abrir a prévia não revisa
+PASS N3 mensagem clara de bloqueio
+PASS N4 aba Prévia oculta após trocar de aba (controle de visibilidade)
+PASS N4 confirmação com aba oculta não revisa
+PASS N4 controle positivo: com documento visível a confirmação revisa
+PASS N5 após alterar dados, documento antigo não fica apresentado para confirmar
+PASS N5 confirmação após mudança de dados não revisa
+PASS N6 sair e reentrar: confirmação não revisa e peça segue pendente
+PASS N7 confirmação durante a geração não revisa; geração tardia não vale como revisão
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS N8 abrir a proposta preserva a revisão válida da declaração
+PASS N8 ao abrir a proposta não aparece o documento da declaração
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS N9 documento apresentado é o da proposta, sem HTML da declaração
+PASS N9 documento externo não traz custos internos
+PASS N9 confirmação habilitada para a proposta apresentada
+PASS N9 as duas peças revisadas individualmente e preservadas
+PASS N11 após alterar seleção, o documento antigo não fica apresentado e a confirmação não habilita
+PASS N11 confirmação forjada após mudança de seleção não revisa
+PASS R1 reabrir a mesma peça após cancelar: documento completo visível
+PASS R1 reabrir: confirmação habilitada com o documento visível
+PASS R1 reabrir: foco no título da prévia
+PASS R1 reabrir sem confirmar não revisa
+PASS R1 confirmar após reabrir revisa a peça e devolve foco à linha
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS R2 reabrir peça já revisada: documento visível
+PASS R2 reabrir peça já revisada: confirmação habilitada
+PASS R2 reabrir não remove a revisão válida
+PASS R3 após mudança de seleção, gerar não reutiliza o documento antigo (regenera)
+PASS R3 documento regenerado visível e confirmação habilitada
+PASS R3 confirmação válida após regeneração revisa a peça
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS R4 após mudar versão/fonte, gerar não reutiliza o documento anterior
+PASS R4 documento apresentado traz a versão e a fonte atuais
+PASS R4 confirmação habilitada somente para o documento atual
+PASS R4 a revisão anterior não vale para a versão nova
+PASS genRev anexo3: documento apresentado visível antes de revisar
+PASS genRev anexo2: documento apresentado visível antes de revisar
+PASS N10 A→B→A não restaura revisão nem pacote
+SUMMARY pass=162 fail=0

@@ -1,0 +1,14 @@
+node:internal/process/promises:394
+    triggerUncaughtException(err, true /* fromPromise */);
+    ^
+
+page.waitForResponse: Timeout 15000ms exceeded while waiting for event "response"
+    at acao (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\homologacao-real-20261031\verificar-ui-real.cjs:36:24)
+    at revisar (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\homologacao-real-20261031\verificar-ui-real.cjs:53:11)
+    at verificarUIReal (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\homologacao-real-20261031\verificar-ui-real.cjs:122:11)
+    at async main (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\homologar-kit-real-local.cjs:244:10) {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v24.22.0

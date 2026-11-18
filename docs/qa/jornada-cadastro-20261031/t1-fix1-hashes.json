@@ -1,0 +1,10 @@
+{
+  "kit-documentos-ui.js": {
+    "sha256": "87c36d594ba76de88e813802dfb42b3f8ea6dad2979705e50cfa98e04977972e",
+    "baselineFix1Sha256": "7e21b2237bc633d0578a1e9369eb4ff92c6a9f395374f6ba37358107c68090b7"
+  },
+  "docs/qa/jornada-cadastro-20261031/t1-navegador.cjs": {
+    "sha256": "25d1971cc2a80ea485e33257061dad025ebc96b7fa97389184232010e1eed629",
+    "baselineFix1Sha256": "dd754f89d4c3cec338e8bf14ae36587ebc960167096e0f367b2a7c0169c88ad4"
+  }
+}

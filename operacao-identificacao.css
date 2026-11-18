@@ -1,0 +1,12 @@
+#aba-identificacao .card {max-width:900px}
+#identificacao-empresa details {display:grid;gap:10px;min-width:0}
+#identificacao-empresa summary {font-size:18px;font-weight:700;cursor:pointer;margin-bottom:8px}
+#identificacao-empresa p {line-height:1.6;overflow-wrap:anywhere}
+#identificacao-empresa label {margin-top:8px}
+#identificacao-empresa input[type="checkbox"] {width:20px;height:20px;accent-color:var(--azul);margin:8px 0 0}
+#identificacao-empresa .defesa-botao {justify-self:start;max-width:100%;white-space:normal;border:1px solid var(--borda);background:var(--card2);color:var(--texto);font:inherit;font-weight:700;padding:10px 13px;border-radius:8px;cursor:pointer}
+#identificacao-empresa .defesa-botao:disabled {opacity:.55;cursor:not-allowed}
+#identificacao-empresa .defesa-botao:hover {border-color:var(--azul)}
+#identificacao-empresa input:read-only {color:var(--fraco)}
+#aba-identificacao :focus-visible,.aba:focus-visible,#empresa-atual:focus-visible {outline:2px solid var(--azul);outline-offset:3px}
+#aba-identificacao [hidden] {display:none}

@@ -1,0 +1,953 @@
+{
+  "captured_at": "2026-10-31T02:06:40.397360+00:00",
+  "before": [
+    {
+      "name": "/licitaplena-qa-real-db-1",
+      "id": "9a6f28026e8b943b35e697f96d9ba9469c32e80efb25bf06d865f1bcd6d4fe7a",
+      "image_id": "sha256:b15d862126dd2dac02da524696ccfde2dcce2ceaee0a58973b2727befe492706",
+      "state": "exited",
+      "health": "starting",
+      "mounts": [
+        {
+          "name": "licitaplena-qa-real_dados",
+          "target": "/var/lib/postgresql/data",
+          "type": "volume"
+        }
+      ],
+      "bindings": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "55322"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-auth-1",
+      "id": "5ffa9077a48d1e9255a51462e48eb7109ad3c065a6a06439900a74a91304bf71",
+      "image_id": "sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+      "state": "exited",
+      "health": null,
+      "mounts": [],
+      "bindings": {
+        "9999/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "55324"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-rest-1",
+      "id": "6084c421ab522c2141e040f4fe4a197f9cc0d76ddd17158cdda6aaf112126ddd",
+      "image_id": "sha256:d155c6718ed9a9f990d159a2ab7c0a3f16944dbb6d0a0344557421042acfe0df",
+      "state": "exited",
+      "health": null,
+      "mounts": [],
+      "bindings": {
+        "3000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "55321"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-storage-1",
+      "id": "736776e0bbc90ee7174390944b8c11b64438766c663dce749dc41b5e0d044bd0",
+      "image_id": "sha256:f1546fac6d1c7e345428ac904bfaa7be7cecd50a1f549fe1cf38c628a7b15c85",
+      "state": "exited",
+      "health": null,
+      "mounts": [
+        {
+          "name": "licitaplena-qa-real_arquivos",
+          "target": "/var/lib/storage",
+          "type": "volume"
+        }
+      ],
+      "bindings": {
+        "5000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "55325"
+          }
+        ]
+      }
+    }
+  ],
+  "bind_probes": {
+    "55321": "error_10013",
+    "55322": "error_10013",
+    "55324": "error_10013",
+    "55325": "error_10013",
+    "56322": "ok",
+    "56324": "ok",
+    "56321": "ok",
+    "56325": "ok"
+  },
+  "renewed_roles": [
+    "anon",
+    "service_role"
+  ],
+  "token_renewal_ttl_seconds": 86400,
+  "override": "C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\supabase-homologacao\\compose.qa-ports-20261031.yaml",
+  "ports": {
+    "db": 56322,
+    "auth": 56324,
+    "rest": 56321,
+    "storage": 56325
+  },
+  "after": [
+    {
+      "name": "/licitaplena-qa-real-db-1",
+      "id": "198b6fdec418d20b5e8d4da0d018057b20950f38f4fa8277c78de4193838c59f",
+      "image_id": "sha256:b15d862126dd2dac02da524696ccfde2dcce2ceaee0a58973b2727befe492706",
+      "state": "running",
+      "health": "healthy",
+      "mounts": [
+        {
+          "name": "licitaplena-qa-real_dados",
+          "target": "/var/lib/postgresql/data",
+          "type": "volume"
+        }
+      ],
+      "bindings": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56322"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-auth-1",
+      "id": "d46b72370f2584ad64742e32c159754362a2cf71270ff43eeb67c6ffecad7777",
+      "image_id": "sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+      "state": "running",
+      "health": null,
+      "mounts": [],
+      "bindings": {
+        "9999/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56324"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-rest-1",
+      "id": "c120c8d5e1eb59571306e467ebed33fabe882f68770c78bce42e30b59085c8a8",
+      "image_id": "sha256:d155c6718ed9a9f990d159a2ab7c0a3f16944dbb6d0a0344557421042acfe0df",
+      "state": "running",
+      "health": null,
+      "mounts": [],
+      "bindings": {
+        "3000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56321"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-storage-1",
+      "id": "c7d54d98a20bd1fdf18f41126287cb355c1e21a9f1a6807f447c42b80bd2f1a9",
+      "image_id": "sha256:f1546fac6d1c7e345428ac904bfaa7be7cecd50a1f549fe1cf38c628a7b15c85",
+      "state": "running",
+      "health": null,
+      "mounts": [
+        {
+          "name": "licitaplena-qa-real_arquivos",
+          "target": "/var/lib/storage",
+          "type": "volume"
+        }
+      ],
+      "bindings": {
+        "5000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56325"
+          }
+        ]
+      }
+    }
+  ],
+  "database_identity": {
+    "database": "licitaplena_qa_ui_v2",
+    "user": "supabase_admin",
+    "owner": "supabase_admin"
+  },
+  "baseline_tables": {
+    "public.admins": {
+      "count": 1,
+      "rows_md5": "b0e8e267a6fc0c783f5db26bcab6f437"
+    },
+    "public.clientes": {
+      "count": 9,
+      "rows_md5": "d3a62479c24e1ce52aae950521fbd0f1"
+    },
+    "public.comprasgov_resultados": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.contratos": {
+      "count": 1,
+      "rows_md5": "4110858bfd778173c21ab863234574c6"
+    },
+    "public.dados_robo": {
+      "count": 4,
+      "rows_md5": "235f61f8ce535828385eb6994894df96"
+    },
+    "public.dossies_editais": {
+      "count": 6,
+      "rows_md5": "5bc3529acfb1781215196016b52afe1f"
+    },
+    "public.fila_dossies": {
+      "count": 2,
+      "rows_md5": "a9d776973672a5ccaf745e26d5ba510c"
+    },
+    "public.lembretes": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.logs_boletim": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.mercado_atas": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_agenda": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_anexos_processo": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_contratos": {
+      "count": 2,
+      "rows_md5": "27a7b9e8551eea529e676ca671c8b08b"
+    },
+    "public.operacao_convites_empresa": {
+      "count": 2,
+      "rows_md5": "84a4e9f8b1326ca9072f97b5d7f8b638"
+    },
+    "public.operacao_documentos": {
+      "count": 4,
+      "rows_md5": "cd3b61a3780b8a80d61d95ed60f5fd42"
+    },
+    "public.operacao_empenhos": {
+      "count": 2,
+      "rows_md5": "343020b9a75444826b5cbd0eebf626e1"
+    },
+    "public.operacao_empresas": {
+      "count": 4,
+      "rows_md5": "ce04df8d8b39fc5ab8f1ea5546597fcf"
+    },
+    "public.operacao_identificacao_empresa": {
+      "count": 1,
+      "rows_md5": "a0b4ede5c94e818543aa9d8ff0bc2bc8"
+    },
+    "public.operacao_itens_resultado": {
+      "count": 2,
+      "rows_md5": "df87d3cdb2960f1f4a239490288b1f3c"
+    },
+    "public.operacao_limites_cnpj": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_membros": {
+      "count": 5,
+      "rows_md5": "a76e9075f0b997d62b5c89061e54614b"
+    },
+    "public.operacao_ocorrencias": {
+      "count": 2,
+      "rows_md5": "0e074679742e85abf812eb4939d5a7a9"
+    },
+    "public.operacao_organizacoes": {
+      "count": 3,
+      "rows_md5": "8badbd0e46685e61b2cd22518a606a50"
+    },
+    "public.operacao_prazos_processo": {
+      "count": 2,
+      "rows_md5": "8c90194aa50eaea10606bd4e8ef4a1b3"
+    },
+    "public.operacao_processos": {
+      "count": 3,
+      "rows_md5": "64406222ad54fea579fb5d5a6ba19e27"
+    },
+    "public.operacao_renovacoes_documento": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_tipos_documento": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.oportunidades_abertas": {
+      "count": 5,
+      "rows_md5": "17a5dfa5e610710a4192c651b148a489"
+    },
+    "public.uso_diario": {
+      "count": 1,
+      "rows_md5": "d1a9660e66984b59e26cdfffa68ed3df"
+    },
+    "storage.buckets": {
+      "count": 1,
+      "rows_md5": "8350a6463728c54ae2ce5e79561d2c27"
+    },
+    "storage.buckets_analytics": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.buckets_vectors": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.iceberg_namespaces": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.iceberg_tables": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.migrations": {
+      "count": 70,
+      "rows_md5": "30f779d2201459c89025a9728ea3a2a0"
+    },
+    "storage.objects": {
+      "count": 5,
+      "rows_md5": "b623d1b5ec25c892eed7eeeaf6cd2a7f"
+    },
+    "storage.s3_multipart_uploads": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.s3_multipart_uploads_parts": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.vector_indexes": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  },
+  "backup": {
+    "path": "C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\supabase-homologacao\\antes-kit-documentos-20261031T020748Z.dump",
+    "bytes": 489155,
+    "sha256": "8f2b1dcce8d6fd6d80626e897820245c9a3bd38d7c04e7fd021ac14f1bdbf57f",
+    "custom_format_header_valid": true,
+    "pg_restore_list_ok": true,
+    "restore_list_entries": 795
+  },
+  "sql_sha256": {
+    "kit_documentos.sql": "7feb6b0aab74d51fdeb009c8169d5630debdf5e15c329cd8448b6b8a10f56c8a",
+    "verificar_kit_prepublicacao.sql": "2c4023cb0cac4e9b5fa29afee68398a0b4e402663dee9cd9fa580e7ea19178cf"
+  },
+  "migration_runs": [
+    {
+      "attempt": 1,
+      "exit_code": 0,
+      "committed": true,
+      "note": "psql exited successfully; wrapper incorrectly expected COMMIT on final output line, but SQL ends with NOTIFY; wrapper corrected before second run"
+    },
+    {
+      "attempt": 2,
+      "exit_code": 0,
+      "committed": true
+    }
+  ],
+  "gate": "KIT_PREPUBLICACAO_OK",
+  "gate_error": "Kit pre-publicacao: policy de leitura diverge do escopo, cliente aprovado ou empresa ativa esperados",
+  "gate_attempts": [
+    {
+      "exit_code": 3,
+      "search_path": "default includes auth",
+      "result": "FAIL: auth.uid() deparsed as uid()"
+    },
+    {
+      "exit_code": 3,
+      "search_path": "pg_catalog,public",
+      "result": "FAIL: unexpected table or column privilege"
+    }
+  ],
+  "table_acl": [
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "INSERT",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "SELECT",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "UPDATE",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "DELETE",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "TRUNCATE",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "REFERENCES",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "TRIGGER",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "supabase_admin",
+      "privilege": "MAINTAIN",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "INSERT",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "SELECT",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "UPDATE",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "DELETE",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "TRUNCATE",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "REFERENCES",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "TRIGGER",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "MAINTAIN",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "authenticated",
+      "privilege": "SELECT",
+      "grantable": false
+    },
+    {
+      "owner": "supabase_admin",
+      "grantee": "service_role",
+      "privilege": "SELECT",
+      "grantable": false
+    }
+  ],
+  "function_extra_acl": [
+    {
+      "function": "gravar_kit_documento",
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "EXECUTE",
+      "grantable": false
+    },
+    {
+      "function": "gravar_kit_documento",
+      "owner": "supabase_admin",
+      "grantee": "service_role",
+      "privilege": "EXECUTE",
+      "grantable": false
+    },
+    {
+      "function": "kit_documento_escopo_imutavel",
+      "owner": "supabase_admin",
+      "grantee": "postgres",
+      "privilege": "EXECUTE",
+      "grantable": false
+    },
+    {
+      "function": "kit_documento_escopo_imutavel",
+      "owner": "supabase_admin",
+      "grantee": "service_role",
+      "privilege": "EXECUTE",
+      "grantable": false
+    }
+  ],
+  "defaults_postgres": [
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "S",
+      "grantee": "postgres",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "S",
+      "grantee": "postgres",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "S",
+      "grantee": "postgres",
+      "privilege": "USAGE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "f",
+      "grantee": "postgres",
+      "privilege": "EXECUTE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "DELETE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "TRUNCATE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "REFERENCES"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "TRIGGER"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "extensions",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "MAINTAIN"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "INSERT"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "DELETE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "TRUNCATE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "REFERENCES"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "TRIGGER"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "r",
+      "grantee": "postgres",
+      "privilege": "MAINTAIN"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "S",
+      "grantee": "postgres",
+      "privilege": "SELECT"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "S",
+      "grantee": "postgres",
+      "privilege": "UPDATE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "S",
+      "grantee": "postgres",
+      "privilege": "USAGE"
+    },
+    {
+      "role": "supabase_admin",
+      "schema": "public",
+      "object_type": "f",
+      "grantee": "postgres",
+      "privilege": "EXECUTE"
+    }
+  ],
+  "after_migration_tables": {
+    "public.admins": {
+      "count": 1,
+      "rows_md5": "b0e8e267a6fc0c783f5db26bcab6f437"
+    },
+    "public.clientes": {
+      "count": 9,
+      "rows_md5": "d3a62479c24e1ce52aae950521fbd0f1"
+    },
+    "public.comprasgov_resultados": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.contratos": {
+      "count": 1,
+      "rows_md5": "4110858bfd778173c21ab863234574c6"
+    },
+    "public.dados_robo": {
+      "count": 4,
+      "rows_md5": "235f61f8ce535828385eb6994894df96"
+    },
+    "public.dossies_editais": {
+      "count": 6,
+      "rows_md5": "5bc3529acfb1781215196016b52afe1f"
+    },
+    "public.fila_dossies": {
+      "count": 2,
+      "rows_md5": "a9d776973672a5ccaf745e26d5ba510c"
+    },
+    "public.lembretes": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.logs_boletim": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.mercado_atas": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_agenda": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_anexos_processo": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_contratos": {
+      "count": 2,
+      "rows_md5": "27a7b9e8551eea529e676ca671c8b08b"
+    },
+    "public.operacao_convites_empresa": {
+      "count": 2,
+      "rows_md5": "84a4e9f8b1326ca9072f97b5d7f8b638"
+    },
+    "public.operacao_documentos": {
+      "count": 4,
+      "rows_md5": "cd3b61a3780b8a80d61d95ed60f5fd42"
+    },
+    "public.operacao_empenhos": {
+      "count": 2,
+      "rows_md5": "343020b9a75444826b5cbd0eebf626e1"
+    },
+    "public.operacao_empresas": {
+      "count": 4,
+      "rows_md5": "ce04df8d8b39fc5ab8f1ea5546597fcf"
+    },
+    "public.operacao_identificacao_empresa": {
+      "count": 1,
+      "rows_md5": "a0b4ede5c94e818543aa9d8ff0bc2bc8"
+    },
+    "public.operacao_itens_resultado": {
+      "count": 2,
+      "rows_md5": "df87d3cdb2960f1f4a239490288b1f3c"
+    },
+    "public.operacao_kit_documentos": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_limites_cnpj": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_membros": {
+      "count": 5,
+      "rows_md5": "a76e9075f0b997d62b5c89061e54614b"
+    },
+    "public.operacao_ocorrencias": {
+      "count": 2,
+      "rows_md5": "0e074679742e85abf812eb4939d5a7a9"
+    },
+    "public.operacao_organizacoes": {
+      "count": 3,
+      "rows_md5": "8badbd0e46685e61b2cd22518a606a50"
+    },
+    "public.operacao_prazos_processo": {
+      "count": 2,
+      "rows_md5": "8c90194aa50eaea10606bd4e8ef4a1b3"
+    },
+    "public.operacao_processos": {
+      "count": 3,
+      "rows_md5": "64406222ad54fea579fb5d5a6ba19e27"
+    },
+    "public.operacao_renovacoes_documento": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.operacao_tipos_documento": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "public.oportunidades_abertas": {
+      "count": 5,
+      "rows_md5": "17a5dfa5e610710a4192c651b148a489"
+    },
+    "public.uso_diario": {
+      "count": 1,
+      "rows_md5": "d1a9660e66984b59e26cdfffa68ed3df"
+    },
+    "storage.buckets": {
+      "count": 1,
+      "rows_md5": "8350a6463728c54ae2ce5e79561d2c27"
+    },
+    "storage.buckets_analytics": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.buckets_vectors": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.iceberg_namespaces": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.iceberg_tables": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.migrations": {
+      "count": 70,
+      "rows_md5": "30f779d2201459c89025a9728ea3a2a0"
+    },
+    "storage.objects": {
+      "count": 5,
+      "rows_md5": "b623d1b5ec25c892eed7eeeaf6cd2a7f"
+    },
+    "storage.s3_multipart_uploads": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.s3_multipart_uploads_parts": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "storage.vector_indexes": {
+      "count": 0,
+      "rows_md5": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  },
+  "preexisting_rows_preserved_after_migration": true,
+  "gate_before_correction": "FAILED_TABLE_ACL",
+  "correction_evidence": "correcao-acl-evidencia.json",
+  "health": [
+    {
+      "service": "auth",
+      "path": "56324/health",
+      "status": 200
+    },
+    {
+      "service": "rest",
+      "path": "56321/operacao_kit_documentos?select=id&limit=0",
+      "status": 200
+    },
+    {
+      "service": "storage",
+      "path": "56325/status",
+      "status": 200
+    }
+  ],
+  "current_containers": [
+    {
+      "name": "/licitaplena-qa-real-db-1",
+      "id": "198b6fdec418d20b5e8d4da0d018057b20950f38f4fa8277c78de4193838c59f",
+      "image_id": "sha256:b15d862126dd2dac02da524696ccfde2dcce2ceaee0a58973b2727befe492706",
+      "state": "running",
+      "health": "healthy",
+      "mounts": [
+        {
+          "name": "licitaplena-qa-real_dados",
+          "target": "/var/lib/postgresql/data",
+          "type": "volume"
+        }
+      ],
+      "bindings": {
+        "5432/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56322"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-auth-1",
+      "id": "d46b72370f2584ad64742e32c159754362a2cf71270ff43eeb67c6ffecad7777",
+      "image_id": "sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+      "state": "running",
+      "health": null,
+      "mounts": [],
+      "bindings": {
+        "9999/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56324"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-rest-1",
+      "id": "c120c8d5e1eb59571306e467ebed33fabe882f68770c78bce42e30b59085c8a8",
+      "image_id": "sha256:d155c6718ed9a9f990d159a2ab7c0a3f16944dbb6d0a0344557421042acfe0df",
+      "state": "running",
+      "health": null,
+      "mounts": [],
+      "bindings": {
+        "3000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56321"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/licitaplena-qa-real-storage-1",
+      "id": "c7d54d98a20bd1fdf18f41126287cb355c1e21a9f1a6807f447c42b80bd2f1a9",
+      "image_id": "sha256:f1546fac6d1c7e345428ac904bfaa7be7cecd50a1f549fe1cf38c628a7b15c85",
+      "state": "running",
+      "health": null,
+      "mounts": [
+        {
+          "name": "licitaplena-qa-real_arquivos",
+          "target": "/var/lib/storage",
+          "type": "volume"
+        }
+      ],
+      "bindings": {
+        "5000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "56325"
+          }
+        ]
+      }
+    }
+  ]
+}

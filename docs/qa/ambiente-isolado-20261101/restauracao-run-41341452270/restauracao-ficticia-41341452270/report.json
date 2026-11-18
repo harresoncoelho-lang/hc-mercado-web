@@ -1,0 +1,73 @@
+{
+  "status": "failed",
+  "phase": "preflight",
+  "image": "public.ecr.aws/supabase/postgres:17.11.0.004@sha256:e85bc10ac5b141223b289e1e8dc8d448cf3df92501917149db0366b9c5aaf053",
+  "dump_sha256": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c",
+  "baseline_sha256": "43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0",
+  "restore_attempted": false,
+  "restore_completed": false,
+  "role_passwords_copied": false,
+  "auth_http_tested": false,
+  "storage_bytes_restored": false,
+  "checks": {},
+  "limitations": [
+    "No complete Auth data baseline",
+    "No original Storage bytes for five metadata rows",
+    "Database/cluster settings are not a full source configuration backup",
+    "Source OIDs normalized to names; public namespace 2200 is PostgreSQL builtin identity"
+  ],
+  "duration_seconds": 22.945,
+  "files": {
+    "diagnostic-initdb.txt.capture.json": {
+      "sha256": "c07d6536b23982acf815bce72b618a8a56024e783990508614106a0964c6b392",
+      "bytes": 186
+    },
+    "diagnostic-docker.txt.stderr": {
+      "sha256": "7a74a23cd4a6631909e1213efd86f3229f906d99c26c1a5fee869a7832fe4fee",
+      "bytes": 389
+    },
+    "failure-preflight.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "diagnostic-docker.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "diagnostic-docker.txt.capture.json": {
+      "sha256": "bb390b4ef7d7fa919858475e958c1f1b613cf338058033cad335212e310e395d",
+      "bytes": 186
+    },
+    "sql-01.txt": {
+      "sha256": "8b7ba175906e1f6587cd6292a645cdd2ef22957d3bbc2cb08f096768e9636daf",
+      "bytes": 6
+    },
+    "diagnostic-initdb.txt": {
+      "sha256": "18eb8e6ff69cf6e191221eb5628969231d300dcf4ef2fcc673e93cb7bd88ea37",
+      "bytes": 959
+    }
+  },
+  "isolation": {
+    "network": "none",
+    "root_read_only": true,
+    "input_read_only": true,
+    "writable_ephemeral_tmpfs": [
+      "/qa",
+      "/tmp"
+    ],
+    "ports": []
+  },
+  "server_version": "17.11",
+  "category": "subprocess_exit",
+  "diagnostics": {
+    "docker": {
+      "exit_code": 0,
+      "tail_limit_bytes_per_stream": 65536
+    },
+    "initdb": {
+      "exit_code": 0,
+      "tail_limit_bytes_per_stream": 65536
+    }
+  },
+  "container_removed": true
+}

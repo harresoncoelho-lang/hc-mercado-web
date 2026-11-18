@@ -1,0 +1,6 @@
+{
+  "comando": "node --test scripts/kit_documentos_ui.test.js",
+  "inicioUtc": "2026-10-30T22:48:59.0322275+00:00",
+  "fimUtc": "2026-10-30T22:48:59.1908892+00:00",
+  "exitCode": 0
+}

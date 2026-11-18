@@ -1,0 +1,146 @@
+--- v3/executor/restauracao/restore.py
++++ v4/executor/restauracao/restore.py
+@@ -58,8 +58,8 @@
+             lines.append(f"ALTER ROLE {ident(name)} VALID UNTIL {literal(role['rolvaliduntil'])};")
+         for setting in role["rolconfig"]:
+             key, value = setting.split("=", 1)
+-            if key == "search_path":
+-                # search_path is GUC_LIST_QUOTE; preserve its individual identifiers, including the source's backslash.
++            if key in ("search_path", "session_preload_libraries"):
++                # These GUC_LIST_QUOTE values need separate items, including the source's backslash.
+                 parts = next(csv.reader([value], skipinitialspace=True))
+                 value_sql = ", ".join(literal(part) for part in parts)
+             else:
+@@ -72,6 +72,23 @@
+         lines.append(f"GRANT {ident(membership['role'])} TO {ident(membership['member'])} WITH {flags} GRANTED BY supabase_admin;")
+     lines.append("COMMIT;")
+     return "\n".join(lines)
++
++
++def canonical_default_acl(key, body):
++    if key[1] != "DEFAULT ACL":
++        return body
++    lines = body.splitlines()
++    pattern = (r"ALTER DEFAULT PRIVILEGES FOR ROLE ([a-z_][a-z_0-9]*) IN SCHEMA ([a-z_][a-z_0-9]*) "
++               r"GRANT ALL ON (FUNCTIONS|SEQUENCES|TABLES) TO ([a-z_][a-z_0-9]*);")
++    grants = [re.fullmatch(pattern, line) for line in lines]
++    if not grants or not all(grants):
++        return body
++    if any((f"DEFAULT PRIVILEGES FOR {g[3]}", "DEFAULT ACL", g[2], g[1]) != key for g in grants):
++        return body
++    if len({g[4] for g in grants}) != len(grants):
++        return body
++    # Independent positive grants commute; every other SQL section stays literal.
++    return "\n".join(sorted(lines))
+ 
+ 
+ def canonical_schema(text):
+@@ -87,6 +104,7 @@
+         body = re.sub(r"(?m)^\\(?:un)?restrict [a-zA-Z0-9]+\s*$", "", body).strip()
+         if key in result:
+             raise ValueError("duplicate_schema_section")
++        body = canonical_default_acl(key, body)
+         result[key] = hashlib.sha256(body.encode()).hexdigest()
+     return result
+ 
+--- v3/executor/restauracao/test_restore.py
++++ v4/executor/restauracao/test_restore.py
+@@ -25,7 +25,8 @@
+         text = r.role_sql(baseline)
+         self.assertIn('CREATE ROLE "postgres" WITH NOSUPERUSER', text)
+         self.assertIn('ALTER ROLE "supabase_admin" WITH SUPERUSER', text)
+-        self.assertIn('SET "session_preload_libraries" TO \'supautils, safeupdate\'', text)
++        self.assertIn('SET "session_preload_libraries" TO \'supautils\', \'safeupdate\';', text)
++        self.assertNotIn('TO \'supautils, safeupdate\'', text)
+         self.assertNotIn("PASSWORD", text)
+         self.assertNotIn('CREATE ROLE "pg_monitor"', text)
+         self.assertEqual(text.count("GRANTED BY supabase_admin;"), 21)
+@@ -41,6 +42,54 @@
+         self.assertNotEqual(r.canonical_schema(before), r.canonical_schema(after.replace("GRANT SELECT", "GRANT ALL")))
+         with self.assertRaisesRegex(ValueError, "duplicate_schema_section"):
+             r.canonical_schema(first + first)
++
++    def test_default_acl_independent_grants_ignore_only_recipient_order(self):
++        for kind in ("FUNCTIONS", "SEQUENCES", "TABLES"):
++            for owner, schema, recipients in (("supabase_auth_admin", "auth", ("postgres", "dashboard_user")),
++                                              ("supabase_admin", "public", ("postgres", "anon", "authenticated", "service_role"))):
++                with self.subTest(kind=kind, schema=schema):
++                    header = f"--\n-- Name: DEFAULT PRIVILEGES FOR {kind}; Type: DEFAULT ACL; Schema: {schema}; Owner: {owner}\n--\n"
++                    grants = [f"ALTER DEFAULT PRIVILEGES FOR ROLE {owner} IN SCHEMA {schema} GRANT ALL ON {kind} TO {recipient};" for recipient in recipients]
++                    source = header + "\n".join(grants)
++                    reordered = header + "\n".join(reversed(grants))
++                    self.assertEqual(r.canonical_schema(source), r.canonical_schema(reordered))
++                    mutations = [reordered.replace("GRANT ALL", "GRANT SELECT", 1),
++                                 reordered.replace("TO postgres;", "TO other;", 1),
++                                 reordered.replace(f"FOR ROLE {owner}", "FOR ROLE other", 1),
++                                 reordered.replace(f"IN SCHEMA {schema}", "IN SCHEMA other", 1),
++                                 reordered.replace(f"ON {kind}", "ON OTHER", 1),
++                                 header + "\n".join(grants[:-1]),
++                                 reordered + f"\nALTER DEFAULT PRIVILEGES FOR ROLE {owner} IN SCHEMA {schema} GRANT ALL ON {kind} TO other;",
++                                 reordered.replace("TO postgres;", "TO postgres WITH GRANT OPTION;", 1)]
++                    for mutation in mutations:
++                        self.assertNotEqual(r.canonical_schema(source), r.canonical_schema(mutation))
++
++    def test_default_acl_unknown_or_order_sensitive_sql_remains_literal(self):
++        header = "--\n-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin\n--\n"
++        grant = "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO postgres;"
++        other = grant.replace("TO postgres", "TO anon")
++        revoke = grant.replace("GRANT ALL", "REVOKE ALL").replace(" TO ", " FROM ")
++        cases = [[grant, revoke], [grant, other, grant], [grant, "SELECT 1;"],
++                 [grant, other.replace("FOR ROLE supabase_admin", "FOR ROLE other")],
++                 [grant, other.replace("IN SCHEMA public", "IN SCHEMA other")],
++                 [grant, other.replace("ON TABLES", "ON FUNCTIONS")],
++                 [grant, other.replace("TO anon;", "TO anon WITH GRANT OPTION;")]]
++        for statements in cases:
++            with self.subTest(statements=statements):
++                reversed_statements = statements[1:] + statements[:1]
++                self.assertNotEqual(r.canonical_schema(header + "\n".join(statements)),
++                                    r.canonical_schema(header + "\n".join(reversed_statements)))
++        function_header = "--\n-- Name: f(); Type: FUNCTION; Schema: public; Owner: supabase_admin\n--\n"
++        self.assertNotEqual(r.canonical_schema(function_header + grant + "\n" + other),
++                            r.canonical_schema(function_header + other + "\n" + grant))
++
++    def test_role_configuration_comparison_does_not_hide_quoted_library_delta(self):
++        baseline = json.loads(Path(__file__).with_name("baseline.json").read_text())
++        before = {key: copy.deepcopy(baseline[key]) for key in ("roles", "memberships", "default_acl")}
++        after = copy.deepcopy(before)
++        role = next(role for role in after["roles"] if role["rolname"] == "authenticator")
++        role["rolconfig"] = [setting.replace("=supautils, safeupdate", '=\"supautils, safeupdate\"') for setting in role["rolconfig"]]
++        self.assertNotEqual(r.normalize_globals(before)["roles"], r.normalize_globals(after)["roles"])
+ 
+     def test_container_has_only_private_scratch_and_readonly_input(self):
+         source = "/repo/input"
+--- v3/executor/restauracao/README.md
++++ v4/executor/restauracao/README.md
+@@ -1,6 +1,6 @@
+ # Restauração lógica fictícia — candidato para revisão
+ 
+-Preparado em 01/11/2026; **nenhum SQL, servidor, Docker local ou job desta restauração foi executado na preparação**. O inventário remoto anterior foi aprovado no run `41339162377`, commit `c08feeabe25ff3d726e9373b4d1a92147a99885f`: origem, pg_dump e cliente 17.11; 812 entradas selecionadas de 817 entradas totais do cabeçalho.
++Atualizado em 01/11/2026. A rodada remota V3 `41342288411` completou a restauração real e falhou na comparação/conexão posterior; a V4 corrige somente os dois deltas comprovados abaixo e ainda depende de revisão e execução remota. **Nenhum SQL, servidor ou Docker local foi executado na preparação.** O inventário remoto anterior foi aprovado no run `41339162377`, commit `c08feeabe25ff3d726e9373b4d1a92147a99885f`: origem, pg_dump e cliente 17.11; 812 entradas selecionadas de 817 entradas totais do cabeçalho.
+ 
+ ## Escopo mínimo e origem
+ 
+@@ -22,7 +22,7 @@
+ 
+ Depois compara:
+ 
+-- Esquema extraído do próprio dump versus pg_dump do destino: seções por identidade/owner, conservando SQL, ACLs, comentários e corpos de funções. Normaliza somente ordem das seções e comandos aleatórios `\\restrict`/`\\unrestrict` do cliente. Divergência interrompe para diagnóstico, sem ampliar filtros automaticamente.
++- Esquema extraído do próprio dump versus pg_dump do destino: seções por identidade/owner, conservando SQL, ACLs, comentários e corpos de funções. Normaliza ordem das seções, comandos aleatórios `\\restrict`/`\\unrestrict` do cliente e, na V4, apenas a permutação dos GRANTs independentes de DEFAULT ACL descrita abaixo. Divergência interrompe para diagnóstico, sem ampliar filtros automaticamente.
+ - Contagens e o mesmo fingerprint MD5 de linhas JSONB ordenadas nas 40 tabelas, usando a receita original. SHA256 verifica o arquivo fonte; MD5 aqui reproduz o detector de alterações da baseline.
+ - Atributos e configurações de 29 roles, 21 memberships com grantor/flags e 12 default ACLs, por nomes.
+ - Owner, RLS e ACL do kit **antes da correção**, incluindo EXECUTE de service_role no trigger. Não aplica o ajuste aprovado posterior durante a prova de recuperação.
+@@ -32,6 +32,14 @@
+ 
+ Antes da remoção, captura privadamente as últimas 100 linhas do log Docker e o final de `/qa/initdb.log`, limitando cada stream salvo a 65.536 bytes. Se initdb falhar, seu log é emitido no stderr do container antes de sair, pois o tmpfs não persiste após a parada. Timeouts de subprocesso preservam stdout/stderr parciais com identificação explícita de captura incompleta. O relatório distingue criação, inspeção de isolamento, início e prontidão do servidor. Esses diagnósticos não alteram opções de isolamento, restauração ou comparação.
+ 
++## Correção focal V4 após evidência da V3
++
++O run `41342288411` carregou realmente as duas bibliotecas e completou pg_restore sem erro. As 40 tabelas, memberships, default ACLs e ACL do kit compararam iguais à baseline. Houve exatamente uma diferença de role: `authenticator.session_preload_libraries` foi serializada como um único item `"supautils, safeupdate"`. Isso fez a nova conexão buscar uma biblioteca com esse nome combinado. A V4 conserva a baseline e emite os dois itens separados em `ALTER ROLE ... SET ... TO 'supautils', 'safeupdate'`, usando o mesmo tratamento de listas já aplicado a search_path. A comparação de configurações permanece exata; a nova conexão authenticator continua obrigatória.
++
++As seis diferenças de esquema foram exclusivamente permutações de linhas positivas `ALTER DEFAULT PRIVILEGES ... GRANT ALL` para destinatários distintos, nas seções de FUNCTIONS/SEQUENCES/TABLES de auth e public. A V4 ordena as linhas completas somente quando toda a seção DEFAULT ACL corresponde a essa sintaxe estreita, owner/schema/tipo coincidem com o cabeçalho e cada destinatário é distinto. Qualquer REVOKE, mistura de contexto, destinatário repetido, WITH GRANT OPTION ou SQL não reconhecido mantém comparação literal. Nenhuma linha é descartada; as 12 default ACLs continuam comparadas separadamente por catálogo, incluindo privilégios e grantors. Corpos de funções e demais seções não recebem essa normalização.
++
++V3 e evidências permanecem intactas. Os testes locais reproduziram as duas falhas antes da correção e passaram depois. O replay offline dos schemas preservados comparou as 744 seções com a normalização restrita. Esse replay não executa SQL nem transforma o resultado da V3 em sucesso; a configuração corrigida e a conexão authenticator ainda precisam da execução remota V4.
++
+ ## Limites que permanecem
+ 
+ Os dados das 27 tabelas Auth presentes no TOC não têm baseline completa de contagens/hashes; são restaurados pelo dump, mas não certificados pela comparação das 40 tabelas. O valor da sequência Auth `refresh_tokens_id_seq` também não tem comparação com baseline; sua definição estrutural participa do comparador de esquema, seu valor não. Senhas de roles não são copiadas. Não há serviços GoTrue/PostgREST/Storage HTTP, login comercial, SMTP, API ou teste de aplicação nesta rodada.

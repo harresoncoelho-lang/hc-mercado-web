@@ -1,0 +1,10 @@
+✔ geração descarta respostas antigas mesmo no ciclo A → B → A e após fechar (1.8673ms)
+✔ qualquer alteração invalida hash e revisão e impede exportação sem nova prévia (0.9809ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 86.3644

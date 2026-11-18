@@ -1,0 +1,10 @@
+status
+tabelas_restauradas
+sequencias_restauradas
+relacoes_pncp_ausentes
+funcoes_pncp_ausentes
+QA_PNCP_GATES_E_ROLLBACK_OK
+56
+1
+true
+true

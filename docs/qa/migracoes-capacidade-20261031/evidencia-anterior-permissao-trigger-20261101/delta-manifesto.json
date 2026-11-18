@@ -1,0 +1,47 @@
+{
+  "estado": "candidato local, não aplicado",
+  "catalogoRemotoSha256": "cd708621a042125e408774128e7927c8cea3ebc9e16fcc30bd084f5f782d71aa",
+  "catalogoRemotoMd5": "4550d262d2f09edec1efd68b4c699f67",
+  "deltaSha256": "7cbe38e48980e9d58f73f95d69e8f926950517d616fe6d00f92dfd091b5502bf",
+  "novasTabelas": [
+    "operacao_identificacao_empresa",
+    "operacao_kit_documentos"
+  ],
+  "novasFuncoes": [
+    "arquivo_no_escopo_operacao(text,uuid,uuid)",
+    "confirmar_identificacao_empresa(uuid,uuid,text,text,jsonb,jsonb)",
+    "escrita_arquivo_operacao(text)",
+    "gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)",
+    "identificacao_empresa_habilitada()",
+    "invalidar_identificacao_empresa()",
+    "kit_documento_escopo_imutavel()",
+    "pode_escrever_empresa_operacao(uuid,uuid)",
+    "pode_escrever_org_operacao(uuid)",
+    "pode_escrever_processo_operacao(uuid,uuid)",
+    "preservar_escopo_operacao()",
+    "validar_arquivo_processo_operacao()"
+  ],
+  "policiesAlteradas": [
+    "public.operacao_agenda.operacao_agenda_da_empresa",
+    "public.operacao_anexos_processo.operacao_anexos_da_empresa",
+    "public.operacao_contratos.operacao_contratos_da_empresa",
+    "public.operacao_documentos.operacao_documentos_da_empresa",
+    "public.operacao_empenhos.operacao_empenhos_da_empresa",
+    "public.operacao_empresas.operacao_empresas_escrita",
+    "public.operacao_itens_resultado.operacao_itens_da_empresa",
+    "public.operacao_ocorrencias.operacao_ocorrencias_da_empresa",
+    "public.operacao_prazos_processo.operacao_prazos_da_empresa",
+    "public.operacao_processos.operacao_processos_da_empresa",
+    "public.operacao_renovacoes_documento.operacao_renovacoes_da_empresa",
+    "public.operacao_tipos_documento.operacao_tipos_escrita",
+    "storage.objects.operacao_arquivos_atualizacao",
+    "storage.objects.operacao_arquivos_envio",
+    "storage.objects.operacao_arquivos_exclusao"
+  ],
+  "fontes": {
+    "identificacao_empresa.sql": "c57e39266ba21414bbc874d943a5e967a469fc439004929fd3dbb6c30af842d9",
+    "seguranca_operacao.sql": "9049f69484d39d68293b13379583e140f4fa360878fed358184826d8d43595ea",
+    "kit_documentos.sql": "7b2ef8ed7676e45acd9708b56d95bb5b6d39ec44ecc54455d796daa2e148131f",
+    "verificar_kit_prepublicacao.sql": "2c4023cb0cac4e9b5fa29afee68398a0b4e402663dee9cd9fa580e7ea19178cf"
+  }
+}

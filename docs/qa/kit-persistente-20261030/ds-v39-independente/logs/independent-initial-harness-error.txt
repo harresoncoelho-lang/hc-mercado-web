@@ -1,0 +1,7 @@
+page.evaluate: ReferenceError: ctx is not defined
+    at eval (eval at evaluate (:311:30), <anonymous>:1:229)
+    at UtilityScript.evaluate (<anonymous>:313:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+    at state (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\kit-persistente-20261030\ds-v39-independente\adapted-tests\independent-checks.js:10:18)
+    at race (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\kit-persistente-20261030\ds-v39-independente\adapted-tests\independent-checks.js:12:244)
+    at async C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\kit-persistente-20261030\ds-v39-independente\adapted-tests\independent-checks.js:15:1

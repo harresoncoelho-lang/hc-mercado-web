@@ -1,0 +1,139 @@
+/* Casca comercial LicitaPlena: usa tokens do Design System (ds-tokens.css). Sem dependências externas. */
+html,body{margin:0;padding:0;background:var(--surface-page);color:var(--text-primary);font:var(--text-body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{min-height:100vh}
+*{box-sizing:border-box}
+.app-topo{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:var(--space-12);align-items:center;justify-content:space-between;padding:var(--space-12) var(--space-16);background:var(--surface-default);border-bottom:1px solid var(--border-default)}
+.app-marca{font:var(--text-section);color:var(--text-primary)}
+.app-controles{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center;min-width:0}
+.app-empresa{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center;font:var(--text-label);color:var(--text-secondary)}
+.app-empresa select{min-height:44px;max-width:100%;padding:var(--space-8) var(--space-12);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body)}
+.app-principal{max-width:960px;margin:0 auto;padding:var(--space-24) var(--space-16) var(--space-48)}
+.app-titulo{font:var(--text-title);margin:0 0 var(--space-8)}
+.app-apoio{font:var(--text-body-lg);color:var(--text-secondary);margin:0 0 var(--space-24);overflow-wrap:anywhere}
+.app-cartao{max-width:440px;padding:var(--space-24);background:var(--surface-default);border:1px solid var(--border-default);border-radius:var(--radius-card)}
+#app-login{display:grid;gap:var(--space-12)}
+#app-login label{display:grid;gap:var(--space-4);font:var(--text-label);color:var(--text-secondary)}
+#app-login input{min-height:44px;padding:var(--space-8) var(--space-12);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body);width:100%}
+button{font:var(--text-body);font-weight:600;min-height:44px;padding:var(--space-8) var(--space-16);border-radius:var(--radius-control);border:1px solid var(--border-strong);background:var(--surface-default);color:var(--action-text);cursor:pointer;max-width:100%}
+button:hover{border-color:var(--action-strong)}
+button:disabled{opacity:.55;cursor:not-allowed}
+.app-primario{background:var(--action-strong);border-color:var(--action-strong);color:var(--action-on)}
+.app-primario:hover{background:var(--action-strong-hover);border-color:var(--action-strong-hover)}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.app-aviso{min-height:1.5em;font:var(--text-body);color:var(--text-secondary);margin:var(--space-16) 0 0}
+.app-aviso:empty{display:none}
+#area>div{min-width:0;margin-top:var(--space-16)}
+#identificacao,#kit{min-width:0}
+[hidden]{display:none!important}
+@media (max-width:640px){
+  .app-principal{padding:var(--space-16) var(--space-16) var(--space-32)}
+  .app-titulo{font-size:22px;line-height:30px}
+  .app-controles{width:100%}
+  .app-empresa{width:100%}
+  .app-empresa select{width:100%}
+  #sair{width:100%}
+}
+
+/* Compatibilidade dos módulos reais (kit-documentos.css e operacao-identificacao.css usam nomes do harness).
+   Os nomes apontam para tokens do DS, então o tema escuro e o claro seguem data-theme sem cor fixa. */
+:root{--azul:var(--action-strong);--card:var(--surface-default);--card2:var(--surface-sunken);--borda:var(--border-default);--texto:var(--text-primary);--fraco:var(--text-secondary)}
+.app-badge{display:inline-block;margin-left:var(--space-8);padding:2px var(--space-8);border-radius:999px;border:1px solid var(--attention-border);background:var(--attention-bg);color:var(--attention-text);font:var(--text-label);vertical-align:middle}
+.app-aviso[data-estado="carregando"]{color:var(--info-text)}
+.app-aviso[data-estado="erro"]{color:var(--error-text)}
+.app-aviso[data-estado="ok"]{color:var(--success-text)}
+.app-aviso[data-estado="vazio"]{color:var(--attention-text)}
+#identificacao:focus{outline:2px solid var(--focus-ring);outline-offset:4px}
+
+#kit a.link{color:var(--action-text)}
+
+/* Alvos de toque (mínimo 44px) para os módulos reais da casca. Só ajusta tamanho mínimo; não muda cores nem handlers. */
+#kit button,#kit .btn,#kit select,#kit input:not([type="checkbox"]):not([type="radio"]),#identificacao input[type="file"]{min-height:44px}
+#kit label:has(input[type="checkbox"]),#kit label:has(input[type="radio"]),#identificacao label:has(input[type="checkbox"]){min-height:44px;display:flex;align-items:center;gap:var(--space-8)}
+#kit a{display:inline-flex;align-items:center;min-height:44px}
+
+/* Painel Hoje: só empresas/processos autorizados nesta sessão. Sem métricas, datas ou prazos. Só tokens do DS. */
+.hoje-lista{display:grid;gap:var(--space-16);margin-top:var(--space-16)}
+.hoje-empresa h2{font:var(--text-section);color:var(--text-primary);margin:0 0 var(--space-8)}
+.hoje-empresa ul{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-12)}
+.hoje-empresa li{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center;justify-content:space-between;min-width:0}
+.hoje-empresa li p{margin:0;font:var(--text-body);color:var(--text-primary);overflow-wrap:anywhere;min-width:0}
+.hoje-indisponivel{margin-top:var(--space-24)}
+#voltar-hoje{margin-bottom:var(--space-12)}
+#hoje:not([hidden]){display:block}
+@media (min-width:641px){
+  .hoje-empresa{max-width:720px}
+}
+
+/* Cadastro de processo no Hoje. Só tokens do DS. */
+.novo-processo{margin-top:var(--space-16);max-width:640px}
+.novo-processo form{display:grid;gap:var(--space-12)}
+.novo-processo label{display:grid;gap:var(--space-4);font:var(--text-label);color:var(--text-secondary)}
+.novo-processo textarea,.novo-processo input{min-height:44px;padding:var(--space-8) var(--space-12);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body);width:100%;min-width:0}
+.novo-processo textarea{min-height:96px;resize:vertical}
+.novo-processo-acoes{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.hoje-empresa>button{margin-top:var(--space-12)}
+
+/* Itens do processo (itens-processo-ui.js). Só tokens do DS; alvos de toque de 44px. */
+.itens-processo{margin-top:var(--space-16);max-width:720px;min-width:0}
+.itens-processo form{display:grid;gap:var(--space-12)}
+.itens-processo label{display:grid;gap:var(--space-4);font:var(--text-label);color:var(--text-secondary);min-width:0}
+.itens-processo input,.itens-processo textarea{min-height:44px;padding:var(--space-8) var(--space-12);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body);width:100%;min-width:0}
+.itens-processo textarea{min-height:96px;resize:vertical}
+.itens-processo [data-total]{font:var(--text-body);color:var(--text-primary);margin:0;overflow-wrap:anywhere}
+.itens-processo [data-erros]{margin:0;color:var(--error-text);min-height:0}
+.itens-processo [data-erros]:empty{display:none}
+.itens-processo [data-estado]{font:var(--text-body);color:var(--text-secondary);margin:var(--space-12) 0 0;overflow-wrap:anywhere}
+.itens-processo [data-estado][data-estado="erro"]{color:var(--error-text)}
+.itens-processo [data-estado][data-estado="ok"]{color:var(--success-text)}
+.itens-processo [data-estado][data-estado="vazio"]{color:var(--attention-text)}
+.itens-acoes{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-12)}
+.itens-processo ul{list-style:none;margin:var(--space-12) 0 0;padding:0;display:grid;gap:var(--space-12)}
+.itens-processo li{display:grid;gap:var(--space-4);padding:var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control);min-width:0}
+.itens-processo li p{margin:0;font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+.itens-processo li strong{font:var(--text-section);color:var(--text-primary);overflow-wrap:anywhere}
+.itens-processo li button{justify-self:start}
+#itens-processo:focus{outline:2px solid var(--focus-ring);outline-offset:4px}
+@media (max-width:640px){
+  .itens-processo{margin-top:var(--space-12)}
+  .itens-acoes button{width:100%}
+}
+
+/* Identificação da empresa (empresa-identificacao-ui.js). Markup real: #identificacao > details > summary, p, p[role=status], label+campo em pares, select, input file, botões .defesa-botao, div de sugestões, checkbox e label.
+   Desktop (641px+): duas colunas label | campo; textos, botões, arquivo, tipo e sugestões ocupam a largura toda; checkbox e label ficam na mesma linha.
+   Mobile: uma coluna, rótulo acima do campo; checkbox e label na mesma linha.
+   Quando o navegador expõe ::details-content, o grid vai nesse conteúdo; senão, no próprio details. Cores só por tokens, escopo em #identificacao. */
+#identificacao details{--campos-colunas:1.25rem minmax(0,1fr);display:block;padding:var(--space-12) var(--space-16);background:var(--surface-default);border:1px solid var(--border-default);border-radius:var(--radius-card);min-width:0}
+#identificacao details>summary{font:var(--text-section);color:var(--text-primary);cursor:pointer;min-height:44px;display:flex;align-items:center}
+@supports selector(details::details-content){
+  #identificacao details::details-content{display:grid;grid-template-columns:var(--campos-colunas);gap:var(--space-12) var(--space-16);min-width:0}
+}
+@supports not selector(details::details-content){
+  #identificacao details{display:grid;grid-template-columns:var(--campos-colunas);gap:var(--space-12) var(--space-16)}
+}
+#identificacao details>*:not(summary){grid-column:span 2;min-width:0}
+#identificacao details>p{margin:0;font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+#identificacao details>p[role="status"]{color:var(--text-primary);min-height:1.5em}
+#identificacao label{display:grid;gap:var(--space-4);font:var(--text-label);color:var(--text-secondary);min-width:0}
+#identificacao input:not([type="checkbox"]):not([type="file"]),#identificacao select{width:100%;min-width:0;min-height:44px;padding:var(--space-8) var(--space-12);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body)}
+#identificacao input[readonly]{background:var(--surface-sunken);color:var(--text-secondary)}
+#identificacao input[type="file"]{width:100%;min-width:0;font:var(--text-body);color:var(--text-primary)}
+#identificacao input[type="checkbox"]{grid-column:auto;width:20px;height:20px;min-height:0;margin:0;justify-self:start;align-self:center;accent-color:var(--action-strong)}
+#identificacao details>label[for="empresa-identificacao-revisao"]{grid-column:auto;align-self:center;min-height:44px;display:flex;align-items:center}
+#identificacao .defesa-botao{justify-self:start;max-width:100%;min-height:44px;white-space:normal;padding:var(--space-8) var(--space-16);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--action-text);font:var(--text-body);font-weight:600;cursor:pointer}
+#identificacao .defesa-botao:hover{border-color:var(--action-strong)}
+#identificacao .defesa-botao:disabled{opacity:.55;cursor:not-allowed}
+#identificacao div{display:grid;gap:var(--space-8);min-width:0}
+#identificacao :focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+#identificacao [hidden]{display:none!important}
+@media (min-width:641px){
+  #identificacao details{--campos-colunas:minmax(10rem,14rem) minmax(0,1fr)}
+  #identificacao details>label{align-self:center}
+  #identificacao details>label[for="empresa-identificacao-revisao"]{align-self:center}
+  #identificacao details>input:not([type]),#identificacao details>select#empresa-identificacao-documento{grid-column:auto}
+  #identificacao details>label{grid-column:auto}
+  #identificacao input[type="checkbox"]{justify-self:end}
+}
+@media (max-width:640px){
+  #identificacao .defesa-botao{width:100%;justify-self:stretch}
+}
+

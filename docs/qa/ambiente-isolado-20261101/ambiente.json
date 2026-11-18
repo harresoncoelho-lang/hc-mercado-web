@@ -1,0 +1,57 @@
+{
+  "registradoEmUtc": "2026-11-01T18:21:34.1705582Z",
+  "projeto": "licitaplena-homologacao",
+  "referencia": "luguscapasskcsficckf",
+  "organizacao": "Licita Plena",
+  "organizacaoReferencia": "vhmjospwgiryrnrndkpd",
+  "planoObservado": "FREE",
+  "statusObservado": "Healthy",
+  "compute": "NANO",
+  "regiao": "ca-central-1",
+  "github": "No repository connected",
+  "migracoesIniciais": "No migrations",
+  "backupsIniciais": "No backups",
+  "postgres": "17.11",
+  "producaoReferenciaExcluida": "lsqjamqvmrcyrvowndiu",
+  "postgresProducao": "17.6",
+  "dadosNegocioCopiados": false,
+  "criacaoConcluidaPeloUsuario": true,
+  "senhaLidaPelaCoordenacao": false,
+  "consultasExecutadas": "Somente leitura de catálogos",
+  "inputs": [
+    {
+      "arquivo": "banco/baseline-destino.json",
+      "sha256": "13b0042d98f3348023cc7cbcd00fc4ec325402234811e5a6679ff524d986280e"
+    },
+    {
+      "arquivo": "banco/catalogo-destino-vazio.json",
+      "sha256": "d0a2910b2f9a62e9df3796c1392cb656acc06ea88404d166c511d18e279017fd"
+    },
+    {
+      "arquivo": "banco/helpers-producao.json",
+      "sha256": "9936a2bc47d92ef57ccf01e54f6636c4f2b8f4adc27b2bf757573fb83a6f2882"
+    },
+    {
+      "arquivo": "banco/dados-robo-esquema-producao.json",
+      "sha256": "cc5dad90ee5bd01d5df97e925a34e2dece9f63f10bd4f2ac2abebf644d0885c1"
+    }
+  ],
+  "githubActions": {
+    "conta": "harresoncoelho-lang",
+    "plano": "Free",
+    "computeIncluidoUsd": 12,
+    "computeIncluidoUsadoUsd": 0,
+    "storageIncluidoGb": 0.5,
+    "storageUsadoGb": 0,
+    "budgetUsd": 0,
+    "estadoBudget": "Usage blocked",
+    "configuracaoAlterada": false,
+    "jobExecutado": false
+  },
+  "limites": [
+    "Free observado na conta não certifica capacidade de produção.",
+    "O PostgreSQL do destino é 17.11 e não 17.6.",
+    "O uso de Actions é uma observação pontual e deve ser reconferido antes do primeiro job.",
+    "Não houve migração, restauração, publicação ou execução de runtime nesta coleta inicial."
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "data": "2026-10-31T02:38:58.766Z",
+  "exitHarness": 0,
+  "grupos": 13,
+  "gruposUI": 4,
+  "docx": 8,
+  "capturas": 5,
+  "tabelasBaseline": 33,
+  "baselineBytesIguais": true,
+  "jwtOcorrencias": 0,
+  "fontes": [
+    {
+      "arquivo": "docs/qa/homologar-kit-real-local.cjs",
+      "sha256": "e08a73d1d73fb45796a38a043819069a9c50fa822903969aeacf8ea06e29dea1"
+    },
+    {
+      "arquivo": "docs/qa/servir-identificacao-local.cjs",
+      "sha256": "b2951f7a07556a4e45b5a38cf7ac06dcfd3ac08449b10cb3653924f0b4f1b8cb"
+    },
+    {
+      "arquivo": "docs/qa/homologacao-real-20261031/verificar-ui-real.cjs",
+      "sha256": "69c619edf125141977a7c2752e34206130e254872701b25b04250efa618295fb"
+    }
+  ],
+  "artefatos": [
+    {
+      "arquivo": "baseline-dados.json",
+      "bytes": 3785,
+      "sha256": "cab80dfb34ece1badd4a546ddb3276fc67b87d32756fa72878f65a5104ae1b5e"
+    },
+    {
+      "arquivo": "cadastro-real-1280.png",
+      "bytes": 117818,
+      "sha256": "09d9ed1d64b9cf6205f0128ea08f2ee85cfa697cee7270be57ddadd6ad2e0fd2"
+    },
+    {
+      "arquivo": "cadastro-real-375.png",
+      "bytes": 96095,
+      "sha256": "e3167885aac3ab4fa3e6bfe7b260cc5c2b8292bd9eba21a8a7448a1cb692fb13"
+    },
+    {
+      "arquivo": "execucao-iniciada.json",
+      "bytes": 66,
+      "sha256": "51d4329e0e91e4e7c38edb13f3f67411d94b79c5453b46ffaf61f97e264e7469"
+    },
+    {
+      "arquivo": "final-dados.json",
+      "bytes": 3785,
+      "sha256": "cab80dfb34ece1badd4a546ddb3276fc67b87d32756fa72878f65a5104ae1b5e"
+    },
+    {
+      "arquivo": "fixtures.jsonl",
+      "bytes": 1166,
+      "sha256": "e05f013dabbe56c4b951af702afa2812cf3fdb700c966dbfb451ff2a43b74de0"
+    },
+    {
+      "arquivo": "harness.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "arquivo": "harness.stdout.log",
+      "bytes": 2206,
+      "sha256": "f303a1c1677a848f9eb804ac7643001a1585ce61097cadb090bd69f5877479f4"
+    },
+    {
+      "arquivo": "homologacao-kit-real-local.json",
+      "bytes": 2437,
+      "sha256": "a3389cbe958923f524025a8c8b2d554ad2ab00bd9cd6fbdbddd8e7b46e3726a6"
+    },
+    {
+      "arquivo": "kit-real-1280.png",
+      "bytes": 93804,
+      "sha256": "83a68d0a5c5e7698130470f439f62780a10ccca052869e0a195b8e0a2f02a7bc"
+    },
+    {
+      "arquivo": "kit-real-375.png",
+      "bytes": 64811,
+      "sha256": "4b0b8ec037b54ccfacbd6bd4f7038a624ebe415278f28427adeab5ac23f628b1"
+    },
+    {
+      "arquivo": "kit-real-declaracao-alfa-ficticia.docx",
+      "bytes": 2663,
+      "sha256": "e9472d7eec02f15ff337d09d64de3921b3082414e3182d08ab2f63d57eb83c35"
+    },
+    {
+      "arquivo": "kit-real-declaracao-beta-ficticia.docx",
+      "bytes": 2665,
+      "sha256": "06a583b1350617a74233db614cf1e602bc79d5614fcbfcadb206ed07e86bda92"
+    },
+    {
+      "arquivo": "kit-real-proposta-alfa-ficticia.docx",
+      "bytes": 2801,
+      "sha256": "36c940faa6a7c980343da56479b8f119a1bf87f96d8c3f7166b45d43dbe57012"
+    },
+    {
+      "arquivo": "persistida-declaracao-alfa.docx",
+      "bytes": 2675,
+      "sha256": "a0d8269af16a3f11e0adb7d2375b5b7ffb4472bcbeeebfe41f9b52449cb50355"
+    },
+    {
+      "arquivo": "persistida-declaracao-beta.docx",
+      "bytes": 2680,
+      "sha256": "3d8035b9998fa86b56dda37b503efca7ac1b3c36dbe16115ccd3d559d090d3e9"
+    },
+    {
+      "arquivo": "persistida-proposta-alfa.docx",
+      "bytes": 2801,
+      "sha256": "e9617c082518a11c01076542b434b9fff707be1dd3b43cd5056f7df6e2373872"
+    },
+    {
+      "arquivo": "rede-servidor.json",
+      "bytes": 21876,
+      "sha256": "118912874fad687fa734942aa7970a432121ebd36862783d413297e00462fddf"
+    },
+    {
+      "arquivo": "ui-conflito-real.png",
+      "bytes": 94343,
+      "sha256": "e0499b778adb5832c28fa21c22448cda33f849c0dd8dc088f3773b60963856f6"
+    },
+    {
+      "arquivo": "ui-declaracao-real.docx",
+      "bytes": 2732,
+      "sha256": "2c433899a4a573dbcea944870f4f25f9f8cdd071c6929d9cb8e9bf7a2ad8a673"
+    },
+    {
+      "arquivo": "ui-proposta-real.docx",
+      "bytes": 2801,
+      "sha256": "15a57d25f94ec9cd3bd3ff14531c336e0354fd482dec4b9a48adb3a3c73e81c2"
+    },
+    {
+      "arquivo": "ui-real.json",
+      "bytes": 8560,
+      "sha256": "42b26d663c9d90254718bf9a51c3eb714caf2e9cbf6c0429165a633c2b9555ef"
+    }
+  ]
+}

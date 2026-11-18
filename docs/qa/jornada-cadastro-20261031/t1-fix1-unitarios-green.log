@@ -1,0 +1,17 @@
+✔ geração descarta respostas antigas mesmo no ciclo A → B → A e após fechar (2.3836ms)
+✔ qualquer alteração invalida hash e revisão e impede exportação sem nova prévia (1.7532ms)
+✔ revisão histórica e clique local não autorizam exportar; confirmação exige peça, versão e geração atuais (1.2744ms)
+✔ cadastro independente abre os campos sem ação ou mensagens de minuta (3.9954ms)
+✔ cadastro independente confirma apenas após conferência e informa uso em documentos (1.1311ms)
+✔ navegação só escolhe empresa autorizada e retorno sempre usa a rota local fixa (0.388ms)
+✔ controlador não reaplica consulta antiga ao voltar A → B → A (7.3902ms)
+✔ controlador revalida sessão depois do corpo e elimina dados de sessão anterior (0.9669ms)
+✔ invalidar contexto enquanto consulta sessão impede o envio posterior (0.4585ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 116.6177

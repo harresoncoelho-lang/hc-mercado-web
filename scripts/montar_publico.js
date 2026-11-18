@@ -2,7 +2,7 @@
 //
 // Por quê: publicar a raiz do repositório subiria node_modules, scripts, supabase e .github, e o
 // Pages tem limite de 20.000 arquivos por deploy. Aqui entra só o que o site realmente serve:
-// as páginas HTML, os JS/imagens da raiz referenciados por elas, data/ e o _headers.
+// as páginas HTML, os JS/imagens da raiz referenciados por elas, os dados públicos e o _headers.
 // O Netlify continua publicando a raiz ("publish = .") e não usa este script.
 
 const fs = require("node:fs");
@@ -22,12 +22,18 @@ function arquivosDaRaiz() {
     .concat("_headers");
 }
 
+function arquivosDeDados() {
+  // O histórico por destinatário e futuros arquivos internos não pertencem ao site público.
+  return ["capag-municipios.json", "convenios.json", "sistema_s_am.json", "mercado_meta.json", "contratos_meta.json"];
+}
+
 function montarPublico() {
   fs.rmSync(DESTINO, { recursive: true, force: true });
   fs.mkdirSync(DESTINO, { recursive: true });
   const copiados = arquivosDaRaiz();
   for (const nome of copiados) fs.copyFileSync(path.join(RAIZ, nome), path.join(DESTINO, nome));
-  fs.cpSync(path.join(RAIZ, "data"), path.join(DESTINO, "data"), { recursive: true });
+  fs.mkdirSync(path.join(DESTINO, "data"));
+  for (const nome of arquivosDeDados()) fs.copyFileSync(path.join(RAIZ, "data", nome), path.join(DESTINO, "data", nome));
   return copiados;
 }
 
@@ -36,4 +42,4 @@ if (require.main === module) {
   console.log(`publico/: ${copiados.length} arquivos da raiz + data/`);
 }
 
-module.exports = { montarPublico, arquivosDaRaiz };
+module.exports = { montarPublico, arquivosDaRaiz, arquivosDeDados };

@@ -1,0 +1,19 @@
+OK: salvar, recarregar, fechar/reabrir, revisão explícita no servidor, edição e DOCX real
+OK: duas declarações e proposta coexistem, revisão individual, isolamento, temas e 375/704/1280 px
+OK: rascunhos incompletos salvam; proposta incompleta e variável desconhecida não geram
+OK: timeout após persistir repete UUID e payload, sem duplicação ou perda de alterações posteriores
+OK: duas abas causam 409; formulário preservado e versão remota só após ação explícita
+OK: falhas listar/abrir/salvar/revisar e resposta de versão anterior não concedem sucesso ou exportação
+OK: salvar/abrir/preparar/confirmar tardios descartados em A→B→A; troca de peça e exportação após fechar bloqueadas
+OK: salvar/abrir/confirmar tardios após usuário trocado, sessão expirada ou fechamento
+OK: item removido do cadastro permanece no formulário, com pendência e sem perda silenciosa
+OK: alteração externa bloqueia exportação; rede externa zero; erros JavaScript zero
+AssertionError [ERR_ASSERTION]: editar: listagem deve concluir independentemente da peça
+    at verificar (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\verificar-kit-documentos.cjs:180:30) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

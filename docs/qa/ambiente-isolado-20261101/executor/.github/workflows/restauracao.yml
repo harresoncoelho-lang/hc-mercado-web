@@ -1,0 +1,32 @@
+name: Restauracao privada do dump ficticio
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: inventario-licitaplena
+  cancel-in-progress: false
+jobs:
+  restauracao:
+    if: ${{ github.event.repository.private == true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Conferir guardas locais
+        run: python3 -B -m unittest discover -s restauracao -p test_restore.py -v
+      - name: Restaurar em banco efemero sem rede
+        run: python3 -B restauracao/restore.py
+      - name: Preservar evidencias privadas
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: restauracao-ficticia-${{ github.run_id }}
+          path: evidence-restore/
+          retention-days: 1
+          if-no-files-found: warn

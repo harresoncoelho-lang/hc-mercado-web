@@ -1,0 +1,14 @@
+{
+  "dataObservacao": "2026-10-31",
+  "origem": "Cloudflare Pages licitaplena / Settings / Preview, navegador interno, leitura pela coordenação",
+  "build": "npm run build:cloudflare",
+  "saida": "publico",
+  "branches": "All non-production branches",
+  "variaveisExibidas": [],
+  "estadoTabelaVariaveis": "Configure API tokens and other runtime variables / Import .env",
+  "compatibilidade": "2025-09-01",
+  "flags": ["nodejs_compat"],
+  "acesso": "A tela informa que previews são públicos por padrão e exibe Restrict previews",
+  "limitesDaObservacao": "Nenhum preview foi publicado ou testado, nenhuma chave foi revelada ou copiada. Tabela vazia não substitui um teste autenticado de isolamento futuro. A autenticação e os adapters atuais apontam ao mesmo projeto Supabase de produção; não basta preencher variáveis para criar homologação isolada.",
+  "mutacoes": false
+}

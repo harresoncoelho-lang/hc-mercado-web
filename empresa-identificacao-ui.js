@@ -8,7 +8,7 @@
     const ativo = () => host._identificacaoEmpresa === estado && contexto.ativo?.() !== false;
     let cadastro, ocupado = false, alterado = false;
     const provas = new Map();
-    const secao = criar('details'); secao.open = false;
+    const secao = criar('details'); secao.open = contexto.aberto === true;
     secao.append(criar('summary', 'Dados da empresa'));
     const aviso = criar('p'); aviso.setAttribute('role', 'status');
     secao.append(criar('p', 'Confira os poderes do representante no contrato social. A confirmação registra sua conferência; não certifica os documentos. Estes dados e arquivos não são enviados à IA.'), aviso);
@@ -30,7 +30,9 @@
     const revisao = criar('input'); revisao.type = 'checkbox'; revisao.id = 'empresa-identificacao-revisao';
     const labelRevisao = criar('label','Conferi os dados e os poderes do representante.'); labelRevisao.htmlFor = revisao.id;
     const salvar = botao('Salvar identificação confirmada'), aplicar = botao('Aplicar identificação confirmada à minuta');
-    secao.append(recarregar,labelDocumento,documentos,tipo,arquivo,anexar,extrair,sugestoes,revisao,labelRevisao,salvar,aplicar); host.append(secao);
+    secao.append(recarregar,labelDocumento,documentos,tipo,arquivo,anexar,extrair,sugestoes,revisao,labelRevisao,salvar);
+    if (!contexto.semMinuta) secao.append(aplicar);
+    host.append(secao);
     function atualizar() {
       for (const b of [recarregar,anexar,extrair]) b.disabled = ocupado;
       salvar.disabled = ocupado || !cadastro?.empresa?.razao_social || !/^\d{14}$/.test(String(cadastro?.empresa?.cnpj || '').replace(/\D/g,'')) || !revisao.checked || ['endereco','representante','cargo'].some(k => !campos[k].value.trim());
@@ -55,7 +57,7 @@
       documentos.replaceChildren();
       for (const d of r.documentos || []) { const o = criar('option',d.arquivo_nome || d.titulo || 'PDF'); o.value = d.id; documentos.append(o); }
       documentos.value = r.documentos?.some(d => d.id === selecionado) ? selecionado : r.documentos?.[0]?.id || ''; provas.clear(); alterado = false; revisao.checked = false;
-      aviso.textContent = !campos.razao.value || !campos.cnpj.value ? 'Complete o cadastro em Gerenciar empresas.' : r.perfil?.status === 'invalidado' ? 'A identificação foi invalidada. Confira os documentos e confirme novamente.' : 'Dados carregados. A aplicação à minuta depende de sua ação.';
+      aviso.textContent = !campos.razao.value || !campos.cnpj.value ? 'Complete o cadastro em Gerenciar empresas.' : r.perfil?.status === 'invalidado' ? 'A identificação foi invalidada. Confira os documentos e confirme novamente.' : contexto.semMinuta ? 'Dados carregados. Confira a identificação antes de usá-la nos documentos.' : 'Dados carregados. A aplicação à minuta depende de sua ação.';
       atualizar();
     }
     const carregar = () => executar(async () => { const r = await consultar(); if (r) preencher(r); });
@@ -74,7 +76,7 @@
       if (proveniencia.length > 3 || new Set(proveniencia.map(p => p.documentoId)).size > 2) throw new Error('Use até dois documentos para comprovar os três campos.');
       const r = await contexto.solicitar({acao:'confirmar',revisado:true,razaoSocial:cadastro.empresa.razao_social,cnpj:cadastro.empresa.cnpj,dados,proveniencia});
       if (!ativo()) return; if (r?.empresa?.id !== contexto.empresaId) throw new Error('A empresa ativa mudou.');
-      cadastro = {...cadastro,...r}; alterado = false; revisao.checked = false; contexto.atualizado?.(cadastro); aviso.textContent = 'Identificação confirmada. A minuta permanece como você a editou.';
+      cadastro = {...cadastro,...r}; alterado = false; revisao.checked = false; contexto.atualizado?.(cadastro); aviso.textContent = contexto.semMinuta ? 'Identificação confirmada. Nenhum documento foi aprovado; prepare uma nova prévia no processo.' : 'Identificação confirmada. A minuta permanece como você a editou.';
     });
     aplicar.onclick = () => executar(async () => { const r = await consultar(); if (!r) return; preencher(r); if (r.perfil?.status !== 'confirmado' || !r.perfil.dados) throw new Error('Confirme a identificação antes de aplicar.'); contexto.aplicar?.(r); aviso.textContent = 'Identificação aplicada. Revise novamente a minuta.'; });
     extrair.onclick = () => executar(async () => {
@@ -102,7 +104,7 @@
       const anexo = await contexto.solicitar({acao:'anexar',tipo:tipo.value,nome:f.name,conteudoBase64:raiz.btoa(binario)}); if (!ativo()) return;
       const r = await consultar(); if (r) { cadastro = {...cadastro,documentos:r.documentos}; documentos.replaceChildren(); for (const d of r.documentos || []) { const o=criar('option',d.arquivo_nome || d.titulo); o.value=d.id; documentos.append(o); } documentos.value = r.documentos?.some(d => d.id === anexo?.documento?.id) ? anexo.documento.id : ''; sugestoes.replaceChildren(); aviso.textContent='PDF anexado. Confira as sugestões ou preencha manualmente.'; }
     });
-    atualizar(); return {carregar,consultar};
+    atualizar(); return {carregar,consultar,temAlteracoesNaoSalvas: () => alterado};
   }
   const api = {renderizar}; if (typeof module !== 'undefined' && module.exports) module.exports = api; raiz.EmpresaIdentificacaoUI = api;
 })(globalThis);

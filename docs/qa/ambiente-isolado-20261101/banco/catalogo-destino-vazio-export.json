@@ -1,0 +1,3335 @@
+[
+  {
+    "evidencia_catalogo": {
+      "catalogo": {
+        "papeis": [
+          {
+            "nome": "anon",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "authenticated",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "authenticator",
+            "login": true,
+            "inherit": false,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "dashboard_user",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": true
+          },
+          {
+            "nome": "pg_checkpoint",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_create_subscription",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_database_owner",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_execute_server_program",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_maintain",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_monitor",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_read_all_data",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_read_all_settings",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_read_all_stats",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_read_server_files",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_signal_backend",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_stat_scan_tables",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_use_reserved_connections",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_write_all_data",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pg_write_server_files",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "pgbouncer",
+            "login": true,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "postgres",
+            "login": true,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": true,
+            "create_role": true
+          },
+          {
+            "nome": "service_role",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": true,
+            "create_role": false
+          },
+          {
+            "nome": "supabase_admin",
+            "login": true,
+            "inherit": true,
+            "superuser": true,
+            "bypass_rls": true,
+            "create_role": true
+          },
+          {
+            "nome": "supabase_auth_admin",
+            "login": true,
+            "inherit": false,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": true
+          },
+          {
+            "nome": "supabase_etl_admin",
+            "login": true,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": true,
+            "create_role": false
+          },
+          {
+            "nome": "supabase_privileged_role",
+            "login": false,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "supabase_read_only_user",
+            "login": true,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": true,
+            "create_role": false
+          },
+          {
+            "nome": "supabase_realtime_admin",
+            "login": false,
+            "inherit": false,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "supabase_replication_admin",
+            "login": true,
+            "inherit": true,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": false
+          },
+          {
+            "nome": "supabase_storage_admin",
+            "login": true,
+            "inherit": false,
+            "superuser": false,
+            "bypass_rls": false,
+            "create_role": true
+          }
+        ],
+        "colunas": [
+          {
+            "acl": null,
+            "nome": "instance_id",
+            "tipo": "uuid",
+            "ordem": 1,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "id",
+            "tipo": "uuid",
+            "ordem": 2,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "aud",
+            "tipo": "character varying(255)",
+            "ordem": 3,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "role",
+            "tipo": "character varying(255)",
+            "ordem": 4,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "email",
+            "tipo": "character varying(255)",
+            "ordem": 5,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "encrypted_password",
+            "tipo": "character varying(255)",
+            "ordem": 6,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "email_confirmed_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 7,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "invited_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 8,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "confirmation_token",
+            "tipo": "character varying(255)",
+            "ordem": 9,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "confirmation_sent_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 10,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "recovery_token",
+            "tipo": "character varying(255)",
+            "ordem": 11,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "recovery_sent_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 12,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "email_change_token_new",
+            "tipo": "character varying(255)",
+            "ordem": 13,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "email_change",
+            "tipo": "character varying(255)",
+            "ordem": 14,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "email_change_sent_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 15,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "last_sign_in_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 16,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "raw_app_meta_data",
+            "tipo": "jsonb",
+            "ordem": 17,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "raw_user_meta_data",
+            "tipo": "jsonb",
+            "ordem": 18,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "is_super_admin",
+            "tipo": "boolean",
+            "ordem": 19,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "created_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 20,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "updated_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 21,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "phone",
+            "tipo": "text",
+            "ordem": 22,
+            "tabela": "users",
+            "default": "NULL::character varying",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "phone_confirmed_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 23,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "phone_change",
+            "tipo": "text",
+            "ordem": 24,
+            "tabela": "users",
+            "default": "''::character varying",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "phone_change_token",
+            "tipo": "character varying(255)",
+            "ordem": 25,
+            "tabela": "users",
+            "default": "''::character varying",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "phone_change_sent_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 26,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "confirmed_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 27,
+            "tabela": "users",
+            "default": "LEAST(email_confirmed_at, phone_confirmed_at)",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": "s"
+          },
+          {
+            "acl": null,
+            "nome": "email_change_token_current",
+            "tipo": "character varying(255)",
+            "ordem": 28,
+            "tabela": "users",
+            "default": "''::character varying",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "email_change_confirm_status",
+            "tipo": "smallint",
+            "ordem": 29,
+            "tabela": "users",
+            "default": "0",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "banned_until",
+            "tipo": "timestamp with time zone",
+            "ordem": 30,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "reauthentication_token",
+            "tipo": "character varying(255)",
+            "ordem": 31,
+            "tabela": "users",
+            "default": "''::character varying",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "reauthentication_sent_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 32,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "is_sso_user",
+            "tipo": "boolean",
+            "ordem": 33,
+            "tabela": "users",
+            "default": "false",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "deleted_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 34,
+            "tabela": "users",
+            "default": null,
+            "esquema": "auth",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "is_anonymous",
+            "tipo": "boolean",
+            "ordem": 35,
+            "tabela": "users",
+            "default": "false",
+            "esquema": "auth",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "id",
+            "tipo": "text",
+            "ordem": 1,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "name",
+            "tipo": "text",
+            "ordem": 2,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "owner",
+            "tipo": "uuid",
+            "ordem": 3,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "created_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 4,
+            "tabela": "buckets",
+            "default": "now()",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "updated_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 5,
+            "tabela": "buckets",
+            "default": "now()",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "public",
+            "tipo": "boolean",
+            "ordem": 6,
+            "tabela": "buckets",
+            "default": "false",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "avif_autodetection",
+            "tipo": "boolean",
+            "ordem": 7,
+            "tabela": "buckets",
+            "default": "false",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "file_size_limit",
+            "tipo": "bigint",
+            "ordem": 8,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "allowed_mime_types",
+            "tipo": "text[]",
+            "ordem": 9,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "owner_id",
+            "tipo": "text",
+            "ordem": 10,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "type",
+            "tipo": "storage.buckettype",
+            "ordem": 11,
+            "tabela": "buckets",
+            "default": "'STANDARD'::storage.buckettype",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "versioning_status",
+            "tipo": "text",
+            "ordem": 12,
+            "tabela": "buckets",
+            "default": "'DISABLED'::text",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "lifecycle_configuration",
+            "tipo": "jsonb",
+            "ordem": 13,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "lifecycle_configuration_generation",
+            "tipo": "uuid",
+            "ordem": 14,
+            "tabela": "buckets",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "id",
+            "tipo": "uuid",
+            "ordem": 1,
+            "tabela": "objects",
+            "default": "gen_random_uuid()",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "bucket_id",
+            "tipo": "text",
+            "ordem": 2,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "name",
+            "tipo": "text",
+            "ordem": 3,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "owner",
+            "tipo": "uuid",
+            "ordem": 4,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "created_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 5,
+            "tabela": "objects",
+            "default": "now()",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "updated_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 6,
+            "tabela": "objects",
+            "default": "now()",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "last_accessed_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 7,
+            "tabela": "objects",
+            "default": "now()",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "metadata",
+            "tipo": "jsonb",
+            "ordem": 8,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "path_tokens",
+            "tipo": "text[]",
+            "ordem": 9,
+            "tabela": "objects",
+            "default": "string_to_array(name, '/'::text)",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": "s"
+          },
+          {
+            "acl": null,
+            "nome": "version",
+            "tipo": "text",
+            "ordem": 10,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "owner_id",
+            "tipo": "text",
+            "ordem": 11,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "user_metadata",
+            "tipo": "jsonb",
+            "ordem": 12,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "archived_at",
+            "tipo": "timestamp with time zone",
+            "ordem": 13,
+            "tabela": "objects",
+            "default": null,
+            "esquema": "storage",
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "is_delete_marker",
+            "tipo": "boolean",
+            "ordem": 14,
+            "tabela": "objects",
+            "default": "false",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "acl": null,
+            "nome": "is_versioned",
+            "tipo": "boolean",
+            "ordem": 15,
+            "tabela": "objects",
+            "default": "false",
+            "esquema": "storage",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "funcoes": [
+          {
+            "acl": "{=X/supabase_auth_admin,supabase_auth_admin=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}",
+            "dono": "supabase_auth_admin",
+            "nome": "uid",
+            "strict": false,
+            "esquema": "auth",
+            "retorno": "uuid",
+            "definicao": null,
+            "argumentos": "",
+            "assinatura": "auth.uid()",
+            "configuracao": null,
+            "volatilidade": "s",
+            "hash_corpo_md5": "cdef18c69c4f4cbbced2eaf81e628b49",
+            "security_definer": false
+          },
+          {
+            "acl": null,
+            "dono": "supabase_storage_admin",
+            "nome": "enforce_bucket_lifecycle_service_role",
+            "strict": false,
+            "esquema": "storage",
+            "retorno": "trigger",
+            "definicao": null,
+            "argumentos": "",
+            "assinatura": "storage.enforce_bucket_lifecycle_service_role()",
+            "configuracao": [
+              "search_path=pg_catalog"
+            ],
+            "volatilidade": "v",
+            "hash_corpo_md5": "7691066f4111610b457b74bdead6e80b",
+            "security_definer": false
+          },
+          {
+            "acl": null,
+            "dono": "supabase_storage_admin",
+            "nome": "enforce_bucket_name_length",
+            "strict": false,
+            "esquema": "storage",
+            "retorno": "trigger",
+            "definicao": null,
+            "argumentos": "",
+            "assinatura": "storage.enforce_bucket_name_length()",
+            "configuracao": null,
+            "volatilidade": "v",
+            "hash_corpo_md5": "bd3d77a2603f7f344035a81def5502fa",
+            "security_definer": false
+          },
+          {
+            "acl": null,
+            "dono": "supabase_storage_admin",
+            "nome": "protect_bucket_control_columns",
+            "strict": false,
+            "esquema": "storage",
+            "retorno": "trigger",
+            "definicao": null,
+            "argumentos": "",
+            "assinatura": "storage.protect_bucket_control_columns()",
+            "configuracao": [
+              "search_path=pg_catalog"
+            ],
+            "volatilidade": "v",
+            "hash_corpo_md5": "7870415452678f5aa85f91dde952ef12",
+            "security_definer": false
+          },
+          {
+            "acl": null,
+            "dono": "supabase_storage_admin",
+            "nome": "protect_delete",
+            "strict": false,
+            "esquema": "storage",
+            "retorno": "trigger",
+            "definicao": null,
+            "argumentos": "",
+            "assinatura": "storage.protect_delete()",
+            "configuracao": null,
+            "volatilidade": "v",
+            "hash_corpo_md5": "998d324ea2b1abc49351e8c2367b5796",
+            "security_definer": false
+          },
+          {
+            "acl": null,
+            "dono": "supabase_storage_admin",
+            "nome": "update_updated_at_column",
+            "strict": false,
+            "esquema": "storage",
+            "retorno": "trigger",
+            "definicao": null,
+            "argumentos": "",
+            "assinatura": "storage.update_updated_at_column()",
+            "configuracao": null,
+            "volatilidade": "v",
+            "hash_corpo_md5": "7596e66a7698d5a6b5129c5ce9b24c5f",
+            "security_definer": false
+          }
+        ],
+        "indices": [
+          {
+            "nome": "confirmation_token_idx",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX confirmation_token_idx ON auth.users USING btree (confirmation_token) WHERE ((confirmation_token)::text !~ '^[0-9 ]*$'::text)"
+          },
+          {
+            "nome": "email_change_token_current_idx",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX email_change_token_current_idx ON auth.users USING btree (email_change_token_current) WHERE ((email_change_token_current)::text !~ '^[0-9 ]*$'::text)"
+          },
+          {
+            "nome": "email_change_token_new_idx",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX email_change_token_new_idx ON auth.users USING btree (email_change_token_new) WHERE ((email_change_token_new)::text !~ '^[0-9 ]*$'::text)"
+          },
+          {
+            "nome": "idx_users_created_at_desc",
+            "unico": false,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE INDEX idx_users_created_at_desc ON auth.users USING btree (created_at DESC)"
+          },
+          {
+            "nome": "idx_users_email",
+            "unico": false,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE INDEX idx_users_email ON auth.users USING btree (email)"
+          },
+          {
+            "nome": "idx_users_last_sign_in_at_desc",
+            "unico": false,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE INDEX idx_users_last_sign_in_at_desc ON auth.users USING btree (last_sign_in_at DESC)"
+          },
+          {
+            "nome": "idx_users_name",
+            "unico": false,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE INDEX idx_users_name ON auth.users USING btree (((raw_user_meta_data ->> 'name'::text))) WHERE ((raw_user_meta_data ->> 'name'::text) IS NOT NULL)"
+          },
+          {
+            "nome": "reauthentication_token_idx",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX reauthentication_token_idx ON auth.users USING btree (reauthentication_token) WHERE ((reauthentication_token)::text !~ '^[0-9 ]*$'::text)"
+          },
+          {
+            "nome": "recovery_token_idx",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX recovery_token_idx ON auth.users USING btree (recovery_token) WHERE ((recovery_token)::text !~ '^[0-9 ]*$'::text)"
+          },
+          {
+            "nome": "users_email_partial_key",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX users_email_partial_key ON auth.users USING btree (email) WHERE (is_sso_user = false)"
+          },
+          {
+            "nome": "users_instance_id_email_idx",
+            "unico": false,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE INDEX users_instance_id_email_idx ON auth.users USING btree (instance_id, lower((email)::text))"
+          },
+          {
+            "nome": "users_instance_id_idx",
+            "unico": false,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE INDEX users_instance_id_idx ON auth.users USING btree (instance_id)"
+          },
+          {
+            "nome": "users_is_anonymous_idx",
+            "unico": false,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE INDEX users_is_anonymous_idx ON auth.users USING btree (is_anonymous)"
+          },
+          {
+            "nome": "users_phone_key",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX users_phone_key ON auth.users USING btree (phone)"
+          },
+          {
+            "nome": "users_pkey",
+            "unico": true,
+            "pronto": true,
+            "tabela": "users",
+            "valido": true,
+            "esquema": "auth",
+            "primario": true,
+            "definicao": "CREATE UNIQUE INDEX users_pkey ON auth.users USING btree (id)"
+          },
+          {
+            "nome": "bname",
+            "unico": true,
+            "pronto": true,
+            "tabela": "buckets",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX bname ON storage.buckets USING btree (name)"
+          },
+          {
+            "nome": "buckets_pkey",
+            "unico": true,
+            "pronto": true,
+            "tabela": "buckets",
+            "valido": true,
+            "esquema": "storage",
+            "primario": true,
+            "definicao": "CREATE UNIQUE INDEX buckets_pkey ON storage.buckets USING btree (id)"
+          },
+          {
+            "nome": "idx_objects_bucket_id_name",
+            "unico": false,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE INDEX idx_objects_bucket_id_name ON storage.objects USING btree (bucket_id, name COLLATE \"C\")"
+          },
+          {
+            "nome": "idx_objects_bucket_id_name_lower",
+            "unico": false,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE INDEX idx_objects_bucket_id_name_lower ON storage.objects USING btree (bucket_id, lower(name) COLLATE \"C\")"
+          },
+          {
+            "nome": "idx_objects_current_version",
+            "unico": true,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX idx_objects_current_version ON storage.objects USING btree (bucket_id, name COLLATE \"C\") WHERE (archived_at IS NULL)"
+          },
+          {
+            "nome": "idx_objects_delete_markers",
+            "unico": false,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE INDEX idx_objects_delete_markers ON storage.objects USING btree (bucket_id, name COLLATE \"C\") WHERE is_delete_marker"
+          },
+          {
+            "nome": "idx_objects_null_version",
+            "unico": true,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX idx_objects_null_version ON storage.objects USING btree (bucket_id, name COLLATE \"C\") WHERE (NOT is_versioned)"
+          },
+          {
+            "nome": "name_prefix_search",
+            "unico": false,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE INDEX name_prefix_search ON storage.objects USING btree (name text_pattern_ops)"
+          },
+          {
+            "nome": "objects_bucket_id_name_version_key",
+            "unico": true,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": false,
+            "definicao": "CREATE UNIQUE INDEX objects_bucket_id_name_version_key ON storage.objects USING btree (bucket_id, name COLLATE \"C\", version) NULLS NOT DISTINCT"
+          },
+          {
+            "nome": "objects_pkey",
+            "unico": true,
+            "pronto": true,
+            "tabela": "objects",
+            "valido": true,
+            "esquema": "storage",
+            "primario": true,
+            "definicao": "CREATE UNIQUE INDEX objects_pkey ON storage.objects USING btree (id)"
+          }
+        ],
+        "schemas": [
+          {
+            "acl": "{supabase_admin=UC/supabase_admin,anon=U/supabase_admin,authenticated=U/supabase_admin,service_role=U/supabase_admin,supabase_auth_admin=UC/supabase_admin,dashboard_user=UC/supabase_admin,postgres=U/supabase_admin}",
+            "dono": "supabase_admin",
+            "nome": "auth"
+          },
+          {
+            "acl": "{pg_database_owner=UC/pg_database_owner,=U/pg_database_owner,postgres=U/pg_database_owner,anon=U/pg_database_owner,authenticated=U/pg_database_owner,service_role=U/pg_database_owner}",
+            "dono": "pg_database_owner",
+            "nome": "public"
+          },
+          {
+            "acl": "{supabase_admin=UC/supabase_admin,postgres=U*/supabase_admin,anon=U/supabase_admin,authenticated=U/supabase_admin,service_role=U/supabase_admin,supabase_storage_admin=U*C*/supabase_admin,dashboard_user=UC/supabase_admin}",
+            "dono": "supabase_admin",
+            "nome": "storage"
+          }
+        ],
+        "policies": [],
+        "relacoes": [
+          {
+            "acl": "{supabase_auth_admin=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin,postgres=ar*wdDxtm/supabase_auth_admin}",
+            "rls": true,
+            "dono": "supabase_auth_admin",
+            "nome": "users",
+            "tipo": "r",
+            "opcoes": null,
+            "esquema": "auth",
+            "force_rls": false
+          },
+          {
+            "acl": "{supabase_storage_admin=a*r*w*d*D*x*t*m*/supabase_storage_admin,service_role=arwdDxtm/supabase_storage_admin,authenticated=arwd/supabase_storage_admin,anon=arwd/supabase_storage_admin,postgres=a*r*w*d*D*x*t*m*/supabase_storage_admin}",
+            "rls": true,
+            "dono": "supabase_storage_admin",
+            "nome": "buckets",
+            "tipo": "r",
+            "opcoes": null,
+            "esquema": "storage",
+            "force_rls": false
+          },
+          {
+            "acl": "{supabase_storage_admin=a*r*w*d*D*x*t*m*/supabase_storage_admin,service_role=arwdDxtm/supabase_storage_admin,authenticated=arwd/supabase_storage_admin,anon=arwd/supabase_storage_admin,postgres=a*r*w*d*D*x*t*m*/supabase_storage_admin}",
+            "rls": true,
+            "dono": "supabase_storage_admin",
+            "nome": "objects",
+            "tipo": "r",
+            "opcoes": null,
+            "esquema": "storage",
+            "force_rls": false
+          }
+        ],
+        "triggers": [
+          {
+            "nome": "enforce_bucket_name_length_trigger",
+            "funcao": "storage.enforce_bucket_name_length()",
+            "tabela": "buckets",
+            "esquema": "storage",
+            "definicao": "CREATE TRIGGER enforce_bucket_name_length_trigger BEFORE INSERT OR UPDATE OF name ON storage.buckets FOR EACH ROW EXECUTE FUNCTION storage.enforce_bucket_name_length()",
+            "habilitado": "O"
+          },
+          {
+            "nome": "protect_bucket_control_insert",
+            "funcao": "storage.protect_bucket_control_columns()",
+            "tabela": "buckets",
+            "esquema": "storage",
+            "definicao": "CREATE TRIGGER protect_bucket_control_insert BEFORE INSERT ON storage.buckets FOR EACH ROW EXECUTE FUNCTION storage.protect_bucket_control_columns('service_role')",
+            "habilitado": "O"
+          },
+          {
+            "nome": "protect_bucket_control_update",
+            "funcao": "storage.protect_bucket_control_columns()",
+            "tabela": "buckets",
+            "esquema": "storage",
+            "definicao": "CREATE TRIGGER protect_bucket_control_update BEFORE UPDATE OF lifecycle_configuration, lifecycle_configuration_generation ON storage.buckets FOR EACH ROW EXECUTE FUNCTION storage.protect_bucket_control_columns()",
+            "habilitado": "O"
+          },
+          {
+            "nome": "protect_bucket_control_update_role",
+            "funcao": "storage.enforce_bucket_lifecycle_service_role()",
+            "tabela": "buckets",
+            "esquema": "storage",
+            "definicao": "CREATE TRIGGER protect_bucket_control_update_role AFTER UPDATE OF lifecycle_configuration, lifecycle_configuration_generation ON storage.buckets FOR EACH ROW EXECUTE FUNCTION storage.enforce_bucket_lifecycle_service_role('service_role')",
+            "habilitado": "O"
+          },
+          {
+            "nome": "protect_buckets_delete",
+            "funcao": "storage.protect_delete()",
+            "tabela": "buckets",
+            "esquema": "storage",
+            "definicao": "CREATE TRIGGER protect_buckets_delete BEFORE DELETE ON storage.buckets FOR EACH STATEMENT EXECUTE FUNCTION storage.protect_delete()",
+            "habilitado": "O"
+          },
+          {
+            "nome": "protect_objects_delete",
+            "funcao": "storage.protect_delete()",
+            "tabela": "objects",
+            "esquema": "storage",
+            "definicao": "CREATE TRIGGER protect_objects_delete BEFORE DELETE ON storage.objects FOR EACH STATEMENT EXECUTE FUNCTION storage.protect_delete()",
+            "habilitado": "O"
+          },
+          {
+            "nome": "update_objects_updated_at",
+            "funcao": "storage.update_updated_at_column()",
+            "tabela": "objects",
+            "esquema": "storage",
+            "definicao": "CREATE TRIGGER update_objects_updated_at BEFORE UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.update_updated_at_column()",
+            "habilitado": "O"
+          }
+        ],
+        "acl_funcoes": [
+          {
+            "papel": "PUBLIC",
+            "objeto": "auth.uid()",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "auth.uid()",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "auth.uid()",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "PUBLIC",
+            "objeto": "storage.enforce_bucket_lifecycle_service_role()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "storage.enforce_bucket_lifecycle_service_role()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "PUBLIC",
+            "objeto": "storage.enforce_bucket_name_length()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "storage.enforce_bucket_name_length()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "PUBLIC",
+            "objeto": "storage.protect_bucket_control_columns()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "storage.protect_bucket_control_columns()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "PUBLIC",
+            "objeto": "storage.protect_delete()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "storage.protect_delete()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "PUBLIC",
+            "objeto": "storage.update_updated_at_column()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "storage.update_updated_at_column()",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "EXECUTE",
+            "grant_option": false
+          }
+        ],
+        "constraints": [
+          {
+            "nome": "users_email_change_confirm_status_check",
+            "tipo": "c",
+            "adiada": false,
+            "tabela": "users",
+            "esquema": "auth",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "CHECK (email_change_confirm_status >= 0 AND email_change_confirm_status <= 2)"
+          },
+          {
+            "nome": "users_phone_key",
+            "tipo": "u",
+            "adiada": false,
+            "tabela": "users",
+            "esquema": "auth",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "UNIQUE (phone)"
+          },
+          {
+            "nome": "users_pkey",
+            "tipo": "p",
+            "adiada": false,
+            "tabela": "users",
+            "esquema": "auth",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "PRIMARY KEY (id)"
+          },
+          {
+            "nome": "buckets_lifecycle_configuration_pair_check",
+            "tipo": "c",
+            "adiada": false,
+            "tabela": "buckets",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "CHECK ((lifecycle_configuration IS NULL) = (lifecycle_configuration_generation IS NULL))"
+          },
+          {
+            "nome": "buckets_lifecycle_configuration_shape_check",
+            "tipo": "c",
+            "adiada": false,
+            "tabela": "buckets",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "CHECK (lifecycle_configuration IS NULL OR jsonb_typeof(lifecycle_configuration) = 'object'::text AND lifecycle_configuration ? 'rules'::text AND\nCASE\n    WHEN jsonb_typeof(lifecycle_configuration -> 'rules'::text) = 'array'::text THEN jsonb_array_length(lifecycle_configuration -> 'rules'::text) >= 1 AND jsonb_array_length(lifecycle_configuration -> 'rules'::text) <= 1000\n    ELSE false\nEND)"
+          },
+          {
+            "nome": "buckets_lifecycle_configuration_standard_only_check",
+            "tipo": "c",
+            "adiada": false,
+            "tabela": "buckets",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "CHECK (type = 'STANDARD'::storage.buckettype OR lifecycle_configuration IS NULL AND lifecycle_configuration_generation IS NULL)"
+          },
+          {
+            "nome": "buckets_pkey",
+            "tipo": "p",
+            "adiada": false,
+            "tabela": "buckets",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "PRIMARY KEY (id)"
+          },
+          {
+            "nome": "buckets_versioning_dark_check",
+            "tipo": "c",
+            "adiada": false,
+            "tabela": "buckets",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "CHECK (versioning_status = 'DISABLED'::text)"
+          },
+          {
+            "nome": "buckets_versioning_standard_only_check",
+            "tipo": "c",
+            "adiada": false,
+            "tabela": "buckets",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "CHECK (type = 'STANDARD'::storage.buckettype OR versioning_status = 'DISABLED'::text)"
+          },
+          {
+            "nome": "buckets_versioning_status_check",
+            "tipo": "c",
+            "adiada": false,
+            "tabela": "buckets",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "CHECK (versioning_status = ANY (ARRAY['DISABLED'::text, 'ENABLED'::text, 'SUSPENDED'::text]))"
+          },
+          {
+            "nome": "objects_bucketId_fkey",
+            "tipo": "f",
+            "adiada": false,
+            "tabela": "objects",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "FOREIGN KEY (bucket_id) REFERENCES storage.buckets(id)"
+          },
+          {
+            "nome": "objects_pkey",
+            "tipo": "p",
+            "adiada": false,
+            "tabela": "objects",
+            "esquema": "storage",
+            "validada": true,
+            "deferivel": false,
+            "definicao": "PRIMARY KEY (id)"
+          }
+        ],
+        "acl_relacoes": [
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "SELECT",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_auth_admin",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": false
+          },
+          {
+            "papel": "dashboard_user",
+            "objeto": "users",
+            "esquema": "auth",
+            "concedente": "supabase_auth_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": true
+          },
+          {
+            "papel": "anon",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "buckets",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": true
+          },
+          {
+            "papel": "postgres",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": true
+          },
+          {
+            "papel": "anon",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "anon",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "authenticated",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": false
+          },
+          {
+            "papel": "service_role",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": false
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "DELETE",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "INSERT",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "MAINTAIN",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "REFERENCES",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "SELECT",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRIGGER",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "TRUNCATE",
+            "grant_option": true
+          },
+          {
+            "papel": "supabase_storage_admin",
+            "objeto": "objects",
+            "esquema": "storage",
+            "concedente": "supabase_storage_admin",
+            "privilegio": "UPDATE",
+            "grant_option": true
+          }
+        ],
+        "defaults_acl": [
+          {
+            "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}",
+            "dono": "supabase_admin",
+            "tipo": "S",
+            "esquema": "public"
+          },
+          {
+            "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}",
+            "dono": "supabase_admin",
+            "tipo": "f",
+            "esquema": "public"
+          },
+          {
+            "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}",
+            "dono": "supabase_admin",
+            "tipo": "r",
+            "esquema": "public"
+          },
+          {
+            "acl": "{postgres=rwU/postgres}",
+            "dono": "postgres",
+            "tipo": "S",
+            "esquema": "public"
+          },
+          {
+            "acl": "{postgres=X/postgres}",
+            "dono": "postgres",
+            "tipo": "f",
+            "esquema": "public"
+          },
+          {
+            "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=Dxtm/postgres,service_role=Dxtm/postgres}",
+            "dono": "postgres",
+            "tipo": "r",
+            "esquema": "public"
+          },
+          {
+            "acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+            "dono": "postgres",
+            "tipo": "S",
+            "esquema": "storage"
+          },
+          {
+            "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+            "dono": "postgres",
+            "tipo": "f",
+            "esquema": "storage"
+          },
+          {
+            "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+            "dono": "postgres",
+            "tipo": "r",
+            "esquema": "storage"
+          },
+          {
+            "acl": "{postgres=rwU/supabase_auth_admin,dashboard_user=rwU/supabase_auth_admin}",
+            "dono": "supabase_auth_admin",
+            "tipo": "S",
+            "esquema": "auth"
+          },
+          {
+            "acl": "{postgres=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}",
+            "dono": "supabase_auth_admin",
+            "tipo": "f",
+            "esquema": "auth"
+          },
+          {
+            "acl": "{postgres=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin}",
+            "dono": "supabase_auth_admin",
+            "tipo": "r",
+            "esquema": "auth"
+          }
+        ],
+        "membros_papeis": [
+          {
+            "papel": "pg_monitor",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_monitor",
+            "membro": "supabase_etl_admin",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_monitor",
+            "membro": "supabase_read_only_user",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_read_all_settings",
+            "membro": "pg_monitor",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_read_all_stats",
+            "membro": "pg_monitor",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_stat_scan_tables",
+            "membro": "pg_monitor",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_signal_backend",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_read_all_data",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_read_all_data",
+            "membro": "supabase_etl_admin",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_read_all_data",
+            "membro": "supabase_read_only_user",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "pg_create_subscription",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "anon",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "anon",
+            "membro": "authenticator",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": false
+          },
+          {
+            "papel": "anon",
+            "membro": "supabase_realtime_admin",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": false
+          },
+          {
+            "papel": "authenticated",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "authenticated",
+            "membro": "authenticator",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": false
+          },
+          {
+            "papel": "authenticated",
+            "membro": "supabase_realtime_admin",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": false
+          },
+          {
+            "papel": "service_role",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "service_role",
+            "membro": "authenticator",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": false
+          },
+          {
+            "papel": "service_role",
+            "membro": "supabase_realtime_admin",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": false
+          },
+          {
+            "papel": "authenticator",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": true,
+            "inherit_option": true
+          },
+          {
+            "papel": "authenticator",
+            "membro": "supabase_storage_admin",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": false
+          },
+          {
+            "papel": "supabase_privileged_role",
+            "membro": "postgres",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          },
+          {
+            "papel": "supabase_privileged_role",
+            "membro": "supabase_etl_admin",
+            "concedente": "supabase_admin",
+            "set_option": true,
+            "admin_option": false,
+            "inherit_option": true
+          }
+        ],
+        "dependencias_entrada": [
+          {
+            "tipo": "i",
+            "objeto": "type auth.users",
+            "referencia": "table auth.users"
+          },
+          {
+            "tipo": "i",
+            "objeto": "type storage.buckets",
+            "referencia": "table storage.buckets"
+          },
+          {
+            "tipo": "i",
+            "objeto": "type storage.objects",
+            "referencia": "table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.users_instance_id_idx",
+            "referencia": "column instance_id of table auth.users"
+          },
+          {
+            "tipo": "i",
+            "objeto": "toast table pg_toast.pg_toast_16495",
+            "referencia": "table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.users_instance_id_email_idx",
+            "referencia": "column instance_id of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.users_instance_id_email_idx",
+            "referencia": "column email of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.confirmation_token_idx",
+            "referencia": "column confirmation_token of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.confirmation_token_idx",
+            "referencia": "column confirmation_token of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.recovery_token_idx",
+            "referencia": "column recovery_token of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.recovery_token_idx",
+            "referencia": "column recovery_token of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.email_change_token_current_idx",
+            "referencia": "column email_change_token_current of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.email_change_token_current_idx",
+            "referencia": "column email_change_token_current of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.email_change_token_new_idx",
+            "referencia": "column email_change_token_new of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.email_change_token_new_idx",
+            "referencia": "column email_change_token_new of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.reauthentication_token_idx",
+            "referencia": "column reauthentication_token of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.reauthentication_token_idx",
+            "referencia": "column reauthentication_token of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.users_email_partial_key",
+            "referencia": "column email of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.users_email_partial_key",
+            "referencia": "column is_sso_user of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.users_is_anonymous_idx",
+            "referencia": "column is_anonymous of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.idx_users_email",
+            "referencia": "column email of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.idx_users_created_at_desc",
+            "referencia": "column created_at of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.idx_users_last_sign_in_at_desc",
+            "referencia": "column last_sign_in_at of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.idx_users_name",
+            "referencia": "table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.idx_users_name",
+            "referencia": "column raw_user_meta_data of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index auth.idx_users_name",
+            "referencia": "column raw_user_meta_data of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.bname",
+            "referencia": "column name of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.name_prefix_search",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "i",
+            "objeto": "toast table pg_toast.pg_toast_17278",
+            "referencia": "table storage.objects"
+          },
+          {
+            "tipo": "i",
+            "objeto": "toast table pg_toast.pg_toast_17268",
+            "referencia": "table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_bucket_id_name",
+            "referencia": "column bucket_id of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_bucket_id_name",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_bucket_id_name_lower",
+            "referencia": "column bucket_id of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_bucket_id_name_lower",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.objects_bucket_id_name_version_key",
+            "referencia": "column bucket_id of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.objects_bucket_id_name_version_key",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.objects_bucket_id_name_version_key",
+            "referencia": "column version of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_current_version",
+            "referencia": "column bucket_id of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_current_version",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_current_version",
+            "referencia": "column archived_at of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_null_version",
+            "referencia": "column bucket_id of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_null_version",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_null_version",
+            "referencia": "column is_versioned of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_delete_markers",
+            "referencia": "column bucket_id of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_delete_markers",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "index storage.idx_objects_delete_markers",
+            "referencia": "column is_delete_marker of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column phone_change_token of table auth.users",
+            "referencia": "column phone_change_token of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "default value for column confirmed_at of table auth.users",
+            "referencia": "column email_confirmed_at of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "default value for column confirmed_at of table auth.users",
+            "referencia": "column phone_confirmed_at of table auth.users"
+          },
+          {
+            "tipo": "i",
+            "objeto": "default value for column confirmed_at of table auth.users",
+            "referencia": "column confirmed_at of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column email_change_token_current of table auth.users",
+            "referencia": "column email_change_token_current of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column email_change_confirm_status of table auth.users",
+            "referencia": "column email_change_confirm_status of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column reauthentication_token of table auth.users",
+            "referencia": "column reauthentication_token of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column is_sso_user of table auth.users",
+            "referencia": "column is_sso_user of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column phone of table auth.users",
+            "referencia": "column phone of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column phone_change of table auth.users",
+            "referencia": "column phone_change of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column is_anonymous of table auth.users",
+            "referencia": "column is_anonymous of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column created_at of table storage.buckets",
+            "referencia": "column created_at of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column updated_at of table storage.buckets",
+            "referencia": "column updated_at of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column created_at of table storage.objects",
+            "referencia": "column created_at of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column updated_at of table storage.objects",
+            "referencia": "column updated_at of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column last_accessed_at of table storage.objects",
+            "referencia": "column last_accessed_at of table storage.objects"
+          },
+          {
+            "tipo": "n",
+            "objeto": "default value for column path_tokens of table storage.objects",
+            "referencia": "column name of table storage.objects"
+          },
+          {
+            "tipo": "i",
+            "objeto": "default value for column path_tokens of table storage.objects",
+            "referencia": "column path_tokens of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column public of table storage.buckets",
+            "referencia": "column public of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column avif_autodetection of table storage.buckets",
+            "referencia": "column avif_autodetection of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column id of table storage.objects",
+            "referencia": "column id of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column type of table storage.buckets",
+            "referencia": "column type of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column versioning_status of table storage.buckets",
+            "referencia": "column versioning_status of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column is_delete_marker of table storage.objects",
+            "referencia": "column is_delete_marker of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "default value for column is_versioned of table storage.objects",
+            "referencia": "column is_versioned of table storage.objects"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint users_pkey on table auth.users",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint users_email_change_confirm_status_check on table auth.users",
+            "referencia": "column email_change_confirm_status of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint users_email_change_confirm_status_check on table auth.users",
+            "referencia": "column email_change_confirm_status of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint identities_user_id_fkey on table auth.identities",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint sessions_user_id_fkey on table auth.sessions",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint mfa_factors_user_id_fkey on table auth.mfa_factors",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint users_phone_key on table auth.users",
+            "referencia": "column phone of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint one_time_tokens_user_id_fkey on table auth.one_time_tokens",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint oauth_authorizations_user_id_fkey on table auth.oauth_authorizations",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint oauth_consents_user_id_fkey on table auth.oauth_consents",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint webauthn_credentials_user_id_fkey on table auth.webauthn_credentials",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint webauthn_challenges_user_id_fkey on table auth.webauthn_challenges",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint scim_users_user_id_fkey on table auth.scim_users",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint mfa_recovery_code_sets_user_id_fkey on table auth.mfa_recovery_code_sets",
+            "referencia": "column id of table auth.users"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_pkey on table storage.buckets",
+            "referencia": "column id of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint objects_pkey on table storage.objects",
+            "referencia": "column id of table storage.objects"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint objects_bucketId_fkey on table storage.objects",
+            "referencia": "column id of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint objects_bucketId_fkey on table storage.objects",
+            "referencia": "column bucket_id of table storage.objects"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint s3_multipart_uploads_bucket_id_fkey on table storage.s3_multipart_uploads",
+            "referencia": "column id of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint s3_multipart_uploads_parts_bucket_id_fkey on table storage.s3_multipart_uploads_parts",
+            "referencia": "column id of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_versioning_status_check on table storage.buckets",
+            "referencia": "column versioning_status of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_versioning_status_check on table storage.buckets",
+            "referencia": "column versioning_status of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_versioning_standard_only_check on table storage.buckets",
+            "referencia": "column type of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_versioning_standard_only_check on table storage.buckets",
+            "referencia": "column type of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_versioning_standard_only_check on table storage.buckets",
+            "referencia": "column versioning_status of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_versioning_standard_only_check on table storage.buckets",
+            "referencia": "column versioning_status of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_versioning_dark_check on table storage.buckets",
+            "referencia": "column versioning_status of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_versioning_dark_check on table storage.buckets",
+            "referencia": "column versioning_status of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_lifecycle_configuration_pair_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_lifecycle_configuration_pair_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_lifecycle_configuration_pair_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration_generation of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_lifecycle_configuration_pair_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration_generation of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_lifecycle_configuration_shape_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_lifecycle_configuration_shape_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_lifecycle_configuration_standard_only_check on table storage.buckets",
+            "referencia": "column type of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_lifecycle_configuration_standard_only_check on table storage.buckets",
+            "referencia": "column type of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_lifecycle_configuration_standard_only_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_lifecycle_configuration_standard_only_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "constraint buckets_lifecycle_configuration_standard_only_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration_generation of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "constraint buckets_lifecycle_configuration_standard_only_check on table storage.buckets",
+            "referencia": "column lifecycle_configuration_generation of table storage.buckets"
+          },
+          {
+            "tipo": "a",
+            "objeto": "trigger update_objects_updated_at on table storage.objects",
+            "referencia": "table storage.objects"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger update_objects_updated_at on table storage.objects",
+            "referencia": "function storage.update_updated_at_column()"
+          },
+          {
+            "tipo": "a",
+            "objeto": "trigger enforce_bucket_name_length_trigger on table storage.buckets",
+            "referencia": "table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger enforce_bucket_name_length_trigger on table storage.buckets",
+            "referencia": "column name of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger enforce_bucket_name_length_trigger on table storage.buckets",
+            "referencia": "function storage.enforce_bucket_name_length()"
+          },
+          {
+            "tipo": "a",
+            "objeto": "trigger protect_buckets_delete on table storage.buckets",
+            "referencia": "table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_buckets_delete on table storage.buckets",
+            "referencia": "function storage.protect_delete()"
+          },
+          {
+            "tipo": "a",
+            "objeto": "trigger protect_objects_delete on table storage.objects",
+            "referencia": "table storage.objects"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_objects_delete on table storage.objects",
+            "referencia": "function storage.protect_delete()"
+          },
+          {
+            "tipo": "a",
+            "objeto": "trigger protect_bucket_control_insert on table storage.buckets",
+            "referencia": "table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_bucket_control_insert on table storage.buckets",
+            "referencia": "function storage.protect_bucket_control_columns()"
+          },
+          {
+            "tipo": "a",
+            "objeto": "trigger protect_bucket_control_update on table storage.buckets",
+            "referencia": "table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_bucket_control_update on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_bucket_control_update on table storage.buckets",
+            "referencia": "column lifecycle_configuration_generation of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_bucket_control_update on table storage.buckets",
+            "referencia": "function storage.protect_bucket_control_columns()"
+          },
+          {
+            "tipo": "a",
+            "objeto": "trigger protect_bucket_control_update_role on table storage.buckets",
+            "referencia": "table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_bucket_control_update_role on table storage.buckets",
+            "referencia": "column lifecycle_configuration of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_bucket_control_update_role on table storage.buckets",
+            "referencia": "column lifecycle_configuration_generation of table storage.buckets"
+          },
+          {
+            "tipo": "n",
+            "objeto": "trigger protect_bucket_control_update_role on table storage.buckets",
+            "referencia": "function storage.enforce_bucket_lifecycle_service_role()"
+          }
+        ]
+      },
+      "read_only": "on",
+      "server_version": "17.11",
+      "versao_consulta": 1,
+      "observado_em_utc": "2026-11-01T18:15:00Z",
+      "hash_catalogo_md5": "785cf53d0d88df117eff15085f879018"
+    }
+  }
+]

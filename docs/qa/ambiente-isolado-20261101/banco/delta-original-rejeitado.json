@@ -1,0 +1,7 @@
+{
+  "projeto": "luguscapasskcsficckf",
+  "sha256": "1619e78b9155ba9443b6080fa7d082f3c335d8e8b07015d5d894462149df4c94",
+  "erro": "+\t\t\t\t\t197 text Failed to run sql query: ERROR:  P0001: Catálogo divergente: abortado sem alteração. Capture novo inventário e revise o delta CONTEXT:  PL/pgSQL function inline_code_block line 108 at RAISE",
+  "resultadoEsperado": true,
+  "observadoEmUtc": "2026-11-01T18:48:06.728Z"
+}

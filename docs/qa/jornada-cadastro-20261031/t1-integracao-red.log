@@ -1,0 +1,22 @@
+FALHOU cadastro direto respeita empresa da URL, confirma e recarrega: locator.waitFor: Timeout 4500ms exceeded.
+Call log:
+  - waiting for locator('#empresa-identificacao-razao') to be visible
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'cadastro direto respeita empresa da URL, confirma e recarrega: locator.waitFor: Timeout 4500ms exceeded.\n' +
++     'Call log:\n' +
++     "\x1B[2m  - waiting for locator('#empresa-identificacao-razao') to be visible\x1B[22m\n"
++ ]
+- []
+
+    at verificar (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\jornada-cadastro-20261031\t1-navegador.cjs:113:73) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

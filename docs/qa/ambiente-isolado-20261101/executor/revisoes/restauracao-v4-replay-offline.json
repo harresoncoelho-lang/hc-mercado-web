@@ -1,0 +1,31 @@
+{
+  "replayed_run": "41342288411",
+  "mode": "offline_schema_only_no_sql",
+  "source_sections": 744,
+  "restored_sections": 744,
+  "schema_equal_after_narrow_normalization": true,
+  "v3_success_claim": false,
+  "changed_existing_functions": [
+    "role_sql",
+    "canonical_schema"
+  ],
+  "new_helper": "canonical_default_acl",
+  "files": {
+    "source-schema.sql": {
+      "sha256": "8c0bc8654675481d49ffb8e04616b3b50b79f1329350e79eefde7b2bd70f0a2c",
+      "bytes": 317212
+    },
+    "restored-schema.sql": {
+      "sha256": "4407c92d46947c5431480bbc3c6cf055320a893fc0228647ebdab2303bc722ed",
+      "bytes": 317212
+    },
+    "globals.json": {
+      "sha256": "d2ffe75dcb02e2458bb90e75ccb8d5c79df72d85a748a0763711fcc10ab7969d",
+      "bytes": 16452
+    },
+    "sql-08.txt.stderr": {
+      "sha256": "770ea2f795d0e50eb4a94f0487a30a02f1b5bb68e140bc55cc10348ddc37af0d",
+      "bytes": 153
+    }
+  }
+}

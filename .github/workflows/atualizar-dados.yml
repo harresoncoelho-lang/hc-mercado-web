@@ -29,6 +29,7 @@ jobs:
           node-version: "20"
 
       - name: Rodar robô de coleta
+        id: coleta
         env:
           DIAS_HISTORICO_INICIAL: "30"
           RETENCAO_DIAS: "730"
@@ -136,15 +137,12 @@ jobs:
           fi
 
       - name: Commitar e enviar dados atualizados
+        if: ${{ !cancelled() && (steps.coleta.outcome == 'success' || steps.coleta.outcome == 'failure') }}
         run: |
           git config user.name "hc-licitacoes-bot"
           git config user.email "actions@github.com"
-          # oportunidades_abertas.json e boletim/ estão no .gitignore (vivem no Supabase
-          # agora, ver scripts/atualizar_dados.js) — "git add data/" nunca mais os inclui.
-          git add data/
-          # empresas.json e fornecedores/ são propositalmente PRIVADOS (base de prospecção só
-          # da HC, publicada acima no painel interno) — nunca vão pro site público dos clientes.
-          git reset -- data/empresas.json data/fornecedores/ 2>/dev/null || true
+          # Em falha, salva só checkpoints confirmados; o job continua com erro.
+          node scripts/preparar_commit_dados.js "${{ steps.coleta.outcome }}"
           if git diff --cached --quiet; then
             echo "Nenhuma mudança nos dados hoje."
           else

@@ -249,7 +249,7 @@ test("consultarOportunidadesSupabase mapeia cada linha pro seu dado jsonb, sem v
   const resultado = await contexto.consultarOportunidadesSupabase([]);
   // JSON.stringify em vez de assert.deepEqual: os objetos vêm do contexto isolado do vm
   // (realm diferente), então deepStrictEqual os rejeitaria mesmo com estrutura idêntica.
-  assert.equal(JSON.stringify(resultado), JSON.stringify({ registros: [{ numeroControlePNCP: "1" }, { numeroControlePNCP: "2" }] }));
+  assert.equal(JSON.stringify(resultado), JSON.stringify({ registros: [{ numeroControlePNCP: "1" }, { numeroControlePNCP: "2" }], limiteAtingido: false }));
 });
 
 test("paginação avança pelo tamanho real da página, não por um tamanho fixo assumido", async () => {
@@ -273,6 +273,7 @@ test("paginação avança pelo tamanho real da página, não por um tamanho fixo
   assert.equal(resultado.registros.length, total);
   assert.equal(resultado.registros[0].id, 0);
   assert.equal(resultado.registros.at(-1).id, total - 1);
+  assert.equal(resultado.limiteAtingido, false);
   // 500+500+200 preenche os 1200, e uma 4ª chamada com página vazia é quem encerra o loop.
   assert.equal(chamadasRange.length, 4);
 });
@@ -280,6 +281,128 @@ test("paginação avança pelo tamanho real da página, não por um tamanho fixo
 test("consultarOportunidadesSupabase devolve null e não quebra em erro do Supabase", async () => {
   const contexto = contextoOportunidadesSupabase(() => ({ data: null, error: { message: "falhou" } }));
   assert.equal(await contexto.consultarOportunidadesSupabase([]), null);
+});
+
+test("consulta comunica o teto sem transferir mais de 20 mil oportunidades", async () => {
+  const contexto = contextoOportunidadesSupabase(({ inicio, fim }) => ({
+    data: Array.from({ length: Math.max(0, Math.min(fim + 1, 20001) - inicio) }, (_, i) => ({ dado: { id: inicio + i } })), error: null,
+  }));
+  const resultado = await contexto.consultarOportunidadesSupabase([]);
+  assert.equal(resultado.registros.length, 20000);
+  assert.equal(resultado.registros.at(-1).id, 19999);
+  assert.equal(resultado.limiteAtingido, true);
+});
+
+test("cache separa UFs e recência sem esconder oportunidades antigas no Radar", async () => {
+  let consultas = 0;
+  const contexto = contextoOportunidadesSupabase(({ inicio, uf, or }) => {
+    consultas++;
+    const registros = [{ uf: "AM", id: "am" }, { uf: "SP", id: "sp-antiga", antiga: true }, { uf: "SP", id: "sp-recente" }]
+      .filter((r) => (!uf || uf.includes(r.uf)) && (!or || !r.antiga));
+    return { data: inicio ? [] : registros.map((dado) => ({ dado })), error: null };
+  });
+  const sp = await contexto.carregarOportunidadesSupabase(["SP"], false);
+  assert.equal(JSON.stringify(sp.registros.map((r) => r.id)), '["sp-antiga","sp-recente"]');
+  const anteriores = consultas;
+  assert.equal(await contexto.carregarOportunidadesSupabase(["SP"], false), sp);
+  assert.equal(consultas, anteriores);
+  const am = await contexto.carregarOportunidadesSupabase(["AM"], false);
+  assert.equal(JSON.stringify(am.registros.map((r) => r.id)), '["am"]');
+  const boletim = await contexto.carregarOportunidadesSupabase(["SP"]);
+  assert.equal(JSON.stringify(boletim.registros.map((r) => r.id)), '["sp-recente"]');
+});
+
+function contextoConsumidoresOportunidades(responder) {
+  const vm = require("node:vm");
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const contexto = contextoOportunidadesSupabase(responder);
+  const elementos = new Map(), salvos = new Map();
+  const elemento = (id) => {
+    if (!elementos.has(id)) elementos.set(id, { value: "", innerHTML: "", dataset: {}, eventos: {},
+      addEventListener(tipo, callback) { this.eventos[tipo] = callback; }, querySelectorAll: () => [], querySelector: () => null });
+    return elementos.get(id);
+  };
+  Object.assign(contexto, {
+    document: { getElementById: elemento }, estado: {}, opBuscaSeq: 0, OP_RESULTADO_JANELA_MS: 60000,
+    SIGLAS_UF_VALIDAS: new Set(["AM", "SP"]), escapeHtml: String, linkPncp: (id) => id,
+    salvarFiltroOportunidades: (ufs) => ({ ufs }), lerResultadoOportunidades: (chave) => salvos.get(chave),
+    salvarResultadoOportunidades: (chave, resultados, aviso) => salvos.set(chave, { resultados, aviso, salvoEm: Date.now() }),
+    definirNotaResultadoOportunidades() {}, idOportunidade: (r) => r.numeroControlePNCP,
+    buscarOportunidadesAbertas: async () => ({ encontrados: [], falhaConexao: false }), buscarExtrasSistemaS: async () => [],
+    renderizarPainelBoletim: (alvo, resultados, aviso) => { alvo.innerHTML = aviso; contexto.resultadosRadar = resultados; },
+    salvarFiltroDiagnostico() {}, carregarMeta: async () => ({ atualizadoEm: "2026-10-28T00:00:00Z", retencaoDias: 730 }),
+    consultarContratosSupabase: async () => ({ registros: [], erro: false, truncado: false }),
+    carregarMercadoSegmentos: async () => null, carregarResumoInteligenciaMercado: async () => null,
+    mostrarResumoInicialDiagnostico() {}, calcularConcorrentes: () => [], calcularOrgaos: () => [],
+    calcularPorMes: () => [], calcularPorUf: () => [], calcularPorModalidade: () => [],
+    renderChipsDiagnostico() {}, renderProspeccaoFornecedores() {}, renderBaixaConcorrencia() {},
+    formatarValor: String, formatarValorCompacto: String,
+  });
+  for (const [inicio, fim] of [
+    ["function normalizarUfs(", "function definirUfsNoSelect("],
+    ["function normalizar(txt)", "// Tags automáticas do objeto"],
+    ["const CAMPOS_DETALHE_PNCP", "async function carregarMeta("],
+    ["async function buscarOportunidades({", 'document.getElementById("op-buscar").addEventListener'],
+    ["function renderDiagnostico()", "// Salva o último filtro do Diagnóstico"],
+    ['document.getElementById("dg-buscar").addEventListener', "// ---------- Histórico de Compras"],
+  ]) {
+    const de = html.indexOf(inicio), ate = html.indexOf(fim, de);
+    assert.ok(de >= 0 && ate > de);
+    vm.runInContext(html.slice(de, ate), contexto);
+  }
+  elemento("op-palavras").value = elemento("dg-segmento").value = "material";
+  elemento("op-uf").value = elemento("dg-uf").value = "SP";
+  elemento("dg-dias").value = "30";
+  return { contexto, elemento };
+}
+
+for (const tela of ["Radar", "diagnóstico"]) test(`${tela} consulta a UF antes do corte nacional e respeita a troca de UF`, async () => {
+  const linhas = Array.from({ length: 20001 }, (_, i) => ({ dado: { numeroControlePNCP: `am-${i}`, objeto: "material", uf: "AM" } }));
+  linhas.push({ dado: { numeroControlePNCP: "sp", objeto: "material", uf: "SP" } });
+  const { contexto, elemento } = contextoConsumidoresOportunidades(({ inicio, fim, uf }) => ({
+    data: linhas.filter((r) => !uf || uf.includes(r.dado.uf)).slice(inicio, fim + 1), error: null,
+  }));
+  const buscar = () => tela === "Radar" ? contexto.buscarOportunidades() : elemento("dg-buscar").eventos.click();
+  const registros = () => tela === "Radar" ? contexto.resultadosRadar || [] : contexto.estado.diagnostico.oportunidadesAbertas;
+  const alvo = elemento(tela === "Radar" ? "op-resultado" : "dg-resultado");
+  await buscar();
+  assert.doesNotMatch(alvo.innerHTML, /Erro ao/);
+  assert.equal(JSON.stringify(registros().map((r) => r.numeroControlePNCP)), '["sp"]');
+  assert.doesNotMatch(alvo.innerHTML, /limitad[ao].*20\.000/i);
+  elemento("op-uf").value = elemento("dg-uf").value = "AM";
+  await buscar();
+  assert.equal(registros().length, 20000);
+  assert.ok(registros().every((r) => r.uf === "AM"));
+  assert.match(alvo.innerHTML, /limitad[ao].*20\.000/i);
+});
+
+test("aviso do complemento aparece e desaparece mesmo com os mesmos resultados ao vivo", async () => {
+  const { contexto, elemento } = contextoConsumidoresOportunidades(() => ({ data: [], error: null }));
+  let limiteAtingido = false;
+  contexto.carregarOportunidadesSupabase = async () => ({ registros: [], limiteAtingido });
+  contexto.buscarOportunidadesAbertas = async () => ({ encontrados: [{ numeroControlePNCP: "ao-vivo", objeto: "material", uf: "SP" }], falhaConexao: false });
+  await contexto.buscarOportunidades();
+  assert.doesNotMatch(elemento("op-resultado").innerHTML, /limitad[ao].*20\.000/i);
+  limiteAtingido = true;
+  await contexto.buscarOportunidades();
+  assert.match(elemento("op-resultado").innerHTML, /complemento.*limitado.*20\.000/is);
+  assert.doesNotMatch(elemento("op-resultado").innerHTML, /PNCP não respondeu/i);
+  assert.equal(contexto.resultadosRadar[0].numeroControlePNCP, "ao-vivo");
+  limiteAtingido = false;
+  await contexto.buscarOportunidades();
+  assert.doesNotMatch(elemento("op-resultado").innerHTML, /limitad[ao].*20\.000/i);
+});
+
+test("falha ao vivo e limite do complemento permanecem avisos distintos", async () => {
+  const { contexto, elemento } = contextoConsumidoresOportunidades(() => ({ data: [], error: null }));
+  contexto.carregarOportunidadesSupabase = async () => ({ registros: [], limiteAtingido: true });
+  contexto.buscarOportunidadesAbertas = async () => ({ encontrados: [], falhaConexao: true });
+  await contexto.buscarOportunidades();
+  const aviso = elemento("op-resultado").innerHTML;
+  assert.match(aviso, /complemento.*limitado.*20\.000/is);
+  assert.match(aviso, /PNCP não respondeu/i);
 });
 
 test("resumo apresenta as seções sem faixa técnica e preserva o diagnóstico interno", () => {

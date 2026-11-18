@@ -1,0 +1,43 @@
+{
+  "utc": "2026-10-31T02:41:10.2700442+00:00",
+  "portasConferidas": [
+    8792,
+    56321,
+    56322,
+    56324,
+    56325
+  ],
+  "listenersRestantes": 0,
+  "processosQaRestantes": 0,
+  "servidor": {
+    "pid": 6748,
+    "encerradoPelaCoordenacaoAposTestes": true,
+    "execExitCode": 1
+  },
+  "containersObservadosAntesDePararBackend": [
+    "licitaplena-qa-real-storage-1: Exited (0)",
+    "licitaplena-qa-real-auth-1: Exited (0)",
+    "licitaplena-qa-real-rest-1: Exited (0)",
+    "licitaplena-qa-real-db-1: Exited (0)"
+  ],
+  "outrosContainersAtivosAntesDePararBackend": 0,
+  "volumesPreservados": [
+    "licitaplena-qa-real_arquivos",
+    "licitaplena-qa-real_dados"
+  ],
+  "backendStopExitCode": 0,
+  "backups": [
+    {
+      "arquivo": "antes-kit-documentos-20261031T020748Z.dump",
+      "bytes": 489155,
+      "sha256": "8f2b1dcce8d6fd6d80626e897820245c9a3bd38d7c04e7fd021ac14f1bdbf57f"
+    },
+    {
+      "arquivo": "antes-correcao-acl-20261031T022043Z.dump",
+      "bytes": 505274,
+      "sha256": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c"
+    }
+  ],
+  "publicacao": false,
+  "restauracaoEnsaiada": false
+}

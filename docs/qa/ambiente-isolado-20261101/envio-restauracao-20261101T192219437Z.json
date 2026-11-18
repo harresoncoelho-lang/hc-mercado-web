@@ -1,0 +1,46 @@
+{
+  "started_utc": "2026-11-01T19:22:19.4275174Z",
+  "repository": "harresoncoelho-lang/licitaplena-homologacao",
+  "status": "uploaded_without_workflow_execution",
+  "payload_sha256": {
+    ".github/workflows/inventario.yml": "a5ae9a0d9f4ec7347aa13a4fcccc22433700bbb44cccd9f382faace31fc95720",
+    "inventory.py": "2f935197b884a938b3bba9043fb403d9777e53c8c29c889ad5ea14ab5b1142e5",
+    "test_inventory.py": "a9bb6dd73fa155bcedc8ea6d1f1800909df50ada0653ae3e8c5048f1265d98ce",
+    "README.md": "3daa259cb5cd808b17343348d2dc74727fc4427b71569fcaf975061c84b15df2",
+    "package-manifest.json": "0ef9542dc690dda39184e4dd9e23cef6ebc4bc1b4bb300e89d183e2c6a864994",
+    "input/ficticio.dump": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c",
+    ".github/workflows/restauracao.yml": "2b2e01c82652e4f5ea868ee688946a42c3c31800621d21605f570f093baef08f",
+    "restauracao/restore.py": "61c63c53a6ba71dfbd2139ab7d5aaecb4474fd0cd0ccb43700b1c6906510678f",
+    "restauracao/test_restore.py": "acc22af0b0912a04dcafdb0d5d1abded2711dbb3987f70174bf02122a830daad",
+    "restauracao/baseline.json": "43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0",
+    "restauracao/README.md": "a0da1b7fe7dee75e8ed1832976eb6816f3e8496ee19149d47423fe1738b3f964"
+  },
+  "uploaded_blobs": [
+    {
+      "sha256": "61c63c53a6ba71dfbd2139ab7d5aaecb4474fd0cd0ccb43700b1c6906510678f",
+      "path": "restauracao/restore.py",
+      "git_sha": "ad19f3bdace4793301d67dd8bf6abd6e18b70359"
+    },
+    {
+      "sha256": "acc22af0b0912a04dcafdb0d5d1abded2711dbb3987f70174bf02122a830daad",
+      "path": "restauracao/test_restore.py",
+      "git_sha": "7608a3a58347ed01ab59a5e7a7bcccf0f2f19fc8"
+    },
+    {
+      "sha256": "43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0",
+      "path": "restauracao/baseline.json",
+      "git_sha": "0038944322952fab41dba2cead325d17adec5285"
+    },
+    {
+      "sha256": "a0da1b7fe7dee75e8ed1832976eb6816f3e8496ee19149d47423fe1738b3f964",
+      "path": "restauracao/README.md",
+      "git_sha": "5d1a8e9fed4d30ea184a310f9ef7d15da2063f29"
+    }
+  ],
+  "base_commit": "0196a317f0828a560a1f47d880cf5ad9e8ee08dd",
+  "branch": "main",
+  "prepared_commit": "702663b5af7551896551eef253a7f425d144bc5d",
+  "tree_sha": "c7aad1babc5eb3488fd923e2681b9d4a4caec56f",
+  "commit": "702663b5af7551896551eef253a7f425d144bc5d",
+  "ended_utc": "2026-11-01T19:22:31.4208918Z"
+}

@@ -1,0 +1,171 @@
+{
+  "status": "failed",
+  "phase": "compare",
+  "image": "public.ecr.aws/supabase/postgres:17.11.0.004@sha256:e85bc10ac5b141223b289e1e8dc8d448cf3df92501917149db0366b9c5aaf053",
+  "dump_sha256": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c",
+  "baseline_sha256": "43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0",
+  "restore_attempted": true,
+  "restore_completed": true,
+  "role_passwords_copied": false,
+  "auth_http_tested": false,
+  "storage_bytes_restored": false,
+  "checks": {
+    "schema_sections_equal": false,
+    "tables_40_equal": true,
+    "roles_equal": false,
+    "memberships_equal": true,
+    "default_acl_equal": true,
+    "kit_pre_correction_acl_equal": true
+  },
+  "limitations": [
+    "No complete Auth data baseline",
+    "No original Storage bytes for five metadata rows",
+    "Database/cluster settings are not a full source configuration backup",
+    "Source OIDs normalized to names; public namespace 2200 is PostgreSQL builtin identity"
+  ],
+  "duration_seconds": 32.955,
+  "files": {
+    "diagnostic-initdb.txt.capture.json": {
+      "sha256": "c07d6536b23982acf815bce72b618a8a56024e783990508614106a0964c6b392",
+      "bytes": 186
+    },
+    "sql-02.txt": {
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+      "bytes": 2
+    },
+    "diagnostic-docker.txt.stderr": {
+      "sha256": "84509074c6e3ce6272066ef559ca741c317f4cdcf45f5c0e553f47e1db5eba47",
+      "bytes": 504
+    },
+    "sql-07.txt": {
+      "sha256": "1c2381c6688d8cca4a2bf3f8abd2ea83a965868b21efe8d801ca655ed27d0c71",
+      "bytes": 817
+    },
+    "sql-08.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "library-paths.txt.capture.json": {
+      "sha256": "a94542af03c79b7b7342a0ee7ea830afca6d65e03e7fb8c80e766cb711a0efe0",
+      "bytes": 186
+    },
+    "restore.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "globals.json": {
+      "sha256": "d2ffe75dcb02e2458bb90e75ccb8d5c79df72d85a748a0763711fcc10ab7969d",
+      "bytes": 16452
+    },
+    "sql-03.txt.stderr": {
+      "sha256": "c280a4b197c6a2d536beb2ac6ec752a606f605792e8f7cc8d52fe35ad2bb30d9",
+      "bytes": 353
+    },
+    "sql-05.txt": {
+      "sha256": "e624d51ddaaf5fd74cc1b19690972061cab747f6418eeeab2dc82e0968beac0c",
+      "bytes": 3730
+    },
+    "restored-schema.sql": {
+      "sha256": "4407c92d46947c5431480bbc3c6cf055320a893fc0228647ebdab2303bc722ed",
+      "bytes": 317212
+    },
+    "sql-04.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "sql-06.txt": {
+      "sha256": "8f5eadcc1ae32a2262514332d0a20439a1eaa17edb0cd8d7c9ee723eb570874f",
+      "bytes": 12517
+    },
+    "schema-mismatches.json": {
+      "sha256": "ce3e1317edf86ef7b1ec14faab78213cc6747a510a9ea2b83d61267223949d66",
+      "bytes": 473
+    },
+    "diagnostic-docker.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "library-safeupdate.txt": {
+      "sha256": "2a7e129df5321362d9427a272bc56942e78c823722971c8a3b008bc601e8bcd1",
+      "bytes": 18
+    },
+    "library-paths.txt": {
+      "sha256": "257ed7c747df4de204435981b6d7eb735be35789b0f6f6e5ec4c67b917352ae6",
+      "bytes": 501
+    },
+    "diagnostic-docker.txt.capture.json": {
+      "sha256": "825fc5a217e6c5feb4e561152c978ac020760ddc1612a1446a9dd32e26c163ba",
+      "bytes": 186
+    },
+    "library-supautils.txt": {
+      "sha256": "2d320aeb8537589dbf6b634d74451efcf66f28984c7ef86ba109acb3e26d640d",
+      "bytes": 17
+    },
+    "source-schema.sql": {
+      "sha256": "8c0bc8654675481d49ffb8e04616b3b50b79f1329350e79eefde7b2bd70f0a2c",
+      "bytes": 317212
+    },
+    "sql-01.txt": {
+      "sha256": "8b7ba175906e1f6587cd6292a645cdd2ef22957d3bbc2cb08f096768e9636daf",
+      "bytes": 6
+    },
+    "kit-acl.json": {
+      "sha256": "ed2df1b6bec9bf062f3faf008cd4d7d17e4fd47699f4f2e347947653738872dc",
+      "bytes": 942
+    },
+    "diagnostic-initdb.txt": {
+      "sha256": "18eb8e6ff69cf6e191221eb5628969231d300dcf4ef2fcc673e93cb7bd88ea37",
+      "bytes": 959
+    },
+    "sql-03.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "sql-08.txt.stderr": {
+      "sha256": "770ea2f795d0e50eb4a94f0487a30a02f1b5bb68e140bc55cc10348ddc37af0d",
+      "bytes": 153
+    },
+    "tables.json": {
+      "sha256": "28875debe4afcd89e0d8d3ee2687fff0276b8319ba6fdc3b9a1289126cc47997",
+      "bytes": 4171
+    }
+  },
+  "isolation": {
+    "network": "none",
+    "root_read_only": true,
+    "input_read_only": true,
+    "writable_ephemeral_tmpfs": [
+      "/qa",
+      "/tmp"
+    ],
+    "ports": []
+  },
+  "server_version": "17.11",
+  "library_preflight": {
+    "supautils": {
+      "exit_code": 0,
+      "loaded": true
+    },
+    "safeupdate": {
+      "exit_code": 0,
+      "loaded": true
+    }
+  },
+  "restore_seconds": 0.236,
+  "schema_sections": {
+    "source": 744,
+    "restored": 744
+  },
+  "category": "subprocess_exit",
+  "diagnostics": {
+    "docker": {
+      "exit_code": 0,
+      "tail_limit_bytes_per_stream": 65536
+    },
+    "initdb": {
+      "exit_code": 0,
+      "tail_limit_bytes_per_stream": 65536
+    }
+  },
+  "container_removed": true
+}

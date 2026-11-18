@@ -1,0 +1,10 @@
+Lacuna reproduzida somente na fixture: readiness=true com RLS do kit desligada; outsider lê 2 peças. 57 verificações originais aprovadas.
+AssertionError [ERR_ASSERTION]: Missing expected rejection: policy com helper homônimo
+    at async testarPersistencia (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\testar-kit-persistencia-local.cjs:130:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: [Function (anonymous)],
+  operator: 'rejects',
+  diff: 'simple'
+}

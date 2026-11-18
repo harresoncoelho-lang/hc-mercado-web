@@ -1,0 +1,10 @@
+{
+  "repository": "harresoncoelho-lang/licitaplena-homologacao",
+  "head": "c08feeabe25ff3d726e9373b4d1a92147a99885f",
+  "workflow": "inventario.yml",
+  "dispatchUtc": "2026-11-01T18:56:29.9525688Z",
+  "url": "https://github.com/harresoncoelho-lang/licitaplena-homologacao/actions/runs/41339162377",
+  "timeoutMinutes": 5,
+  "quota": "Menos de US$0,01 usado de US$12 incluídos; US$0 faturável",
+  "production": false
+}

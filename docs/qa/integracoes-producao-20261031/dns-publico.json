@@ -1,0 +1,41 @@
+{
+  "capturedUtc": "2026-10-31T02:49:00.8906887+00:00",
+  "records": [
+    {
+      "Name": "licitaplena.com.br",
+      "Type": "A",
+      "IPAddress": "172.67.157.224",
+      "NameHost": null
+    },
+    {
+      "Name": "licitaplena.com.br",
+      "Type": "A",
+      "IPAddress": "104.21.89.104",
+      "NameHost": null
+    },
+    {
+      "Name": "licitaplena.com.br",
+      "Type": "AAAA",
+      "IPAddress": "2606:4700:3031::6815:5968",
+      "NameHost": null
+    },
+    {
+      "Name": "licitaplena.com.br",
+      "Type": "AAAA",
+      "IPAddress": "2606:4700:3036::ac43:9de0",
+      "NameHost": null
+    },
+    {
+      "Name": "licitaplena.com.br",
+      "Type": "NS",
+      "IPAddress": null,
+      "NameHost": "ram.ns.cloudflare.com"
+    },
+    {
+      "Name": "licitaplena.com.br",
+      "Type": "NS",
+      "IPAddress": null,
+      "NameHost": "zariyah.ns.cloudflare.com"
+    }
+  ]
+}

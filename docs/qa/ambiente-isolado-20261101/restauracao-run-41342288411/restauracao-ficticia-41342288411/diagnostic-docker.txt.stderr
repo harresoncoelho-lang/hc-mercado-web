@@ -1,0 +1,5 @@
+2026-11-01 19:33:37.973 UTC [1] LOG:  starting PostgreSQL 17.11 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
+2026-11-01 19:33:37.973 UTC [1] LOG:  listening on Unix socket "/qa/.s.PGSQL.5432"
+2026-11-01 19:33:37.976 UTC [22] LOG:  database system was shut down at 2026-11-01 19:33:37 UTC
+2026-11-01 19:33:37.979 UTC [1] LOG:  database system is ready to accept connections
+2026-11-01 19:33:39.698 UTC [128] FATAL:  could not access file "supautils, safeupdate": No such file or directory

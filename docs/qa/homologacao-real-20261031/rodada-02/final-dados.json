@@ -1,0 +1,167 @@
+[
+  {
+    "tabela": "auth.users",
+    "linhas": 9,
+    "hash": "eba11bc0952eb3ea64a852dc83d4f58c"
+  },
+  {
+    "tabela": "public.admins",
+    "linhas": 1,
+    "hash": "02fcb4bb32113db833a1c0c10fb290ed"
+  },
+  {
+    "tabela": "public.clientes",
+    "linhas": 9,
+    "hash": "ae22a3c2060b0b174a906009a6962610"
+  },
+  {
+    "tabela": "public.comprasgov_resultados",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.contratos",
+    "linhas": 1,
+    "hash": "4c95731b2468228928130a26cc6e7d93"
+  },
+  {
+    "tabela": "public.dados_robo",
+    "linhas": 4,
+    "hash": "ad8b62f63181bb407c3900f16a37d89f"
+  },
+  {
+    "tabela": "public.dossies_editais",
+    "linhas": 6,
+    "hash": "6e80a68c85400680e356933c1d42c27d"
+  },
+  {
+    "tabela": "public.fila_dossies",
+    "linhas": 2,
+    "hash": "c4b8a5d1000a6c405a4ea9eddffb5bc0"
+  },
+  {
+    "tabela": "public.lembretes",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.logs_boletim",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.mercado_atas",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.operacao_agenda",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.operacao_anexos_processo",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.operacao_contratos",
+    "linhas": 2,
+    "hash": "df927c7726f8b211cd3b3e9787291f21"
+  },
+  {
+    "tabela": "public.operacao_convites_empresa",
+    "linhas": 2,
+    "hash": "7c1f4e0f541bedf84cf67c590fc6ab36"
+  },
+  {
+    "tabela": "public.operacao_documentos",
+    "linhas": 4,
+    "hash": "f52517225df5394e87e96833b7c5acc2"
+  },
+  {
+    "tabela": "public.operacao_empenhos",
+    "linhas": 2,
+    "hash": "6ba738a1884476592c4ae02fab30a0d3"
+  },
+  {
+    "tabela": "public.operacao_empresas",
+    "linhas": 4,
+    "hash": "80f46877ca6291cd58fea598296bc9c9"
+  },
+  {
+    "tabela": "public.operacao_identificacao_empresa",
+    "linhas": 1,
+    "hash": "32c681110cbe8070724eea6766760df2"
+  },
+  {
+    "tabela": "public.operacao_itens_resultado",
+    "linhas": 2,
+    "hash": "3ff335e213ecda166b20ea639c153574"
+  },
+  {
+    "tabela": "public.operacao_kit_documentos",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.operacao_limites_cnpj",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.operacao_membros",
+    "linhas": 5,
+    "hash": "5d1a4d01aba922a260c7b8db9a2303f5"
+  },
+  {
+    "tabela": "public.operacao_ocorrencias",
+    "linhas": 2,
+    "hash": "9ab3bc19fb7e962589d3ba02147755d2"
+  },
+  {
+    "tabela": "public.operacao_organizacoes",
+    "linhas": 3,
+    "hash": "ed4ce0c360a41e3806e8cc4e2679f1df"
+  },
+  {
+    "tabela": "public.operacao_prazos_processo",
+    "linhas": 2,
+    "hash": "b1f7e376c9fa25cdca5838358fbc43d5"
+  },
+  {
+    "tabela": "public.operacao_processos",
+    "linhas": 3,
+    "hash": "695622c3220aead089576959b7d3aa8f"
+  },
+  {
+    "tabela": "public.operacao_renovacoes_documento",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.operacao_tipos_documento",
+    "linhas": 0,
+    "hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  {
+    "tabela": "public.oportunidades_abertas",
+    "linhas": 5,
+    "hash": "a99fa086c9bde5f4603e3d7fd0a23f69"
+  },
+  {
+    "tabela": "public.uso_diario",
+    "linhas": 1,
+    "hash": "71b1cfd1b704eca814dcbc5772cdc2aa"
+  },
+  {
+    "tabela": "storage.buckets",
+    "linhas": 1,
+    "hash": "2226280c11c2ee04fb8cb0186479232e"
+  },
+  {
+    "tabela": "storage.objects",
+    "linhas": 5,
+    "hash": "92e031aff6afb72ee5142a0cef514774"
+  }
+]

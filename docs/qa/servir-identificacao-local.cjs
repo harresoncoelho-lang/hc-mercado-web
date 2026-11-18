@@ -7,11 +7,18 @@ const raiz = path.resolve(__dirname, '../..');
 const privado = 'C:/Users/harre/AppData/Local/LicitaPlena/supabase-homologacao';
 const c = JSON.parse(fs.readFileSync(path.join(privado, 'credenciais-locais.json')));
 const nativo = global.fetch;
-const origem = 'http://127.0.0.1:8792';
-const servicos = { '/auth/v1/': 'http://127.0.0.1:55324/', '/rest/v1/': 'http://127.0.0.1:55321/', '/storage/v1/': 'http://127.0.0.1:55325/' };
-const registro = path.join(__dirname, 'identificacao-rede-local.json');
-const eventos = fs.existsSync(registro) ? JSON.parse(fs.readFileSync(registro)).eventos : [];
-const registrar = (rota, status) => { eventos.push({ rota, status }); fs.writeFileSync(path.join(__dirname, 'identificacao-rede-local.json'), JSON.stringify({ data: new Date().toISOString(), eventos }, null, 2)); };
+const porta = (nome, padrao) => { const valor = Number(process.env[nome] || padrao); assert(Number.isInteger(valor) && valor >= 1024 && valor <= 65535, 'Porta QA inválida'); return valor; };
+const httpPort = porta('QA_HTTP_PORT', 8792);
+const origem = `http://127.0.0.1:${httpPort}`;
+const servicos = { '/auth/v1/': `http://127.0.0.1:${porta('QA_AUTH_PORT', 56324)}/`, '/rest/v1/': `http://127.0.0.1:${porta('QA_REST_PORT', 56321)}/`, '/storage/v1/': `http://127.0.0.1:${porta('QA_STORAGE_PORT', 56325)}/` };
+const execucao = process.env.QA_EXECUCAO || new Date().toISOString().replace(/[:.]/g, '-');
+assert(/^[a-zA-Z0-9_-]+$/.test(execucao), 'Identificador QA inválido');
+const pasta = path.join(__dirname, 'homologacao-real-20261031', execucao);
+fs.mkdirSync(pasta, { recursive: true });
+const registro = path.join(pasta, 'rede-servidor.json');
+const eventos = [];
+fs.writeFileSync(registro, JSON.stringify({ eventos }), { flag: 'wx' });
+const registrar = (rota, status) => { eventos.push({ rota, status }); fs.writeFileSync(registro, JSON.stringify({ data: new Date().toISOString(), eventos }, null, 2)); };
 const iaFree=false;
 for(const nome of ['GROQ_API_KEY','GEMINI_API_KEY','OPENROUTER_API_KEY','DEFESA_IA_GRATUITA_CONFIRMADA']) delete process.env[nome];
 process.env.SUPABASE_SERVICE_ROLE_KEY=c.service;
@@ -30,7 +37,7 @@ const servidor = http.createServer(async (req, res) => {
   const u = new URL(req.url, origem);
   const responder = (status, corpo, tipo = 'application/json; charset=utf-8') => { res.writeHead(status, { 'Content-Type': tipo, 'Cache-Control': 'no-store' }); res.end(corpo); };
   try {
-    assert(req.headers.host === '127.0.0.1:8792', 'Host não permitido');
+    assert(req.headers.host === `127.0.0.1:${httpPort}`, 'Host não permitido');
     const prefixo = Object.keys(servicos).find(p => u.pathname.startsWith(p));
     if (prefixo) {
       const partes = []; let bytes = 0;
@@ -42,7 +49,7 @@ const servidor = http.createServer(async (req, res) => {
       res.statusCode = r.status; res.end(Buffer.from(await r.arrayBuffer())); registrar(u.pathname, r.status); return;
     }
     if (u.pathname.startsWith('/api/')) {
-      if (!['/api/empresa-identificacao'].includes(u.pathname)) {
+      if (!['/api/empresa-identificacao', '/api/kit-documentos'].includes(u.pathname)) {
         registrar(u.pathname, 503); return responder(503, JSON.stringify({ erro: 'Serviço externo desativado nesta homologação local.' }));
       }
       const partes = []; let bytes = 0;
@@ -51,7 +58,7 @@ const servidor = http.createServer(async (req, res) => {
         const corpo = JSON.parse(Buffer.concat(partes).toString());
         if (!modoPermitidoNaSessaoFree(corpo)) return responder(503, JSON.stringify({ erro: 'Nesta sessão, somente a análise jurídica com teto gratuito e a leitura do resumo identificado estão habilitadas.' }));
       }
-      const nome = 'empresa-identificacao';
+      const nome = u.pathname.slice('/api/'.length);
       const { handler } = require(path.join(raiz, 'netlify/functions', nome));
       const r = await handler({ httpMethod: req.method, headers: req.headers, body: Buffer.concat(partes).toString() });
       res.writeHead(r.statusCode, { ...r.headers, 'Access-Control-Allow-Origin': origem });
@@ -77,4 +84,4 @@ const servidor = http.createServer(async (req, res) => {
     responder(200, corpo, tipos[ext] || 'application/octet-stream');
   } catch (_) { registrar(u.pathname, 500); if (!res.headersSent) responder(500, '{"erro":"Falha no ambiente local de homologação."}'); else res.end(); }
 });
-servidor.listen(8792,'127.0.0.1',()=>console.log('Homologação privada local: http://127.0.0.1:8792/login.html'));
+servidor.listen(httpPort,'127.0.0.1',()=>console.log(`Homologação privada local: ${origem}/login.html`));

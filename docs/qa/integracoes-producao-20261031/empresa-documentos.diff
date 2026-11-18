@@ -1,0 +1,18 @@
+diff --git a/C:/Users/harre/AppData/Local/LicitaPlena/integracoes-producao-20261031/rodada-03-revisada/runtime-02/empresa-documentos-antes.js b/netlify/functions/_empresa_documentos.js
+index dc33c67..893620c 100644
+--- a/C:/Users/harre/AppData/Local/LicitaPlena/integracoes-producao-20261031/rodada-03-revisada/runtime-02/empresa-documentos-antes.js
++++ b/netlify/functions/_empresa_documentos.js
+@@ -4,11 +4,8 @@ async function extrairDocumento(bytes){
+  if(bytes.length>LIMITES.extracao)return manual('Arquivo anexado. Preencha manualmente: extração limitada a 2 MiB.');
+  if(bytes.subarray(0,5).toString()!=='%PDF-')return manual('Formato sem extração automática. Confira e preencha os dados manualmente.');
+  try{
+- const paginas=[];
+- const pdf=require('pdf-parse/lib/pdf-parse.js');
+- const resultado=await pdf(new Uint8Array(bytes),{max:LIMITES.paginas+1,pagerender:async page=>{
+- const conteudo=await page.getTextContent();let linha=-1,texto='';for(const item of conteudo.items){const y=item.transform?.[5];if(y!==linha){texto+='\n';linha=y;}texto+=item.str+' ';}paginas.push({pagina:page.pageNumber,texto});return texto;
+- }});
++ const {lerPaginasPdf}=require('./_empresa_pdf_leitor');
++ const resultado=await lerPaginasPdf(bytes);const {paginas}=resultado;
+  if(resultado.numpages>LIMITES.paginas)return manual('Arquivo anexado. Confira manualmente: documento excede 8 páginas.');
+  if(!paginas.some(p=>p.texto.trim().length>30))return manual('PDF sem texto legível. Confira o documento e preencha manualmente.');
+  const sugestoes={},evidencias=[];

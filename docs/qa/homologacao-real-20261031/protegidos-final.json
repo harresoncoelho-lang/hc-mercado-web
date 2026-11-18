@@ -1,0 +1,102 @@
+[
+  {
+    "path": "painel.html",
+    "sha256": "C8BBA8972A8AA8960E7EE13456566DA9852D5A51FE6B53C7B433AAE4C6AA489B",
+    "igual": true
+  },
+  {
+    "path": "login.html",
+    "sha256": "DE85CFF7E2B6C9F775DE9D2D9FDDB1609EB85F548B9031B2A8170DCF8A686A32",
+    "igual": true
+  },
+  {
+    "path": "cadastro.html",
+    "sha256": "40F9F2092003EA0E13CB480002C854E8883F89A5108C7A225D6A7609345A9002",
+    "igual": true
+  },
+  {
+    "path": "supabase-config.js",
+    "sha256": "4FBF2BF11F3853747C715DB55E78C9C023E31B784B45D9C30707DAE2B5A0309E",
+    "igual": true
+  },
+  {
+    "path": "scripts/boletim_editais.py",
+    "sha256": "7C99DE0DDF60D4AA0E70D307BF2E81830235EC8C00014D4B0DB1F849DAFB4219",
+    "igual": true
+  },
+  {
+    "path": ".github/workflows/boletim-editais.yml",
+    "sha256": "A5837BA1B19452D5DD9767FFA83906BE7CF47731EF2EB304868A31EA68FEA3F0",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_auth.js",
+    "sha256": "7F8756C5FE1D6C6177ACDC77D398F05E9C1697C4620A98BD0575ADB003D47A93",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/enviar-resumo-edital.js",
+    "sha256": "3AC9BE4D945A7AAE3D5D9868180C8A3AC2A4A475CC7FB307CDCBDAEE6058F60E",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/ia-edital.mjs",
+    "sha256": "C8F437A0E4CAD1953D27E2E3C8FB50F7EB00C289C548D1C0985ECF086EBA88F2",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/ia-resumo-background.mjs",
+    "sha256": "C664B91ED4CD03D28E59346D182ED47830F95C5C46259C9D3822546A81908EDE",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/lib/ia-edital.js",
+    "sha256": "C54DF5158353D63EB43A82BED100178FBDD47DD45953226C12CE14D5744D58DC",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_resumo_documental.js",
+    "sha256": "995EC16C5BCAD115BB01C72564C5CCD6CF29D87CA63C9F1E20ACFD5A275EF31A",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_resumo_evidencias.js",
+    "sha256": "5EEF04D2CF312076E8F13194B6E4150748D06A5282B6F0AF37475BB4980C7DBA",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_resumo_gateway.js",
+    "sha256": "8D27691862A6007629E1801EEBF34860106B4F70555F8B6F22CB687EF058E814",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_resumo_gateway_contrato.js",
+    "sha256": "D6908C016C4B60EC5C512015E62180C694FF8808D9B3AACCC214B4AFA0E542AA",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_resumo_progressivo.js",
+    "sha256": "B8506C2E93EE5FB2241D1EC6A9478B5E470B1B97DBED8C7AB380C2B2FDC009A8",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_defesa_modelos.js",
+    "sha256": "DF0E87C569F3ECA0ED5AB2FE3B1798A8724B49D6A6FB77871ED3A7BC93F3FAB1",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/gerar-checklist.js",
+    "sha256": "302CD974EA8A04CDFD03E391E4F4087B50A9C9ED1CCB2B14C49A2B7D6B151C42",
+    "igual": true
+  },
+  {
+    "path": "netlify/functions/_kit_documentos.js",
+    "sha256": "6EF11FD484ADF708D258D825606250959DEC71C639784B1DDD9016CE1E57A725",
+    "igual": true
+  },
+  {
+    "path": "scripts/atualizar_dados.js",
+    "sha256": "5ECAD3E65DDDFDFD4BC614D1C8439B80633BD25F98066BAA70166C762C7E782B",
+    "igual": true
+  }
+]

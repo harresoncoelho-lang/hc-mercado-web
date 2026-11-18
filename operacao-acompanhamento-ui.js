@@ -32,6 +32,7 @@
     }
 
     function renderizar(processo) {
+      versaoLeitura++;
       if (!estado.detalhesCarregados) {
         $("d-acompanhamento").innerHTML = estado.erroDetalhes
           ? '<p class="aviso-dados">O acompanhamento não pôde ser carregado. Confira o aviso no topo e tente atualizar. Nenhum resultado foi presumido.</p>'
@@ -67,7 +68,7 @@
           ${lista(empenhos, empenho => `<div class="linha-registro"><strong>Empenho ${esc(empenho.numero)}</strong><small>${esc(rotulo(empenho.status))} · emitido: ${data(empenho.emitido_em)} · valor: ${dinheiro(empenho.valor)} · saldo: ${dinheiro(empenho.saldo ?? empenho.valor)}</small><button class="btn" data-editar-empenho="${empenho.id}">Editar empenho</button></div>`, "Nenhum empenho cadastrado.")}
         </section>
         <section class="bloco-dossie"><h3>Arquivos do processo</h3><div class="acoes-bloco"><button class="btn" data-anexo="${processo.id}">+ Anexar contrato, empenho ou documento</button></div>
-          ${lista(anexos, anexo => `<div class="linha-registro"><strong>${esc(rotulo(anexo.tipo))}: ${esc(anexo.titulo)}</strong><small>${esc(anexo.referencia_numero || "Sem número")} · ${esc(anexo.arquivo_nome)} · ${dataHora(anexo.criado_em)}</small><button class="btn" data-abrir-anexo="${anexo.id}">Abrir arquivo</button></div>`, "Nenhum arquivo vinculado a este processo.")}
+          ${lista(anexos, anexo => `<div class="linha-registro"><strong>${esc(rotulo(anexo.tipo))}: ${esc(anexo.titulo)}</strong><small>${esc(anexo.referencia_numero || "Sem número")} · ${esc(anexo.arquivo_nome)} · ${dataHora(anexo.criado_em)}</small><button class="btn" data-abrir-anexo="${anexo.id}">Abrir arquivo</button>${anexo.tipo === "edital" && deps.evidenciasAnexo ? `<button class="btn" data-ler-evidencia="${anexo.id}">Ler versão do edital</button>` : ""}</div>`, "Nenhum arquivo vinculado a este processo.")}
         </section>`;
     }
 
@@ -194,6 +195,25 @@
       finally { botao.disabled = false; }
     }
 
+    let versaoLeitura=0,painelEvidencia=null;
+    async function lerEvidencia(id) {
+      const anexo=estado.anexos.find(a=>a.id===id),processo=estado.processos.find(p=>p.id===anexo?.processo_id);
+      if(!anexo||!processo||!deps.evidenciasAnexo)return;
+      painelEvidencia?.remove();painelEvidencia=null;
+      const rodada=++versaoLeitura,empresa=estado.empresaId,org=estado.orgId;
+      const body={empresaId:empresa,processoId:processo.id,anexoId:id};
+      try {
+        const r=await deps.evidenciasAnexo({...body,acao:'ler'});
+        if(rodada!==versaoLeitura||estado.empresaId!==empresa||estado.orgId!==org)return;
+        const alvo=$('d-acompanhamento'),sec=raiz.document.createElement('section');sec.className='bloco-dossie';
+        const titulo=raiz.document.createElement('h3');titulo.textContent='Versão documental para revisão';sec.append(titulo);
+        const nota=raiz.document.createElement('p');nota.textContent='Fonte: '+anexo.arquivo_nome+' · SHA256: '+r.hash+' · Seleção do operador, sem comprovação de vigência jurídica.';sec.append(nota);
+        for(const p of r.paginas){const pre=raiz.document.createElement('pre');pre.textContent='Página '+p.pagina+'\n'+p.texto;sec.append(pre);}
+        const botao=raiz.document.createElement('button');botao.className='btn';botao.textContent='Selecionar esta versão após conferir';sec.append(botao);
+        botao.onclick=async()=>{if(rodada!==versaoLeitura||estado.empresaId!==empresa||estado.orgId!==org){sec.remove();return;}botao.disabled=true;try{await deps.evidenciasAnexo({...body,acao:'selecionar',hash:r.hash});if(rodada===versaoLeitura&&estado.empresaId===empresa&&estado.orgId===org)botao.textContent='Versão selecionada; vigência jurídica não comprovada';else sec.remove();}catch{botao.textContent='Arquivo alterado ou revisão indisponível. Leia novamente.';}};
+        painelEvidencia=sec;alvo.append(sec);
+      }catch{aviso('Não foi possível ler esta versão. Arquivo preservado; confira os limites e o acesso.','erro');}
+    }
     async function abrirAnexo(id) {
       const anexo = estado.anexos.find(item => item.id === id);
       if (!anexo) return;
@@ -211,7 +231,7 @@
       $("form-contrato").addEventListener("submit", salvarContrato);
       $("form-anexo").addEventListener("submit", salvarAnexo);
       $("d-conteudo").addEventListener("click", async ev => {
-        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-excluir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-concluir-prazo]");
+        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-excluir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-ler-evidencia],[data-concluir-prazo]");
         if (!botao) return;
         const { editarProcesso: editar, resultado, item, corrigirItem, excluirItem: excluirId, ocorrencia, editarOcorrencia, editarPrazo, contrato, editarContrato, editarEmpenho, anexo, abrirAnexo: abrirId, concluirPrazo } = botao.dataset;
         if (editar) { editarProcesso(editar); return; }
@@ -262,6 +282,7 @@
           return;
         }
         if (anexo) { prepararFormulario("anexo", anexo); return; }
+        if (botao.dataset.lerEvidencia) { await lerEvidencia(botao.dataset.lerEvidencia); return; }
         if (abrirId) { await abrirAnexo(abrirId); return; }
         if (concluirPrazo) {
           const prazo = estado.prazos.find(x => x.id === concluirPrazo);
