@@ -25,7 +25,7 @@ test("cliente.html não tem <script> inline nem style=, e tem noindex e no-refer
   assert.match(html, /<meta name="referrer" content="no-referrer">/);
 });
 
-const CSP = "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+const CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 test("_headers tem o bloco /cliente* que desanexa os globais e aplica CSP estrita e no-store", () => {
   const bloco = ler("_headers").split(/\n(?=\S)/).find((b) => b.startsWith("/cliente*\n"));

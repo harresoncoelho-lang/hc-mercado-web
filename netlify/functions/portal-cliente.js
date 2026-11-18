@@ -7,14 +7,20 @@
 // - Token fora do formato (43 caracteres base64url) responde 404 sem tocar no banco.
 // - Link inexistente, expirado ou revogado: a RPC devolve null e a resposta é sempre o mesmo 404.
 // - 1 subrequisição por chamada (limite do Cloudflare Pages grátis), com timeout de 8 s.
-// Lacunas conhecidas do SQL (não corrigidas aqui, de propósito):
-// - Erro dentro da RPC (PT400/PT403 em portal_responder) desfaz a transação inteira, inclusive o
-//   contador de limite e a auditoria 'negado'. O limitador em memória abaixo é só uma segunda barreira
-//   por isolate (cada isolate do Cloudflare tem o próprio Map e ele some quando o isolate recicla):
-//   NÃO substitui o limite do banco.
-// - Não existe RPC própria para registrar 'negado' quando a RPC falha (portal_link_valido é interna e
-//   sem execute para service_role). Por isso esses eventos não são auditados; criar essa RPC é decisão
-//   do SQL, não deste endpoint.
+// - Cada resposta é validada aqui com o mesmo contrato do SQL (uuid, decisão, versão de 32 hex, observação
+//   de até 1000 caracteres) antes de ir ao banco. portal_responder devolve {erro, codigo} em vez de raise,
+//   então o contador de limite e a auditoria 'negado' ficam gravados mesmo quando a resposta é recusada.
+// - O limitador em memória abaixo é só uma segunda barreira por isolate (cada isolate do Cloudflare tem o
+//   próprio Map e ele some quando o isolate recicla): NÃO substitui o limite do banco.
+// IP de origem (revisão de segurança, M2): cada plataforma tem UM cabeçalho confiável, e só ele vale.
+// - Cloudflare Pages: cf-connecting-ip, que a borda sempre reescreve. Só é lido quando o código roda no
+//   runtime do Workers (navigator.userAgent === "Cloudflare-Workers"). Isso não vem da requisição, então
+//   um cliente não forja; um cabeçalho interno marcado pelo adaptador seria forjável se o adaptador um
+//   dia deixasse de apagá-lo.
+// - Fora do Workers (Netlify): só x-nf-client-connection-ip, que a borda do Netlify define. cf-connecting-ip
+//   e x-forwarded-for vindos do cliente são ignorados.
+// - Sem IP confiável: a origem vira o próprio token, com limite em memória mais estrito (10/min). No banco
+//   os limites "por IP" passam a valer por token; o token tem 256 bits, então isso não abre enumeração.
 const { createHash, createHmac } = require("node:crypto");
 const { cabecalhosPadrao } = require("./_auth");
 
@@ -30,14 +36,15 @@ const CHAVES_PROIBIDAS = new Set(["cnpj", "organizacao_id", "token_hash", "ip_ha
 
 // Limitador em memória por isolate: 30 requisições por minuto por ip_hash.
 const LIMITE_MEMORIA = 30;
+const LIMITE_MEMORIA_SEM_IP = 10;
 const JANELA_MS = 60000;
 const MAX_ENTRADAS = 5000;
 const contagens = new Map();
-function estourouMemoria(chave, agora = Date.now()) {
+function estourouMemoria(chave, limite = LIMITE_MEMORIA, agora = Date.now()) {
   const atual = contagens.get(chave);
   if (atual && agora - atual.inicio < JANELA_MS) {
     atual.n += 1;
-    return atual.n > LIMITE_MEMORIA;
+    return atual.n > limite;
   }
   contagens.delete(chave);
   if (contagens.size >= MAX_ENTRADAS) {
@@ -49,9 +56,13 @@ function estourouMemoria(chave, agora = Date.now()) {
   return false;
 }
 
-function ipDoEvento(headers) {
+const emCloudflare = () => globalThis.navigator?.userAgent === "Cloudflare-Workers";
+
+// IP confiável da plataforma ou null (ver o cabeçalho deste arquivo).
+function ipDoEvento(headers, naCloudflare = emCloudflare()) {
   const h = headers || {};
-  return h["cf-connecting-ip"] || h["x-nf-client-connection-ip"] || String(h["x-forwarded-for"] || "").split(",")[0].trim() || "desconhecido";
+  const ip = naCloudflare ? h["cf-connecting-ip"] : h["x-nf-client-connection-ip"];
+  return typeof ip === "string" && ip.trim() ? ip.trim() : null;
 }
 
 function lerCorpo(event) {
@@ -66,10 +77,22 @@ function lerCorpo(event) {
   }
 }
 
+const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const VERSAO = /^[0-9a-f]{32}$/;
+// Mesmo contrato de portal_responder; o tamanho da observação conta caracteres como o length() do Postgres.
+function respostaValida(r) {
+  return r !== null && typeof r === "object" && !Array.isArray(r)
+    && Object.keys(r).every((k) => ["item_id", "decisao", "versao", "observacao"].includes(k))
+    && typeof r.item_id === "string" && UUID.test(r.item_id)
+    && (r.decisao === "aprovado" || r.decisao === "recusado")
+    && typeof r.versao === "string" && VERSAO.test(r.versao)
+    && (r.observacao === undefined || r.observacao === null || (typeof r.observacao === "string" && [...r.observacao].length <= 1000));
+}
+
 function pedidoValido(b) {
   if (Object.keys(b).some((k) => !["token", "acao", "pagina", "respostas"].includes(k))) return false;
   if (b.acao === "ler") return b.respostas === undefined && (b.pagina === undefined || (Number.isSafeInteger(b.pagina) && b.pagina >= 1 && b.pagina <= MAX_PAGINA));
-  if (b.acao === "responder") return b.pagina === undefined && Array.isArray(b.respostas) && b.respostas.length >= 1 && b.respostas.length <= MAX_RESPOSTAS;
+  if (b.acao === "responder") return b.pagina === undefined && Array.isArray(b.respostas) && b.respostas.length >= 1 && b.respostas.length <= MAX_RESPOSTAS && b.respostas.every(respostaValida);
   return false;
 }
 
@@ -99,8 +122,9 @@ exports.handler = async (event) => {
 
   const b = lerCorpo(event);
   if (!b || !pedidoValido(b)) return resposta(400, { erro: "Requisição inválida." });
-  const ipHash = createHmac("sha256", salt).update(ipDoEvento(event.headers)).digest("hex");
-  if (estourouMemoria(ipHash)) return resposta(429, { erro: "Muitas tentativas. Aguarde um minuto." }, { "Retry-After": "60" });
+  const ip = ipDoEvento(event.headers);
+  const ipHash = createHmac("sha256", salt).update(ip ? `ip:${ip}` : `token:${String(b.token)}`).digest("hex");
+  if (estourouMemoria(ipHash, ip ? LIMITE_MEMORIA : LIMITE_MEMORIA_SEM_IP)) return resposta(429, { erro: "Muitas tentativas. Aguarde um minuto." }, { "Retry-After": "60" });
   if (typeof b.token !== "string" || !TOKEN.test(b.token)) return resposta(404, { erro: LINK_INVALIDO });
   const tokenHash = createHash("sha256").update(b.token).digest("hex");
 
@@ -120,6 +144,8 @@ exports.handler = async (event) => {
   }
   const d = r.dados;
   if (d === null || typeof d !== "object") return resposta(404, { erro: LINK_INVALIDO });
+  if (d.codigo === "invalido") return resposta(400, { erro: "Requisição inválida." });
+  if (d.codigo === "proibido") return resposta(403, { erro: "Acesso não autorizado." });
   if (d.limite === true) return resposta(429, { erro: "Muitas tentativas. Aguarde um minuto." }, { "Retry-After": "60" });
   if (Array.isArray(d.divergentes)) return resposta(409, { erro: "Alguns itens mudaram desde que você abriu a página. Recarregue e confira.", divergentes: d.divergentes });
   return resposta(200, d);

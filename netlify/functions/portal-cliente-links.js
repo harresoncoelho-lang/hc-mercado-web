@@ -2,15 +2,20 @@
 // - criar: o token (256 bits, base64url) nasce aqui e só o sha256 vai para criar_link_cliente. O link
 //   volta uma única vez nesta resposta; não há como recuperá-lo depois (o banco não tem o token).
 //   Nunca registrar o token em log.
+// - O link usa sempre a origem canônica fixa (ORIGEM_LINK), nunca o Origin da requisição: um domínio antigo
+//   da allowlist que mude de dono não recebe tokens.
 // - listar: lê com o token do PRÓPRIO usuário (RLS pode_acessar_processo_operacao + grant por coluna),
 //   sem chave de serviço. Nunca pede token_hash nem ip_hash (o grant de coluna recusaria de qualquer jeito).
+//   Antes, confere clientes.status = 'aprovado' (a RLS do processo não confere): suspenso com JWT ainda
+//   válido recebe 403.
 // - revogar: revogar_link_cliente confere a gestão do processo no banco.
 // - A autorização de criar/revogar (cadastro aprovado, gestor/operador da empresa) mora na RPC.
 const { createHash, randomBytes } = require("node:crypto");
-const { cabecalhosPadrao, exigirUsuarioLogado, origemPermitida } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioLogado } = require("./_auth");
 
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const ANON = "sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb";
+const ORIGEM_LINK = "https://licitaplena.com.br";
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MAX_CORPO = 4096;
 const TIMEOUT_MS = 8000;
@@ -87,13 +92,15 @@ exports.handler = async (event) => {
         p_token_hash: createHash("sha256").update(token).digest("hex"),
         p_rotulo: b.rotulo.trim(), p_dias: b.dias, p_mostrar_minimo: b.mostrarMinimo,
       });
-      return resposta(200, { id: r?.id, link: `${origemPermitida(event)}/cliente#t=${token}`, expiraEm: r?.expira_em });
+      return resposta(200, { id: r?.id, link: `${ORIGEM_LINK}/cliente#t=${token}`, expiraEm: r?.expira_em });
     }
     if (b.acao === "revogar") {
       const r = await rpc("revogar_link_cliente", { p_usuario: auth.userId, p_link: b.linkId });
       return resposta(200, { id: r?.id, revogadoEm: r?.revogado_em });
     }
     const autorizacao = event.headers?.authorization || event.headers?.Authorization;
+    const [cadastro] = await ler(`clientes?id=eq.${auth.userId}&select=status`, autorizacao);
+    if (cadastro?.status !== "aprovado") return resposta(403, { erro: MENSAGENS[403] });
     const p = `processo_id=eq.${b.processoId}`;
     const [links, aceites, auditoria] = await Promise.all([
       ler(`operacao_links_cliente?${p}&select=${COLUNAS_LINKS}&order=criado_em.desc&limit=100`, autorizacao),

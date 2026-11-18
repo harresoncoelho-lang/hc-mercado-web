@@ -70,21 +70,26 @@ begin
 
  -- Resposta válida grava e aparece como última resposta e no histórico.
  res:=public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id',i1,'decisao','aprovado','versao',v1,'observacao','ok')),ip);
- if res<>'{"ok":true,"gravados":1}' then raise exception 'Resposta não gravou: %',res;end if;
+ if res<>'{"ok":true,"gravados":1,"repetidos":0}' then raise exception 'Resposta não gravou: %',res;end if;
  lido:=public.portal_ler(h1,ip,1);
  if lido->'itens'->0->'resposta'->>'decisao'<>'aprovado' or lido->'itens'->1->'resposta'<>'null' or jsonb_array_length(lido->'aceites')<>1 then raise exception 'Última resposta/histórico: %',lido;end if;
  if (select visto->>'valor_unitario_proposta' from public.operacao_aceites_item where item_id=i1)<>'12.50' then raise exception 'visto não guardou o valor mostrado';end if;
 
- -- Item de outro processo ou de outra organização: exceção.
- begin perform public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id','f4000000-0000-4000-8000-000000000043','decisao','aprovado','versao',v1)),ip);
-  raise exception 'Item de outro processo aceito'; exception when sqlstate 'PT403' then null; end;
- begin perform public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id','f4000000-0000-4000-8000-000000000044','decisao','aprovado','versao',v1)),ip);
-  raise exception 'Item de outra organização aceito'; exception when sqlstate 'PT403' then null; end;
- begin perform public.portal_responder(h1,'[]',ip); raise exception 'Lista vazia aceita'; exception when sqlstate 'PT400' then null; end;
- begin perform public.portal_responder(h1,(select jsonb_agg(jsonb_build_object('item_id',i1,'decisao','aprovado','versao',v1)) from generate_series(1,201)),ip);
-  raise exception '201 respostas aceitas'; exception when sqlstate 'PT400' then null; end;
- begin perform public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id',i1,'decisao','talvez','versao',v1)),ip);
-  raise exception 'Decisão inválida aceita'; exception when sqlstate 'PT400' then null; end;
+ -- Item de outro processo ou de outra organização, lista vazia, 201 respostas, decisão inválida e UUID só de
+ -- hífens: voltam {erro, codigo} (sem raise) e cada recusa fica auditada como 'negado'.
+ if public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id','f4000000-0000-4000-8000-000000000043','decisao','aprovado','versao',v1)),ip)->>'codigo'
+    is distinct from 'proibido' then raise exception 'Item de outro processo aceito';end if;
+ if public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id','f4000000-0000-4000-8000-000000000044','decisao','aprovado','versao',v1)),ip)->>'codigo'
+    is distinct from 'proibido' then raise exception 'Item de outra organização aceito';end if;
+ if public.portal_responder(h1,'[]',ip)->>'codigo' is distinct from 'invalido' then raise exception 'Lista vazia aceita';end if;
+ if public.portal_responder(h1,(select jsonb_agg(jsonb_build_object('item_id',i1,'decisao','aprovado','versao',v1)) from generate_series(1,201)),ip)->>'codigo'
+    is distinct from 'invalido' then raise exception '201 respostas aceitas';end if;
+ if public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id',i1,'decisao','talvez','versao',v1)),ip)->>'codigo'
+    is distinct from 'invalido' then raise exception 'Decisão inválida aceita';end if;
+ if public.portal_responder(h1,jsonb_build_array(jsonb_build_object('item_id',repeat('-',36),'decisao','aprovado','versao',v1)),ip)
+    <>'{"erro":"Resposta inválida","codigo":"invalido"}' then raise exception 'UUID de hífens não voltou como erro';end if;
+ if (select count(*) from public.operacao_portal_auditoria where evento='negado' and ip_hash=ip and detalhe->>'motivo' like 'resposta_%')<>6
+ then raise exception 'Recusas de resposta não auditadas';end if;
 
  -- Versão velha: nada é gravado, nem o item com versão atual do mesmo lote.
  update public.operacao_itens_resultado set valor_unitario_proposta=13.00 where id=i1;
@@ -94,9 +99,26 @@ begin
  if res<>jsonb_build_object('ok',false,'divergentes',jsonb_build_array(i1)) then raise exception 'Divergência não detectada: %',res;end if;
  if (select count(*) from public.operacao_aceites_item)<>n then raise exception 'Versão velha gravou';end if;
 
- -- Histórico só cresce.
+ -- Histórico só cresce: nem UPDATE, nem DELETE, nem TRUNCATE (o dono das tabelas roda este bloco).
  begin update public.operacao_aceites_item set decisao='recusado'; raise exception 'UPDATE em aceite passou';
  exception when raise_exception then if sqlerrm not like 'Aceite do cliente não pode%' then raise; end if; end;
+ begin delete from public.operacao_aceites_item; raise exception 'DELETE em aceite passou';
+ exception when raise_exception then if sqlerrm not like 'Aceite do cliente não pode%' then raise; end if; end;
+ begin truncate public.operacao_aceites_item; raise exception 'TRUNCATE em aceite passou';
+ exception when raise_exception then if sqlerrm not like 'Aceite do cliente não pode%' then raise; end if; end;
+ -- Item, link e processo com aceite não se apagam (antes sumiam em cascata).
+ begin delete from public.operacao_itens_resultado where id=i1; raise exception 'Item com aceite apagado';
+ exception when foreign_key_violation then if sqlerrm<>'Este item tem respostas do cliente; arquive em vez de excluir.' then raise; end if; end;
+ begin delete from public.operacao_links_cliente where token_hash=h1; raise exception 'Link com aceite apagado';
+ exception when foreign_key_violation then if sqlerrm<>'Este item tem respostas do cliente; arquive em vez de excluir.' then raise; end if; end;
+ begin delete from public.operacao_processos where id=pa; raise exception 'Processo com aceite apagado';
+ exception when foreign_key_violation then if sqlerrm<>'Este item tem respostas do cliente; arquive em vez de excluir.' then raise; end if; end;
+ if (select count(*) from public.operacao_aceites_item)<>n then raise exception 'Aceite sumiu';end if;
+ -- Item sem aceite continua apagável.
+ delete from public.operacao_itens_resultado where id='f4000000-0000-4000-8000-000000000043';
+ if has_table_privilege('service_role','public.operacao_aceites_item','DELETE') or has_table_privilege('service_role','public.operacao_aceites_item','TRUNCATE')
+    or has_table_privilege('service_role','public.operacao_portal_auditoria','DELETE') or has_table_privilege('service_role','public.operacao_portal_auditoria','TRUNCATE')
+ then raise exception 'service_role pode apagar aceite ou auditoria';end if;
 
  -- Revogado, expirado e inexistente: mesma resposta (null) e auditoria 'negado'.
  res:=public.revogar_link_cliente(ua,link_r);
@@ -133,15 +155,53 @@ begin
  for k in 1..10 loop
   res:=public.portal_responder(repeat('b',64),jsonb_build_array(jsonb_build_object('item_id',i2,'decisao','aprovado','versao',v2)),lpad(to_hex(k),64,'5'));
   if res ? 'limite' then raise exception 'Limite de resposta cedo demais (%)',k;end if;
+  if res->>'gravados'<>(case k when 1 then '1' else '0' end) then raise exception 'Reenvio igual gravou de novo (%): %',k,res;end if;
  end loop;
+ if (select count(*) from public.operacao_aceites_item a join public.operacao_links_cliente k on k.id=a.link_id where k.token_hash=repeat('b',64))<>1
+ then raise exception 'Envio repetido duplicou o aceite';end if;
  if public.portal_responder(repeat('b',64),jsonb_build_array(jsonb_build_object('item_id',i2,'decisao','aprovado','versao',v2)),repeat('6',64))<>'{"limite":true}'
  then raise exception 'Limite de respostas não estourou';end if;
  if (select count(*) from public.operacao_portal_auditoria where evento='limite')<>4 then raise exception 'Auditoria de limite deveria ter 1 linha por estouro';end if;
 
- -- Limpeza: linha de limite com mais de 1 dia some na próxima leitura.
+ -- M1: 15 respostas inválidas com token válido e o mesmo IP: o contador sobe (antes o raise o desfazia),
+ -- as 10 primeiras viram erro auditado e as 5 últimas, limite.
+ for k in 1..15 loop
+  res:=public.portal_responder(h2,jsonb_build_array(jsonb_build_object('item_id',repeat('-',36),'decisao','aprovado','versao',v1)),repeat('d',64));
+  if (k<=10 and res->>'codigo' is distinct from 'invalido') or (k>10 and res<>'{"limite":true}') then raise exception 'Chamada inválida % deu %',k,res;end if;
+ end loop;
+ if (select contagem from public.operacao_portal_limite where chave='resp:'||h2)<>15 then raise exception 'Contador não subiu com chamadas inválidas';end if;
+ if (select count(*) from public.operacao_portal_auditoria where evento='negado' and ip_hash=repeat('d',64))<>10 then raise exception 'negado não gravado com erro';end if;
+
+ -- B6: link de quem não tem (mais) acesso de gestão ao processo não vale.
+ insert into public.operacao_links_cliente(organizacao_id,empresa_id,processo_id,token_hash,rotulo,criado_por,expira_em)
+  values('f4000000-0000-4000-8000-00000000000a',ea,pa,repeat('f',64),'Criador sem acesso',ur,now()+interval '5 days');
+ if public.portal_ler(repeat('f',64),repeat('c',64),1) is not null then raise exception 'Link de criador sem acesso ainda vale';end if;
+ if not exists(select 1 from public.operacao_portal_auditoria where evento='negado' and ip_hash=repeat('c',64) and detalhe->>'motivo'='criador_sem_acesso')
+ then raise exception 'Motivo criador_sem_acesso não auditado';end if;
+
+ -- Limpeza: linha de limite com mais de 1 dia some na próxima leitura e na próxima resposta; acesso/negado/limite
+ -- com mais de 180 dias somem; resposta e link_criado antigos ficam.
  insert into public.operacao_portal_limite values('ip:velho',now()-interval '2 days',1);
  perform public.portal_ler(h1,repeat('7',64),1);
  if exists(select 1 from public.operacao_portal_limite where chave='ip:velho') then raise exception 'Limite antigo não foi limpo';end if;
+ insert into public.operacao_portal_limite values('ip:velho2',now()-interval '2 days',1);
+ insert into public.operacao_portal_auditoria(evento,processo_id,detalhe,criado_em) values
+  ('acesso',pa,'{"qa":"velho"}',now()-interval '181 days'),('negado',pa,'{"qa":"velho"}',now()-interval '181 days'),
+  ('limite',null,'{"qa":"velho"}',now()-interval '181 days'),('resposta',pa,'{"qa":"velho"}',now()-interval '181 days'),
+  ('link_criado',pa,'{"qa":"velho"}',now()-interval '181 days'),('acesso',pa,'{"qa":"recente"}',now()-interval '179 days');
+ perform public.portal_responder(repeat('0',64),'[]',repeat('7',64));
+ if exists(select 1 from public.operacao_portal_limite where chave='ip:velho2') then raise exception 'portal_responder não limpou o limite';end if;
+ if (select array_agg(evento||':'||(detalhe->>'qa') order by evento) from public.operacao_portal_auditoria where detalhe ? 'qa')
+    <>array['acesso:recente','link_criado:velho','resposta:velho'] then raise exception 'Retenção de 180 dias incorreta';end if;
+
+ -- Teto global de 'negado' por hora: estourou, só conta (um único evento 'limite').
+ insert into public.operacao_portal_limite values('global:negado',date_trunc('hour',now()),1000)
+  on conflict (chave,janela) do update set contagem=1000;
+ for k in 1..3 loop perform public.portal_ler(lpad(to_hex(k),64,'9'),repeat('8',64),1); end loop;
+ if exists(select 1 from public.operacao_portal_auditoria where evento='negado' and ip_hash=repeat('8',64)) then raise exception 'negado gravado acima do teto';end if;
+ if (select contagem from public.operacao_portal_limite where chave='global:negado' and janela=date_trunc('hour',now()))<>1003
+    or (select count(*) from public.operacao_portal_auditoria where evento='limite' and detalhe->>'motivo'='negado_global_hora')<>1
+ then raise exception 'Teto global de negado incorreto';end if;
 
  -- RPCs só para service_role; auxiliares para ninguém.
  if has_function_privilege('anon','public.portal_ler(text,text,integer)','EXECUTE') or has_function_privilege('authenticated','public.portal_responder(text,jsonb,text)','EXECUTE')
@@ -159,7 +219,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','f4000000-0000-4000-8000-000000000001',true);
 do $$
 begin
- if (select count(*) from public.operacao_links_cliente)<>7 or (select count(*) from public.operacao_aceites_item)<>11
+ if (select count(*) from public.operacao_links_cliente)<>8 or (select count(*) from public.operacao_aceites_item)<>2
     or not exists(select 1 from public.operacao_portal_auditoria where evento='resposta') then raise exception 'Gestor não lê o portal do processo';end if;
  begin perform token_hash from public.operacao_links_cliente; raise exception 'authenticated leu token_hash'; exception when insufficient_privilege then null; end;
  begin perform ip_hash from public.operacao_aceites_item; raise exception 'authenticated leu ip_hash do aceite'; exception when insufficient_privilege then null; end;
@@ -168,6 +228,10 @@ begin
   select link_id,organizacao_id,processo_id,item_id,'aprovado','{}',versao from public.operacao_aceites_item limit 1; raise exception 'authenticated gravou aceite';
  exception when insufficient_privilege then null; end;
  begin perform public.portal_ler(repeat('0',64),repeat('8',64),1); raise exception 'authenticated chamou portal_ler'; exception when insufficient_privilege then null; end;
+ -- Prova da revisão (A1): o gestor tenta apagar o item aprovado pelo cliente e falha; o aceite continua lá.
+ begin delete from public.operacao_itens_resultado where id='f4000000-0000-4000-8000-000000000041'; raise exception 'Gestor apagou item com aceite';
+ exception when foreign_key_violation then if sqlerrm<>'Este item tem respostas do cliente; arquive em vez de excluir.' then raise; end if; end;
+ if not exists(select 1 from public.operacao_aceites_item where item_id='f4000000-0000-4000-8000-000000000041') then raise exception 'Aceite sumiu após delete do gestor';end if;
 end $$;
 
 -- Operador restrito a outra empresa e gestor de outra organização não leem nada do processo A.

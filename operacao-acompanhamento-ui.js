@@ -129,6 +129,7 @@
       if (!item || !window.confirm(`Excluir o lançamento do ${item.tipo} ${item.identificador}? A apuração e os indicadores serão recalculados.`)) return;
       const { data: excluidos, error } = await sb.from("operacao_itens_resultado").delete()
         .eq("id", item.id).eq("processo_id", item.processo_id).eq("organizacao_id", estado.orgId).select("id");
+      if (error?.code === "23503") { aviso(error.message, "erro"); return; }
       if (error || !excluidos?.length) { aviso("Não foi possível excluir o item/lote. Atualize a página e tente novamente." + (error ? ` ${error.message}` : ""), "erro"); return; }
       await atualizarEReabrir(item.processo_id);
       const processo = estado.processos.find(registro => registro.id === item.processo_id);

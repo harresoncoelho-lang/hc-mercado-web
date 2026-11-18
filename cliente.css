@@ -1,4 +1,6 @@
 /* Portal do cliente (cliente.html). Tokens do Design System (ds-tokens.css); placa da marca igual à do cadastro. */
+/* Só fontes do sistema: a página pública não chama o Google Fonts (o IP do cliente final não sai para terceiros). */
+:root{--font-sans:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--surface-page);color:var(--text-primary);font:var(--text-body);-webkit-font-smoothing:antialiased}
 body{min-height:100vh;padding-bottom:140px}

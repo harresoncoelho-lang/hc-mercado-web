@@ -1,4 +1,4 @@
-/* global module, document, location, fetch, setTimeout, URL, URLSearchParams -- script de navegador; module só nos testes em Node */
+/* global module, document, location, history, sessionStorage, fetch, setTimeout, URL, URLSearchParams -- script de navegador; module só nos testes em Node */
 // Portal do cliente (cliente.html): o cliente da assessoria abre /cliente#t=<token>, confere os itens do
 // processo e aprova/recusa item a item. Contrato: netlify/functions/portal-cliente.js (POST /api/portal-cliente,
 // acao 'ler' com pagina, acao 'responder' com 1 a 200 respostas, cada uma com a versao do item).
@@ -115,8 +115,20 @@
     if (texto !== undefined && texto !== null) e.textContent = String(texto);
     return e;
   };
+  // O token sai da barra de endereço e do histórico logo depois de lido. Fica só no sessionStorage desta aba,
+  // para recarregar a página continuar funcionando (some ao fechar a aba).
+  function lerToken() {
+    const doHash = tokenDoHash(location.hash);
+    if (doHash) history.replaceState(null, '', location.pathname + location.search);
+    try {
+      if (doHash) sessionStorage.setItem('portal_t', doHash);
+      return doHash || tokenDoHash('#t=' + (sessionStorage.getItem('portal_t') || ''));
+    } catch {
+      return doHash; // sessionStorage bloqueado: vale só o hash desta abertura
+    }
+  }
   const estado = {
-    token: tokenDoHash(location.hash),
+    token: lerToken(),
     pagina: 1,
     dados: null,
     paginas: new Map(), // pagina -> itens já carregados (para contar e aprovar todos)
