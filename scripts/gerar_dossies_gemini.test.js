@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 process.env.MAX_TENTATIVAS_DOSSIE = "2";
-const { cabeNovoDossie, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, montarProvedores, chamarCadeia, corpoCompat, GeminiSobrecarregado, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
+const { cabeNovoDossie, limiteDocumentosLeitura, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, montarProvedores, chamarCadeia, corpoCompat, GeminiSobrecarregado, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
 const contrato = require("../netlify/functions/_resumo_gateway_contrato");
 const { estruturaValida } = require("../netlify/functions/_resumo_gateway");
 
@@ -95,6 +95,29 @@ test("seleção põe cliques antes do boletim e pula pronto, repetido e esgotado
     limite: 10,
   });
   assert.deepEqual(candidatos.map((c) => `${c.origem}:${c.numero}`), ["clique:clique1", "clique:clique2", "boletim:novo", "boletim:velho"]);
+});
+
+test("interesse passa à frente de clique e boletim, mesmo depois de uma tentativa", () => {
+  const candidatos = selecionarCandidatos({
+    fila: [
+      { numero_controle_pncp: "clique", origem: "clique", pedido_em: "2026-11-01" },
+      { numero_controle_pncp: "interesse-novo", origem: "interesse", pedido_em: "2026-11-03" },
+      { numero_controle_pncp: "interesse-antigo", origem: "interesse", pedido_em: "2026-11-02" },
+      { numero_controle_pncp: "interesse-esgotado", origem: "interesse", pedido_em: "2026-11-01" },
+    ],
+    boletim: [{ numero_controle_pncp: "boletim", publicacao: "2026-11-05" }],
+    antecipados: [{ numero_controle_pncp: "antecipado", publicacao: "2026-11-05" }],
+    dossiesProntos: new Set(), tentativas: new Map([["interesse-novo", 1], ["interesse-esgotado", 2]]), limite: 10,
+  });
+  assert.deepEqual(candidatos.map((c) => `${c.origem}:${c.numero}`),
+    ["interesse:interesse-antigo", "interesse:interesse-novo", "clique:clique", "boletim:antecipado", "boletim:boletim"]);
+});
+
+test("interesse lê todos os documentos; clique e boletim seguem com 12", () => {
+  assert.equal(limiteDocumentosLeitura("interesse"), Infinity);
+  assert.equal(limiteDocumentosLeitura("clique"), 12);
+  assert.equal(limiteDocumentosLeitura("boletim"), 12);
+  assert.equal(limiteDocumentosLeitura(undefined), 12);
 });
 
 test("seleção respeita o teto restante do dia", () => {

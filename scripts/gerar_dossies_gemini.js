@@ -311,6 +311,10 @@ function selecionarCandidatos({ fila, boletim, antecipados = [], dossiesProntos,
   const vistos = new Set();
   const candidatos = [];
   const pode = (numero) => numero && !vistos.has(numero) && !dossiesProntos.has(numero) && (tentativas.get(numero) || 0) < MAX_TENTATIVAS;
+  // Interesse = processo aberto no Funil (gatilho operacao_esteira.sql): passa à frente de clique e boletim.
+  for (const item of [...fila].filter((i) => i.origem === "interesse").sort((a, b) => String(a.pedido_em).localeCompare(String(b.pedido_em)))) {
+    if (pode(item.numero_controle_pncp)) { vistos.add(item.numero_controle_pncp); candidatos.push({ numero: item.numero_controle_pncp, origem: "interesse" }); }
+  }
   for (const item of [...fila].filter((i) => (i.origem || "clique") === "clique" && !tentativas.get(i.numero_controle_pncp)).sort((a, b) => String(a.pedido_em).localeCompare(String(b.pedido_em)))) {
     if (pode(item.numero_controle_pncp)) { vistos.add(item.numero_controle_pncp); candidatos.push({ numero: item.numero_controle_pncp, origem: "clique" }); }
   }
@@ -396,10 +400,15 @@ async function registrarTentativa(candidato, tentativasAnteriores, { erro = null
   });
 }
 
-async function gerarDossie(numero, { provedores, fetchFn, esgotados } = {}) {
+// Processo com interesse lê todos os anexos; os limites de bytes e de texto continuam valendo.
+function limiteDocumentosLeitura(origem) {
+  return origem === "interesse" ? Infinity : 12;
+}
+
+async function gerarDossie(numero, { origem, provedores, fetchFn, esgotados } = {}) {
   const ficha = await iaEdital.buscarFichaCanonica(numero) || { numeroControlePNCP: numero, fonte: "PNCP" };
   // A preparação em segundo plano pode ler os anexos que não cabem no limite interativo.
-  const leitura = await iaEdital.buscarTextoEdital(numero, { limiteDocumentos: 12,
+  const leitura = await iaEdital.buscarTextoEdital(numero, { limiteDocumentos: limiteDocumentosLeitura(origem),
     extrairArquivo: process.env.LEITURA_MULTIFORMATO === "1" ? require("./extrair_anexo_local").extrairAnexoLocal : null });
   if (!leitura.texto && leitura.indisponivel) return { pncpIndisponivel: true };
   if (!leitura.texto) return { semDocumento: true, motivo: leitura.escaneado ? "escaneado" : "sem_documento" };
@@ -459,7 +468,7 @@ async function main() {
     const inicioEdital = Date.now();
     const anteriores = dados.tentativas.get(candidato.numero) || 0;
     try {
-      const resultado = await gerarComEspera(candidato.numero, { provedores, esgotados, prazoFinal: inicio + LIMITE_MS });
+      const resultado = await gerarComEspera(candidato.numero, { origem: candidato.origem, provedores, esgotados, prazoFinal: inicio + LIMITE_MS });
       if (resultado.pncpIndisponivel) {
         // PNCP fora do ar: o edital continua na fila sem gastar tentativa.
         console.warn(`[dossiês] PNCP não respondeu ao baixar ${candidato.numero}; o restante fica para a próxima execução.`);
@@ -495,4 +504,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { cabeNovoDossie, VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, carregarAntecipados, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
+module.exports = { cabeNovoDossie, limiteDocumentosLeitura, VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, carregarAntecipados, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };

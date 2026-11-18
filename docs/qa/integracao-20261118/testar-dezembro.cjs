@@ -2,7 +2,7 @@
 //   node testar-dezembro.cjs
 // Mesma base de testar-aplicar.cjs (produção de 31/10), depois 01-aplicar.sql, depois
 // operacao_itens_proposta.sql + operacao_funil_etapas.sql + operacao_portal_cliente.sql + operacao_perfil_empresa.sql
-// + operacao_exigencias.sql duas vezes, com os testes SQL e o 02 a cada rodada.
+// + operacao_exigencias.sql + operacao_esteira.sql duas vezes, com os testes SQL e o 02 a cada rodada.
 // Auth/Storage do Supabase são stubs mínimos: não prova a API HTTP nem o dono de storage.objects.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const SUP = path.join(__dirname, '../../../supabase');
@@ -10,9 +10,9 @@ const ler = nome => fs.readFileSync(path.join(SUP, nome), 'utf8');
 const APLICAR = fs.readFileSync(path.join(__dirname, '01-aplicar.sql'), 'utf8');
 const VERIFICAR = fs.readFileSync(path.join(__dirname, '02-verificar.sql'), 'utf8');
 const NOVOS = ['operacao_itens_proposta.sql', 'operacao_funil_etapas.sql', 'operacao_portal_cliente.sql',
-  'operacao_perfil_empresa.sql', 'operacao_exigencias.sql'];
+  'operacao_perfil_empresa.sql', 'operacao_exigencias.sql', 'operacao_esteira.sql'];
 const TESTES = ['testar_itens_proposta.sql', 'testar_funil_etapas.sql', 'testar_portal_cliente.sql',
-  'testar_perfil_empresa.sql', 'testar_exigencias.sql'];
+  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql'];
 
 function carregarPGlite() {
   const candidatos = [process.env.PGLITE_MODULE_PATH, '@electric-sql/pglite',
@@ -66,7 +66,7 @@ function carregarPGlite() {
     await db.exec(rls.slice(0, rls.indexOf('-- 3) RLS de "clientes"')));
     await db.exec('grant execute on function public.incrementar_uso(uuid, text) to anon, authenticated;');
     for (const f of ['operacao_licitacoes.sql', 'operacao_acompanhamento.sql', 'limite_cnpjs_operacao.sql', 'acesso_empresa_convites.sql',
-      'operacao_checklist_edital.sql', 'operacao_kanban_sync.sql', 'operacao_itens_valores_unitarios.sql', 'operacao_itens_marca_modelo.sql']) await db.exec(ler(f));
+      'operacao_checklist_edital.sql', 'operacao_kanban_sync.sql', 'operacao_itens_valores_unitarios.sql', 'operacao_itens_marca_modelo.sql', 'fila_dossies.sql']) await db.exec(ler(f));
     const org = id(1), emp = id(11), gestor = id(101);
     await db.query('insert into auth.users values($1,$2)', [gestor, 'gestor@example.invalid']);
     await db.query("insert into clientes(id,nome,email,status) values($1,'Pessoa fictícia','gestor@example.invalid','aprovado')", [gestor]);
