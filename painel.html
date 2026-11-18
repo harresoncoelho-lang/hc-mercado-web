@@ -1,21 +1,22 @@
 <!DOCTYPE html>
-<html lang="pt-br" data-theme="dark">
+<html lang="pt-br" data-theme="light" class="tema-claro">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
   // Aplica o tema salvo (localStorage) antes de qualquer coisa renderizar — sem isso, a
-  // página pintaria com o tema padrão (escuro) por uma fração de segundo e só depois
-  // trocaria pro tema claro salvo, causando um "flash" visível. Roda o mais cedo possível
+  // página pintaria com o tema padrão (claro) por uma fração de segundo e só depois
+  // trocaria pro tema escuro salvo, causando um "flash" visível. Roda o mais cedo possível
   // no <head>, antes do <style> e antes do <body> existir (ver botão de alternância no
   // header e o handler de clique, mais abaixo, perto dos outros botões do header).
+  // O padrão passou a ser claro (decisão do dono, 18/11/2026); só quem escolheu escuro o mantém.
   (function () {
     try {
-      if (localStorage.getItem("licitaplena_tema") === "claro") {
-        document.documentElement.classList.add("tema-claro");
-        document.documentElement.dataset.theme = "light"; // tokens do Design System (ds-tokens.css)
+      if (localStorage.getItem("licitaplena_tema") === "escuro") {
+        document.documentElement.classList.remove("tema-claro");
+        document.documentElement.dataset.theme = "dark"; // tokens do Design System (ds-tokens.css)
       }
-    } catch (e) { /* localStorage indisponível: segue com o tema padrão (escuro) */ }
+    } catch (e) { /* localStorage indisponível: segue com o tema padrão (claro) */ }
   })();
 </script>
 <title>LicitaPlena — Inteligência, gestão e automação em licitações</title>
@@ -1436,7 +1437,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="painel-design.css?v=2">
+<link rel="stylesheet" href="painel-design.css?v=3">
 <script src="contatos-resumo.js?v=1" defer></script>
 <script src="decisoes-resumo.js?v=1" defer></script>
 </head>
@@ -1581,11 +1582,11 @@
   <button data-alvo="boletim" title="Boletim"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg></span><span class="nav-label">Boletim</span></button>
   <button data-alvo="oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span class="nav-label">Encontrar Licitações</span></button>
   <button data-alvo="diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-chart-bar'></use></svg></span><span class="nav-label">Inteligência de Mercado</span></button>
-  <button data-alvo="empresa" title="Analisar Empresa"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-buildings'></use></svg></span><span class="nav-label">Analisar Empresa</span></button>
+  <button data-alvo="empresa" title="Analisar concorrente"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-buildings'></use></svg></span><span class="nav-label">Analisar concorrente</span></button>
   <button data-alvo="transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-handshake'></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></button>
   <button data-alvo="precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-coins'></use></svg></span><span class="nav-label">Pesquisa de Preços</span></button>
-  <button data-alvo="kanban" title="Kanban"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-folders'></use></svg></span><span class="nav-label">Kanban</span></button>
-  <a href="operacao.html" title="Central Operacional"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-files'></use></svg></span><span class="nav-label">Central Operacional</span></a>
+  <button data-alvo="kanban" title="Funil"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-folders'></use></svg></span><span class="nav-label">Funil</span></button>
+  <a href="operacao.html" class="nav-externo" title="Minhas empresas e documentos (abre outra página)"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-files'></use></svg></span><span class="nav-label">Minhas empresas e documentos</span><svg class='icone-ph nav-externo-ico' aria-hidden="true"><use href='#ph-arrow-square-out'></use></svg></a>
   <button data-alvo="juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-scales'></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></button>
   <button data-alvo="status" title="Status das Ferramentas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-circle'></use></svg></span><span class="nav-label">Status das Ferramentas</span></button>
 </nav>
@@ -1653,7 +1654,6 @@
 </script>
 
 <main>
-<details class="contatos-resumo" style="margin-bottom:18px"><summary>Respostas dos clientes às oportunidades</summary><p>Decisões recebidas pelos links individuais. Confirmar participação aqui não inscreve a empresa no portal.</p><button type="button" id="decisoes-clientes-atualizar">Atualizar respostas</button><div id="decisoes-clientes-lista" role="status"></div></details>
 
   <section id="dashboard" class="ativa">
     <div class="dash-boas-vindas">
@@ -1664,26 +1664,22 @@
     </div>
 
     <div class="secao-conteudo-principal">
-    <div class="dash-cards">
+    <div class="dash-painel dash-vence-semana">
+      <h3 class="dash-painel-titulo" style="margin:0 0 4px;">O que vence esta semana?</h3>
+      <p style="margin:0 0 12px;font-size:13px;color:var(--texto-fraco);">Prazos de proposta dos pr&oacute;ximos 7 dias no seu Boletim e no seu Funil, do mais urgente para o menos urgente.</p>
+      <div id="dash-vence-semana" role="status" aria-live="polite"><p class="dica-clique" style="margin:0;">Carregando&hellip;</p></div>
+    </div>
+
+    <div class="dash-cards dash-cards-conta">
       <div class="dash-card">
         <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg></div>
         <div class="dash-card-num" id="dash-num-oportunidades">&ndash;</div>
         <div class="dash-card-label">Oportunidades no seu boletim</div>
       </div>
       <div class="dash-card">
-        <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-toolbox'></use></svg></div>
-        <div class="dash-card-num">9</div>
-        <div class="dash-card-label">Ferramentas dispon&iacute;veis</div>
-      </div>
-      <div class="dash-card">
         <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-folder'></use></svg></div>
         <div class="dash-card-num" id="dash-num-kanban">&ndash;</div>
-        <div class="dash-card-label">Licita&ccedil;&otilde;es no seu Kanban</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-card-ico"><svg class='icone-ph'><use href='#ph-globe'></use></svg></div>
-        <div class="dash-card-num">Nacional</div>
-        <div class="dash-card-label">Abrang&ecirc;ncia da cobertura</div>
+        <div class="dash-card-label">Licita&ccedil;&otilde;es no seu Funil</div>
       </div>
     </div>
 
@@ -1709,19 +1705,6 @@
       <div class="dash-painel">
         <div class="dash-painel-titulo">Acesso r&aacute;pido</div>
         <div class="dash-atalhos" id="dash-atalhos"></div>
-      </div>
-    </div>
-
-    <div class="dash-painel" style="margin-top:20px;">
-      <div class="dash-painel-titulo">Filtros de busca</div>
-      <p style="margin:0 0 14px;font-size:13px;color:var(--texto-fraco);">Pr&eacute;via dos filtros da aba <strong>Encontrar Licita&ccedil;&otilde;es</strong> &mdash; clique em qualquer campo para ir direto at&eacute; l&aacute;.</p>
-      <div class="dash-filtros-preview" id="dash-filtros-preview">
-        <div class="dash-filtro-campo"><label>Objeto / palavra-chave</label><input type="text" placeholder="Ex: hospitalar, limpeza..." readonly></div>
-        <div class="dash-filtro-campo"><label>Estado (UF)</label><input type="text" placeholder="Todos os estados" readonly></div>
-        <div class="dash-filtro-campo"><label>Cidade</label><input type="text" placeholder="Todas as cidades" readonly></div>
-        <div class="dash-filtro-campo"><label>Data de inclus&atilde;o</label><input type="text" placeholder="Qualquer per&iacute;odo" readonly></div>
-        <div class="dash-filtro-campo"><label>Modalidade</label><input type="text" placeholder="Todas" readonly></div>
-        <div class="dash-filtro-campo"><label>Situa&ccedil;&atilde;o</label><input type="text" placeholder="Vigentes" readonly></div>
       </div>
     </div>
 
@@ -1773,22 +1756,27 @@
       </div>
     </div>
     <div class="secao-conteudo-principal">
-    <div class="empresa-acompanhamento"><label for="bol-empresa">Acompanhar oportunidades para<select id="bol-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">A escolha define a empresa do acompanhamento; não altera os editais públicos do boletim.</p></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:12px;">
+    <div class="empresa-acompanhamento"><label for="bol-empresa">Acompanhar oportunidades para<select id="bol-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">A escolha define a empresa do acompanhamento; não altera os editais públicos do boletim.</p><p class="empresa-convite" hidden>Para acompanhar editais no Funil, cadastre sua empresa em <a href="operacao.html">Minhas empresas e documentos</a>. O Boletim funciona sem isso.</p></div>
+    <div class="bol-acoes-topo" id="bol-acoes-topo" hidden>
         <button class="btn-imprimir" id="bol-atualizar" title="Buscar de novo agora"><svg class='icone-ph'><use href='#ph-arrows-clockwise'></use></svg> Atualizar boletim</button>
-        <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle"><svg class='icone-ph'><use href='#ph-gear'></use></svg> Configurar filtro do boletim</button>
+        <button class="btn-imprimir btn-config-boletim" id="bol-config-toggle" aria-controls="bol-config-painel"><svg class='icone-ph'><use href='#ph-gear'></use></svg> Configurar filtro do boletim</button>
       </div>
     <div class="painel-filtros" id="bol-config-painel" style="display:none;">
+      <div class="bol-config-intro" id="bol-config-intro" hidden>
+        <h3>Monte seu boletim em 1 minuto</h3>
+        <p>Diga o que você vende e onde quer vender. O LicitaPlena monta a lista de editais abertos para você e guarda este filtro na sua conta.</p>
+      </div>
       <div class="campo">
-        <label>Estado (UF)</label>
+        <label for="bol-uf">Estado (UF)</label>
         <select id="bol-uf" class="select-uf select-uf-multiplo" multiple aria-describedby="bol-uf-ajuda"></select>
         <p id="bol-uf-ajuda" class="dica-multiplos">Selecione um ou mais estados. Sem seleção, pesquisa todos.</p>
       </div>
       <div class="campo" style="flex:2">
-        <label>Palavras-chave (separadas por vírgula)</label>
-        <input id="bol-palavras" placeholder="Ex: hospitalar, limpeza, informatica">
+        <label for="bol-palavras">Palavras-chave (separadas por vírgula)</label>
+        <input id="bol-palavras" placeholder="Ex: hospitalar, limpeza, informatica" aria-describedby="bol-palavras-erro">
+        <p id="bol-palavras-erro" class="erro-campo" hidden>Escreva pelo menos uma palavra do que você vende, por exemplo: limpeza.</p>
       </div>
-      <button class="btn-buscar" id="bol-salvar">Salvar filtro na minha conta</button>
+      <button class="btn-buscar" id="bol-salvar">Salvar filtro e atualizar boletim</button>
     </div>
     <p id="bol-filtro-status" role="status" aria-live="polite"></p>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
@@ -1799,7 +1787,7 @@
 
   <section id="oportunidades">
     <div class="secao-conteudo-principal">
-    <div class="empresa-acompanhamento"><label for="op-empresa">Acompanhar oportunidades para<select id="op-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">A escolha define a empresa ao marcar o status de uma licitação encontrada.</p></div>
+    <div class="empresa-acompanhamento"><label for="op-empresa">Acompanhar oportunidades para<select id="op-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">A escolha define a empresa ao marcar o status de uma licitação encontrada.</p><p class="empresa-convite" hidden>Para acompanhar editais no Funil, cadastre sua empresa em <a href="operacao.html">Minhas empresas e documentos</a>. A busca funciona sem isso.</p></div>
     <div class="boletim-cabecalho">
       <div>
         <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Encontrar Licitações</h2>
@@ -1812,41 +1800,42 @@
         <span id="op-filtros-resumo" class="painel-filtros-recolhivel-resumo"></span>
         <button type="button" id="op-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
       </div>
+      <div class="campo" style="flex:2">
+        <label for="op-palavras">Palavras-chave (separadas por vírgula)</label>
+        <input id="op-palavras" placeholder="Ex: hospitalar, limpeza, informatica" aria-describedby="op-palavras-erro">
+        <p id="op-palavras-erro" class="erro-campo" hidden>Para receber no Boletim, escreva pelo menos uma palavra do que você vende.</p>
+      </div>
       <div class="campo">
-        <label>Estado (UF) — opcional</label>
+        <label for="op-uf">Estado (UF) — opcional</label>
         <select id="op-uf" class="select-uf select-uf-multiplo" multiple aria-describedby="op-uf-ajuda"></select>
         <p id="op-uf-ajuda" class="dica-multiplos">Selecione um ou mais estados. Sem seleção, pesquisa todos.</p>
       </div>
-      <div class="campo">
-        <label>Município</label>
-        <div class="select-com-limpar">
-          <select id="op-municipio" class="select-municipio"></select>
-          <button type="button" class="btn-limpar-select" data-limpa="op-municipio" title="Limpar município selecionado">✕</button>
-        </div>
-      </div>
-      <div class="campo">
-        <label>Publicado de</label>
-        <input id="op-data-de" type="date">
-      </div>
-      <div class="campo">
-        <label>Publicado até</label>
-        <input id="op-data-ate" type="date">
-      </div>
-      <div class="campo" style="flex:2">
-        <label>Palavras-chave (separadas por vírgula)</label>
-        <input id="op-palavras" placeholder="Ex: hospitalar, limpeza, informatica">
-      </div>
-      <div class="campo">
-        <label>UASG (só órgãos federais/distritais)</label>
-        <input id="op-uasg" placeholder="Ex: 158465">
-      </div>
       <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
     </div>
-    <details class="painel-filtros-avancados" style="margin:8px 2px 0;">
-      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--azul,#2e8dff);"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Filtros avançados</summary>
+    <details class="painel-filtros-avancados" id="op-mais-filtros" style="margin:8px 2px 0;">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--azul-texto,#1c63c7);"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Mais filtros (município, datas, UASG, esfera, valor, órgão)</summary>
       <div class="painel-filtros" style="margin-top:10px;">
         <div class="campo">
-          <label>Esfera</label>
+          <label for="op-municipio">Município</label>
+          <div class="select-com-limpar">
+            <select id="op-municipio" class="select-municipio"></select>
+            <button type="button" class="btn-limpar-select" data-limpa="op-municipio" title="Limpar município selecionado" aria-label="Limpar município selecionado">✕</button>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="op-data-de">Publicado de</label>
+          <input id="op-data-de" type="date">
+        </div>
+        <div class="campo">
+          <label for="op-data-ate">Publicado até</label>
+          <input id="op-data-ate" type="date">
+        </div>
+        <div class="campo">
+          <label for="op-uasg">UASG (só órgãos federais/distritais)</label>
+          <input id="op-uasg" placeholder="Ex: 158465" inputmode="numeric">
+        </div>
+        <div class="campo">
+          <label for="op-esfera">Esfera</label>
           <select id="op-esfera">
             <option value="">Todas</option>
             <option value="federal">Federal</option>
@@ -1855,25 +1844,29 @@
           </select>
         </div>
         <div class="campo">
-          <label>Valor estimado mínimo (R$)</label>
-          <input id="op-valor-min" type="number" min="0" step="0.01" placeholder="Ex: 10000">
+          <label for="op-valor-min">Valor estimado mínimo (R$)</label>
+          <input id="op-valor-min" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 10000">
         </div>
         <div class="campo">
-          <label>Valor estimado máximo (R$)</label>
-          <input id="op-valor-max" type="number" min="0" step="0.01" placeholder="Ex: 500000">
+          <label for="op-valor-max">Valor estimado máximo (R$)</label>
+          <input id="op-valor-max" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex: 500000">
         </div>
         <div class="campo">
-          <label>Código/número da licitação</label>
+          <label for="op-codigo">Código/número da licitação</label>
           <input id="op-codigo" placeholder="Ex: 91077/2025 ou número de controle PNCP">
         </div>
         <div class="campo" style="flex:2">
-          <label>Nome do órgão</label>
+          <label for="op-orgao">Nome do órgão</label>
           <input id="op-orgao" placeholder="Ex: Ministério da Saúde">
         </div>
       </div>
+      <p class="dica-clique" style="margin:8px 2px 0;">Deixe as duas datas em branco pra buscar em todo o histórico coletado. Preencha pra buscar num período específico (ex: últimos 30 ou 60 dias) — inclui licitações já encerradas nesse período, não só as que ainda estão com prazo aberto.</p>
       <p class="dica-clique" style="margin:8px 2px 0;">Esfera: quando o dado direto do PNCP não está disponível (licitações ainda não recapturadas pelo robô), classificamos pelo nome do órgão — pode ficar "Não classificado" em casos raros. Valor e código dependem de dados que só a busca já coletada pelo robô traz completos; licitações vindas só da busca ao vivo podem não ter esses campos ainda.</p>
     </details>
-    <p class="dica-clique" style="margin:8px 2px 0;">Deixe as duas datas em branco pra buscar em todo o histórico coletado. Preencha pra buscar num período específico (ex: últimos 30 ou 60 dias) — inclui licitações já encerradas nesse período, não só as que ainda estão com prazo aberto.</p>
+    <div class="op-receber-boletim">
+      <button type="button" class="btn-imprimir" id="op-receber-boletim"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Receber isso todo dia no Boletim</button>
+      <p class="dica-clique" id="op-receber-boletim-status" role="status" aria-live="polite" style="margin:0;">Usa as palavras-chave e os estados acima e substitui o filtro atual do seu Boletim.</p>
+    </div>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
     <div id="op-resultado"></div>
     </div>
@@ -1901,26 +1894,26 @@
           <button type="button" id="dg-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros">«</button>
         </div>
         <div class="campo">
-          <label>Segmento (palavras-chave)</label>
+          <label for="dg-segmento">Segmento (palavras-chave)</label>
           <input id="dg-segmento" placeholder="Ex: fotovoltaico, energia solar">
         </div>
         <div class="campo">
-          <label>UF de referência</label>
+          <label for="dg-uf">UF de referência</label>
           <select id="dg-uf" class="select-uf"></select>
         </div>
         <div class="campo">
-          <label>Município</label>
+          <label for="dg-municipio">Município</label>
           <div class="select-com-limpar">
             <select id="dg-municipio" class="select-municipio"></select>
             <button type="button" class="btn-limpar-select" data-limpa="dg-municipio" title="Limpar município selecionado">✕</button>
           </div>
         </div>
         <div class="campo">
-          <label>Órgão contém</label>
+          <label for="dg-orgao-filtro">Órgão contém</label>
           <input id="dg-orgao-filtro" placeholder="Ex: Prefeitura, Ministério...">
         </div>
         <div class="campo">
-          <label>Período de análise</label>
+          <label for="dg-dias">Período de análise</label>
           <select id="dg-dias">
             <option value="3">Últimos 3 dias</option>
             <option value="7">Últimos 7 dias</option>
@@ -1934,6 +1927,8 @@
           </select>
         </div>
         <button class="btn-buscar" id="dg-buscar" style="width:100%;">Gerar diagnóstico</button>
+        <button type="button" class="btn-imprimir" id="dg-usar-boletim" style="width:100%;margin-top:8px;"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Usar meu filtro do boletim</button>
+        <p class="dica-clique" id="dg-usar-boletim-status" role="status" aria-live="polite" style="margin:6px 0 0;"></p>
         <p class="dica-clique" style="margin-top:14px;">O histórico é acumulado dia a dia por um robô — quanto mais tempo o site estiver no ar, mais fundo o período de 24 meses vai cobrir de verdade.</p>
       </aside>
       <div class="conteudo-mercado">
@@ -1941,7 +1936,7 @@
           <div id="dg-chips" class="chips"></div>
           <button id="dg-imprimir" class="btn-imprimir" title="Gerar PDF/impressão deste diagnóstico"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button>
         </div>
-        <div id="dg-resultado"></div>
+        <div id="dg-resultado"><div class="estado-vazio"><p class="estado-vazio-titulo">Quem compra o que você vende, e quem costuma ganhar?</p><p>Escreva o segmento (ex.: limpeza, material hospitalar), escolha o estado e clique em <strong>Gerar diagnóstico</strong>. Se já tem boletim, use <strong>Usar meu filtro do boletim</strong> para analisar o mesmo mercado.</p><p>O diagnóstico mostra o volume contratado no período, os concorrentes que já venceram contratos e as oportunidades abertas agora.</p></div></div>
         <div id="dg-detalhe"></div>
       </div>
     </div>
@@ -1963,15 +1958,15 @@
             <button type="button" id="hc-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros">«</button>
           </div>
           <div class="campo">
-            <label>Objeto ou produto</label>
+            <label for="hc-objeto">Objeto ou produto</label>
             <input id="hc-objeto" placeholder="Ex: equipamento hospitalar">
           </div>
           <div class="campo">
-            <label>UF de referência</label>
+            <label for="hc-uf">UF de referência</label>
             <select id="hc-uf" class="select-uf"></select>
           </div>
           <div class="campo">
-            <label>Período</label>
+            <label for="hc-dias">Período</label>
             <select id="hc-dias">
               <option value="30">Últimos 30 dias</option>
               <option value="90">Últimos 3 meses</option>
@@ -2098,7 +2093,9 @@
     try { colapsado = localStorage.getItem(CHAVE) === "1"; } catch (e) { /* segue aberto */ }
     aplicar(colapsado);
     atualizarResumo();
-    painel.querySelectorAll("input, select").forEach((campo) => campo.addEventListener("change", atualizarResumo));
+    // Município e datas foram para "Mais filtros", mas continuam aparecendo no resumo.
+    document.querySelectorAll("#op-filtros-principais input, #op-filtros-principais select, #op-mais-filtros input, #op-mais-filtros select")
+      .forEach((campo) => campo.addEventListener("change", atualizarResumo));
     document.getElementById("op-buscar").addEventListener("click", atualizarResumo);
     btn.addEventListener("click", () => {
       colapsado = !colapsado;
@@ -2138,7 +2135,7 @@
     <div class="secao-conteudo-principal">
     <div class="boletim-cabecalho">
       <div>
-        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-buildings'></use></svg> Analisar Empresa</h2>
+        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-buildings'></use></svg> Analisar concorrente</h2>
         <p class="dica-clique" style="margin:4px 0 0;">Consulte o CNPJ e aprofunde o dossiê da empresa, com participação, histórico e cruzamentos do segmento selecionado.</p>
       </div>
     </div>
@@ -2149,15 +2146,15 @@
         <button type="button" id="emp-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
       </div>
       <div class="campo">
-        <label>CNPJ da empresa</label>
-        <input id="emp-cnpj" placeholder="Ex: 12345678000199">
+        <label for="emp-cnpj">CNPJ da empresa</label>
+        <input id="emp-cnpj" placeholder="Ex: 12345678000199" inputmode="numeric">
       </div>
       <div class="campo" style="flex:2">
-        <label>Segmento p/ cruzar histórico (opcional)</label>
+        <label for="emp-segmento">Segmento p/ cruzar histórico (opcional)</label>
         <input id="emp-segmento" placeholder="Ex: hospitalar, limpeza">
       </div>
       <div class="campo">
-        <label>Período de análise</label>
+        <label for="emp-dias">Período de análise</label>
         <select id="emp-dias">
           <option value="3">Últimos 3 dias</option>
           <option value="7">Últimos 7 dias</option>
@@ -2172,6 +2169,10 @@
       </div>
       <button class="btn-buscar" id="emp-buscar">Analisar empresa</button>
     </div>
+    <div class="op-receber-boletim">
+      <button type="button" class="btn-imprimir" id="emp-ir-raiox"><svg class='icone-ph'><use href='#ph-coins'></use></svg> Ver pagamentos federais no Raio-X Financeiro</button>
+      <p class="dica-clique" style="margin:0;">Leva o CNPJ acima para o Raio-X, em Convênios e Emendas Federais: quanto essa empresa já recebeu de fato do governo federal.</p>
+    </div>
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
     <div id="emp-resultado"></div>
     </div>
@@ -2179,10 +2180,7 @@
 
   <section id="transparencia">
     <h2 style="margin-top:0;">Convênios e Emendas Federais</h2>
-    <p class="dica-clique" style="margin:0 0 18px;">Dados via Portal da Transparência.</p>
-
-    <h2 style="margin-top:0;">Radar de Convênios e Repasses</h2>
-    <p class="dica-clique" style="margin:0 0 14px;">Convênios e repasses federais recebidos por municípios/órgãos — dinheiro chegando costuma anteceder licitação (a obra/serviço financiado tende a virar edital dali a semanas ou meses). Isso é diferente de "Encontrar Licitações": aqui você vê o repasse que ainda vai gerar a licitação, não a licitação já publicada.</p>
+    <p class="dica-clique" style="margin:0 0 14px;">Veja o dinheiro federal que chega a municípios e órgãos antes de virar licitação: a obra ou o serviço financiado tende a virar edital semanas ou meses depois. Em "Encontrar Licitações" você vê o edital já publicado; aqui, o repasse que ainda vai gerá-lo. Dados do Portal da Transparência.</p>
     <div class="secao-conteudo-principal">
     <div class="painel-filtros painel-filtros-recolhivel" id="cv-filtros-principais">
       <div class="painel-filtros-recolhivel-cabecalho">
@@ -2191,18 +2189,18 @@
         <button type="button" id="cv-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
       </div>
       <div class="campo">
-        <label>Estado (UF) — opcional</label>
+        <label for="cv-uf">Estado (UF) — opcional</label>
         <select id="cv-uf" class="select-uf"></select>
       </div>
       <div class="campo">
-        <label>Município</label>
+        <label for="cv-municipio">Município</label>
         <div class="select-com-limpar">
           <select id="cv-municipio" class="select-municipio"></select>
           <button type="button" class="btn-limpar-select" data-limpa="cv-municipio" title="Limpar município selecionado">✕</button>
         </div>
       </div>
       <div class="campo" style="flex:2">
-        <label>Palavras-chave (opcional — filtra o objeto do convênio)</label>
+        <label for="cv-palavras">Palavras-chave (opcional — filtra o objeto do convênio)</label>
         <input id="cv-palavras" placeholder="Ex: saneamento, pavimentação, saúde">
       </div>
       <button class="btn-buscar" id="cv-buscar">Buscar convênios</button>
@@ -2210,8 +2208,9 @@
     <div id="cv-resultado"></div>
     </div>
 
-    <h2 style="margin-top:0;">Raio-X Financeiro de Fornecedor</h2>
-    <p class="dica-clique" style="margin:0 0 14px;">Quanto uma empresa já recebeu de fato em pagamentos do governo federal — execução financeira real, não só o valor do contrato assinado. Complementa a aba "Analisar Empresa".</p>
+    <div class="bloco-separado" id="raio-x-financeiro">
+    <h3 class="bloco-separado-titulo">Raio-X Financeiro de Fornecedor</h3>
+    <p class="dica-clique" style="margin:0 0 14px;">Quanto uma empresa já recebeu de fato em pagamentos do governo federal — execução financeira real, não só o valor do contrato assinado. Complementa a tela "Analisar concorrente".</p>
     <div class="secao-conteudo-principal">
     <div class="painel-filtros painel-filtros-recolhivel" id="fn-filtros-principais">
       <div class="painel-filtros-recolhivel-cabecalho">
@@ -2220,12 +2219,13 @@
         <button type="button" id="fn-filtros-colapsar-btn" class="filtros-lateral-colapsar-btn" title="Recolher filtros" aria-expanded="true">«</button>
       </div>
       <div class="campo" style="flex:2">
-        <label>CNPJ da empresa</label>
-        <input id="fn-cnpj" placeholder="Ex: 12345678000199">
+        <label for="fn-cnpj">CNPJ da empresa</label>
+        <input id="fn-cnpj" placeholder="Ex: 12345678000199" inputmode="numeric">
       </div>
       <button class="btn-buscar" id="fn-buscar">Consultar pagamentos</button>
     </div>
     <div id="fn-resultado"></div>
+    </div>
     </div>
 
     <div class="dg-topo-acoes"><span></span><button class="btn-imprimir btn-imprimir-generico" title="Gerar PDF/impressão desta tela"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir / Gerar PDF</button></div>
@@ -2236,9 +2236,15 @@
     <p class="dica-clique" style="margin:0 0 14px;">Descubra quanto o governo está pagando, agora, por um item — direto da base oficial do Compras.gov.br (a mesma que substituiu o antigo "Painel de Preços"). Busque um produto, escolha a especificação exata e veja o preço médio, mediano e as compras reais por trás (fornecedor, órgão, valor, link do edital) dos últimos 12 meses.</p>
 
     <div class="secao-conteudo-principal">
+    <ol class="pp-passos" aria-label="Passos da pesquisa de preços">
+      <li class="pp-passo" data-passo="1"><span>1</span> Produto</li>
+      <li class="pp-passo" data-passo="2"><span>2</span> Categoria</li>
+      <li class="pp-passo" data-passo="3"><span>3</span> Especificação</li>
+      <li class="pp-passo" data-passo="4"><span>4</span> Preços</li>
+    </ol>
     <div class="painel-filtros">
       <div class="campo" style="flex:3">
-        <label>O que você quer pesquisar?</label>
+        <label for="pp-busca">1. O que você quer pesquisar?</label>
         <input id="pp-busca" placeholder="Ex: caneta esferográfica, notebook, papel A4, cadeira...">
       </div>
       <button class="btn-buscar" id="pp-buscar-categoria">Buscar categorias</button>
@@ -2256,57 +2262,62 @@
   <section id="kanban">
     <div class="boletim-cabecalho">
       <div>
-        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-folders'></use></svg> Quadro Kanban</h2>
-        <p class="dica-clique" style="margin:4px 0 0;">Arraste os cartões entre as colunas pra acompanhar o andamento de cada licitação. Pra uma licitação aparecer aqui, marque um status nela no Boletim ou em Encontrar Licitações.</p>
+        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-folders'></use></svg> Funil</h2>
+        <p class="dica-clique" style="margin:4px 0 0;">Arraste os cartões entre as colunas pra acompanhar o andamento de cada licitação. Pra uma licitação aparecer aqui, clique em "Acompanhar" nela no Boletim ou em Encontrar Licitações.</p>
       </div>
-      <button type="button" class="btn-imprimir" id="kanban-ir-boletim"><svg class='icone-ph'><use href='#ph-newspaper'></use></svg> Abrir Boletim</button>
+      <button type="button" class="btn-imprimir" id="kanban-ir-boletim"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Abrir Boletim</button>
     </div>
     <div class="secao-conteudo-principal">
     <div class="empresa-acompanhamento"><label for="kanban-empresa">Acompanhamento da empresa<select id="kanban-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">Cada empresa tem seu próprio quadro. O mesmo edital pode ter decisões diferentes em empresas diferentes.</p></div>
+    <div class="boletim-filtros-rapidos" id="kanban-filtros-rapidos" role="group" aria-label="Filtrar o Funil" style="margin-bottom:12px;">
+      <button type="button" class="btn-filtro-rapido ativo" data-modo="todos" aria-pressed="true">Todos</button>
+      <button type="button" class="btn-filtro-rapido" data-modo="vence-3" aria-pressed="false">Vencem em 3 dias</button>
+    </div>
     <div id="kanban-quadro" class="kanban-quadro"></div>
     </div>
+    <details class="contatos-resumo" style="margin-top:18px"><summary>Respostas dos clientes às oportunidades</summary><p>Decisões recebidas pelos links individuais. Confirmar participação aqui não inscreve a empresa no portal.</p><button type="button" id="decisoes-clientes-atualizar">Atualizar respostas</button><div id="decisoes-clientes-lista" role="status"></div></details>
   </section>
 
   <section id="juridico">
-    <h2 style="margin-top:0;">Artigos Jurídicos</h2>
-    <p class="dica-clique" style="margin:0 0 14px;">Conteúdo de referência sobre licitações públicas — não substitui orientação jurídica pontual sobre o seu processo específico.</p>
-    <div class="secao-conteudo-principal">
-    <div id="juridico-artigos"></div>
-    </div>
-
-    <h2 style="margin-top:0;">Envie sua Dúvida</h2>
+    <h2 style="margin-top:0;">Envie sua dúvida</h2>
     <p class="dica-clique" style="margin:0 0 14px;">Descreva sua dúvida sobre um edital, cadastro ou processo — o Harreson responde direto no seu e-mail.</p>
     <div class="secao-conteudo-principal">
     <form id="duvida-form" name="duvida-cliente" method="POST" class="painel-filtros" style="align-items:flex-start;">
       <p style="display:none;"><label>Não preencha isso: <input name="duvida-empresa"></label></p>
       <div class="campo">
-        <label>Seu nome</label>
-        <input id="duvida-nome" name="nome" required>
+        <label for="duvida-nome">Seu nome</label>
+        <input id="duvida-nome" name="nome" required autocomplete="name">
       </div>
       <div class="campo">
-        <label>Seu e-mail</label>
-        <input id="duvida-email" name="email" type="email" required>
+        <label for="duvida-email">Seu e-mail</label>
+        <input id="duvida-email" name="email" type="email" required autocomplete="email">
       </div>
       <div class="campo" style="flex:3">
-        <label>Sua dúvida</label>
+        <label for="duvida-mensagem">Sua dúvida</label>
         <textarea id="duvida-mensagem" name="mensagem" required rows="4" style="width:100%;padding:11px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font-size:14px;font-family:inherit;resize:vertical;"></textarea>
       </div>
       <button type="submit" class="btn-buscar" id="duvida-enviar">Enviar dúvida</button>
     </form>
     <p class="aviso-duvida" id="duvida-aviso" style="display:none;margin-top:12px;"></p>
     </div>
+
+    <h2>Artigos Jurídicos</h2>
+    <p class="dica-clique" style="margin:0 0 14px;">Conteúdo de referência sobre licitações públicas — não substitui orientação jurídica pontual sobre o seu processo específico.</p>
+    <div class="secao-conteudo-principal">
+    <div id="juridico-artigos"></div>
+    </div>
   </section>
 
   <section id="status">
     <div class="boletim-cabecalho">
       <div>
-        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-heartbeat'></use></svg> Status das Ferramentas</h2>
-        <p class="dica-clique" style="margin:4px 0 0;">Acompanhe a atualização das fontes. Se algo aparecer há mais de dois dias, avise o suporte.</p>
+        <h2 style="margin:0;"><svg class='icone-ph'><use href='#ph-info'></use></svg> Status das Ferramentas</h2>
+        <p class="dica-clique" style="margin:4px 0 0;">Acompanhe a atualização das fontes. Se algo aparecer há mais de dois dias, <a href="#juridico">avise o suporte</a>.</p>
       </div>
       <button type="button" class="btn-imprimir" id="status-atualizar"><svg class='icone-ph'><use href='#ph-arrows-clockwise'></use></svg> Atualizar status</button>
     </div>
     <div class="secao-conteudo-principal">
-    <div id="status-cartoes" class="cartoes"></div>
+    <div id="status-cartoes" class="cartoes"><p class="dica-clique">Abra esta tela para verificar as fontes.</p></div>
     </div>
   </section>
 
@@ -2410,7 +2421,7 @@
     </div>
     <p id="modal-lembrete-objeto" class="dica-clique" style="margin:0 0 10px;"></p>
     <div class="campo">
-      <label>Avisar quantos dias antes do prazo final de propostas?</label>
+      <label for="lembrete-dias-antes">Avisar quantos dias antes do prazo final de propostas?</label>
       <select id="lembrete-dias-antes">
         <option value="1">1 dia antes</option>
         <option value="2">2 dias antes</option>
@@ -2419,7 +2430,7 @@
       </select>
     </div>
     <div class="campo">
-      <label>Nota (opcional)</label>
+      <label for="lembrete-nota">Nota (opcional)</label>
       <textarea id="lembrete-nota" rows="2" placeholder="Ex: confirmar documentação antes de enviar proposta"></textarea>
     </div>
     <p id="modal-lembrete-aviso" class="aviso" style="display:none;"></p>
@@ -2456,7 +2467,32 @@
       b.classList.add("ativo");
       document.getElementById(b.dataset.alvo).classList.add("ativa");
       if (bannerLimiteEl) bannerLimiteEl.style.display = (MOSTRAR_BANNER_LIMITE && SECOES_COM_BANNER_LIMITE.has(b.dataset.alvo)) ? "flex" : "none";
+      // O endereço acompanha a seção (painel.html#precos) sem criar entrada no histórico.
+      if (location.hash !== "#" + b.dataset.alvo) history.replaceState(null, "", "#" + b.dataset.alvo);
     });
+  });
+
+  // Abre a seção pedida no endereço (painel.html#precos) pelo mesmo caminho do clique no menu.
+  function secaoDoHash(hash, alvos) {
+    let id = String(hash || "").replace(/^#/, "");
+    try { id = decodeURIComponent(id); } catch (e) { return null; }
+    return alvos.includes(id) ? id : null;
+  }
+  function abrirSecaoDoHash() {
+    const id = secaoDoHash(location.hash, Array.from(botoesNav, (b) => b.dataset.alvo));
+    const botao = id && document.querySelector(`nav button[data-alvo="${id}"]`);
+    if (botao && !botao.classList.contains("ativo")) botao.click();
+  }
+  // DOMContentLoaded: os outros scripts já ligaram os seus cliques no menu (ex.: Boletim, Status).
+  document.addEventListener("DOMContentLoaded", abrirSecaoDoHash);
+  window.addEventListener("hashchange", abrirSecaoDoHash);
+
+  // "Ver detalhes do edital" fica fechado na tela; na impressão/PDF os detalhes saem completos.
+  window.addEventListener("beforeprint", () => {
+    document.querySelectorAll("details.boletim-detalhes:not([open])").forEach((d) => { d.open = true; d.dataset.abertoParaImpressao = "1"; });
+  });
+  window.addEventListener("afterprint", () => {
+    document.querySelectorAll("details.boletim-detalhes[data-aberto-para-impressao]").forEach((d) => { d.open = false; delete d.dataset.abertoParaImpressao; });
   });
 
   // Imprimir/gerar PDF: usa a impressão nativa do navegador (Ctrl+P → "Salvar como PDF"),
@@ -2503,6 +2539,14 @@
   // Envio da dúvida por e-mail via /api/enviar-duvida (exige sessão, como as demais ferramentas
   // autenticadas) — intercepta o submit pra evitar recarregar a página.
   const formDuvida = document.getElementById("duvida-form");
+  // Nome e e-mail já vêm do cadastro: o cliente só escreve a dúvida (pode corrigir se quiser).
+  function preencherContatoDuvida() {
+    const c = window.__clienteAtual || {};
+    const nome = document.getElementById("duvida-nome");
+    const email = document.getElementById("duvida-email");
+    if (nome && !nome.value && c.nome) nome.value = String(c.nome).trim();
+    if (email && !email.value && window.__clienteEmailAtual) email.value = window.__clienteEmailAtual;
+  }
   if (formDuvida) {
     formDuvida.addEventListener("submit", async (ev) => {
       ev.preventDefault();
@@ -2523,6 +2567,7 @@
         aviso.style.color = "var(--verde)";
         aviso.style.display = "block";
         formDuvida.reset();
+        preencherContatoDuvida();
       } catch (e) {
         aviso.textContent = "Não deu pra enviar agora — tenta de novo em instantes.";
         aviso.style.color = "var(--vermelho)";
@@ -2536,12 +2581,12 @@
 
   // ---- Status das Ferramentas: mostra atualização E cobertura de cada fonte ----
   const FONTES_STATUS = [
-    { supabase: "oportunidades_meta", nome: "Editais e licitações (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
+    { supabase: "oportunidades_meta", nome: "Editais e licitações (PNCP)", afeta: "Boletim, Encontrar Licitações, Dashboard", icone: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>" },
     // Contratos e atas agora moram no Supabase. Consultar o último registro direto
     // dali impede que este painel acuse um metadado estático antigo como se a coleta
     // inteira estivesse parada.
-    { tabelaSupabase: "contratos", nome: "Contratos assinados (PNCP)", icone: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg>" },
-    { tabelaSupabase: "mercado_atas", nome: "Inteligência de Mercado", icone: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>" },
+    { tabelaSupabase: "contratos", nome: "Contratos assinados (PNCP)", afeta: "Inteligência de Mercado, Analisar concorrente", icone: "<svg class='icone-ph'><use href='#ph-file-text'></use></svg>" },
+    { tabelaSupabase: "mercado_atas", nome: "Inteligência de Mercado", afeta: "Inteligência de Mercado (atas e empresas do segmento)", icone: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>" },
     // "Licitações federais (Portal da Transparência)" existiu até 05/08/2026, quando o
     // commit f5b6299 ("Redesenha Portal da Transparência...") aposentou de propósito
     // scripts/coletar_transparencia.js (e seu workflow) em favor do radar de convênios/
@@ -2550,8 +2595,8 @@
     // commit, mas essa lista aqui no painel.html não, então o card ficou órfão apontando
     // pra um arquivo (data/transparencia_licitacoes.json) que nada mais escreve — por
     // isso "atualizado há 14 dia(s)" nunca mudava, mesmo com o robô do PNCP rodando OK.
-    { supabase: "convenios", nome: "Convênios e Emendas Federais", icone: "<svg class='icone-ph'><use href='#ph-handshake'></use></svg>" },
-    { supabase: "sistema_s_am", nome: "Sistema S/AM (SENAC/SESC)", icone: "<svg class='icone-ph'><use href='#ph-graduation-cap'></use></svg>" },
+    { supabase: "convenios", nome: "Convênios e Emendas Federais", afeta: "Convênios e Emendas Federais", icone: "<svg class='icone-ph'><use href='#ph-handshake'></use></svg>" },
+    { supabase: "sistema_s_am", nome: "Sistema S/AM (SENAC/SESC)", afeta: "Boletim (editais do Sistema S no AM)", icone: "<svg class='icone-ph'><use href='#ph-graduation-cap'></use></svg>" },
   ];
 
   function formatarHaQuanto(iso) {
@@ -2570,7 +2615,12 @@
     if (statusJaCarregado && !forcar) return;
     statusJaCarregado = true;
     const alvo = document.getElementById("status-cartoes");
-    alvo.innerHTML = '<p class="dica-clique">Carregando...</p>';
+    // Estado inicial cinza: "verificando" não é bom nem ruim, então não usa verde nem vermelho.
+    alvo.innerHTML = FONTES_STATUS.map((f) => `<div class="cartao" style="border-top-color:var(--border-default);">
+        <h3>${f.icone} ${escapeHtml(f.nome)}</h3>
+        <div class="valor" style="font-size:14px;color:var(--texto-fraco);">○ Verificando…</div>
+        <p class="dica-clique" style="margin:8px 0 0;font-size:12px;">Afeta: ${escapeHtml(f.afeta)}</p>
+      </div>`).join("");
 
     const resultados = await Promise.all(FONTES_STATUS.map(async (fonte) => {
       try {
@@ -2611,13 +2661,16 @@
     alvo.innerHTML = resultados.map((r) => {
       const haQuanto = r.ok ? formatarHaQuanto(r.atualizadoEm) : null;
       const horas = r.atualizadoEm ? (Date.now() - new Date(r.atualizadoEm).getTime()) / (1000 * 60 * 60) : Infinity;
-      let cor = "var(--vermelho)", texto = "Sem dados ainda", detalhe = "";
+      // Sem leitura não dá para afirmar que a fonte parou: fica cinza, não vermelho.
+      let cor = "var(--texto-fraco)", texto = "Sem leitura agora", detalhe = "", marca = "○";
       if (r.ok && haQuanto) {
-        if (horas <= 30) { cor = "var(--verde)"; texto = `Atualizado ${haQuanto}`; }
-        else if (horas <= 72) { cor = "var(--laranja)"; texto = `Atualizado ${haQuanto} — verificar`; }
-        else { cor = "var(--vermelho)"; texto = `Atualizado ${haQuanto} — pode estar parado`; }
+        marca = "●";
+        if (horas <= 30) { cor = "var(--verde)"; texto = `Em dia — atualizado ${haQuanto}`; }
+        else if (horas <= 72) { cor = "var(--laranja)"; texto = `Atenção — atualizado ${haQuanto}`; }
+        else { cor = "var(--vermelho)"; texto = `Atrasado — atualizado ${haQuanto}, pode estar parado`; }
       }
       if (r.ufsComFalha && r.ufsComFalha.length > 0) {
+        marca = "●";
         const totalUfs = 27;
         if (r.saudeFonte === "indisponivel") {
           cor = "var(--laranja)";
@@ -2635,14 +2688,21 @@
       }
       return `<div class="cartao" style="border-top-color:${cor};">
         <h3>${r.icone} ${escapeHtml(r.nome)}</h3>
-        <div class="valor" style="font-size:14px;color:${cor};">● ${escapeHtml(texto)}</div>
+        <div class="valor" style="font-size:14px;color:${cor};">${marca} ${escapeHtml(texto)}</div>
         ${detalhe ? `<p class="dica-clique" style="margin:8px 0 0;font-size:12px;">${escapeHtml(detalhe)}</p>` : ""}
+        <p class="dica-clique" style="margin:8px 0 0;font-size:12px;">Afeta: ${escapeHtml(r.afeta)}</p>
       </div>`;
     }).join("");
   }
 
   document.querySelector('nav button[data-alvo="status"]').addEventListener("click", carregarStatusFerramentas);
   document.querySelector('nav button[data-alvo="kanban"]').addEventListener("click", renderizarKanban);
+  document.querySelectorAll("#kanban-filtros-rapidos .btn-filtro-rapido").forEach((btn, _i, todos) => {
+    btn.addEventListener("click", () => {
+      todos.forEach((b) => { b.classList.toggle("ativo", b === btn); b.setAttribute("aria-pressed", String(b === btn)); });
+      renderizarKanban();
+    });
+  });
   document.getElementById("status-atualizar").addEventListener("click", () => carregarStatusFerramentas(true));
   document.getElementById("kanban-ir-boletim").addEventListener("click", () => {
     document.querySelector('nav button[data-alvo="boletim"]').click();
@@ -4523,6 +4583,8 @@
   // ---- Mapas persistidos (status de acompanhamento e anotações por licitação) ----
   let empresaOperacionalId = null;
   let empresaAcompanhamentoPronta = false;
+  // Conta sem empresa cadastrada não é erro: o Boletim funciona e o Funil vira convite neutro.
+  let semEmpresaCadastrada = false;
   const MAPAS_POR_EMPRESA = new Set(["status-licitacao", "kanban-editais", "anotacoes-licitacao"]);
   function chaveMapa(nome, empresaId = empresaOperacionalId) {
     return MAPAS_POR_EMPRESA.has(nome) ? (empresaId ? `${chaveArmazenamento(nome)}:${empresaId}` : null) : chaveArmazenamento(nome);
@@ -4662,7 +4724,7 @@
     const { organizacaoId, empresas } = await contextoOperacionalPromise;
     const preferida = localStorage.getItem("licitaplena_empresa_operacional_id");
     const empresa = empresaId ? empresas.find(e => e.id === empresaId) : empresas.find(e => e.id === preferida) || empresas[0];
-    if (!empresa) throw new Error(empresaId ? "A empresa selecionada não está mais disponível. Atualize a lista e tente novamente." : "Cadastre uma empresa na Central Operacional antes de criar o dossiê.");
+    if (!empresa) throw new Error(empresaId ? "A empresa selecionada não está mais disponível. Atualize a lista e tente novamente." : "Cadastre uma empresa em Minhas empresas e documentos antes de criar o dossiê.");
     return { organizacaoId, empresa, empresas };
   }
   async function sincronizarDossieOperacional(id, edital, status, empresaId = null) {
@@ -4796,6 +4858,10 @@
       const anotacao = card.querySelector(".anotacao-licitacao");
       if (seletor) { seletor.value = status[card.dataset.id] || ""; seletor.disabled = !empresaAcompanhamentoPronta; }
       if (anotacao) anotacao.value = anotacoes[card.dataset.id] || "";
+      const botaoAcompanhar = card.querySelector(".btn-acompanhar");
+      if (botaoAcompanhar && seletor) botaoAcompanhar.textContent = rotuloBotaoAcompanhar(seletor.value);
+      const campoAnotar = card.querySelector(".boletim-campo-anotar");
+      if (campoAnotar && anotacao && anotacao.value) campoAnotar.hidden = false;
     });
     renderizarKanban();
     if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
@@ -4804,7 +4870,7 @@
     for (const seletor of document.querySelectorAll(".seletor-empresa-acompanhamento")) {
       seletor.innerHTML = empresas.length
         ? empresas.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.razao_social)}</option>`).join("")
-        : '<option value="">Cadastre uma empresa na Central Operacional</option>';
+        : '<option value="">Nenhuma empresa cadastrada ainda</option>';
       seletor.value = empresaOperacionalId || "";
       seletor.disabled = !empresas.length || !empresaAcompanhamentoPronta;
     }
@@ -4858,12 +4924,24 @@
     empresaAcompanhamentoPronta = false;
     contextoOperacionalPromise = null;
     try {
-      const { organizacaoId, empresas } = await empresaOperacionalParaDossie();
+      let contexto;
+      try {
+        contexto = await empresaOperacionalParaDossie();
+      } catch (erro) {
+        // Conta sem empresa: a organização carregou e a lista veio vazia. Isso vira convite, não erro.
+        const base = contextoOperacionalPromise && await contextoOperacionalPromise.catch(() => null);
+        if (!base || base.empresas.length) throw erro;
+        contexto = base;
+      }
+      const { organizacaoId, empresas } = contexto;
       const anterior = empresaOperacionalId;
       const preferida = localStorage.getItem("licitaplena_empresa_operacional_id");
       empresaOperacionalId = empresas.find(e => e.id === preferida)?.id || empresas.find(e => e.id === anterior)?.id || empresas[0]?.id || null;
       atualizarSeletoresEmpresa(empresas);
-      if (!empresaOperacionalId) throw new Error("Cadastre uma empresa na Central Operacional para acompanhar oportunidades.");
+      semEmpresaCadastrada = !empresaOperacionalId;
+      document.querySelectorAll(".empresa-convite").forEach((el) => { el.hidden = !semEmpresaCadastrada; });
+      document.querySelectorAll(".empresa-acompanhamento .empresa-ajuda").forEach((el) => { el.hidden = semEmpresaCadastrada; });
+      if (semEmpresaCadastrada) { atualizarStatusAcompanhamentoNaTela(); return; }
       await carregarAcompanhamentosEmpresa(organizacaoId, empresaOperacionalId);
       empresaAcompanhamentoPronta = true;
       atualizarSeletoresEmpresa(empresas);
@@ -4894,7 +4972,7 @@
     }
   }
   async function salvarStatusAcompanhamento(id, edital, status) {
-    if (!empresaAcompanhamentoPronta || !empresaOperacionalId) throw new Error("Escolha uma empresa antes de acompanhar o edital.");
+    if (!empresaAcompanhamentoPronta || !empresaOperacionalId) throw new Error(semEmpresaCadastrada ? "Cadastre sua empresa em Minhas empresas e documentos para acompanhar o edital." : "Escolha uma empresa antes de acompanhar o edital.");
     const empresaId = empresaOperacionalId;
     let empresaNome = "a empresa selecionada";
     if (status) {
@@ -4913,14 +4991,78 @@
     if (empresaOperacionalId === empresaId) atualizarStatusAcompanhamentoNaTela();
     return empresaNome;
   }
-  function classePrazoKanban(iso) {
-    if (!iso) return null;
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return null;
-    const diasRestantes = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    if (diasRestantes < 0) return "vencido";
-    if (diasRestantes <= 3) return "perto";
+  function classePrazoKanban(iso, agora = Date.now()) {
+    const dias = diasParaPrazo(iso, agora);
+    if (dias === null) return null;
+    if (dias < 0) return "vencido";
+    if (dias <= 3) return "perto";
     return "ok";
+  }
+
+  // ---- Prazo de propostas em dias civis de Brasília ----
+  // Brasília é UTC-3 fixo (sem horário de verão desde 2019). Datas do PNCP sem fuso já
+  // estão no horário de Brasília (ver formatarPrazoPropostas); só a data (AAAA-MM-DD)
+  // vale até o fim daquele dia. Contar por dia civil evita "vence em 0 dias" às 23h.
+  const MS_DIA = 24 * 60 * 60 * 1000;
+  const FUSO_BRASILIA_MS = -3 * 60 * 60 * 1000;
+  function instantePrazo(iso) {
+    const texto = String(iso || "").trim();
+    if (!texto) return null;
+    const soData = /^\d{4}-\d{2}-\d{2}$/.test(texto);
+    const semFuso = /^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(texto);
+    const ms = Date.parse(soData ? `${texto}T23:59:59-03:00` : (semFuso ? `${texto.replace(" ", "T")}-03:00` : texto));
+    return Number.isFinite(ms) ? ms : null;
+  }
+  function diaBrasilia(ms) { return Math.floor((ms + FUSO_BRASILIA_MS) / MS_DIA); }
+  // null = sem prazo; -1 = encerrado; 0 = vence hoje; N = vence em N dias.
+  function diasParaPrazo(iso, agora = Date.now()) {
+    const ms = instantePrazo(iso);
+    if (ms === null) return null;
+    if (ms < agora) return -1;
+    return diaBrasilia(ms) - diaBrasilia(agora);
+  }
+  function textoPrazo(iso, agora = Date.now()) {
+    const dias = diasParaPrazo(iso, agora);
+    if (dias === null) return null;
+    if (dias < 0) return "Encerrado";
+    if (dias === 0) return "Vence hoje";
+    return dias === 1 ? "Vence em 1 dia" : `Vence em ${dias} dias`;
+  }
+  function venceEmAteDias(iso, limite, agora = Date.now()) {
+    const dias = diasParaPrazo(iso, agora);
+    return dias !== null && dias >= 0 && dias <= limite;
+  }
+  // Abertos primeiro (mais urgente no topo), depois sem prazo informado, encerrados por último.
+  function ordenarPorPrazo(lista, agora = Date.now()) {
+    const peso = (r) => {
+      const dias = diasParaPrazo(r && r.encerramento, agora);
+      if (dias === null) return [1, 0];
+      if (dias < 0) return [2, -instantePrazo(r.encerramento)];
+      return [0, instantePrazo(r.encerramento)];
+    };
+    return lista
+      .map((r, i) => ({ r, i, p: peso(r) }))
+      .sort((a, b) => a.p[0] - b.p[0] || a.p[1] - b.p[1] || a.i - b.i)
+      .map((x) => x.r);
+  }
+  // "O que vence esta semana?": junta Boletim e Funil, sem repetir o mesmo edital.
+  function prazosDaSemana(boletim, editaisFunil, statusFunil, agora = Date.now(), limite = 7) {
+    const vistos = new Set();
+    const itens = [];
+    for (const r of boletim || []) {
+      const id = idOportunidade(r);
+      if (vistos.has(id) || !venceEmAteDias(r.encerramento, limite, agora)) continue;
+      vistos.add(id);
+      itens.push({ id, origem: "boletim", objeto: r.objeto, orgao: r.orgao, encerramento: r.encerramento });
+    }
+    for (const [id, edital] of Object.entries(editaisFunil || {})) {
+      if (!statusFunil || !statusFunil[id] || !edital || !venceEmAteDias(edital.encerramento, limite, agora)) continue;
+      const existente = itens.find((item) => item.id === id);
+      if (existente) { existente.origem = "funil"; continue; }
+      vistos.add(id);
+      itens.push({ id, origem: "funil", objeto: edital.objeto, orgao: edital.orgao, encerramento: edital.encerramento });
+    }
+    return ordenarPorPrazo(itens, agora);
   }
   document.querySelectorAll(".seletor-empresa-acompanhamento").forEach(seletor => {
     seletor.addEventListener("change", () => { void selecionarEmpresaAcompanhamento(seletor.value); });
@@ -4937,7 +5079,7 @@
   function montarCardKanban(id, edital, valorStatus, anotacaoAtual) {
     const classePrazo = classePrazoKanban(edital.encerramento);
     const prazoHtml = edital.encerramento
-      ? `<span class="kanban-card-prazo ${classePrazo || ""}"><svg class='icone-ph'><use href='#ph-timer'></use></svg> ${escapeHtml(formatarPrazoPropostas(edital.encerramento).split(" (")[0])}</span>`
+      ? `<span class="kanban-card-prazo ${classePrazo || ""}"><svg class='icone-ph'><use href='#ph-timer'></use></svg> ${escapeHtml([textoPrazo(edital.encerramento), formatarPrazoPropostas(edital.encerramento).split(" (")[0]].filter(Boolean).join(" · "))}</span>`
       : "";
     // Além de arrastar (que em alguns navegadores/touchpads pode ser difícil de acionar),
     // todo cartão tem um seletor "Mover para" — garante que dá pra mudar de coluna de
@@ -4968,6 +5110,10 @@
   function renderizarKanban() {
     const alvo = document.getElementById("kanban-quadro");
     if (!alvo) return;
+    if (semEmpresaCadastrada) {
+      alvo.innerHTML = '<div class="kanban-vazio convite-neutro">O Funil mostra os editais que sua empresa está acompanhando. Para começar, cadastre sua empresa em <a href="operacao.html">Minhas empresas e documentos</a>.</div>';
+      return;
+    }
     if (!empresaAcompanhamentoPronta) {
       alvo.innerHTML = '<div class="kanban-vazio">Selecione uma empresa e aguarde o carregamento do acompanhamento.</div>';
       return;
@@ -4975,12 +5121,16 @@
     const statusMapa = lerMapa("status-licitacao");
     const editaisMapa = lerMapa("kanban-editais");
     const anotacoesMapa = lerMapa("anotacoes-licitacao");
+    const soVencendo = document.querySelector('#kanban-filtros-rapidos .btn-filtro-rapido.ativo')?.dataset.modo === "vence-3";
 
     alvo.innerHTML = KANBAN_COLUNAS.map((col) => {
-      const idsColuna = Object.keys(statusMapa).filter((id) => statusMapa[id] === col.valor && editaisMapa[id]);
+      const idsColuna = ordenarPorPrazo(Object.keys(statusMapa)
+        .filter((id) => statusMapa[id] === col.valor && editaisMapa[id])
+        .filter((id) => !soVencendo || venceEmAteDias(editaisMapa[id].encerramento, 3))
+        .map((id) => ({ id, encerramento: editaisMapa[id].encerramento }))).map((x) => x.id);
       const cardsHtml = idsColuna.length
         ? idsColuna.map((id) => montarCardKanban(id, editaisMapa[id], col.valor, anotacoesMapa[id])).join("")
-        : `<div class="kanban-vazio">Nenhuma licitação aqui ainda.<br>Marque um status pra ela aparecer.</div>`;
+        : (soVencendo ? `<div class="kanban-vazio">Nada vence nos próximos 3 dias nesta coluna.</div>` : `<div class="kanban-vazio">Nenhuma licitação aqui ainda.<br>Marque um status pra ela aparecer.</div>`);
       return `
         <div class="kanban-coluna" data-status="${col.valor}" style="--cor-coluna:${col.cor};">
           <div class="kanban-coluna-topo">
@@ -5724,10 +5874,17 @@
     return `<div><dt>${escapeHtml(rotulo)}</dt><dd${atributoDetalhe}>${escapeHtml(String(texto))}</dd></div>`;
   }
 
-  // Monta a lista de oportunidades no formato "cartão de boletim" (inspirado na página
-  // de Boletins de Licitações do ConLicitação: card numerado, ações rápidas de favoritar/
-  // marcar como lido, e todos os campos principais já visíveis sem precisar clicar).
+  function rotuloBotaoAcompanhar(status) {
+    const opcao = OPCOES_STATUS_LICITACAO.find(([valor]) => valor === status);
+    return status && opcao ? `Acompanhando: ${opcao[1]}` : "Acompanhar";
+  }
+
+  // Monta a lista de oportunidades no formato "cartão de boletim". O cartão mostra primeiro
+  // o que decide se vale abrir (prazo, objeto, órgão/cidade, valor, modalidade); o resto
+  // fica em "Ver detalhes do edital". Boletim e Encontrar Licitações usam este mesmo cartão.
+  let contadorListasBoletim = 0;
   function montarCardsBoletim(resultados) {
+    const lote = ++contadorListasBoletim; // ids únicos: as duas telas ficam no DOM ao mesmo tempo
     const favoritos = lerConjunto("favoritos");
     const lidos = lerConjunto("lidos");
     const statusMapa = lerMapa("status-licitacao");
@@ -5750,51 +5907,69 @@
       const opcoesStatusHtml = OPCOES_STATUS_LICITACAO.map(([v, texto]) =>
         `<option value="${v}"${v === statusAtual ? " selected" : ""}>${escapeHtml(texto)}</option>`
       ).join("");
-      html += `<div class="${classes.join(" ")}" data-id="${idAttr}" data-idx="${i}">
+      const prazoTexto = textoPrazo(r.encerramento);
+      const prazoChip = prazoTexto
+        ? `<span class="boletim-prazo prazo-${classePrazoKanban(r.encerramento)}"><svg class='icone-ph' aria-hidden="true"><use href='#ph-timer'></use></svg> ${escapeHtml(prazoTexto)}</span>`
+        : `<span class="boletim-prazo prazo-sem">Prazo não informado</span>`;
+      html += `<div class="${classes.join(" ")}" data-id="${idAttr}" data-idx="${i}" data-encerramento="${escapeHtml(r.encerramento || "")}">
         <div class="boletim-topo">
           <span class="boletim-numero">${i + 1}</span>
+          ${prazoChip}
           <div class="boletim-acoes-rapidas">
-            <button class="boletim-acao-icone btn-favoritar${isFav ? " favorito-ativo" : ""}" title="Marcar como favorito"><svg class='icone-ph'><use href='#ph-star'></use></svg></button>
-            <button class="boletim-acao-icone btn-marcar-lido${isLido ? " lido-ativo" : ""}" title="Marcar como lido"><svg class='icone-ph'><use href='#ph-${isLido ? "check-circle" : "eye"}'></use></svg></button>
+            <button class="boletim-acao-icone btn-favoritar${isFav ? " favorito-ativo" : ""}" title="Marcar como favorito" aria-label="Marcar como favorito"><svg class='icone-ph'><use href='#ph-star'></use></svg></button>
+            <button class="boletim-acao-icone btn-marcar-lido${isLido ? " lido-ativo" : ""}" title="Marcar como lido" aria-label="Marcar como lido"><svg class='icone-ph'><use href='#ph-${isLido ? "check-circle" : "eye"}'></use></svg></button>
           </div>
         </div>
         <div class="boletim-corpo">
           ${r.fonte ? "" : `<p class="boletim-identificacao" data-detalhe-campo="identificacaoCompra">${escapeHtml(identificacaoCompra(r))}</p>`}
           <p class="boletim-objeto">${escapeHtml(r.objeto || "-")}${r.fonte ? ` <span class="fonte-badge">${escapeHtml(r.fonte)}</span>` : ""}</p>
           ${tagsObjetoHtml}
-          <dl class="boletim-meta">
+          <dl class="boletim-meta boletim-meta-principal">
             <div><dt>Órgão</dt><dd>${escapeHtml(r.orgao || "-")}</dd></div>
             <div><dt>Município/UF</dt><dd>${escapeHtml(r.municipio ? (r.municipio + (r.uf ? " / " + r.uf : "")) : (r.uf || "-"))}</dd></div>
-            ${(!r.fonte && (r.esferaId === "F" || r.esferaId === "D") && r.codigoUnidade) ? campoBoletimMeta("UASG", r.codigoUnidade) : ""}
-            ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome, "modalidadeNome")}
-            ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome, "tipoInstrumentoConvocatorioNome")}
-            ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome, "situacaoCompraNome")}
-            ${r.fonte ? "" : campoBoletimMeta("Registro de preço", r.srp === true ? "Sim" : (r.srp === false ? "Não" : null), "srp")}
-            ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome, "modoDisputaNome")}
-            ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal, "amparoLegal")}
-            ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria, "fonteOrcamentaria")}
-            ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : (r.fonte ? `<div><dt>Publicação</dt><dd>Não informada pela fonte</dd></div>` : "")}
             <div><dt>${r.fonte ? "Abertura" : "Data fim de recebimento de propostas"}</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
             ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado), "valorTotalEstimado")}
-            ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado), "valorTotalHomologado")}
-            ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null, "numeroCompraAno")}
-            ${r.fonte ? "" : campoBoletimMeta("Processo", r.processo, "processo")}
-            <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
           </dl>
-          <div class="boletim-gerenciar">
-            <select class="select-status-licitacao" title="Status de acompanhamento da empresa selecionada"${empresaAcompanhamentoPronta ? "" : " disabled"}>${opcoesStatusHtml}</select>
-            <textarea class="anotacao-licitacao" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual)}</textarea>
-          </div>
           <div class="boletim-rodape">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div class="boletim-acoes-principais">
               <button class="btn-ia-edital" type="button" title="Resumo documental e perguntas sobre este edital"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumir edital</button>
+              <button class="btn-ia-edital btn-acompanhar" type="button" aria-expanded="false" aria-controls="acomp-${lote}-${i}" title="Marcar o status deste edital no Funil da empresa selecionada">${escapeHtml(rotuloBotaoAcompanhar(statusAtual))}</button>
+              <button class="btn-ia-edital btn-anotar" type="button" aria-expanded="${anotacaoAtual ? "true" : "false"}" aria-controls="anot-${lote}-${i}">${anotacaoAtual ? "Anotação" : "+ Anotar"}</button>
+            </div>
+            ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>` : "Ver edital completo no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>"}</a>` : "<span></span>"}
+          </div>
+          <div class="boletim-gerenciar">
+            <label class="boletim-campo-acompanhar" id="acomp-${lote}-${i}" hidden>Status do acompanhamento
+              <select class="select-status-licitacao" title="Status de acompanhamento da empresa selecionada"${empresaAcompanhamentoPronta ? "" : " disabled"}>${opcoesStatusHtml}</select>
+            </label>
+            <label class="boletim-campo-anotar" id="anot-${lote}-${i}"${anotacaoAtual ? "" : " hidden"}>Anotação
+              <textarea class="anotacao-licitacao" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual)}</textarea>
+            </label>
+          </div>
+          <details class="boletim-detalhes">
+            <summary>Ver detalhes do edital</summary>
+            <dl class="boletim-meta">
+              ${(!r.fonte && (r.esferaId === "F" || r.esferaId === "D") && r.codigoUnidade) ? campoBoletimMeta("UASG", r.codigoUnidade) : ""}
+              ${r.fonte ? "" : campoBoletimMeta("Modalidade da contratação", r.modalidadeNome, "modalidadeNome")}
+              ${r.fonte ? "" : campoBoletimMeta("Tipo", r.tipoInstrumentoConvocatorioNome, "tipoInstrumentoConvocatorioNome")}
+              ${r.fonte ? "" : campoBoletimMeta("Situação da contratação", r.situacaoCompraNome, "situacaoCompraNome")}
+              ${r.fonte ? "" : campoBoletimMeta("Registro de preço", r.srp === true ? "Sim" : (r.srp === false ? "Não" : null), "srp")}
+              ${r.fonte ? "" : campoBoletimMeta("Modo de disputa", r.modoDisputaNome, "modoDisputaNome")}
+              ${r.fonte ? "" : campoBoletimMeta("Amparo legal", r.amparoLegal, "amparoLegal")}
+              ${r.fonte ? "" : campoBoletimMeta("Fonte orçamentária", r.fonteOrcamentaria, "fonteOrcamentaria")}
+              ${r.publicacao ? `<div><dt>Publicado em</dt><dd>${escapeHtml(formatarPrazoPropostas(r.publicacao))}</dd></div>` : (r.fonte ? `<div><dt>Publicação</dt><dd>Não informada pela fonte</dd></div>` : "")}
+              ${r.fonte ? "" : campoBoletimMeta("Valor total homologado", formatarMoedaItem(r.valorTotalHomologado), "valorTotalHomologado")}
+              ${r.fonte ? "" : campoBoletimMeta("Nº/Ano da compra", (r.numeroCompra && r.anoCompra) ? `${r.numeroCompra}/${r.anoCompra}` : null, "numeroCompraAno")}
+              ${r.fonte ? "" : campoBoletimMeta("Processo", r.processo, "processo")}
+              <div><dt>${r.fonte ? "Nº do processo" : "Nº controle PNCP"}</dt><dd>${escapeHtml(r.numeroControlePNCP || "-")}</dd></div>
+            </dl>
+            <div class="boletim-acoes-secundarias">
               ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-itens" type="button" title="Ver os itens/lotes desta licitação"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg> Ver Itens</button>` : ""}
               ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-ver-arquivos" type="button" title="Acompanhamento: avisos, esclarecimentos, impugnações, recursos e retificações"><svg class='icone-ph'><use href='#ph-folder'></use></svg> Acompanhamento</button>` : ""}
               ${r.link ? `<button class="btn-ia-edital btn-baixar-edital" type="button"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital</button>` : ""}
               ${(r.numeroControlePNCP && r.encerramento) ? `<button class="btn-ia-edital btn-criar-lembrete" type="button" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(r.numeroControlePNCP)}" data-encerramento="${escapeHtml(r.encerramento)}" data-objeto="${escapeHtml((r.objeto || "").slice(0, 200))}"><svg class='icone-ph'><use href='#ph-bell'></use></svg> Lembrete</button>` : ""}
             </div>
-            ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>` : "Ver edital completo no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>"}</a>` : "<span></span>"}
-          </div>
+          </details>
           <div class="boletim-itens" style="display:none;"></div>
         </div>
       </div>`;
@@ -6042,6 +6217,32 @@
           abrirModalLembrete(resultados[idx]);
         });
       }
+      // "Acompanhar" e "+ Anotar" abrem o select/textarea originais sob demanda: a lógica de
+      // salvar continua nos mesmos campos (.select-status-licitacao / .anotacao-licitacao).
+      const btnAcompanhar = card.querySelector(".btn-acompanhar");
+      const campoAcompanhar = card.querySelector(".boletim-campo-acompanhar");
+      if (btnAcompanhar && campoAcompanhar) {
+        btnAcompanhar.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if (semEmpresaCadastrada) {
+            avisarSincronizacaoOperacional("Para acompanhar editais no Funil, cadastre sua empresa em Minhas empresas e documentos.");
+            return;
+          }
+          campoAcompanhar.hidden = !campoAcompanhar.hidden;
+          btnAcompanhar.setAttribute("aria-expanded", String(!campoAcompanhar.hidden));
+          if (!campoAcompanhar.hidden) campoAcompanhar.querySelector("select").focus();
+        });
+      }
+      const btnAnotar = card.querySelector(".btn-anotar");
+      const campoAnotar = card.querySelector(".boletim-campo-anotar");
+      if (btnAnotar && campoAnotar) {
+        btnAnotar.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          campoAnotar.hidden = !campoAnotar.hidden;
+          btnAnotar.setAttribute("aria-expanded", String(!campoAnotar.hidden));
+          if (!campoAnotar.hidden) campoAnotar.querySelector("textarea").focus();
+        });
+      }
       const selectStatus = card.querySelector(".select-status-licitacao");
       if (selectStatus) {
         selectStatus.addEventListener("click", (ev) => ev.stopPropagation());
@@ -6052,6 +6253,7 @@
           try {
             const empresaNome = await salvarStatusAcompanhamento(id, resultados[idx], selectStatus.value);
             avisarSincronizacaoOperacional(`Acompanhamento salvo para ${empresaNome}.`);
+            if (btnAcompanhar) btnAcompanhar.textContent = rotuloBotaoAcompanhar(selectStatus.value);
           } catch (erro) {
             selectStatus.value = statusAnterior;
             avisarSincronizacaoOperacional("Não foi possível salvar o acompanhamento: " + erro.message, true);
@@ -6088,6 +6290,7 @@
       let mostrar = true;
       if (modo === "nao-lidos") mostrar = !lidos.has(id);
       else if (modo === "favoritos") mostrar = favoritos.has(id);
+      else if (modo === "vence-3") mostrar = venceEmAteDias(card.dataset.encerramento, 3);
       card.classList.toggle("oculto", !mostrar);
     });
   }
@@ -6095,10 +6298,12 @@
   // Renderiza um painel completo de cards de boletim (resumo + filtros rápidos + lista)
   // dentro do elemento `alvo`. Reaproveitado tanto pelo Boletim (filtro salvo, automático)
   // quanto pelo Encontrar Licitações (busca manual) — mesma UI, fontes de dados diferentes.
-  function renderizarPainelBoletim(alvo, resultados, avisoHtml) {
+  function renderizarPainelBoletim(alvo, resultadosOriginais, avisoHtml, opcoes = {}) {
+    const resultados = opcoes.porPrazo ? ordenarPorPrazo(resultadosOriginais) : resultadosOriginais;
     const renderizar = (modoFiltro) => {
       const lidos = lerConjunto("lidos");
       const naoLidos = resultados.filter((r) => !lidos.has(idOportunidade(r))).length;
+      const vencendo = resultados.filter((r) => venceEmAteDias(r.encerramento, 3)).length;
       let html = avisoHtml + `<div class="caixa-interna">
         <div class="cartoes" style="margin-bottom:0;">
           <div class="cartao"><h3>Oportunidades encontradas</h3><div class="valor">${resultados.length}</div></div>
@@ -6110,6 +6315,7 @@
           <button class="btn-filtro-rapido" data-modo="todos">Todos (${resultados.length})</button>
           <button class="btn-filtro-rapido" data-modo="nao-lidos">Não lidos (${naoLidos})</button>
           <button class="btn-filtro-rapido" data-modo="favoritos">Favoritos</button>
+          <button class="btn-filtro-rapido" data-modo="vence-3">Vencem em 3 dias (${vencendo})</button>
         </div>
       </div>`;
       // A lista inteira de cards fica sobre um fundo cinza (.caixa-interna) — os cards
@@ -6336,7 +6542,8 @@
       const avisoComContagem = listaFiltrada.length === 0 && bolDiaSelecionado
         ? avisoHtml + '<div class="aviso">Nenhuma oportunidade publicada nesse dia especificamente (pode haver oportunidades sem data de publicação informada, que não aparecem no calendário).</div>'
         : avisoHtml;
-      renderizarPainelBoletim(alvoLista, listaFiltrada, avisoComContagem);
+      // Boletim em ordem de prazo: o que vence antes aparece primeiro (encerrados no fim).
+      renderizarPainelBoletim(alvoLista, listaFiltrada, avisoComContagem, { porPrazo: true });
     };
     desenhar();
   }
@@ -6442,9 +6649,10 @@
     const metaEl = document.getElementById("bol-meta");
     const filtro = lerFiltroBoletim();
 
+    if (typeof window.__ajustarBoletimSemFiltro === "function") window.__ajustarBoletimSemFiltro(!filtro || !filtro.palavrasRaw);
     if (!filtro || !filtro.palavrasRaw) {
-      metaEl.textContent = "Configure seu filtro (estado + palavras-chave) para o boletim ser gerado automaticamente a cada visita.";
-      alvo.innerHTML = '<div class="aviso">Nenhum filtro salvo ainda. Clique em "Configurar filtro do boletim" acima e salve pra começar a receber seu boletim diário.</div>';
+      metaEl.textContent = "Escolha estados e palavras-chave uma vez; o boletim passa a ser montado sozinho a cada visita.";
+      alvo.innerHTML = "";
       document.getElementById("bol-calendario").innerHTML = "";
             bolResultadosCompletos = [];
             if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
@@ -6574,27 +6782,59 @@
     gerarBoletim({ atualizarAoVivo: true });
   });
 
+  function preencherConfigBoletim() {
+    let filtro = lerFiltroBoletim();
+    // O filtro antigo não tinha dono: só é importado para a conta após clicar Salvar.
+    if (!filtro) {
+      try { filtro = JSON.parse(localStorage.getItem("hc_boletim_filtro")); } catch (e) { /* sem filtro antigo */ }
+    }
+    definirUfsNoSelect(document.getElementById("bol-uf"), filtro && (filtro.ufs || filtro.uf));
+    document.getElementById("bol-palavras").value = (filtro && filtro.palavrasRaw) || "";
+  }
+
+  // Sem filtro, o Boletim é um passo só: o formulário já aberto, sem Atualizar/Imprimir
+  // (não há o que atualizar nem imprimir) e com o botão dizendo o que acontece ao salvar.
+  function ajustarBoletimSemFiltro(semFiltro) {
+    const painel = document.getElementById("bol-config-painel");
+    const estavaSemFiltro = !document.getElementById("bol-config-intro").hidden;
+    document.getElementById("bol-acoes-topo").hidden = semFiltro;
+    document.getElementById("bol-config-intro").hidden = !semFiltro;
+    document.getElementById("bol-salvar").textContent = semFiltro ? "Salvar e gerar meu boletim" : "Salvar filtro e atualizar boletim";
+    if (semFiltro && painel.style.display === "none") {
+      preencherConfigBoletim();
+      painel.style.display = "flex";
+    } else if (!semFiltro && estavaSemFiltro) {
+      painel.style.display = "none";
+    }
+  }
+
+  window.__ajustarBoletimSemFiltro = ajustarBoletimSemFiltro;
+
+  function mostrarErroCampo(campo, erroEl, mostrar) {
+    erroEl.hidden = !mostrar;
+    if (mostrar) { campo.setAttribute("aria-invalid", "true"); campo.focus(); }
+    else campo.removeAttribute("aria-invalid");
+  }
+
+  document.getElementById("bol-palavras").addEventListener("input", (ev) => {
+    if (ev.target.value.trim()) mostrarErroCampo(ev.target, document.getElementById("bol-palavras-erro"), false);
+  });
+
   document.getElementById("bol-config-toggle").addEventListener("click", async () => {
     await window.__filtroBoletimPronto;
     const painel = document.getElementById("bol-config-painel");
     const visivel = painel.style.display !== "none";
-    if (!visivel) {
-      let filtro = lerFiltroBoletim();
-      // O filtro antigo não tinha dono: só é importado para a conta após clicar Salvar.
-      if (!filtro) {
-        try { filtro = JSON.parse(localStorage.getItem("hc_boletim_filtro")); } catch (e) { /* sem filtro antigo */ }
-      }
-      definirUfsNoSelect(document.getElementById("bol-uf"), filtro && (filtro.ufs || filtro.uf));
-      document.getElementById("bol-palavras").value = (filtro && filtro.palavrasRaw) || "";
-    }
+    if (!visivel) preencherConfigBoletim();
     painel.style.display = visivel ? "none" : "flex";
+    document.getElementById("bol-config-toggle").setAttribute("aria-expanded", String(!visivel));
   });
 
   document.getElementById("bol-salvar").addEventListener("click", async () => {
     const ufs = ufsDoSelect(document.getElementById("bol-uf"));
-    const palavrasRaw = document.getElementById("bol-palavras").value.trim();
+    const campoPalavras = document.getElementById("bol-palavras");
+    const palavrasRaw = campoPalavras.value.trim();
     if (!palavrasRaw) {
-      alert("Informe ao menos uma palavra-chave pro filtro do boletim.");
+      mostrarErroCampo(campoPalavras, document.getElementById("bol-palavras-erro"), true);
       return;
     }
     const botao = document.getElementById("bol-salvar");
@@ -6860,6 +7100,34 @@
   }
 
   document.getElementById("op-buscar").addEventListener("click", () => buscarOportunidades());
+
+  // "Receber isso todo dia no Boletim": grava palavras + estados desta busca como o filtro
+  // do Boletim da conta (mesmo salvarFiltroBoletim do formulário do Boletim).
+  document.getElementById("op-palavras").addEventListener("input", (ev) => {
+    if (ev.target.value.trim()) mostrarErroCampo(ev.target, document.getElementById("op-palavras-erro"), false);
+  });
+  document.getElementById("op-receber-boletim").addEventListener("click", async () => {
+    const campo = document.getElementById("op-palavras");
+    const palavrasRaw = campo.value.trim();
+    if (!palavrasRaw) {
+      mostrarErroCampo(campo, document.getElementById("op-palavras-erro"), true);
+      return;
+    }
+    const botao = document.getElementById("op-receber-boletim");
+    const status = document.getElementById("op-receber-boletim-status");
+    botao.disabled = true;
+    status.textContent = "Salvando no seu Boletim...";
+    try {
+      await window.__filtroBoletimPronto;
+      await salvarFiltroBoletim(ufsDoSelect(document.getElementById("op-uf")), palavrasRaw);
+      status.textContent = "Pronto: seu Boletim agora traz estas oportunidades todo dia.";
+      void gerarBoletim();
+    } catch (erro) {
+      status.textContent = `Não foi possível salvar no Boletim: ${erro.message}`;
+    } finally {
+      botao.disabled = false;
+    }
+  });
 
   // Restaura o último filtro salvo apenas quando a ferramenta é aberta. Consultas de
   // ferramentas escondidas durante o login só competem por rede e atrasam a primeira tela.
@@ -7934,6 +8202,23 @@
     }
   }
 
+  // Inteligência de Mercado com o mesmo mercado do Boletim (palavras + 1º estado), sem redigitar.
+  document.getElementById("dg-usar-boletim").addEventListener("click", async () => {
+    const status = document.getElementById("dg-usar-boletim-status");
+    await window.__filtroBoletimPronto;
+    const filtro = lerFiltroBoletim();
+    if (!filtro || !filtro.palavrasRaw) {
+      status.textContent = "Você ainda não montou seu boletim. Monte-o na tela Boletim ou digite o segmento acima.";
+      return;
+    }
+    status.textContent = "";
+    document.getElementById("dg-segmento").value = filtro.palavrasRaw;
+    const campoUf = document.getElementById("dg-uf");
+    campoUf.value = normalizarUfs(filtro.ufs || filtro.uf)[0] || "";
+    campoUf.dispatchEvent(new Event("change"));
+    document.getElementById("dg-buscar").click();
+  });
+
   document.getElementById("dg-buscar").addEventListener("click", async () => {
     dgJaBuscado = true;
     const segmentoRaw = document.getElementById("dg-segmento").value.trim();
@@ -8542,6 +8827,20 @@
   }
   let empJaBuscado = false;
 
+  // Analisar concorrente -> Raio-X Financeiro com o mesmo CNPJ, sem redigitar.
+  document.getElementById("emp-ir-raiox").addEventListener("click", () => {
+    const cnpj = soDigitos(document.getElementById("emp-cnpj").value);
+    if (cnpj) {
+      document.getElementById("fn-cnpj").value = cnpj;
+      fnJaBuscado = true; // evita que a abertura da aba restaure o CNPJ salvo por cima deste
+    }
+    document.querySelector('nav button[data-alvo="transparencia"]').click();
+    const bloco = document.getElementById("raio-x-financeiro");
+    if (bloco) bloco.scrollIntoView({ block: "start" });
+    if (cnpj) document.getElementById("fn-buscar").click();
+    else document.getElementById("fn-cnpj").focus();
+  });
+
   document.getElementById("emp-buscar").addEventListener("click", async () => {
     empJaBuscado = true;
     const cnpj = soDigitos(document.getElementById("emp-cnpj").value);
@@ -9016,7 +9315,7 @@
         alvoCat.innerHTML = '<div class="aviso">Nenhuma categoria de material encontrada com esse termo. Tente outra palavra (ex: mais genérica).</div>';
         return;
       }
-      let html = `<p style="color:var(--texto-fraco);font-size:13px;margin:10px 0 6px;">${pdms.length} categoria(s) encontrada(s) — clique numa pra ver os itens específicos:</p>`;
+      let html = `<p class="pp-passo-titulo">2. Escolha a categoria</p><p style="color:var(--texto-fraco);font-size:13px;margin:0 0 6px;">${pdms.length} categoria(s) encontrada(s) — clique numa pra ver os itens específicos:</p>`;
       html += `<table><tr><th>Categoria (PDM)</th><th>Classe</th></tr>`;
       pdms.forEach((p, i) => {
         const nome = p.descricaoPDM || p.nomePdm || "-";
@@ -9058,8 +9357,8 @@
         return;
       }
 
-      let html = `<h3 style="margin-bottom:4px;">${escapeHtml(nomePdm)} — ${ppItens.length} item(ns) específico(s)</h3>`;
-      html += `<div class="campo" style="max-width:420px;margin-bottom:10px;"><input id="pp-filtro-itens" placeholder="Refinar por característica (ex: azul, plástico, touch)"></div>`;
+      let html = `<p class="pp-passo-titulo">3. Escolha a especificação</p><h3 style="margin-bottom:4px;">${escapeHtml(nomePdm)} — ${ppItens.length} item(ns) específico(s)</h3>`;
+      html += `<div class="campo" style="max-width:420px;margin-bottom:10px;"><label for="pp-filtro-itens">Refinar por característica</label><input id="pp-filtro-itens" placeholder="Ex: azul, plástico, touch"></div>`;
       const LIMITE_EXIBIDOS = 80;
       html += `<table id="pp-tabela-itens"><tr><th>Código</th><th>Características</th></tr>`;
       ppItens.forEach((item, i) => {
@@ -9124,7 +9423,7 @@
       </div>
       <div class="painel-filtros">
         <div class="campo">
-          <label>Unidade de fornecimento</label>
+          <label for="pp-unidade">Unidade de fornecimento</label>
           <select id="pp-unidade">${opcoesUnidade}</select>
         </div>
         <button class="btn-buscar" id="pp-buscar-precos">Buscar preços pagos</button>
@@ -9172,10 +9471,12 @@
       return;
     }
 
-    let html = `<div class="aviso" style="border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Amostra: até 50 compras mais recentes dos últimos 12 meses, unidade "${escapeHtml(ppFormatarUnidade(unidade))}". Fonte: Compras.gov.br (Pesquisa de Preços).</div>`;
+    // Abre pela mediana: é o preço "do meio", que uma compra muito cara ou muito barata não distorce.
+    let html = `<p class="pp-passo-titulo">4. Preços pagos pelo governo</p>
+    <div class="pp-mediana"><span class="pp-mediana-rotulo">Preço mediano pago</span><span class="pp-mediana-valor">${formatarValor(est.mediana)}</span><span class="pp-mediana-ajuda">Metade das compras saiu por até este valor. Use como referência de preço; a média abaixo pode ser puxada por compras fora da curva.</span></div>`;
+    html += `<div class="aviso" style="background:var(--surface-sunken);border-color:var(--aviso-neutro-borda);color:var(--aviso-neutro-texto);">Amostra: até 50 compras mais recentes dos últimos 12 meses, unidade "${escapeHtml(ppFormatarUnidade(unidade))}". Fonte: Compras.gov.br (Pesquisa de Preços).</div>`;
     html += `<div class="cartoes">
       <div class="cartao"><h3>Preço médio</h3><div class="valor">${formatarValor(est.media)}</div></div>
-      <div class="cartao"><h3>Preço mediano</h3><div class="valor">${formatarValor(est.mediana)}</div></div>
       <div class="cartao"><h3>Menor preço</h3><div class="valor">${formatarValor(est.menorPreco)}</div></div>
       <div class="cartao"><h3>Maior preço</h3><div class="valor">${formatarValor(est.maiorPreco)}</div></div>
       <div class="cartao"><h3>Coeficiente de variação</h3><div class="valor">${est.coeficienteVariacao != null ? est.coeficienteVariacao.toFixed(1) + "%" : "-"}</div></div>
@@ -9454,6 +9755,30 @@ window.__atualizarDashboard = function () {
     }
   } catch (e) {}
 
+  const elSemana = document.getElementById("dash-vence-semana");
+  try {
+    if (elSemana && typeof prazosDaSemana === "function") {
+      const statusFunil = lerMapa("status-licitacao") || {};
+      const itens = prazosDaSemana(bolResultadosCompletos, lerMapa("kanban-editais"), statusFunil);
+      const temFiltro = !!(lerFiltroBoletim() || {}).palavrasRaw;
+      if (itens.length) {
+        elSemana.innerHTML = `<ul class="dash-semana-lista">${itens.slice(0, 8).map((item) => `<li>
+          <span class="boletim-prazo prazo-${classePrazoKanban(item.encerramento)}">${escapeHtml(textoPrazo(item.encerramento))}</span>
+          <span class="dash-semana-texto"><strong>${escapeHtml(item.objeto || "Licitação sem título")}</strong><small>${escapeHtml(item.orgao || "Órgão não informado")} · ${escapeHtml(formatarPrazoPropostas(item.encerramento).split(" (")[0])}</small></span>
+          <button type="button" class="btn-filtro-rapido" data-ir-para="${item.origem === "funil" ? "kanban" : "boletim"}">${item.origem === "funil" ? "Ver no Funil" : "Ver no Boletim"}</button>
+        </li>`).join("")}</ul>${itens.length > 8 ? `<p class="dica-clique" style="margin:8px 0 0;">E mais ${itens.length - 8} edital(is) vencendo nesta semana.</p>` : ""}`;
+      } else if (!temFiltro && !Object.keys(statusFunil).length) {
+        elSemana.innerHTML = '<p style="margin:0;font-size:14px;">Ainda não há prazos para mostrar. <button type="button" class="btn-filtro-rapido" data-ir-para="boletim">Montar meu boletim</button></p>';
+      } else {
+        elSemana.innerHTML = '<p style="margin:0;font-size:14px;color:var(--texto-fraco);">Nada vence nos próximos 7 dias no seu Boletim nem no seu Funil.</p>';
+      }
+      elSemana.querySelectorAll("[data-ir-para]").forEach((b) => b.addEventListener("click", () => {
+        const navBtn = document.querySelector(`nav button[data-alvo="${b.dataset.irPara}"]`);
+        if (navBtn) navBtn.click();
+      }));
+    }
+  } catch (e) {}
+
   const elKanban = document.getElementById("dash-num-kanban");
   try {
     if (elKanban && typeof lerMapa === "function") {
@@ -9567,6 +9892,7 @@ window.__preencherIdentidadeUsuario = function () {
     document.querySelectorAll(".banner-limite-plano").forEach((el) => { el.textContent = planoAtual; });
     document.querySelectorAll(".banner-limite-valor").forEach((el) => { el.textContent = String(limiteAtual); });
 
+    if (typeof preencherContatoDuvida === "function") preencherContatoDuvida();
     if (typeof window.__atualizarDashboard === "function") window.__atualizarDashboard();
   } catch (e) {}
 };
@@ -9805,11 +10131,11 @@ window.__preencherIdentidadeUsuario();
     const cont = document.getElementById("dash-atalhos");
     if (!cont) return;
     const atalhos = [
+      { ico: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>", label: "Boletim", alvo: "boletim" },
       { ico: "<svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg>", label: "Encontrar Licitações", alvo: "oportunidades" },
+      { ico: "<svg class='icone-ph'><use href='#ph-folders'></use></svg>", label: "Funil", alvo: "kanban" },
       { ico: "<svg class='icone-ph'><use href='#ph-chart-bar'></use></svg>", label: "Inteligência de Mercado", alvo: "diagnostico" },
-      { ico: "<svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg>", label: "Kanban", alvo: "kanban" },
-      { ico: "<svg class='icone-ph'><use href='#ph-buildings'></use></svg>", label: "Base de Empresas", alvo: "empresa" },
-      { ico: "<svg class='icone-ph'><use href='#ph-scales'></use></svg>", label: "Artigos Jurídicos", alvo: "juridico" },
+      { ico: "<svg class='icone-ph'><use href='#ph-buildings'></use></svg>", label: "Analisar concorrente", alvo: "empresa" },
       { ico: "<svg class='icone-ph'><use href='#ph-coins'></use></svg>", label: "Pesquisa de Preços", alvo: "precos" },
     ];
     cont.innerHTML = atalhos
@@ -9827,19 +10153,6 @@ window.__preencherIdentidadeUsuario();
     });
   })();
 
-  (function () {
-    const painel = document.getElementById("dash-filtros-preview");
-    if (!painel) return;
-    // O card inteiro (título, texto de apoio e a grade de campos) navega pra "Encontrar
-    // Licitações" ao ser clicado em qualquer ponto — não só nos 6 inputs — já que os
-    // campos aqui são só uma prévia somente-leitura, não um formulário de verdade.
-    const card = painel.closest(".dash-painel") || painel;
-    card.style.cursor = "pointer";
-    card.addEventListener("click", () => {
-      const navBtn = document.querySelector('nav button[data-alvo="oportunidades"]');
-      if (navBtn) navBtn.click();
-    });
-  })();
 </script>
 
 </body>

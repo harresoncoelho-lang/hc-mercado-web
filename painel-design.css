@@ -394,6 +394,106 @@
   #modal-ia-fundo [data-resumo-secao^="CAPAG"] > summary { background: #e8efff; color: #071b70; }
   #modal-ia-fundo .defesa-central > .secao-ia-titulo { background: #071b70; color: #fff; border-left: 0; }
   .defesa-botao-destaque { box-shadow: none; }
+
+  /* ---- 15. Fluxo e informação (melhorias de 18/11/2026) ---- */
+  /* hidden sempre vence: vários blocos abaixo têm display próprio e aparecem/somem por atributo. */
+  main [hidden] { display: none !important; }
+
+  /* Menu: link que abre outra página (Minhas empresas e documentos). */
+  nav a.nav-externo .nav-externo-ico { width: 14px; height: 14px; flex: none; margin-left: auto; color: var(--text-secondary); }
+  @media (min-width: 769px) { nav.colapsada a.nav-externo .nav-externo-ico { display: none; } }
+
+  /* Erro no campo (no lugar de alert) e convites neutros. */
+  .erro-campo { margin: 4px 0 0; color: var(--error-text); font-size: 13px; line-height: 18px; }
+  .campo input[aria-invalid="true"] { border-color: var(--error-border); }
+  .empresa-acompanhamento .empresa-convite, .convite-neutro {
+    width: 100%; margin: 0; padding: 8px 12px; border: 1px solid var(--info-border); border-radius: var(--radius-control);
+    background: var(--info-bg); color: var(--info-text); font-size: 13px; line-height: 20px;
+  }
+  .kanban-vazio.convite-neutro { padding: 16px; text-align: left; }
+  .empresa-convite a, .convite-neutro a { color: var(--action-text); font-weight: 600; }
+  .estado-vazio { padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-card); background: var(--surface-sunken); color: var(--text-secondary); font-size: 14px; line-height: 22px; }
+  .estado-vazio p { margin: 0 0 8px; }
+  .estado-vazio p:last-child { margin-bottom: 0; }
+  .estado-vazio .estado-vazio-titulo { color: var(--text-primary); font: 600 16px/24px var(--font-sans); }
+
+  /* Dashboard: "O que vence esta semana?" é a primeira coisa da tela. */
+  .dash-vence-semana { padding: 16px; margin-bottom: 20px; border-left: 3px solid var(--action-strong); }
+  .dash-semana-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .dash-semana-lista li { display: grid; grid-template-columns: 132px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border-default); }
+  .dash-semana-lista li:first-child { border-top: 0; padding-top: 0; }
+  .dash-semana-texto { min-width: 0; display: grid; gap: 2px; }
+  .dash-semana-texto strong { font-weight: 600; font-size: 14px; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-semana-texto small { color: var(--text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-cards.dash-cards-conta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 600px) {
+    .dash-semana-lista li { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .dash-semana-lista li .boletim-prazo { justify-self: start; }
+    .dash-semana-texto strong { white-space: normal; }
+    .dash-semana-lista li .btn-filtro-rapido { justify-self: start; }
+  }
+  @media (max-width: 480px) { .dash-cards.dash-cards-conta { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Boletim sem filtro: um passo só. */
+  .bol-acoes-topo { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 12px; }
+  .bol-config-intro { flex: 1 1 100%; }
+  .bol-config-intro h3 { margin: 0 0 4px; font: 600 18px/26px var(--font-sans); color: var(--text-primary); }
+  .bol-config-intro p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 22px; }
+  /* Imprimir só quando há o que imprimir. */
+  #boletim:not(:has(#bol-resultado .boletim-card)) .btn-imprimir-generico,
+  #oportunidades:not(:has(#op-resultado .boletim-card)) .btn-imprimir-generico { display: none; }
+
+  /* Cartão enxuto: prazo primeiro, por texto e cor. */
+  .boletim-prazo {
+    display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 0 8px; margin-right: auto;
+    border: 1px solid; border-radius: var(--radius-control); font: var(--text-label); white-space: nowrap;
+  }
+  .boletim-prazo.prazo-ok { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+  .boletim-prazo.prazo-perto { background: var(--attention-bg); border-color: var(--attention-border); color: var(--attention-text); font-weight: 600; }
+  .boletim-prazo.prazo-vencido { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+  .boletim-prazo.prazo-sem { background: var(--surface-sunken); border-color: var(--border-default); color: var(--text-secondary); }
+  .boletim-topo .boletim-prazo { margin-left: 4px; }
+  .boletim-acoes-principais, .boletim-acoes-secundarias { display: flex; gap: 8px; flex-wrap: wrap; }
+  .boletim-acoes-secundarias { margin-top: 4px; }
+  .boletim-gerenciar label { display: grid; gap: 4px; font: var(--text-label); color: var(--text-primary); }
+  .boletim-gerenciar:not(:has(> label:not([hidden]))) { display: none; }
+  .boletim-detalhes { margin-top: 12px; border-top: 1px solid var(--border-default); padding-top: 8px; }
+  .boletim-detalhes > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; color: var(--action-text); font-weight: 600; font-size: 13px; }
+  .boletim-detalhes[open] > summary { margin-bottom: 10px; }
+
+  /* Encontrar Licitações e Analisar concorrente: ação secundária abaixo dos filtros. */
+  .op-receber-boletim { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0 0; min-width: 0; }
+  .op-receber-boletim .btn-imprimir { white-space: normal; text-align: left; max-width: 100%; height: auto; min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+  .op-receber-boletim .dica-clique { flex: 1 1 240px; }
+
+  /* Convênios: o Raio-X é outro assunto, em bloco próprio. */
+  .bloco-separado { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-default); }
+  .bloco-separado-titulo { margin: 0 0 4px; font: var(--text-section); color: var(--text-primary); }
+
+  /* Pesquisa de Preços em passos numerados; o passo alcançado ganha número cheio e peso (não só cor). */
+  .pp-passos { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 16px; padding: 0; }
+  .pp-passo { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 13px; }
+  .pp-passo span {
+    display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+    border: 1px solid var(--border-strong); border-radius: 999px; font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .pp-passo[data-passo="1"],
+  #precos:has(#pp-categorias table) .pp-passo[data-passo="2"],
+  #precos:has(#pp-itens table) .pp-passo[data-passo="3"],
+  #precos:has(#pp-resultado .pp-mediana) .pp-passo[data-passo="4"] { color: var(--text-primary); font-weight: 600; }
+  .pp-passo[data-passo="1"] span,
+  #precos:has(#pp-categorias table) .pp-passo[data-passo="2"] span,
+  #precos:has(#pp-itens table) .pp-passo[data-passo="3"] span,
+  #precos:has(#pp-resultado .pp-mediana) .pp-passo[data-passo="4"] span { background: var(--action-strong); border-color: var(--action-strong); color: var(--action-on); }
+  .pp-passo-titulo { margin: 16px 0 4px; font: 600 14px/22px var(--font-sans); color: var(--text-primary); }
+  .pp-mediana {
+    display: grid; gap: 4px; margin: 0 0 12px; padding: 16px; border: 1px solid var(--info-border);
+    border-left: 3px solid var(--action-strong); border-radius: var(--radius-card); background: var(--info-bg);
+  }
+  .pp-mediana-rotulo { font: var(--text-label); color: var(--text-secondary); }
+  .pp-mediana-valor { font: 600 32px/40px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .pp-mediana-ajuda { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+  #status-cartoes .cartao .valor { white-space: normal; overflow: visible; text-overflow: clip; }
 }
 
 .contatos-resumo { border: 1px solid var(--borda); border-radius: var(--radius-card, 8px); padding: 12px; }
