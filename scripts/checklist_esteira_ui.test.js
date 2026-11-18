@@ -1,0 +1,98 @@
+// Lógica pura do checklist da esteira (checklist-esteira-ui.js): rótulos de estado, alertas, ordenação, pendências e lote.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const C = require('../checklist-esteira-ui.js');
+
+test('rótulos de estado da etapa', () => {
+  assert.deepEqual(C.rotuloEtapa('itens', undefined), { texto: 'Ainda não começou', tom: 'neutro' });
+  assert.equal(C.rotuloEtapa('exigencias', { estado: 'executando' }).texto, 'Lendo o edital…');
+  assert.equal(C.rotuloEtapa('itens', { estado: 'executando' }).texto, 'Buscando os itens…');
+  assert.equal(C.rotuloEtapa('exigencias', { estado: 'pendente', detalhe: { situacao: 'aguardando_dossie' } }).texto, 'Esperando o edital ser lido…');
+  assert.equal(C.rotuloEtapa('exigencias', { estado: 'pendente' }).texto, 'Na fila…');
+  assert.equal(C.rotuloEtapa('exigencias', { estado: 'aguardando_leitura' }).tom, 'erro');
+  const falhou = C.rotuloEtapa('itens', { estado: 'falhou', erro: 'HTTP 500 interno' });
+  assert.equal(falhou.texto, 'Falhou: tentar de novo');
+  assert.ok(!falhou.apoio.includes('HTTP'), 'erro técnico não vai para a tela');
+  assert.deepEqual(C.rotuloEtapa('itens', { estado: 'feito', detalhe: { total: 12 } }), { texto: 'Pronto: 12 itens', tom: 'ok' });
+  assert.equal(C.rotuloEtapa('itens', { estado: 'feito', detalhe: { total: 1 } }).texto, 'Pronto: 1 item');
+  assert.equal(C.rotuloEtapa('exigencias', { estado: 'feito', detalhe: {} }).texto, 'Pronto');
+  assert.equal(C.rotuloEtapa('exigencias', { estado: 'desconhecido' }).tom, 'neutro');
+});
+
+test('documentos: falta gerar, [PREENCHER], revisar e pronto', () => {
+  assert.equal(C.rotuloDocumentos(0, []).texto, 'Nenhuma declaração pedida');
+  assert.equal(C.rotuloDocumentos(3, []).texto, 'Falta gerar 3 declarações');
+  assert.equal(C.rotuloDocumentos(1, []).texto, 'Falta gerar 1 declaração');
+  const docs = [{ versao: 2, revisao_versao: 2, texto: 'ok' }, { versao: 1, revisao_versao: null, texto: 'A [PREENCHER: cidade]' }, { versao: 1, texto: null }];
+  assert.deepEqual(C.contarDeclaracoes(docs), { total: 3, comPreencher: 1, revisadas: 1 });
+  assert.equal(C.rotuloDocumentos(3, docs).texto, '1 com campos a preencher');
+  assert.equal(C.rotuloDocumentos(2, [{ versao: 2, revisao_versao: 1, texto: 'x' }]).texto, '1 para revisar');
+  assert.deepEqual(C.rotuloDocumentos(1, [{ versao: 3, revisao_versao: 3, texto: 'x' }]), { texto: 'Pronto', tom: 'ok' });
+});
+
+test('alerta de leitura: um por anexo não lido; sem lista usa a mensagem do robô', () => {
+  assert.deepEqual(C.alertasLeitura({ estado: 'feito' }), []);
+  const a = C.alertasLeitura({ estado: 'aguardando_leitura', detalhe: { naoLidos: [{ documento: 'TR.rar', estado: 'nao_lido', motivo: 'volume ausente' }, { documento: 'Edital.pdf', estado: 'parcial', motivo: 'OCR' }] } });
+  assert.deepEqual(a.map((x) => x.texto), ['Não consegui ler o anexo TR.rar.', 'Não consegui ler por completo o anexo Edital.pdf.']);
+  assert.equal(a[0].motivo, 'volume ausente');
+  assert.equal(C.alertasLeitura({ estado: 'aguardando_leitura', detalhe: { mensagem: 'Nenhum documento foi lido.' } })[0].texto, 'Nenhum documento foi lido.');
+  assert.equal(C.alertasLeitura({ estado: 'aguardando_leitura' }).length, 1);
+});
+
+test('alerta de cobertura: capitaliza, fecha a frase e conta o que ficou fora do detalhe', () => {
+  const r = C.alertasCobertura({ detalhe: { alertas: [{ mensagem: 'o TR cita declaração na pág. 14 e nenhuma exigência foi extraída' }, { mensagem: '  ' }], totalAlertas: 4 } });
+  assert.deepEqual(r, ['O TR cita declaração na pág. 14 e nenhuma exigência foi extraída.', 'Mais 3 trechos para conferir.']);
+  assert.deepEqual(C.alertasCobertura(undefined), []);
+});
+
+test('ordenação: incomum no topo, depois falta > vence > conferir > vigente, depois documento/página/código', () => {
+  const lista = [
+    { codigo: 'R5', situacao: 'vigente', documento: 'A', pagina: 1 },
+    { codigo: 'R4', situacao: 'falta', documento: 'B', pagina: 2 },
+    { codigo: 'R3', situacao: 'vigente', incomum: true, documento: 'A', pagina: 9 },
+    { codigo: 'R2', situacao: 'falta', documento: 'B', pagina: 1 },
+    { codigo: 'R1', situacao: 'conferir', documento: null },
+    { codigo: 'R0', situacao: 'vence_antes_da_sessao', documento: 'Z' },
+  ];
+  assert.deepEqual(C.ordenarExigencias(lista).map((e) => e.codigo), ['R3', 'R2', 'R4', 'R0', 'R1', 'R5']);
+  assert.equal(lista[0].codigo, 'R5', 'não altera a lista original');
+  assert.deepEqual(C.ordenarExigencias(null), []);
+});
+
+test('pendências: "não se aplica" sai da conta; "atendo" tira a falta de documento', () => {
+  const p = C.contarPendencias([
+    { resposta: 'pendente', situacao: 'falta', incomum: true },
+    { resposta: 'atendo', situacao: 'falta' },
+    { resposta: 'vou_providenciar', situacao: 'vence_antes_da_sessao' },
+    { resposta: 'nao_se_aplica', situacao: 'falta', incomum: true },
+    { situacao: 'vigente' },
+  ]);
+  assert.deepEqual(p, { total: 4, semResposta: 2, providenciar: 1, falta: 1, venceAntes: 1, incomuns: 1 });
+  assert.equal(C.contarPendencias([]).total, 0);
+});
+
+test('lote de declarações: biblioteca sem repetir, livre com marcador, ignora "não se aplica" e outras categorias', () => {
+  const lote = C.loteDeclaracoes([
+    { codigo: 'R1', categoria: 'declaracao', texto: 'Declaração de que não emprega menor de 18 anos em trabalho noturno, perigoso ou insalubre' },
+    { codigo: 'R2', categoria: 'declaracao', texto: 'Declaração de não emprego de menor', modelo_declaracao: 'TRAB_MENOR' },
+    { codigo: 'R3', categoria: 'declaracao', texto: 'Declaração de visita ao almoxarifado municipal', documento: 'TR.pdf', pagina: 14, trecho: 'declarar que visitou' },
+    { codigo: 'R4', categoria: 'declaracao', texto: 'Declaração de fato impeditivo', resposta: 'nao_se_aplica' },
+    { codigo: 'R5', categoria: 'fiscal', texto: 'CND federal' },
+  ]);
+  assert.deepEqual(lote[0], { modeloCodigo: 'TRAB_MENOR' });
+  assert.equal(lote.length, 2);
+  assert.equal(lote[1].modeloCodigo, 'livre');
+  assert.ok(lote[1].texto.startsWith('[PREENCHER:'), 'sem modelo: marcador bloqueia revisão até redigir');
+  assert.ok(lote[1].texto.includes('"declarar que visitou"'));
+  assert.equal(lote[1].fonte, 'Exigência do edital: TR.pdf, pág. 14');
+  const muitos = Array.from({ length: 40 }, (_, n) => ({ codigo: 'X' + n, categoria: 'declaracao', texto: 'Declaração especial número ' + n }));
+  assert.equal(C.loteDeclaracoes(muitos).length, 30, 'mesmo teto do servidor');
+});
+
+test('tabela ausente: 42P01, PGRST205 ou 404; outros erros não escondem', () => {
+  assert.equal(C.tabelaAusente({ code: '42P01' }), true);
+  assert.equal(C.tabelaAusente({ code: 'PGRST205' }), true);
+  assert.equal(C.tabelaAusente({ status: 404 }), true);
+  assert.equal(C.tabelaAusente({ code: '42501' }), false);
+  assert.equal(C.tabelaAusente(null), false);
+});

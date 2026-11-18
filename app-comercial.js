@@ -10,8 +10,9 @@
   // do harness QA), o controlador usa as rotas /qa/*. SUPABASE_URL é `const` global, não propriedade de window.
   let autenticacao = null;
   let pedirLogin = null;
+  // Mesmo cliente (sessão do usuário, RLS) para a autenticação e para o checklist da esteira.
+  let cliente = null;
   if (doc.documentElement.dataset.modo === 'producao') {
-    let cliente = null;
     try {
       if (globalThis.supabase && typeof SUPABASE_URL === 'string' && typeof SUPABASE_ANON_KEY === 'string') {
         cliente = globalThis.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -36,6 +37,8 @@
     kit: globalThis.LicitaKitDocumentos,
     identificacao: globalThis.OperacaoIdentificacao,
     itens: globalThis.LicitaItensProcesso,
+    // Sem cliente supabase (harness QA): sem checklist.
+    esteira: cliente && globalThis.LicitaChecklistEsteira ? { montar: (o) => globalThis.LicitaChecklistEsteira.montar({ ...o, cliente }) } : null,
     confirmar: (mensagem) => globalThis.confirm(mensagem),
     busca: globalThis.location.search,
   });

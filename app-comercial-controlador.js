@@ -105,7 +105,7 @@
 
   // pedirLogin(mensagem): produção não tem formulário próprio; quando a casca cai no login, quem chama redireciona
   // para o login.html. Sem ele (QA), o formulário da própria página continua sendo usado.
-  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, portal = globalThis.LicitaPortalCliente || null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
+  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, portal = globalThis.LicitaPortalCliente || null, esteira = null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
     const auth = autenticacao || autenticacaoQA(fetch);
     const el = (id) => doc.getElementById(id);
     let epoca = 0;
@@ -117,6 +117,7 @@
     let ident = null;
     let itensComp = null;
     let portalComp = null;
+    let esteiraComp = null;
     let tela = 'carregando';
     // 'hoje' lista empresas/processos autorizados; 'processo' mostra identificação e kit do contexto atual.
     let visao = 'hoje';
@@ -172,6 +173,8 @@
       el('itens-processo').hidden = !processo;
       // Portal do cliente: mesma regra dos itens; a página do harness QA não tem o bloco.
       if (el('portal-cliente')) el('portal-cliente').hidden = !processo;
+      // Checklist da esteira: mesma regra; vazio (banco antigo ou sem esteira) o CSS esconde o cartão.
+      if (el('checklist-esteira')) el('checklist-esteira').hidden = !processo;
       el('empresa-bloco').hidden = !(processo || preparar);
       el('processo-bloco').hidden = !processo || processosDe(atual?.empresaId).length === 0;
       el('hoje').hidden = !hoje;
@@ -346,6 +349,9 @@
       try { portalComp?.fechar(); } catch { /* módulo já desmontado */ }
       portalComp = null;
       el('portal-cliente')?.replaceChildren();
+      try { esteiraComp?.fechar(); } catch { /* módulo já desmontado */ }
+      esteiraComp = null;
+      el('checklist-esteira')?.replaceChildren();
       componente = null;
       ident = null;
       identDe = null;
@@ -517,6 +523,7 @@
       if (itens) itensComp = itens.montar({ alvo: el('itens-processo'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: requisitarAutenticado,
         // Mesmo kit e mesmo contexto, mesmo oculto (voltar ao Hoje preserva o kit). Fechado ou contexto trocado: bloqueia.
         aoSalvar: () => { if (epoca === epocaKit && componente !== null && componente === kitDoItem.atual) kitDoItem.atual?.atualizarItens?.(); } });
+      if (esteira && el('checklist-esteira')) esteiraComp = esteira.montar({ alvo: el('checklist-esteira'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: requisitarAutenticado });
       // Portal do cliente: compara a resposta do cliente com os itens que o consultar já trouxe.
       // shortcut: só a primeira página de itens do consultar; item de outra página aparece sem a checagem de "valores mudaram".
       if (portal && el('portal-cliente')) portalComp = portal.montar({ alvo: el('portal-cliente'), requisitar: requisitarAutenticado, confirmar: confirmar || undefined,

@@ -1,0 +1,53 @@
+/* Checklist da esteira no processo (checklist-esteira-ui.js). Só tokens do DS; alvos de toque de 44px. */
+#checklist-esteira{margin-top:var(--space-16);max-width:720px;min-width:0}
+/* Banco antigo ou processo sem esteira: o módulo não desenha nada e o cartão some. */
+#checklist-esteira:empty{display:none}
+#checklist-esteira p{margin:0;font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+.esteira-apoio{font:var(--text-label);color:var(--text-secondary)}
+.esteira-faixa{list-style:none;margin:var(--space-12) 0 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-8)}
+.esteira-faixa li{display:grid;gap:var(--space-4);align-content:start;padding:var(--space-12);border:1px solid var(--border-default);border-left-width:4px;border-radius:var(--radius-control);min-width:0}
+.esteira-faixa strong{font:var(--text-body);color:var(--text-primary);overflow-wrap:anywhere}
+.esteira-etapa{font:var(--text-label);color:var(--text-secondary)}
+.esteira-faixa [data-tom="ok"]{border-left-color:var(--success-border);background:var(--success-bg)}
+.esteira-faixa [data-tom="ok"] strong{color:var(--success-text)}
+.esteira-faixa [data-tom="andamento"]{border-left-color:var(--info-border);background:var(--info-bg)}
+.esteira-faixa [data-tom="atencao"]{border-left-color:var(--attention-border);background:var(--attention-bg)}
+.esteira-faixa [data-tom="atencao"] strong{color:var(--attention-text)}
+.esteira-faixa [data-tom="erro"]{border-left-color:var(--error-border);background:var(--error-bg)}
+.esteira-faixa [data-tom="erro"] strong{color:var(--error-text)}
+.esteira-alerta{margin-top:var(--space-12);padding:var(--space-12);border:1px solid;border-left-width:4px;border-radius:var(--radius-control)}
+.esteira-alerta[data-tom="erro"]{border-color:var(--error-border);background:var(--error-bg);color:var(--error-text)}
+.esteira-alerta[data-tom="atencao"]{border-color:var(--attention-border);background:var(--attention-bg);color:var(--attention-text)}
+.esteira-alerta strong{font:var(--text-body);font-weight:600}
+.esteira-alerta ul{margin:var(--space-8) 0 0;padding-left:var(--space-16);display:grid;gap:var(--space-4);font:var(--text-body);overflow-wrap:anywhere}
+.esteira-motivo{font:var(--text-label)}
+.esteira-resumo{margin-top:var(--space-16)!important;color:var(--text-primary)!important;font-weight:600}
+.esteira-lista{list-style:none;margin:var(--space-12) 0 0;padding:0;display:grid;gap:var(--space-12)}
+.esteira-lista>li{display:grid;gap:var(--space-8);padding:var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control);min-width:0}
+.esteira-lista>li[data-incomum]{border-color:var(--attention-border);border-left-width:4px}
+.esteira-lista strong{font:var(--text-section);color:var(--text-primary);overflow-wrap:anywhere}
+.esteira-selos{display:flex;flex-wrap:wrap;gap:var(--space-4)}
+.esteira-selo{display:inline-block;padding:2px var(--space-8);border-radius:999px;font:var(--text-label);font-weight:600;border:1px solid}
+.esteira-selo[data-selo="incomum"]{background:var(--attention-bg);border-color:var(--attention-border);color:var(--attention-text)}
+.esteira-selo[data-selo="conferir"]{background:var(--info-bg);border-color:var(--info-border);color:var(--info-text)}
+.esteira-situacao{font-weight:600;color:var(--text-primary)}
+[data-situacao="falta"] .esteira-situacao,[data-situacao="vence_antes_da_sessao"] .esteira-situacao{color:var(--error-text)}
+[data-situacao="vigente"] .esteira-situacao{color:var(--success-text)}
+[data-situacao="conferir"] .esteira-situacao{color:var(--attention-text)}
+#checklist-esteira details summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:var(--action-text);font:var(--text-body)}
+#checklist-esteira blockquote{margin:0;padding:var(--space-8) var(--space-12);border-left:3px solid var(--border-strong);background:var(--surface-sunken);font:var(--text-body);color:var(--text-primary);white-space:pre-wrap;overflow-wrap:anywhere}
+.esteira-resposta{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--space-8);min-width:0}
+.esteira-resposta legend{font:var(--text-label);color:var(--text-secondary);margin-bottom:var(--space-4);padding:0}
+.esteira-opcao{display:inline-flex;align-items:center;gap:var(--space-8);min-height:44px;padding:0 var(--space-12);border:1px solid var(--border-strong);border-radius:var(--radius-control);font:var(--text-body);color:var(--text-primary);cursor:pointer}
+.esteira-opcao:has(input:checked){border-color:var(--action-strong);background:var(--action-tint);font-weight:600}
+.esteira-opcao input{width:18px;height:18px;margin:0}
+.esteira-declaracoes{margin-top:var(--space-16);padding-top:var(--space-16);border-top:1px solid var(--border-default);display:grid;gap:var(--space-8)}
+.esteira-declaracoes h3{margin:0;font:var(--text-section);color:var(--text-primary)}
+.esteira-acoes{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.esteira-acoes button{min-height:44px}
+@media (max-width:640px){
+  #checklist-esteira{margin-top:var(--space-12)}
+  .esteira-faixa{grid-template-columns:minmax(0,1fr)}
+  .esteira-resposta{display:grid}
+  .esteira-acoes button{width:100%}
+}
