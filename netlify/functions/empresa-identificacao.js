@@ -1,10 +1,60 @@
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
-const {falhar,LIMITES,validarArquivo,validarConfirmacao}=require('./_empresa_identificacao');
+const {falhar,LIMITES,LOGO,validarArquivo,validarConfirmacao,mascararCpf,validarPerfilEmpresa,validarPremissas,tipoCaminhoLogo,validarLogo}=require('./_empresa_identificacao');
 const {createHash,randomUUID}=require('node:crypto');
 const {carregarContextoIdentificacao}=require('./_empresa_identificacao_contexto');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
 const uuid=v=>typeof v==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(v);
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+// ---------- Perfil da empresa (esteira E10): só token do usuário (RLS); CPF e banco nunca vão a log nem a mensagem. ----------
+const COLUNAS_PREMISSA='segmento,uf,tributos_percentual,frete_percentual,garantia_percentual,margem_percentual,margem_minima_percentual,atualizado_em';
+// Banco sem operacao_perfil_empresa.sql: o PostgREST responde 404 e request() vira 503 genérico.
+const comTabelaPerfil=async promessa=>{try{return await promessa;}catch(e){if(e.status===503)falhar('O perfil da empresa ainda não está disponível neste ambiente.',503);throw e;}};
+// A RLS do perfil devolve 0 linhas ao papel leitura e também à empresa sem perfil: o papel desempata.
+async function papelNaEmpresa({rest,empresa,userId}){
+ const membros=(await rest(`operacao_membros?usuario_id=eq.${userId}&organizacao_id=eq.${empresa.organizacao_id}&select=usuario_id,organizacao_id,empresa_id,papel`)).filter(m=>m.usuario_id===userId&&m.organizacao_id===empresa.organizacao_id&&(m.empresa_id===null||m.empresa_id===empresa.id));
+ return membros.some(m=>m.papel==='gestor')?'gestor':membros.some(m=>m.papel==='operador')?'operador':'leitura';
+}
+const perfilPublicoEmpresa=(p,mostrarCpf)=>p?{...p,cpf_representante:mostrarCpf?p.cpf_representante:mascararCpf(p.cpf_representante)}:null;
+const upsert=(c,tabela,conflito,linhas)=>comTabelaPerfil(c.request(`/rest/v1/${tabela}?on_conflict=${conflito}`,{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(linhas)}).then(r=>r.json()));
+const caminhoStorage=caminho=>caminho.split('/').map(encodeURIComponent).join('/');
+async function lerAte(r,max){
+ if(Number(r.headers.get('content-length'))>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');
+ const reader=r.body.getReader();let total=0;const chunks=[];
+ try{for(;;){const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');chunks.push(Buffer.from(value));}}finally{await reader.cancel();}
+ return Buffer.concat(chunks);
+}
+async function urlLogo(c,perfil){
+ if(!perfil?.logo_caminho||!tipoCaminhoLogo(perfil.logo_caminho,c.empresa.organizacao_id,c.empresa.id,perfil.logo_hash))return null;
+ // Logo apagada no Storage não impede ler o perfil.
+ try{const r=await c.request('/storage/v1/object/sign/operacao-documentos/'+caminhoStorage(perfil.logo_caminho),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});const {signedURL}=await r.json();return typeof signedURL==='string'?URL+'/storage/v1'+signedURL:null;}catch{return null;}
+}
+const ACOES_PERFIL={
+ async lerPerfil(body,c){
+  const papel=await papelNaEmpresa(c);if(papel==='leitura')falhar('Seu papel não permite ver os dados do perfil.',403);
+  const filtro=`empresa_id=eq.${c.empresa.id}&organizacao_id=eq.${c.empresa.organizacao_id}`;
+  const [perfis,premissas]=await comTabelaPerfil(Promise.all([c.rest(`operacao_perfil_empresa?${filtro}&select=*`),c.rest(`operacao_premissas_empresa?${filtro}&select=${COLUNAS_PREMISSA}&order=segmento,uf`)]));
+  const perfil=perfis[0]||null;
+  return {papel,perfil:perfilPublicoEmpresa(perfil,body.mostrarCpf===true&&papel==='gestor'),premissas,logoUrl:await urlLogo(c,perfil)};
+ },
+ async salvarPerfil(body,c){
+  if(await papelNaEmpresa(c)==='leitura')falhar('Seu papel não permite alterar o perfil.',403);
+  // Valida tudo antes da primeira escrita: perfil e premissas não gravam pela metade por erro de entrada.
+  const dados=validarPerfilEmpresa(body.perfil);const premissas=body.premissas===undefined?null:validarPremissas(body.premissas);
+  const escopo={empresa_id:c.empresa.id,organizacao_id:c.empresa.organizacao_id};
+  const [perfil]=await upsert(c,'operacao_perfil_empresa','empresa_id',{...dados,...escopo});
+  const gravadas=premissas?.length?await upsert(c,'operacao_premissas_empresa','empresa_id,segmento,uf',premissas.map(p=>({...p,...escopo}))):[];
+  return {perfil:perfilPublicoEmpresa(perfil,false),premissas:gravadas};
+ },
+ async registrarLogo(body,c){
+  if(await papelNaEmpresa(c)==='leitura')falhar('Seu papel não permite alterar o perfil.',403);
+  if(typeof body.hash!=='string'||!/^[0-9a-f]{64}$/.test(body.hash))falhar('Hash da logo inválido.',422,'hash');
+  const tipo=tipoCaminhoLogo(body.caminho,c.empresa.organizacao_id,c.empresa.id,body.hash);if(!tipo)falhar('Caminho da logo fora da pasta perfil desta empresa.',422,'caminho');
+  const bytes=await lerAte(await c.request('/storage/v1/object/authenticated/operacao-documentos/'+caminhoStorage(body.caminho)),LOGO.bytes);
+  const img=validarLogo(bytes,tipo);if(hash(bytes)!==body.hash)falhar('O arquivo da logo não confere com o hash informado.',422,'hash');
+  const [perfil]=await upsert(c,'operacao_perfil_empresa','empresa_id',{empresa_id:c.empresa.id,organizacao_id:c.empresa.organizacao_id,logo_caminho:body.caminho,logo_hash:body.hash});
+  return {logo:{caminho:perfil.logo_caminho,hash:perfil.logo_hash,tipo:img.tipo,largura:img.largura,altura:img.altura},versao:perfil.versao};
+ },
+};
 exports.handler=async event=>{
  const headers=cabecalhosPadrao(event);const resposta=(status,body)=>({statusCode:status,headers,body:JSON.stringify(body)});
  if(event.httpMethod==='OPTIONS')return resposta(204,{});
@@ -15,7 +65,8 @@ exports.handler=async event=>{
  if(typeof event.body!=='string'||event.body.length>Math.ceil(LIMITES.upload/3)*4+4096)falhar('Solicitação muito grande.',413);
  let body;try{body=JSON.parse(event.body);}catch{falhar('Solicitação inválida.');}
  if(!uuid(body.empresaId))falhar('Empresa inválida.');
- const {empresa,documentos,documento,baixar,perfilPublico,validarPerfil,request}=await carregarContextoIdentificacao(event,auth.userId,body.empresaId);
+ const {empresa,documentos,documento,baixar,perfilPublico,validarPerfil,request,rest}=await carregarContextoIdentificacao(event,auth.userId,body.empresaId);
+ if(Object.hasOwn(ACOES_PERFIL,body.acao))return resposta(200,await ACOES_PERFIL[body.acao](body,{empresa,request,rest,userId:auth.userId}));
  if(body.acao==='consultar'){
  const perfil=await validarPerfil();
  return resposta(200,{empresa,documentos,perfil:perfilPublico(perfil)});
@@ -39,5 +90,5 @@ exports.handler=async event=>{
  const p=await r.json();return resposta(200,{empresa,perfil:perfilPublico(Array.isArray(p)?p[0]:p)});
  }
  falhar('Ação inválida.');
- }catch(e){return resposta(e.status||503,{erro:e.status?e.message:'Serviço temporariamente indisponível. Tente novamente.'});}
+ }catch(e){return resposta(e.status||503,{erro:e.status?e.message:'Serviço temporariamente indisponível. Tente novamente.',...(e.status&&e.campo?{campo:e.campo}:{})});}
 };
