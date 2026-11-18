@@ -370,7 +370,46 @@
   .bol-cal-dia-semana { font: var(--text-label); text-transform: none; color: var(--text-secondary); }
 
   /* ---- 12. Kanban ---- */
-  .kanban-coluna-topo { border-bottom: 3px solid var(--cor-coluna, var(--action-strong)); }
+  /* A cor da etapa (escolhida pelo usuário) só aparece nesta faixa fina; texto segue os tokens. */
+  .kanban-coluna { border-top: 4px solid var(--cor-coluna, var(--action-strong)); }
+  .kanban-coluna-topo { border-bottom: 1px solid var(--border-default); }
+  .kanban-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8); margin-bottom: var(--space-12); }
+  .etapas-dialogo {
+    width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 48px); box-sizing: border-box; padding: var(--space-24);
+    border: 1px solid var(--border-default); border-radius: var(--radius-modal); background: var(--surface-raised);
+    color: var(--text-primary); box-shadow: var(--shadow-overlay);
+  }
+  .etapas-dialogo::backdrop { background: var(--scrim); }
+  .etapas-dialogo-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
+  .etapas-dialogo h3 { margin: 0; font: var(--text-section); }
+  .etapas-ajuda { margin: var(--space-8) 0 var(--space-16); font: var(--text-body); color: var(--text-secondary); }
+  .etapas-lista { list-style: none; margin: var(--space-8) 0 var(--space-16); padding: 0; display: grid; gap: var(--space-8); }
+  .etapa-linha {
+    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) 48px 172px; align-items: end; gap: var(--space-12);
+    padding: var(--space-12); border: 1px solid var(--border-default); border-radius: var(--radius-card); background: var(--surface-default);
+  }
+  .etapa-campo { display: grid; gap: var(--space-4); min-width: 0; font: var(--text-label); color: var(--text-primary); }
+  .etapa-campo input[type="text"], .etapa-campo select {
+    width: 100%; box-sizing: border-box; min-height: 40px; padding: 8px 12px; border: 1px solid var(--border-strong);
+    border-radius: var(--radius-control); background: var(--surface-default); color: var(--text-primary); font: var(--text-body);
+  }
+  .etapa-campo input[aria-invalid="true"] { border-color: var(--error-border); }
+  .etapa-campo select:disabled { background: var(--surface-sunken); color: var(--text-secondary); border-color: var(--border-default); }
+  .etapa-campo input[type="color"] {
+    width: 48px; height: 40px; padding: 2px; box-sizing: border-box; border: 1px solid var(--border-strong);
+    border-radius: var(--radius-control); background: var(--surface-default); cursor: pointer;
+  }
+  .etapa-acoes { display: flex; align-items: center; gap: var(--space-4); }
+  .etapa-acoes .btn-imprimir { min-width: 40px; min-height: 40px; padding: 0 10px; }
+  .etapa-acoes .btn-imprimir:disabled { color: var(--text-disabled); background: var(--surface-sunken); border-color: var(--border-default); cursor: not-allowed; }
+  .etapa-acoes .etapa-excluir { color: var(--error-text); }
+  .etapa-protegida { padding: 0 var(--space-8); font: var(--text-label); color: var(--text-secondary); white-space: nowrap; }
+  @media (max-width: 600px) {
+    .etapas-dialogo { padding: var(--space-16); }
+    .etapa-linha { grid-template-columns: auto 1fr; }
+    .etapa-linha .etapa-nome, .etapa-linha .etapa-conta { grid-column: 1 / -1; }
+    .etapa-acoes { justify-content: flex-end; }
+  }
   .kanban-coluna.arraste-sobre { background: var(--action-tint); }
   .kanban-coluna-titulo { font-weight: 600; }
   .kanban-card { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-control); }

@@ -1443,7 +1443,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="painel-design.css?v=3">
+<link rel="stylesheet" href="painel-design.css?v=4">
 <script src="contatos-resumo.js?v=1" defer></script>
 <script src="decisoes-resumo.js?v=1" defer></script>
 </head>
@@ -2275,11 +2275,25 @@
     </div>
     <div class="secao-conteudo-principal">
     <div class="empresa-acompanhamento"><label for="kanban-empresa">Acompanhamento da empresa<select id="kanban-empresa" class="seletor-empresa-acompanhamento" disabled><option>Carregando empresas...</option></select></label><a href="operacao.html">Gerenciar empresas</a><p class="empresa-ajuda">Cada empresa tem seu próprio quadro. O mesmo edital pode ter decisões diferentes em empresas diferentes.</p></div>
-    <div class="boletim-filtros-rapidos" id="kanban-filtros-rapidos" role="group" aria-label="Filtrar o Funil" style="margin-bottom:12px;">
+    <div class="kanban-barra">
+    <div class="boletim-filtros-rapidos" id="kanban-filtros-rapidos" role="group" aria-label="Filtrar o Funil">
       <button type="button" class="btn-filtro-rapido ativo" data-modo="todos" aria-pressed="true">Todos</button>
       <button type="button" class="btn-filtro-rapido" data-modo="vence-3" aria-pressed="false">Vencem em 3 dias</button>
     </div>
+    <!-- Escondido até as etapas carregarem do banco; sem a tabela, o Funil fica nas 4 colunas padrão. -->
+    <button type="button" class="btn-imprimir" id="kanban-etapas" aria-haspopup="dialog" hidden><svg class='icone-ph'><use href='#ph-gear'></use></svg> Etapas</button>
+    </div>
     <div id="kanban-quadro" class="kanban-quadro"></div>
+    <dialog id="etapas-dialogo" class="etapas-dialogo" aria-labelledby="etapas-titulo">
+      <div class="etapas-dialogo-topo">
+        <h3 id="etapas-titulo">Etapas do Funil</h3>
+        <button type="button" class="btn-imprimir" id="etapas-fechar">Fechar</button>
+      </div>
+      <p class="etapas-ajuda">Cada etapa é uma coluna do Funil, nesta ordem. "Conta como" é o estágio que o processo recebe no sistema. As 4 etapas do sistema podem ser renomeadas, coloridas e reordenadas, mas não excluídas. Tudo é salvo na hora.</p>
+      <p id="etapas-aviso" class="erro-campo" role="alert" hidden></p>
+      <ol id="etapas-lista" class="etapas-lista"></ol>
+      <button type="button" class="btn-imprimir" id="etapas-nova">+ Nova etapa</button>
+    </dialog>
     </div>
     <details class="contatos-resumo" style="margin-top:18px"><summary>Respostas dos clientes às oportunidades</summary><p>Decisões recebidas pelos links individuais. Confirmar participação aqui não inscreve a empresa no portal.</p><button type="button" id="decisoes-clientes-atualizar">Atualizar respostas</button><div id="decisoes-clientes-lista" role="status"></div></details>
   </section>
@@ -2815,7 +2829,7 @@
       const id = idOportunidade(edital);
       const status = lerMapa("status-licitacao")[id];
       if (status && empresaOperacionalId && dados.fonteLida === true && dados.estrutura) {
-        void agendarSincronizacaoDossie(id, edital, status, true, empresaOperacionalId);
+        void agendarSincronizacaoDossie(id, edital, status, true, empresaOperacionalId, etapaAtualDoCard(id));
       }
     } catch (e) {
       // Alguns navegadores podem bloquear armazenamento; o cache do servidor
@@ -4650,6 +4664,24 @@
     { valor: "ganhei", titulo: "Ganhei", icone: "trophy", cor: "var(--verde)" },
     { valor: "perdi", titulo: "Perdi", icone: "x-circle", cor: "var(--vermelho)" },
   ];
+  // Colunas do Funil: as etapas da organização em ordem, ou as 4 fixas quando o banco
+  // ainda não tem operacao_funil_etapas (etapas === null).
+  function colunasDoFunil(etapas) {
+    if (!etapas) return KANBAN_COLUNAS.map((c) => ({ chave: c.valor, titulo: c.titulo, icone: c.icone, cor: c.cor, etapa: null }));
+    return [...etapas].sort((a, b) => a.ordem - b.ordem).map((e) => ({
+      chave: e.id, titulo: e.nome, etapa: e,
+      icone: KANBAN_COLUNAS.find((c) => c.valor === e.chave_sistema)?.icone || "circle",
+      cor: /^#[0-9a-f]{6}$/i.test(e.cor || "") ? e.cor : "var(--border-strong)",
+    }));
+  }
+  // A etapa gravada no processo só vale se o estágio ainda bate (o estágio pode ter
+  // mudado por fora, no sistema); senão o cartão vai para a etapa protegida da chave.
+  function colunaDoCard(etapas, chave4, etapaId, statusProcesso) {
+    if (!etapas) return chave4;
+    const propria = etapaId ? etapas.find((e) => e.id === etapaId) : null;
+    if (propria && propria.status_sistema === statusProcesso) return propria.id;
+    return etapas.find((e) => e.chave_sistema === chave4)?.id || null;
+  }
 
   // Guarda os dados necessários pra desenhar o card no Kanban mesmo depois que a licitação
   // sair do boletim do dia (o boletim só mostra as últimas 24-48h, mas o acompanhamento
@@ -4676,6 +4708,9 @@
       anoCompra: edital.anoCompra || null,
       codigoUnidade: edital.codigoUnidade || null,
       dataSessao: edital.dataSessao || edital.data_sessao || null,
+      // Quem não informa a etapa (ex.: atualização vinda do Boletim) conserva a do cartão.
+      etapaId: "etapaId" in edital ? edital.etapaId : (mapa[id]?.etapaId || null),
+      statusProcesso: "statusProcesso" in edital ? edital.statusProcesso : (mapa[id]?.statusProcesso || null),
     };
     salvarMapa("kanban-editais", mapa, empresaId);
   }
@@ -4711,6 +4746,9 @@
   const PREFIXO_RESULTADO_KANBAN = "Status informado no Kanban: ";
   const STATUS_RESULTADO_KANBAN = { interesse: "Tenho interesse", participando: "Participando", ganhei: "Ganhei", perdi: "Perdi" };
   const sincronizacoesOperacionais = new Map();
+  // null = banco sem operacao_funil_etapas (painel no ar antes do SQL): não envia etapa_id.
+  let etapasFunil = null;
+  let organizacaoFunilId = null;
   let contextoOperacionalPromise = null;
   function avisarSincronizacaoOperacional(mensagem, erro = false) {
     let aviso = document.getElementById("aviso-sincronizacao-operacional");
@@ -4744,9 +4782,11 @@
     if (!empresa) throw new Error(empresaId ? "A empresa selecionada não está mais disponível. Atualize a lista e tente novamente." : "Cadastre uma empresa em Minhas empresas e documentos antes de criar o dossiê.");
     return { organizacaoId, empresa, empresas };
   }
-  async function sincronizarDossieOperacional(id, edital, status, empresaId = null) {
+  async function sincronizarDossieOperacional(id, edital, status, empresaId = null, etapa = null) {
     const dadosStatus = dadosStatusOperacional(status);
     if (!dadosStatus || !edital) return null;
+    // Com etapa, o estágio é o dela; sem etapa, o processo volta para a etapa protegida.
+    const camposEtapa = etapa ? { status: etapa.status_sistema, etapa_id: etapa.id } : (etapasFunil ? { etapa_id: null } : {});
     const { organizacaoId, empresa } = await empresaOperacionalParaDossie(empresaId);
     const sb = window.__sbClient;
     const { data: existente, error: erroBusca } = await sb.from("operacao_processos")
@@ -4774,7 +4814,7 @@
         !resultadoAnterior.startsWith("Resultado marcado como "));
       const atualizacao = {
         ...camposVazios, status: dadosStatus.estagio, decisao: dadosStatus.decisao,
-        atualizado_em: new Date().toISOString()
+        atualizado_em: new Date().toISOString(), ...camposEtapa
       };
       if (!resultadoManual) {
         atualizacao.situacao_resultado = dadosStatus.resultado;
@@ -4791,7 +4831,7 @@
     } else {
       const { data, error } = await sb.from("operacao_processos").insert({
         organizacao_id: organizacaoId, empresa_id: empresa.id, origem_externa_id: id,
-        ...origem, status: dadosStatus.estagio, decisao: dadosStatus.decisao,
+        ...origem, status: dadosStatus.estagio, decisao: dadosStatus.decisao, ...camposEtapa,
         situacao_resultado: dadosStatus.resultado,
         resultado: PREFIXO_RESULTADO_KANBAN + STATUS_RESULTADO_KANBAN[status] + " (informação do usuário; confira a fonte oficial).",
         observacoes: "Pré-preenchido automaticamente a partir do Boletim / Kanban. Confira o edital antes de enviar a proposta."
@@ -4846,11 +4886,11 @@
     }
     return { id: processo.id, empresa: empresa.razao_social };
   }
-  function agendarSincronizacaoDossie(id, edital, status, silencioso = false, empresaId = empresaOperacionalId) {
+  function agendarSincronizacaoDossie(id, edital, status, silencioso = false, empresaId = empresaOperacionalId, etapa = null) {
     if (!id || !edital || !dadosStatusOperacional(status)) return Promise.resolve(null);
     const chave = `${empresaId}:${id}`;
     const anterior = sincronizacoesOperacionais.get(chave) || Promise.resolve();
-    const tarefa = anterior.catch(() => {}).then(() => sincronizarDossieOperacional(id, edital, status, empresaId));
+    const tarefa = anterior.catch(() => {}).then(() => sincronizarDossieOperacional(id, edital, status, empresaId, etapa));
     sincronizacoesOperacionais.set(chave, tarefa);
     void tarefa.then(resultado => {
       if (!silencioso) avisarSincronizacaoOperacional(`Dossiê atualizado para ${resultado.empresa || "a empresa ativa"}.`);
@@ -4938,7 +4978,8 @@
         link: processo.url_origem || anteriores[id]?.link || null,
         modalidade: processo.modalidade || null, fonte: processo.sistema || null,
         publicacao: processo.data_publicacao || null, dataSessao: processo.data_sessao || null,
-        valorTotalEstimado: processo.valor_estimado ?? null
+        valorTotalEstimado: processo.valor_estimado ?? null,
+        etapaId: processo.etapa_id ?? null, statusProcesso: processo.status || null
       };
     }
     const idsProcesso = processos.filter(p => status[p.origem_externa_id]).map(p => p.id);
@@ -4958,6 +4999,50 @@
     // detalhes de apresentação e anotações separados pelo ID da empresa.
     salvarMapa("status-licitacao", status, empresaId);
     salvarMapa("kanban-editais", snapshots, empresaId);
+  }
+  // garantir_etapas_funil cria as 4 protegidas na primeira vez e devolve a lista em ordem.
+  // Sem a tabela/RPC no banco, o Funil segue com KANBAN_COLUNAS e o botão "Etapas" some.
+  function semTabelaEtapas(erro, status) {
+    return status === 404 || ["42P01", "42883", "PGRST202", "PGRST205"].includes(erro?.code);
+  }
+  async function carregarEtapasFunil(organizacaoId) {
+    let etapas = null;
+    try {
+      const { data, error, status } = await window.__sbClient.rpc("garantir_etapas_funil", { p_org: organizacaoId });
+      if (error && !semTabelaEtapas(error, status)) avisarSincronizacaoOperacional("O Funil está com as colunas padrão: " + mensagemErroEtapa(error), true);
+      if (!error && data?.length) etapas = data;
+      if (error?.code === "23505") {
+        const lista = await window.__sbClient.from("operacao_funil_etapas").select("*").eq("organizacao_id", organizacaoId).order("ordem");
+        if (!lista.error) etapas = lista.data || [];
+      }
+    } catch (erro) { console.warn("Etapas do Funil indisponíveis:", erro); }
+    etapasFunil = etapas;
+    organizacaoFunilId = organizacaoId;
+    const botao = document.getElementById("kanban-etapas");
+    if (botao) botao.hidden = !etapasFunil;
+  }
+  function mensagemErroEtapa(erro) {
+    const texto = String(erro?.message || "");
+    if (erro?.code === "23505") return "Já existe uma etapa com esse nome. Escolha outro nome.";
+    if (erro?.code === "42501" || /row-level security|permission denied/i.test(texto)) return "Só quem tem acesso à organização inteira pode mudar as etapas. Peça a um administrador da conta.";
+    if (/Limite de 20/.test(texto)) return "O Funil já tem 20 etapas, o máximo. Exclua uma etapa personalizada antes de criar outra.";
+    if (/Etapa em uso/.test(texto)) return "Mova os cartões desta etapa antes de mudar o “conta como”.";
+    if (/Renomeie/.test(texto)) return "Uma etapa personalizada usa o nome de uma etapa do sistema (Tenho interesse, Participando, Ganhei ou Perdi), ou há etapas demais. Renomeie ou exclua essa etapa em “Etapas”.";
+    if (erro?.code === "P0001") return texto + ".";
+    if (/incompatível|indisponível/.test(texto) || erro?.code === "23503") return "As etapas mudaram em outra tela. O Funil foi atualizado; tente de novo.";
+    if (erro?.code === "23514") return "O nome precisa ter de 1 a 40 caracteres.";
+    return "O banco não aceitou a mudança. Confira a conexão e tente de novo.";
+  }
+  // O quadro só usa as etapas com as 4 protegidas presentes (senão cartões ficariam sem coluna).
+  function etapasDoQuadro() {
+    return etapasFunil && etapasFunil.filter((e) => e.chave_sistema).length === 4 ? etapasFunil : null;
+  }
+  function etapaAtualDoCard(id) {
+    const etapas = etapasDoQuadro();
+    if (!etapas) return null;
+    const edital = lerMapa("kanban-editais")[id];
+    const chave = colunaDoCard(etapas, lerMapa("status-licitacao")[id], edital?.etapaId, edital?.statusProcesso);
+    return etapas.find((e) => e.id === chave) || null;
   }
   async function carregarEmpresasAcompanhamento() {
     empresaAcompanhamentoPronta = false;
@@ -4981,6 +5066,7 @@
       document.querySelectorAll(".empresa-convite").forEach((el) => { el.hidden = !semEmpresaCadastrada; });
       document.querySelectorAll(".empresa-acompanhamento .empresa-ajuda").forEach((el) => { el.hidden = semEmpresaCadastrada; });
       if (semEmpresaCadastrada) { atualizarStatusAcompanhamentoNaTela(); return; }
+      await carregarEtapasFunil(organizacaoId);
       await carregarAcompanhamentosEmpresa(organizacaoId, empresaOperacionalId);
       empresaAcompanhamentoPronta = true;
       atualizarSeletoresEmpresa(empresas);
@@ -5010,15 +5096,15 @@
       avisarSincronizacaoOperacional("Não foi possível abrir o acompanhamento desta empresa: " + erro.message, true);
     }
   }
-  async function salvarStatusAcompanhamento(id, edital, status) {
+  async function salvarStatusAcompanhamento(id, edital, status, etapa = null) {
     if (!empresaAcompanhamentoPronta || !empresaOperacionalId) throw new Error(semEmpresaCadastrada ? "Cadastre sua empresa em Minhas empresas e documentos para acompanhar o edital." : "Escolha uma empresa antes de acompanhar o edital.");
     const empresaId = empresaOperacionalId;
     let empresaNome = "a empresa selecionada";
     if (status) {
-      const resultado = await agendarSincronizacaoDossie(id, edital, status, true, empresaId);
+      const resultado = await agendarSincronizacaoDossie(id, edital, status, true, empresaId, etapa);
       empresaNome = resultado?.empresa || empresaNome;
       definirNoMapa("status-licitacao", id, status, empresaId);
-      salvarSnapshotKanban(id, edital, empresaId, resultado?.id);
+      salvarSnapshotKanban(id, edital && { ...edital, etapaId: etapa?.id || null, statusProcesso: etapa?.status_sistema || dadosStatusOperacional(status).estagio }, empresaId, resultado?.id);
     } else {
       const { organizacaoId } = await empresaOperacionalParaDossie(empresaId);
       const { error } = await window.__sbClient.from("operacao_processos").update({ status: "arquivado", atualizado_em: new Date().toISOString() })
@@ -5124,8 +5210,8 @@
     // Além de arrastar (que em alguns navegadores/touchpads pode ser difícil de acionar),
     // todo cartão tem um seletor "Mover para" — garante que dá pra mudar de coluna de
     // qualquer jeito, sem depender do drag-and-drop funcionar perfeitamente no aparelho.
-    const opcoesMoverHtml = KANBAN_COLUNAS
-      .map((c) => `<option value="${c.valor}" ${c.valor === valorStatus ? "selected" : ""}>${c.titulo}</option>`)
+    const opcoesMoverHtml = colunasDoFunil(etapasDoQuadro())
+      .map((c) => `<option value="${escapeHtml(c.chave)}" ${c.chave === valorStatus ? "selected" : ""}>${escapeHtml(c.titulo)}</option>`)
       .join("");
     return `
       <div class="kanban-card" draggable="true" data-id="${escapeHtml(id)}">
@@ -5164,27 +5250,180 @@
     const anotacoesMapa = lerMapa("anotacoes-licitacao");
     const soVencendo = document.querySelector('#kanban-filtros-rapidos .btn-filtro-rapido.ativo')?.dataset.modo === "vence-3";
 
-    alvo.innerHTML = KANBAN_COLUNAS.map((col) => {
+    const etapas = etapasDoQuadro();
+    alvo.innerHTML = colunasDoFunil(etapas).map((col) => {
       const idsColuna = ordenarPorPrazo(Object.keys(statusMapa)
-        .filter((id) => statusMapa[id] === col.valor && editaisMapa[id])
+        .filter((id) => editaisMapa[id] && colunaDoCard(etapas, statusMapa[id], editaisMapa[id].etapaId, editaisMapa[id].statusProcesso) === col.chave)
         .filter((id) => !soVencendo || venceEmAteDias(editaisMapa[id].encerramento, 3))
         .map((id) => ({ id, encerramento: editaisMapa[id].encerramento }))).map((x) => x.id);
       const cardsHtml = idsColuna.length
-        ? idsColuna.map((id) => montarCardKanban(id, editaisMapa[id], col.valor, anotacoesMapa[id])).join("")
+        ? idsColuna.map((id) => montarCardKanban(id, editaisMapa[id], col.chave, anotacoesMapa[id])).join("")
         : (soVencendo ? `<div class="kanban-vazio">Nada vence nos próximos 3 dias nesta coluna.</div>` : `<div class="kanban-vazio">Nenhuma licitação aqui ainda.<br>Marque um status pra ela aparecer.</div>`);
       return `
-        <div class="kanban-coluna" data-status="${col.valor}" style="--cor-coluna:${col.cor};">
+        <div class="kanban-coluna" data-status="${escapeHtml(col.chave)}" style="--cor-coluna:${escapeHtml(col.cor)};">
           <div class="kanban-coluna-topo">
-            <span class="kanban-coluna-titulo"><svg class='icone-ph'><use href='#ph-${col.icone}'></use></svg> ${col.titulo}</span>
+            <span class="kanban-coluna-titulo"><svg class='icone-ph'><use href='#ph-${col.icone}'></use></svg> ${escapeHtml(col.titulo)}</span>
             <span class="kanban-coluna-contagem">${idsColuna.length}</span>
           </div>
-          <div class="kanban-lista" data-status="${col.valor}">${cardsHtml}</div>
+          <div class="kanban-lista" data-status="${escapeHtml(col.chave)}">${cardsHtml}</div>
         </div>`;
     }).join("");
 
     ligarAcoesKanban();
   }
 
+  // ---- Diálogo "Etapas" do Funil ----
+  // Escrita direto na tabela, sob RLS: só quem tem vínculo com a organização inteira grava.
+  // UPDATE/DELETE barrados pela RLS não dão erro, só não afetam linha: por isso o .select().
+  const ESTAGIOS_SISTEMA = [
+    ["triagem", "Triagem (tenho interesse)"], ["preparacao", "Preparação"], ["proposta_enviada", "Proposta enviada"],
+    ["sessao", "Sessão de disputa"], ["habilitacao", "Habilitação"], ["recurso", "Recurso"],
+    ["homologado", "Homologado (ganhei)"], ["contratado", "Contratado"], ["perdido", "Perdido"],
+  ];
+  const LIMITE_ETAPAS = 20;
+  const dialogoEtapas = document.getElementById("etapas-dialogo");
+  const listaEtapas = document.getElementById("etapas-lista");
+  const avisoEtapas = document.getElementById("etapas-aviso");
+  let etapasOcupado = false;
+  function avisarEtapas(texto) { avisoEtapas.textContent = texto || ""; avisoEtapas.hidden = !texto; }
+  function etapasDoDialogo() { return [...(etapasFunil || [])].sort((a, b) => a.ordem - b.ordem); }
+  function renderizarDialogoEtapas() {
+    const etapas = etapasDoDialogo();
+    listaEtapas.innerHTML = etapas.map((e, i) => {
+      const protegida = Boolean(e.chave_sistema);
+      const nome = escapeHtml(e.nome);
+      const opcoes = ESTAGIOS_SISTEMA.map(([valor, rotulo]) => `<option value="${valor}" ${valor === e.status_sistema ? "selected" : ""}>${rotulo}</option>`).join("");
+      return `<li class="etapa-linha" data-id="${escapeHtml(e.id)}">
+        <label class="etapa-campo etapa-nome"><span>Nome</span><input type="text" class="etapa-input-nome" maxlength="40" aria-describedby="etapas-aviso" required value="${nome}"></label>
+        <label class="etapa-campo etapa-conta"><span>Conta como</span><select class="etapa-input-status" ${protegida ? 'disabled title="Etapa do sistema: o estágio não muda"' : ""}>${opcoes}</select></label>
+        <label class="etapa-campo etapa-cor"><span>Cor</span><input type="color" class="etapa-input-cor" value="${escapeHtml(e.cor)}"></label>
+        <div class="etapa-acoes">
+          <button type="button" class="btn-imprimir etapa-mover" data-passo="-1" aria-label="Subir ${nome}" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button type="button" class="btn-imprimir etapa-mover" data-passo="1" aria-label="Descer ${nome}" ${i === etapas.length - 1 ? "disabled" : ""}>↓</button>
+          ${protegida ? '<span class="etapa-protegida">Do sistema</span>' : `<button type="button" class="btn-imprimir etapa-excluir" aria-label="Excluir ${nome}">Excluir</button>`}
+        </div>
+      </li>`;
+    }).join("");
+  }
+  // Depois de mudar etapas: completa as protegidas se faltava alguma e redesenha o quadro.
+  async function aplicarEtapas(etapas) {
+    etapasFunil = etapas;
+    if (!etapasDoQuadro()) await carregarEtapasFunil(organizacaoFunilId);
+    renderizarKanban();
+  }
+  async function gravarEtapa(id, campos) {
+    const { data, error } = await window.__sbClient.from("operacao_funil_etapas").update(campos)
+      .eq("id", id).eq("organizacao_id", organizacaoFunilId).select("*");
+    if (error || !data?.length) throw error || { code: "42501" };
+    await aplicarEtapas(etapasFunil.map((e) => (e.id === id ? data[0] : e)));
+  }
+  function validarNomeEtapa(nome, id) {
+    if (!nome) return "Dê um nome à etapa.";
+    if (nome.length > 40) return "O nome pode ter até 40 caracteres.";
+    if (etapasFunil.some((e) => e.id !== id && e.nome.toLowerCase() === nome.toLowerCase())) return "Já existe uma etapa com esse nome. Escolha outro nome.";
+    return null;
+  }
+  listaEtapas.addEventListener("change", async (ev) => {
+    const campo = ev.target;
+    const id = campo.closest(".etapa-linha")?.dataset.id;
+    const etapa = etapasFunil?.find((e) => e.id === id);
+    if (!etapa) return;
+    let campos = null;
+    if (campo.classList.contains("etapa-input-nome")) {
+      const nome = campo.value.trim();
+      const problema = validarNomeEtapa(nome, id);
+      campo.setAttribute("aria-invalid", String(Boolean(problema)));
+      if (problema) { avisarEtapas(problema); return; }
+      campo.value = nome;
+      campos = { nome };
+    } else if (campo.classList.contains("etapa-input-status")) campos = { status_sistema: campo.value };
+    else if (campo.classList.contains("etapa-input-cor")) campos = { cor: campo.value };
+    if (!campos) return;
+    avisarEtapas("");
+    try { await gravarEtapa(id, campos); }
+    catch (erro) {
+      avisarEtapas(mensagemErroEtapa(erro));
+      // Nome repetido fica no campo para a pessoa corrigir; o resto volta ao valor salvo.
+      if (erro?.code === "23505") campo.setAttribute("aria-invalid", "true");
+      else if (campos.nome) campo.value = etapa.nome;
+      else if (campos.status_sistema) campo.value = etapa.status_sistema;
+      else campo.value = etapa.cor;
+    }
+  });
+  listaEtapas.addEventListener("click", async (ev) => {
+    const botao = ev.target.closest("button");
+    const linha = botao?.closest(".etapa-linha");
+    if (!botao || !linha || etapasOcupado) return;
+    const etapa = etapasFunil.find((e) => e.id === linha.dataset.id);
+    if (!etapa) return;
+    etapasOcupado = true;
+    avisarEtapas("");
+    try {
+      if (botao.classList.contains("etapa-mover")) {
+        const passo = Number(botao.dataset.passo);
+        const ids = etapasDoDialogo().map((e) => e.id);
+        const i = ids.indexOf(etapa.id);
+        [ids[i], ids[i + passo]] = [ids[i + passo], ids[i]];
+        const { data, error } = await window.__sbClient.rpc("reordenar_etapas_funil", { p_org: organizacaoFunilId, p_ids: ids });
+        if (error) throw error;
+        await aplicarEtapas(data);
+        renderizarDialogoEtapas();
+        // Foco segue a etapa movida; se ela chegou na ponta, vai para a outra seta.
+        const setas = [...listaEtapas.querySelectorAll(`.etapa-linha[data-id="${CSS.escape(etapa.id)}"] .etapa-mover`)];
+        (setas.find((b) => b.dataset.passo === String(passo) && !b.disabled) || setas.find((b) => !b.disabled))?.focus();
+      } else if (botao.classList.contains("etapa-excluir")) {
+        if (!confirm(`Excluir a etapa "${etapa.nome}"? Os cartões dela passam para a etapa do sistema do mesmo estágio.`)) return;
+        const { data, error } = await window.__sbClient.from("operacao_funil_etapas").delete()
+          .eq("id", etapa.id).eq("organizacao_id", organizacaoFunilId).select("id");
+        if (error || !data?.length) throw error || { code: "42501" };
+        await aplicarEtapas(etapasFunil.filter((e) => e.id !== etapa.id));
+        renderizarDialogoEtapas();
+        document.getElementById("etapas-nova").focus();
+      }
+    } catch (erro) { avisarEtapas(mensagemErroEtapa(erro)); }
+    finally { etapasOcupado = false; }
+  });
+  document.getElementById("etapas-nova").addEventListener("click", async () => {
+    if (etapasOcupado) return;
+    if (etapasFunil.length >= LIMITE_ETAPAS) { avisarEtapas(mensagemErroEtapa({ message: "Limite de 20" })); return; }
+    let nome = "Nova etapa";
+    for (let n = 2; validarNomeEtapa(nome, null); n++) nome = `Nova etapa ${n}`;
+    etapasOcupado = true;
+    avisarEtapas("");
+    try {
+      const ordem = Math.max(-1, ...etapasFunil.map((e) => e.ordem)) + 1;
+      const { data, error } = await window.__sbClient.from("operacao_funil_etapas")
+        .insert({ organizacao_id: organizacaoFunilId, nome, ordem, status_sistema: "preparacao", cor: "#64748b" }).select("*").single();
+      if (error) throw error;
+      await aplicarEtapas([...etapasFunil, data]);
+      renderizarDialogoEtapas();
+      const campo = listaEtapas.querySelector(`.etapa-linha[data-id="${CSS.escape(data.id)}"] .etapa-input-nome`);
+      campo?.focus();
+      campo?.select();
+    } catch (erro) { avisarEtapas(mensagemErroEtapa(erro)); }
+    finally { etapasOcupado = false; }
+  });
+  document.getElementById("kanban-etapas").addEventListener("click", () => {
+    avisarEtapas("");
+    renderizarDialogoEtapas();
+    dialogoEtapas.showModal();
+  });
+  document.getElementById("etapas-fechar").addEventListener("click", () => dialogoEtapas.close());
+  dialogoEtapas.addEventListener("close", () => document.getElementById("kanban-etapas").focus());
+
+  // Coluna = etapa (id) ou, sem etapas, a chave antiga. A chave de 4 vem da etapa protegida
+  // ou do estágio da personalizada, pela mesma regra que lê o processo do banco.
+  async function moverCardParaColuna(id, coluna) {
+    const etapa = etapasDoQuadro()?.find((e) => e.id === coluna) || null;
+    const status = etapa ? (etapa.chave_sistema || statusDoProcessoAcompanhamento({ status: etapa.status_sistema })) : coluna;
+    try { await salvarStatusAcompanhamento(id, lerMapa("kanban-editais")[id], status, etapa); }
+    catch (erro) {
+      const etapaMudou = ["23503", "23514"].includes(erro?.code) && /etapa/i.test(erro?.message || "");
+      if (etapaMudou) await carregarEtapasFunil(organizacaoFunilId);
+      avisarSincronizacaoOperacional("Não foi possível mover o edital: " + (etapaMudou ? mensagemErroEtapa(erro) : erro.message), true);
+      renderizarKanban();
+    }
+  }
   function ligarAcoesKanban() {
     const alvo = document.getElementById("kanban-quadro");
     if (!alvo) return;
@@ -5213,8 +5452,7 @@
         const id = ev.dataTransfer.getData("text/plain");
         const novoStatus = coluna.dataset.status;
         if (!id || !novoStatus) return;
-        try { await salvarStatusAcompanhamento(id, lerMapa("kanban-editais")[id], novoStatus); }
-        catch (erro) { avisarSincronizacaoOperacional("Não foi possível mover o edital: " + erro.message, true); }
+        await moverCardParaColuna(id, novoStatus);
       });
     });
 
@@ -5223,8 +5461,7 @@
       sel.addEventListener("click", (ev) => ev.stopPropagation());
       sel.addEventListener("change", async () => {
         sel.disabled = true;
-        try { await salvarStatusAcompanhamento(sel.dataset.id, lerMapa("kanban-editais")[sel.dataset.id], sel.value); }
-        catch (erro) { avisarSincronizacaoOperacional("Não foi possível mover o edital: " + erro.message, true); renderizarKanban(); }
+        await moverCardParaColuna(sel.dataset.id, sel.value);
       });
     });
 
