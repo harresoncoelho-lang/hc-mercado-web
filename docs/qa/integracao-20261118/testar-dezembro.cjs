@@ -1,15 +1,18 @@
 // Ensaio local dos SQL de dezembro (PGlite em memória, dados fictícios, sem rede).
 //   node testar-dezembro.cjs
 // Mesma base de testar-aplicar.cjs (produção de 31/10), depois 01-aplicar.sql, depois
-// operacao_itens_proposta.sql + operacao_funil_etapas.sql + operacao_portal_cliente.sql duas vezes, com os testes SQL e o 02 a cada rodada.
+// operacao_itens_proposta.sql + operacao_funil_etapas.sql + operacao_portal_cliente.sql + operacao_perfil_empresa.sql
+// + operacao_exigencias.sql duas vezes, com os testes SQL e o 02 a cada rodada.
 // Auth/Storage do Supabase são stubs mínimos: não prova a API HTTP nem o dono de storage.objects.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const SUP = path.join(__dirname, '../../../supabase');
 const ler = nome => fs.readFileSync(path.join(SUP, nome), 'utf8');
 const APLICAR = fs.readFileSync(path.join(__dirname, '01-aplicar.sql'), 'utf8');
 const VERIFICAR = fs.readFileSync(path.join(__dirname, '02-verificar.sql'), 'utf8');
-const NOVOS = ['operacao_itens_proposta.sql', 'operacao_funil_etapas.sql', 'operacao_portal_cliente.sql'];
-const TESTES = ['testar_itens_proposta.sql', 'testar_funil_etapas.sql', 'testar_portal_cliente.sql'];
+const NOVOS = ['operacao_itens_proposta.sql', 'operacao_funil_etapas.sql', 'operacao_portal_cliente.sql',
+  'operacao_perfil_empresa.sql', 'operacao_exigencias.sql'];
+const TESTES = ['testar_itens_proposta.sql', 'testar_funil_etapas.sql', 'testar_portal_cliente.sql',
+  'testar_perfil_empresa.sql', 'testar_exigencias.sql'];
 
 function carregarPGlite() {
   const candidatos = [process.env.PGLITE_MODULE_PATH, '@electric-sql/pglite',
