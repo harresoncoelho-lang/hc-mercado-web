@@ -39,6 +39,9 @@ import * as m19 from "../../netlify/functions/criar-processo.js";
 import * as m20 from "../../netlify/functions/contextos-operacao.js";
 // Busca pública da landing (sem login; só colunas públicas, até 6 linhas, cache curto).
 import * as m21 from "../../netlify/functions/busca-publica.js";
+// Portal do cliente: página pública (sem login, desligada sem PORTAL_CLIENTE_LIGADO=1) e gestão dos links (logado).
+import * as m22 from "../../netlify/functions/portal-cliente.js";
+import * as m23 from "../../netlify/functions/portal-cliente-links.js";
 
 const ROTAS = {
   "vinculo-compra-portal": vinculoCompraPortal,
@@ -47,6 +50,8 @@ const ROTAS = {
   "criar-processo": m19,
   "contextos-operacao": m20,
   "busca-publica": m21,
+  "portal-cliente": m22,
+  "portal-cliente-links": m23,
   "decisao-oportunidade": m17,
   "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,
