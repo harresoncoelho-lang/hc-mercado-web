@@ -1306,7 +1306,14 @@ exports.handler = async (event) => {
         cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO && cache.estrutura;
       let cache = storeResumos && await storeResumos.get(numero, { type: "json" });
       if (!valido(cache)) cache = await buscarDossiePersistido(numero);
-      if (!valido(cache) || precisaReleituraPrioritaria(cache)) return { statusCode: 200, headers, body: JSON.stringify({ disponivel: false, requisitos: [] }) };
+      if (!valido(cache) || precisaReleituraPrioritaria(cache)) {
+        // Mesma fila e mesma regra do modo resumo: o checklist não depende de o cliente abrir o resumo.
+        let enfileirado = false;
+        if (!ehRoboInterno) {
+          try { await enfileirarDossie(numero); enfileirado = true; } catch (_) { /* A consulta continua respondendo sem dossiê. */ }
+        }
+        return { statusCode: 200, headers, body: JSON.stringify({ disponivel: false, enfileirado, requisitos: [] }) };
+      }
       const estrutura = sanitizarListasDoDossie({ ...cache.estrutura });
       const requisitos = [...estrutura.documentosHabilitacao, ...estrutura.declaracoesExigidas];
       return { statusCode: 200, headers, body: JSON.stringify({ disponivel: true, requisitos,
