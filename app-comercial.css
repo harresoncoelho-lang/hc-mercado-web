@@ -179,6 +179,54 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .tabela-rolagem td .selo-edital{margin-left:var(--space-4)}
 .tabela-rolagem tr[data-estado-linha="erro"] td{background:var(--error-bg)}
 
+/* Portal do cliente (portal-cliente-ui.js). Situação sempre em texto no selo, além da cor; só tokens do DS. */
+.portal-cliente{margin-top:var(--space-16);max-width:720px;min-width:0}
+.portal-cliente h2{font:var(--text-section);color:var(--text-primary);margin:0 0 var(--space-8)}
+.portal-cliente h3{font:var(--text-section);color:var(--text-primary);margin:0 0 var(--space-8)}
+.portal-resumo{margin:0 0 var(--space-12);font:var(--text-title);color:var(--text-primary);overflow-wrap:anywhere}
+.portal-resumo:empty{display:none}
+.portal-estado{margin:0 0 var(--space-12);font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+.portal-estado:empty{display:none}
+.portal-estado[data-situacao="erro"]{color:var(--error-text)}
+.portal-estado[data-situacao="ok"]{color:var(--success-text)}
+.portal-estado[data-situacao="vazio"]{color:var(--attention-text)}
+.portal-apoio{margin:0;font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+.portal-apoio:empty{display:none}
+.portal-form,.portal-novo{display:grid;gap:var(--space-8);margin-top:var(--space-12);padding:var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control);min-width:0}
+.portal-form label,.portal-novo label{font:var(--text-label);color:var(--text-secondary)}
+.portal-form input:not([type="checkbox"]),.portal-form select,.portal-novo input{min-height:44px;width:100%;min-width:0;padding:var(--space-8) var(--space-12);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body)}
+.portal-novo input[readonly]{background:var(--surface-sunken)}
+.portal-form input[aria-invalid="true"]{border-color:var(--error-text)}
+.portal-check{display:flex;align-items:center;gap:var(--space-8);min-height:44px}
+.portal-check input{width:20px;height:20px;margin:0;accent-color:var(--action-strong)}
+.portal-check label{font:var(--text-body);color:var(--text-primary)}
+.portal-erro{margin:0;color:var(--error-text);font:var(--text-body)}
+.portal-erro:empty{display:none}
+.portal-aviso{margin:0;padding:var(--space-8) var(--space-12);border:1px solid var(--attention-border);border-radius:var(--radius-control);background:var(--attention-bg);color:var(--attention-text);font:var(--text-body);font-weight:600}
+.portal-botao{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:var(--space-8) var(--space-16);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--action-text);font:var(--text-body);font-weight:600;text-decoration:none}
+.portal-botao:hover{border-color:var(--action-strong)}
+.portal-novo h3:focus{outline:2px solid var(--focus-ring);outline-offset:2px}
+.portal-bloco{margin-top:var(--space-16);min-width:0}
+.portal-respostas{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-8)}
+.portal-respostas li{display:grid;gap:var(--space-4);padding:var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control);min-width:0}
+.portal-respostas li p{margin:0;font:var(--text-body);color:var(--text-primary);overflow-wrap:anywhere}
+.portal-respostas li .portal-apoio{color:var(--text-secondary)}
+.portal-respostas li>.portal-selo{justify-self:start}
+.portal-cabeca{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center;min-width:0}
+.portal-cabeca strong{font:var(--text-body);font-weight:600;color:var(--text-primary);overflow-wrap:anywhere;min-width:0}
+.portal-selo{padding:2px var(--space-8);border-radius:999px;border:1px solid var(--border-default);background:var(--surface-sunken);color:var(--text-secondary);font:var(--text-label);font-weight:600;white-space:nowrap}
+.portal-selo[data-situacao="aprovado"],.portal-selo[data-situacao="ativo"]{border-color:var(--success-border);background:var(--success-bg);color:var(--success-text)}
+.portal-selo[data-situacao="recusado"],.portal-selo[data-situacao="revogado"]{border-color:var(--error-border);background:var(--error-bg);color:var(--error-text)}
+.portal-selo[data-situacao="mudou"],.portal-selo[data-situacao="expirado"]{border-color:var(--attention-border);background:var(--attention-bg);color:var(--attention-text)}
+.portal-historico summary{font:var(--text-section);color:var(--text-primary);cursor:pointer;min-height:44px;padding:var(--space-8) 0}
+.portal-historico ol{margin:0;padding-left:var(--space-24);display:grid;gap:var(--space-4);font:var(--text-body);color:var(--text-primary)}
+#portal-cliente .tabela-rolagem table{min-width:640px}
+#portal-cliente td button{white-space:nowrap}
+@media (max-width:640px){
+  .portal-cliente .itens-acoes button,.portal-cliente .itens-acoes .portal-botao{width:100%}
+  .portal-resumo{font-size:20px;line-height:28px}
+}
+
 /* Identificação da empresa (empresa-identificacao-ui.js). Markup real: #identificacao > details > summary, p, p[role=status], label+campo em pares, select, input file, botões .defesa-botao, div de sugestões, checkbox e label.
    Desktop (641px+): duas colunas label | campo; textos, botões, arquivo, tipo e sugestões ocupam a largura toda; checkbox e label ficam na mesma linha.
    Mobile: uma coluna, rótulo acima do campo; checkbox e label na mesma linha.

@@ -105,7 +105,7 @@
 
   // pedirLogin(mensagem): produção não tem formulário próprio; quando a casca cai no login, quem chama redireciona
   // para o login.html. Sem ele (QA), o formulário da própria página continua sendo usado.
-  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
+  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, portal = globalThis.LicitaPortalCliente || null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
     const auth = autenticacao || autenticacaoQA(fetch);
     const el = (id) => doc.getElementById(id);
     let epoca = 0;
@@ -116,6 +116,7 @@
     let componente = null;
     let ident = null;
     let itensComp = null;
+    let portalComp = null;
     let tela = 'carregando';
     // 'hoje' lista empresas/processos autorizados; 'processo' mostra identificação e kit do contexto atual.
     let visao = 'hoje';
@@ -169,6 +170,8 @@
       el('kit').hidden = !processo;
       // Itens do processo só existem com processo: somem na preparação e no Hoje.
       el('itens-processo').hidden = !processo;
+      // Portal do cliente: mesma regra dos itens; a página do harness QA não tem o bloco.
+      if (el('portal-cliente')) el('portal-cliente').hidden = !processo;
       el('empresa-bloco').hidden = !(processo || preparar);
       el('processo-bloco').hidden = !processo || processosDe(atual?.empresaId).length === 0;
       el('hoje').hidden = !hoje;
@@ -340,6 +343,9 @@
       try { itensComp?.fechar(); } catch { /* módulo já desmontado */ }
       itensComp = null;
       el('itens-processo').replaceChildren();
+      try { portalComp?.fechar(); } catch { /* módulo já desmontado */ }
+      portalComp = null;
+      el('portal-cliente')?.replaceChildren();
       componente = null;
       ident = null;
       identDe = null;
@@ -406,7 +412,7 @@
         });
         if (!r.ok) return { ok: false, falha: r.status !== 403 && r.status !== 404 };
         const j = await r.json();
-        return { ok: true, empresa: j.empresa, processo: j.processo };
+        return { ok: true, empresa: j.empresa, processo: j.processo, itens: Array.isArray(j.itens) ? j.itens : [] };
       } catch { return { ok: false, falha: true }; }
     }
 
@@ -447,6 +453,7 @@
       try { if (componente?.temAlteracoesNaoSalvas?.() === true) return true; } catch { /* módulo indisponível */ }
       try { if (ident?.temAlteracoesNaoSalvas?.() === true) return true; } catch { /* idem */ }
       try { if (itensComp?.temAlteracoesNaoSalvas?.() === true) return true; } catch { /* idem */ }
+      try { if (portalComp?.temAlteracoesNaoSalvas?.() === true) return true; } catch { /* idem */ }
       return false;
     }
 
@@ -470,9 +477,11 @@
       if (!candidato || typeof candidato.processoId !== 'string' || !candidato.processoId) return;
       const e = epoca;
       let falha = false;
+      let consulta = null;
       const [confirmado] = await CORE.autorizarContextos([candidato], async (c) => {
         const r = await consultarContexto(c);
         falha = r.falha === true;
+        consulta = r;
         return r;
       });
       if (e !== epoca || tela !== 'area') return;
@@ -508,6 +517,10 @@
       if (itens) itensComp = itens.montar({ alvo: el('itens-processo'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: requisitarAutenticado,
         // Mesmo kit e mesmo contexto, mesmo oculto (voltar ao Hoje preserva o kit). Fechado ou contexto trocado: bloqueia.
         aoSalvar: () => { if (epoca === epocaKit && componente !== null && componente === kitDoItem.atual) kitDoItem.atual?.atualizarItens?.(); } });
+      // Portal do cliente: compara a resposta do cliente com os itens que o consultar já trouxe.
+      // shortcut: só a primeira página de itens do consultar; item de outra página aparece sem a checagem de "valores mudaram".
+      if (portal && el('portal-cliente')) portalComp = portal.montar({ alvo: el('portal-cliente'), requisitar: requisitarAutenticado, confirmar: confirmar || undefined,
+        contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId, numero: typeof consulta?.processo?.numero === 'string' ? consulta.processo.numero : '' }, itens: consulta?.itens || [] });
       componente = kit.montar({
         alvo: el('kit'),
         contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId },
