@@ -37,6 +37,8 @@ import * as m18 from "../../netlify/functions/kit-documentos.js";
 // Sistema CRM (/sistema): cadastro de processo e catálogo de empresas/processos do usuário.
 import * as m19 from "../../netlify/functions/criar-processo.js";
 import * as m20 from "../../netlify/functions/contextos-operacao.js";
+// Busca pública da landing (sem login; só colunas públicas, até 6 linhas, cache curto).
+import * as m21 from "../../netlify/functions/busca-publica.js";
 
 const ROTAS = {
   "vinculo-compra-portal": vinculoCompraPortal,
@@ -44,6 +46,7 @@ const ROTAS = {
   "kit-documentos": m18,
   "criar-processo": m19,
   "contextos-operacao": m20,
+  "busca-publica": m21,
   "decisao-oportunidade": m17,
   "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,
