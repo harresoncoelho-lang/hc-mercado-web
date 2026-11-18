@@ -131,8 +131,10 @@ test('preferência salva e lida com validação; storage quebrado não lança', 
   const mem = new Map();
   const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
   core.gravarPreferencia({ empresaId: 'a', processoId: 'pa', rotulo: 'A' }, storage);
-  assert.deepEqual(JSON.parse(JSON.stringify(core.lerPreferencia(storage))), { empresaId: 'a', processoId: 'pa' });
-  mem.set(core.CHAVE_PREFERENCIA, '{nao-json');
+  assert.equal(mem.get(core.CHAVE_EMPRESA), 'a');
+  assert.equal(core.lerPreferencia(storage), 'a');
+  mem.delete(core.CHAVE_EMPRESA);
+  mem.set(core.CHAVE_PREFERENCIA_ANTIGA, '{nao-json');
   assert.equal(core.lerPreferencia(storage), null);
   const quebrado = { getItem() { throw new Error('bloqueado'); }, setItem() { throw new Error('bloqueado'); } };
   assert.equal(core.lerPreferencia(quebrado), null);
@@ -186,4 +188,52 @@ test('estilos da identificação: escopados em #identificacao e sem cor fixa (la
   assert.match(checkbox[0], /width:20px/);
   assert.doesNotMatch(checkbox[0], /width:100%/);
   assert.match(secao, /:focus-visible\{outline:2px solid var\(--focus-ring\)/);
+});
+
+test('lerLinkDireto só devolve o par quando empresa e processo são uuid', () => {
+  const contexto = { globalThis: { URLSearchParams } };
+  vm.runInNewContext(fs.readFileSync(path.join(raiz, 'app-comercial-core.js'), 'utf8'), contexto);
+  const core = contexto.globalThis.LicitaPlenaComercialCore;
+  const E = '11111111-1111-4111-8111-111111111111';
+  const P = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  assert.deepEqual(JSON.parse(JSON.stringify(core.lerLinkDireto('?empresa=' + E + '&processo=' + P))), { empresaId: E, processoId: P });
+  assert.deepEqual(JSON.parse(JSON.stringify(core.lerLinkDireto('?processo=' + P.toUpperCase() + '&empresa=' + E.toUpperCase()))), { empresaId: E, processoId: P });
+  for (const busca of ['', '?', '?empresa=' + E, '?processo=' + P, '?empresa=x&processo=' + P, '?empresa=' + E + '&processo=' + P + 'z',
+    '?empresa=' + E + '%27--&processo=' + P, null, undefined, 42]) {
+    assert.equal(core.lerLinkDireto(busca), null, String(busca));
+  }
+});
+
+test('lerTema: claro por padrão, chave nova vence e a chave antiga migra uma vez', () => {
+  const core = carregarCore();
+  const novo = () => { const m = new Map(); return { m, getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
+  let s = novo();
+  assert.equal(core.lerTema(s), 'claro');
+  assert.equal(s.m.size, 0, 'sem preferência, nada é gravado');
+  s = novo(); s.setItem('licitaplena.tema', 'dark');
+  assert.equal(core.lerTema(s), 'escuro');
+  assert.equal(s.getItem('licitaplena_tema'), 'escuro');
+  assert.equal(s.getItem('licitaplena.tema'), null, 'chave antiga apagada depois de migrar');
+  s = novo(); s.setItem('licitaplena.tema', 'light');
+  assert.equal(core.lerTema(s), 'claro');
+  assert.equal(s.getItem('licitaplena_tema'), 'claro');
+  s = novo(); s.setItem('licitaplena_tema', 'escuro'); s.setItem('licitaplena.tema', 'light');
+  assert.equal(core.lerTema(s), 'escuro', 'chave nova vence a antiga');
+  s = novo(); s.setItem('licitaplena_tema', 'roxo');
+  assert.equal(core.lerTema(s), 'claro');
+  assert.equal(core.lerTema({ getItem() { throw new Error('bloqueado'); } }), 'claro');
+});
+
+test('lerPreferencia migra a chave antiga de contexto para a chave de empresa do painel', () => {
+  const core = carregarCore();
+  const m = new Map();
+  const s = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) };
+  m.set('licitaplena.contextoPreferido', JSON.stringify({ empresaId: 'e1', processoId: 'p1' }));
+  assert.equal(core.lerPreferencia(s), 'e1');
+  assert.equal(m.get('licitaplena_empresa_operacional_id'), 'e1');
+  assert.equal(m.has('licitaplena.contextoPreferido'), false);
+  m.set('licitaplena_empresa_operacional_id', 'e2');
+  m.set('licitaplena.contextoPreferido', JSON.stringify({ empresaId: 'e1', processoId: 'p1' }));
+  assert.equal(core.lerPreferencia(s), 'e2', 'chave nova vence; a antiga não é mais lida');
+  assert.equal(core.CHAVE_EMPRESA, 'licitaplena_empresa_operacional_id');
 });

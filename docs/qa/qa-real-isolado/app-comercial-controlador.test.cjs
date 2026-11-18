@@ -8,7 +8,8 @@ const raiz = path.resolve(__dirname, '..', '..', '..');
 
 // Carrega o controlador real (e o core) num contexto isolado, como o navegador faria.
 function carregarControlador() {
-  const contexto = { globalThis: {} };
+  // URLSearchParams: o core lê o link direto (?empresa=&processo=) com a API do navegador.
+  const contexto = { globalThis: { URLSearchParams } };
   vm.runInNewContext(fs.readFileSync(path.join(raiz, 'app-comercial-core.js'), 'utf8'), contexto);
   vm.runInNewContext(fs.readFileSync(path.join(raiz, 'app-comercial-controlador.js'), 'utf8'), contexto);
   return contexto.globalThis.LicitaPlenaComercialControlador;
@@ -46,7 +47,7 @@ function adiar() {
 
 function memoria() {
   const m = new Map();
-  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), _m: m };
+  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), _m: m };
 }
 
 // Servidor QA simulado: estado de sessão, respostas configuráveis por rota.
@@ -142,7 +143,7 @@ function criar(opcoes = {}) {
   const srv = criarServidor(opcoes);
   const mod = criarModulos();
   const storage = opcoes.storage || memoria();
-  const ctrl = C.criarControlador({ doc: dom, fetch: srv.fetch, storage, kit: mod.kit, identificacao: mod.identificacao, itens: mod.itens, confirmar: opcoes.confirmar || null });
+  const ctrl = C.criarControlador({ doc: dom, fetch: srv.fetch, storage, kit: mod.kit, identificacao: mod.identificacao, itens: mod.itens, confirmar: opcoes.confirmar || null, busca: opcoes.busca || '' });
   return { C, dom, srv, mod, storage, ctrl, el: (id) => dom.getElementById(id) };
 }
 
@@ -1158,4 +1159,81 @@ test('kit fechado (sair) bloqueia o gancho antigo', async () => {
   await t.ctrl.sair();
   cb();
   assert.equal(atualizacoes(t).length, 0, 'sem kit montado, nada é atualizado');
+});
+
+// Link direto /sistema?empresa=<uuid>&processo=<uuid> (T4): só abre par do catálogo, e ainda passa por consultar.
+const EA = '11111111-1111-4111-8111-111111111111';
+const PA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const EB = '22222222-2222-4222-8222-222222222222';
+const PB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const CONTEXTOS_UUID = [{ empresaId: EA, processoId: PA }, { empresaId: EB, processoId: PB }];
+const consultas = (t) => t.srv.corpos.filter((c) => c.acao === 'consultar');
+
+test('link direto com par autorizado abre o processo depois de consultar', async () => {
+  const t = criar({ contextos: CONTEXTOS_UUID, autorizados: [EA], busca: '?empresa=' + EA + '&processo=' + PA });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.equal(montagens(t.mod), 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(t.mod.log.find((e) => e.tipo === 'kit.montar').contexto)), { empresaId: EA, processoId: PA });
+  assert.deepEqual(consultas(t).map((c) => c.processoId), [PA]);
+  assert.equal(t.el('area').hidden, false);
+});
+
+test('link direto aceita uuid em maiúsculas', async () => {
+  const t = criar({ contextos: CONTEXTOS_UUID, autorizados: [EA], busca: '?empresa=' + EA.toUpperCase() + '&processo=' + PA.toUpperCase() });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.equal(montagens(t.mod), 1);
+});
+
+test('link direto para par fora do catálogo é ignorado com aviso, sem consultar', async () => {
+  const t = criar({ contextos: CONTEXTOS_UUID, autorizados: [EA], busca: '?empresa=' + EB + '&processo=' + PB });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.equal(montagens(t.mod), 0);
+  assert.equal(consultas(t).length, 0);
+  assert.equal(t.ctrl.estado().visao, 'hoje');
+  assert.equal(t.el('app-aviso').textContent, 'Este processo não está disponível para sua conta.');
+});
+
+test('link direto com processo de outra empresa (par trocado) é ignorado', async () => {
+  const t = criar({ contextos: CONTEXTOS_UUID, autorizados: [EA, EB], busca: '?empresa=' + EA + '&processo=' + PB });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.equal(montagens(t.mod), 0);
+  assert.equal(t.el('app-aviso').textContent, 'Este processo não está disponível para sua conta.');
+});
+
+test('link direto que o consultar recusa não monta nada e mostra o aviso', async () => {
+  const t = criar({ contextos: CONTEXTOS_UUID, autorizados: [EA], divergente: true, busca: '?empresa=' + EB + '&processo=' + PB });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.equal(consultas(t).length, 1);
+  assert.equal(montagens(t.mod), 0);
+  assert.equal(t.el('app-aviso').textContent, 'Este processo não está disponível para sua conta.');
+});
+
+test('link direto com parâmetro que não é uuid é ignorado em silêncio', async () => {
+  for (const busca of ['?empresa=' + EA, '?empresa=' + EA + '&processo=1 or 1=1', '?empresa=a1&processo=pa', '?processo=' + PA]) {
+    const t = criar({ contextos: CONTEXTOS_UUID, autorizados: [EA], busca });
+    await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+    assert.equal(montagens(t.mod), 0, busca);
+    assert.equal(consultas(t).length, 0, busca);
+    assert.equal(t.el('app-aviso').textContent, '', busca);
+  }
+});
+
+test('empresa ativa usa a chave do painel e migra a chave antiga uma vez', async () => {
+  const storage = memoria();
+  storage.setItem('licitaplena.contextoPreferido', JSON.stringify({ empresaId: 'b1', processoId: 'pb' }));
+  const t = criar({ autorizados: ['a1', 'b1'], storage });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.equal(storage.getItem('licitaplena_empresa_operacional_id'), 'b1');
+  assert.equal(storage.getItem('licitaplena.contextoPreferido'), null);
+  assert.equal(t.el('empresa-ativa').value, 'b1');
+  await t.ctrl.abrirProcesso('a1', 'pa');
+  assert.equal(storage.getItem('licitaplena_empresa_operacional_id'), 'a1');
+});
+
+test('empresa ativa salva que não está autorizada não é aplicada', async () => {
+  const storage = memoria();
+  storage.setItem('licitaplena_empresa_operacional_id', 'outra');
+  const t = criar({ autorizados: ['a1'], storage });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.notEqual(t.el('empresa-ativa').value, 'outra');
 });

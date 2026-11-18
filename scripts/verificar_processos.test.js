@@ -77,3 +77,14 @@ test("processo, prazo e empenho terminam de salvar após o evento perder current
     assert.deepEqual(chamadas.slice(0, 4), ["insert", "reset", "fechar", "recarregar"], funcao);
   }
 });
+
+test("dossiê leva a proposta para o sistema (D1) e esconde o vínculo com o portal (D5)", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "processos.html"), "utf8");
+  assert.doesNotMatch(html, /LicitaKitDocumentos\.montar/);
+  assert.match(html, /textContent="Preparar proposta"/);
+  assert.match(html, /\/sistema\?empresa=\$\{encodeURIComponent\(estado\.empresaId\)\}&processo=\$\{encodeURIComponent\(p\.id\)\}/);
+  assert.match(html, /id="d-vinculo-compra" hidden/);
+  assert.doesNotMatch(html, /^\s*void montarVinculoCompra\(p\);/m);
+  assert.doesNotMatch(html, /location\.replace\("login\.html"\)/);
+  assert.equal((html.match(/location\.replace\("login\.html\?voltar=\/processos"\)/g) || []).length, 2);
+});

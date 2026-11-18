@@ -13,12 +13,16 @@
 <link rel="stylesheet" href="kit-documentos.css">
 <link rel="stylesheet" href="operacao-identificacao.css">
 <link rel="stylesheet" href="app-comercial.css">
+<link rel="stylesheet" href="menu-lateral.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 </head>
 <body>
 <header class="app-topo">
-  <div class="app-marca">LicitaPlena</div>
+  <div class="app-marca-linha">
+    <button id="nav-gaveta-btn" type="button" aria-controls="menu-principal" aria-expanded="false">Menu</button>
+    <div class="app-marca">LicitaPlena</div>
+  </div>
   <div class="app-controles">
     <label class="app-empresa" id="empresa-bloco" hidden>Empresa ativa
       <select id="empresa-ativa"></select>
@@ -31,11 +35,36 @@
     <button id="tentar" type="button" hidden>Tentar de novo</button>
   </div>
 </header>
+<div class="shell">
+<!-- Menu lateral: mesma estrutura e itens do menu do painel.html (duplicação intencional entre páginas). Comportamento em menu-lateral.js. -->
+<nav id="menu-principal" aria-label="Menu principal">
+  <button id="nav-colapsar-btn" type="button" title="Recolher menu" aria-controls="menu-principal">
+    <span class="nav-ico" aria-hidden="true">&#171;</span><span class="nav-label">Recolher</span>
+  </button>
+  <a href="/sistema" class="ativo" aria-current="page" title="Hoje"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-house"></use></svg></span><span class="nav-label">Hoje</span></a>
+  <a href="painel.html#boletim" title="Boletim"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-clipboard-text"></use></svg></span><span class="nav-label">Boletim</span></a>
+  <a href="painel.html#oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-magnifying-glass"></use></svg></span><span class="nav-label">Encontrar Licitações</span></a>
+  <a href="painel.html#diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Inteligência de Mercado</span></a>
+  <a href="painel.html#empresa" title="Analisar concorrente"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Analisar concorrente</span></a>
+  <a href="painel.html#transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-handshake"></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></a>
+  <a href="painel.html#precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Pesquisa de Preços</span></a>
+  <a href="painel.html#kanban" title="Funil"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folders"></use></svg></span><span class="nav-label">Funil</span></a>
+  <a href="processos.html" title="Processos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folder-open"></use></svg></span><span class="nav-label">Processos</span></a>
+  <a href="operacao.html" title="Minhas empresas e documentos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-files"></use></svg></span><span class="nav-label">Minhas empresas e documentos</span></a>
+  <a href="painel.html#juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-scales"></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></a>
+  <a href="painel.html#status" title="Status"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-circle"></use></svg></span><span class="nav-label">Status</span></a>
+</nav>
+<div class="nav-gaveta-fundo" id="nav-gaveta-fundo" hidden></div>
 <main class="app-principal">
   <section id="hoje" hidden aria-labelledby="hoje-titulo">
     <h1 id="hoje-titulo" class="app-titulo" tabindex="-1">Hoje</h1>
     <p id="hoje-estado" class="app-apoio" role="status" aria-live="polite"></p>
     <div id="hoje-lista" class="hoje-lista"></div>
+    <section id="sem-empresa" class="app-cartao" aria-labelledby="sem-empresa-titulo" hidden>
+      <h2 id="sem-empresa-titulo" class="app-subtitulo">Cadastre sua empresa</h2>
+      <p class="app-apoio">Para acompanhar processos e preparar propostas, cadastre primeiro a empresa que vai participar das licitações.</p>
+      <a class="app-primario app-botao-link" href="operacao.html">Cadastrar minha empresa</a>
+    </section>
     <section id="novo-processo-bloco" class="app-cartao novo-processo" aria-labelledby="novo-processo-titulo" hidden>
       <h2 id="novo-processo-titulo" class="app-titulo" tabindex="-1">Novo processo</h2>
       <p id="novo-processo-empresa" class="app-apoio"></p>
@@ -63,6 +92,7 @@
   </section>
   <p id="app-aviso" class="app-aviso" role="status" aria-live="polite"></p>
 </main>
+</div>
 <script src="kit-documentos-ui.js"></script>
 <script src="empresa-identificacao-ui.js"></script>
 <script src="operacao-identificacao.js"></script>
@@ -70,5 +100,6 @@
 <script src="app-comercial-core.js"></script>
 <script src="app-comercial-controlador.js"></script>
 <script src="app-comercial.js"></script>
+<script src="menu-lateral.js"></script>
 </body>
 </html>

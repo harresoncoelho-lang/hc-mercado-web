@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="ds-tokens.css">
 <script>
   // Tema antes de pintar (sem piscar): mesma chave e mesmo padrão claro do sistema (app-comercial.js).
-  (function () { var t = null; try { t = localStorage.getItem("licitaplena.tema"); } catch (e) { t = null; } document.documentElement.dataset.theme = t === "dark" ? "dark" : "light"; })();
+  (function () { var t = null; try { t = localStorage.getItem("licitaplena_tema"); if (t === null) { var v = localStorage.getItem("licitaplena.tema"); if (v !== null) { t = v === "dark" ? "escuro" : "claro"; localStorage.setItem("licitaplena_tema", t); localStorage.removeItem("licitaplena.tema"); } } } catch (e) { t = null; } document.documentElement.dataset.theme = t === "escuro" ? "dark" : "light"; })();
 </script>
 <style>
   /* Design System "Direção A, azul original": cores, raios e tipografia vêm de ds-tokens.css.
@@ -772,7 +772,7 @@
     b.addEventListener("click", () => {
       const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
       document.documentElement.dataset.theme = t;
-      try { localStorage.setItem("licitaplena.tema", t); } catch (e) { /* preferência opcional */ }
+      try { localStorage.setItem("licitaplena_tema", t === "dark" ? "escuro" : "claro"); } catch (e) { /* preferência opcional */ }
       pintar();
     });
   })();

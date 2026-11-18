@@ -98,6 +98,13 @@ button:disabled{opacity:.55;cursor:not-allowed}
   .itens-acoes button{width:100%}
 }
 
+/* Topo com o botão "Menu" do celular (menu-lateral.css) e convite para cadastrar a primeira empresa. Só tokens do DS. */
+.app-marca-linha{display:flex;align-items:center;gap:var(--space-8);min-width:0}
+.app-subtitulo{font:var(--text-section);color:var(--text-primary);margin:0 0 var(--space-8)}
+#sem-empresa{margin-top:var(--space-16)}
+.app-botao-link{display:inline-flex;align-items:center;min-height:44px;padding:var(--space-8) var(--space-16);border-radius:var(--radius-control);border:1px solid var(--action-strong);font:var(--text-body);font-weight:600;text-decoration:none}
+.app-botao-link:hover{background:var(--action-strong-hover);border-color:var(--action-strong-hover)}
+
 /* Identificação da empresa (empresa-identificacao-ui.js). Markup real: #identificacao > details > summary, p, p[role=status], label+campo em pares, select, input file, botões .defesa-botao, div de sugestões, checkbox e label.
    Desktop (641px+): duas colunas label | campo; textos, botões, arquivo, tipo e sugestões ocupam a largura toda; checkbox e label ficam na mesma linha.
    Mobile: uma coluna, rótulo acima do campo; checkbox e label na mesma linha.

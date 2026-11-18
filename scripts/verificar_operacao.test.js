@@ -118,3 +118,21 @@ test("agenda mantém compromissos vencidos visíveis", async () => {
   assert.match(alvo.innerHTML, /Em atraso · sessao/);
   assert.match(alvo.innerHTML, /Prazo futuro/);
 });
+
+test("?aba= abre qualquer aba existente e ignora valor fora da lista", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "operacao.html"), "utf8");
+  const linha = html.split("\n").find((l) => l.includes("function abaDaUrl("));
+  assert.ok(linha, "função abaDaUrl ausente");
+  const contexto = { URLSearchParams };
+  vm.runInNewContext(`${linha}\nthis.abaDaUrl = abaDaUrl;`, contexto);
+  const abas = [...html.matchAll(/class="aba[^"]*" data-aba="([a-z]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(abas, ["identificacao", "documentos", "agenda", "relatorio"]);
+  for (const aba of abas) assert.equal(contexto.abaDaUrl(`?aba=${aba}`, abas), aba);
+  for (const busca of ["", "?aba=", "?aba=inexistente", '?aba=agenda"]', "?aba=AGENDA", "?outra=agenda"]) assert.equal(contexto.abaDaUrl(busca, abas), null, busca);
+});
+
+test("login da central volta para /operacao", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "operacao.html"), "utf8");
+  assert.doesNotMatch(html, /location\.replace\("login\.html"\)/);
+  assert.equal((html.match(/location\.replace\("login\.html\?voltar=\/operacao"\)/g) || []).length, 2);
+});

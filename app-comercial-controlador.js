@@ -103,7 +103,7 @@
 
   // pedirLogin(mensagem): produção não tem formulário próprio; quando a casca cai no login, quem chama redireciona
   // para o login.html. Sem ele (QA), o formulário da própria página continua sendo usado.
-  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, confirmar = null, autenticacao = null, pedirLogin = null }) {
+  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
     const auth = autenticacao || autenticacaoQA(fetch);
     const el = (id) => doc.getElementById(id);
     let epoca = 0;
@@ -151,6 +151,9 @@
       if (login) login.hidden = t !== 'login';
       el('sair').hidden = !(t === 'area' || t === 'sem-contexto' || t === 'erro-sair');
       el('tentar').hidden = t !== 'erro-sessao';
+      // Convite para cadastrar a primeira empresa (sistema.html); a página do harness QA não tem o bloco.
+      const convite = el('sem-empresa');
+      if (convite) convite.hidden = t !== 'sem-contexto';
       atualizarVisao();
     }
 
@@ -474,9 +477,17 @@
         return;
       }
       preencherSeletores();
+      // Empresa ativa salva (mesma chave do painel e do operacao.html): só vale se estiver entre as autorizadas.
+      const preferida = CORE.lerPreferencia(storage);
+      if (preferida && empresasAutorizadas().some((x) => x.empresaId === preferida)) el('empresa-ativa').value = preferida;
       visao = 'hoje';
       renderizarHoje();
       mostrar('area'); aviso('', '');
+      // Link direto: o par precisa estar no catálogo desta conta; abrir ainda passa por consultar (selecionar).
+      const link = CORE.lerLinkDireto(busca);
+      if (!link) return;
+      if (processosDe(link.empresaId).some((a) => a.processoId === link.processoId)) return abrirProcesso(link.empresaId, link.processoId);
+      aviso(MSG.processoNaoAutorizado, 'erro');
     }
 
     async function entrar(email, password) {
@@ -539,6 +550,7 @@
       atual = null;
       novoEmpresaId = null;
       prepEmpresaId = empresaId;
+      CORE.gravarPreferencia({ empresaId }, storage);
       identDe = { empresaId, modo: 'preparar' };
       visao = 'preparar';
       el('contexto-atual').textContent = 'Preparar empresa: ' + e.rotulo;

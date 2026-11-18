@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Central Operacional — LicitaPlena</title>
+<title>Minhas empresas e documentos — LicitaPlena</title>
 <link rel="icon" type="image/png" href="favicon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,17 +13,106 @@
 <script src="empresa-identificacao-ui.js"></script>
 <script src="operacao-identificacao.js"></script>
 <link rel="stylesheet" href="operacao-identificacao.css">
-<script>try{if(localStorage.getItem("licitaplena_tema")==="claro")document.documentElement.classList.add("tema-claro");}catch(e){}</script>
+<link rel="stylesheet" href="ds-tokens.css">
+<link rel="stylesheet" href="menu-lateral.css">
+<!-- Tema: mesma chave do painel; claro é o padrão, só quem escolheu "escuro" fica no escuro. data-theme pinta o menu lateral (ds-tokens.css). -->
+<script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}if(t!=="escuro")document.documentElement.classList.add("tema-claro");document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
 <style>
-header .marca{color:#fff;text-decoration:none}header .tema-icone{width:36px;height:36px;padding:0;border-radius:50%;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:17px;line-height:1}
 html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--texto:#15253a;--fraco:#61738b;color-scheme:light}html.tema-claro select,html.tema-claro input,html.tema-claro textarea{background:var(--card2)}html.tema-claro .btn.primario{color:#fff}html.tema-claro .btn.perigo{color:#c13650}html.tema-claro .link{color:#246dc1}
-:root{--azul:#2e8dff;--azul-escuro:#0d47a1;--fundo:#0a121c;--card:#141f2e;--card2:#182638;--borda:#273a50;--texto:#eef3f8;--fraco:#9cadc0;--verde:#35c17c;--laranja:#f3a23a;--vermelho:#e8617a;--raio:12px}*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 400px at 10% -10%,rgba(46,141,255,.16),transparent 60%),var(--fundo);color:var(--texto);font:14px Inter,Arial,sans-serif}header{background:linear-gradient(120deg,var(--azul-escuro),var(--azul));padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;position:sticky;top:0;z-index:5}.marca{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px}.marca img{width:34px;height:34px}.acoes{display:flex;gap:9px;align-items:center}.btn{border:1px solid var(--borda);background:var(--card2);color:var(--texto);font:inherit;font-weight:700;padding:10px 13px;border-radius:8px;cursor:pointer}.btn:hover{border-color:var(--azul)}.btn.primario{background:var(--azul);border-color:var(--azul)}.btn.perigo{color:#ffc1cc}.btn:disabled{opacity:.55;cursor:wait}main{max-width:1280px;margin:auto;padding:28px 24px 56px}.topo{display:flex;gap:20px;align-items:end;justify-content:space-between;margin-bottom:22px}.topo h1{margin:0;font-size:28px}.topo p{margin:7px 0 0;color:var(--fraco)}.empresa-select{min-width:260px}.empresa-select label,label{display:block;color:var(--fraco);font-size:12px;font-weight:700;margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}select,input,textarea{width:100%;background:#0d1826;color:var(--texto);border:1px solid var(--borda);border-radius:8px;padding:10px 11px;font:inherit}select:focus,input:focus,textarea:focus{outline:0;border-color:var(--azul)}.aviso{display:none;margin:0 0 18px;border:1px solid;padding:12px 14px;border-radius:9px}.aviso.erro{display:block;color:#ffc1cc;border-color:var(--vermelho);background:rgba(232,97,122,.1)}.aviso.info{display:block;color:#bfdbff;border-color:#376ca9;background:rgba(46,141,255,.1)}.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}.metrica,.card{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio)}.metrica{padding:17px}.metrica b{font-size:26px;display:block;margin:8px 0 3px}.metrica span{color:var(--fraco);font-size:12px}.metrica.ok b{color:var(--verde)}.metrica.alerta b{color:var(--laranja)}.metrica.vencido b{color:var(--vermelho)}.abas{display:flex;gap:8px;overflow:auto;margin:18px 0}.aba{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--fraco);font:inherit;font-weight:700;padding:11px 10px;cursor:pointer;white-space:nowrap}.aba.ativa{color:var(--texto);border-color:var(--azul)}.painel{display:none}.painel.ativo{display:block}.card{padding:20px;margin-bottom:16px}.card-topo{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:14px}.card h2{font-size:18px;margin:0}.card p{color:var(--fraco);margin:6px 0}.tabela-wrap{overflow:auto}.tabela{width:100%;border-collapse:collapse;min-width:820px}.tabela th{text-align:left;color:var(--fraco);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:10px;border-bottom:1px solid var(--borda)}.tabela td{padding:13px 10px;border-bottom:1px solid rgba(39,58,80,.7);vertical-align:top}.tag{display:inline-block;border-radius:99px;padding:4px 8px;font-size:11px;font-weight:800}.tag.valido{background:rgba(53,193,124,.14);color:#8ee8b6}.tag.proximo{background:rgba(243,162,58,.15);color:#ffd38e}.tag.vencido{background:rgba(232,97,122,.14);color:#ffb6c5}.tag.pendente{background:rgba(143,160,183,.15);color:#cad5e3}.vazio{padding:28px;text-align:center;color:var(--fraco)}.grade{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.lista-agenda{display:grid;gap:10px}.evento{border-left:3px solid var(--azul);background:var(--card2);padding:12px;border-radius:0 8px 8px 0}.evento.urgente{border-color:var(--vermelho)}.evento strong{display:block}.evento small{color:var(--fraco);display:block;margin-top:4px}.modal{display:none;position:fixed;z-index:20;inset:0;background:rgba(0,0,0,.7);padding:18px;align-items:center;justify-content:center}.modal.aberto{display:flex}.modal-corpo{width:min(700px,100%);max-height:94vh;overflow:auto;background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:22px}.modal-corpo h2{margin:0 0 18px}.form-grade{display:grid;grid-template-columns:1fr 1fr;gap:13px}.form-grade .inteiro{grid-column:1/-1}.modal-rodape{margin-top:19px;display:flex;justify-content:flex-end;gap:10px}.nota{font-size:12px;color:var(--fraco);line-height:1.45}.link{color:#8fc3ff;text-decoration:none;font-weight:700}.link:hover{text-decoration:underline}@media(max-width:820px){main{padding:20px 14px}.topo{align-items:stretch;flex-direction:column}.metricas,.grade{grid-template-columns:repeat(2,1fr)}.empresa-select{min-width:0}.form-grade{grid-template-columns:1fr}header{padding:12px 14px}}@media(max-width:480px){.metricas,.grade{grid-template-columns:1fr}.acoes .btn:not(.primario){display:none}.topo h1{font-size:24px}}
+:root{--azul:#2e8dff;--azul-escuro:#0d47a1;--fundo:#0a121c;--card:#141f2e;--card2:#182638;--borda:#273a50;--texto:#eef3f8;--fraco:#9cadc0;--verde:#35c17c;--laranja:#f3a23a;--vermelho:#e8617a;--raio:12px}*{box-sizing:border-box}body{margin:0;background:var(--fundo);color:var(--texto);font:14px Inter,Arial,sans-serif}header{padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;position:sticky;top:0;z-index:5}.marca{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px}.marca img{width:34px;height:34px}.acoes{display:flex;gap:9px;align-items:center}.btn{border:1px solid var(--borda);background:var(--card2);color:var(--texto);font:inherit;font-weight:700;padding:10px 13px;border-radius:8px;cursor:pointer}.btn:hover{border-color:var(--azul)}.btn.primario{background:var(--azul);border-color:var(--azul)}.btn.perigo{color:#ffc1cc}.btn:disabled{opacity:.55;cursor:wait}main{max-width:1280px;margin:auto;padding:28px 24px 56px}.topo{display:flex;gap:20px;align-items:end;justify-content:space-between;margin-bottom:22px}.topo h1{margin:0;font-size:28px}.topo p{margin:7px 0 0;color:var(--fraco)}.empresa-select{min-width:260px}.empresa-select label,label{display:block;color:var(--fraco);font-size:12px;font-weight:700;margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}select,input,textarea{width:100%;background:#0d1826;color:var(--texto);border:1px solid var(--borda);border-radius:8px;padding:10px 11px;font:inherit}select:focus,input:focus,textarea:focus{outline:0;border-color:var(--azul)}.aviso{display:none;margin:0 0 18px;border:1px solid;padding:12px 14px;border-radius:9px}.aviso.erro{display:block;color:#ffc1cc;border-color:var(--vermelho);background:rgba(232,97,122,.1)}.aviso.info{display:block;color:#bfdbff;border-color:#376ca9;background:rgba(46,141,255,.1)}.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}.metrica,.card{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio)}.metrica{padding:17px}.metrica b{font-size:26px;display:block;margin:8px 0 3px}.metrica span{color:var(--fraco);font-size:12px}.metrica.ok b{color:var(--verde)}.metrica.alerta b{color:var(--laranja)}.metrica.vencido b{color:var(--vermelho)}.abas{display:flex;gap:8px;overflow:auto;margin:18px 0}.aba{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--fraco);font:inherit;font-weight:700;padding:11px 10px;cursor:pointer;white-space:nowrap}.aba.ativa{color:var(--texto);border-color:var(--azul)}.painel{display:none}.painel.ativo{display:block}.card{padding:20px;margin-bottom:16px}.card-topo{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:14px}.card h2{font-size:18px;margin:0}.card p{color:var(--fraco);margin:6px 0}.tabela-wrap{overflow:auto}.tabela{width:100%;border-collapse:collapse;min-width:820px}.tabela th{text-align:left;color:var(--fraco);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:10px;border-bottom:1px solid var(--borda)}.tabela td{padding:13px 10px;border-bottom:1px solid rgba(39,58,80,.7);vertical-align:top}.tag{display:inline-block;border-radius:99px;padding:4px 8px;font-size:11px;font-weight:800}.tag.valido{background:rgba(53,193,124,.14);color:#8ee8b6}.tag.proximo{background:rgba(243,162,58,.15);color:#ffd38e}.tag.vencido{background:rgba(232,97,122,.14);color:#ffb6c5}.tag.pendente{background:rgba(143,160,183,.15);color:#cad5e3}.vazio{padding:28px;text-align:center;color:var(--fraco)}.grade{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.lista-agenda{display:grid;gap:10px}.evento{border-left:3px solid var(--azul);background:var(--card2);padding:12px;border-radius:0 8px 8px 0}.evento.urgente{border-color:var(--vermelho)}.evento strong{display:block}.evento small{color:var(--fraco);display:block;margin-top:4px}.modal{display:none;position:fixed;z-index:20;inset:0;background:rgba(0,0,0,.7);padding:18px;align-items:center;justify-content:center}.modal.aberto{display:flex}.modal-corpo{width:min(700px,100%);max-height:94vh;overflow:auto;background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:22px}.modal-corpo h2{margin:0 0 18px}.form-grade{display:grid;grid-template-columns:1fr 1fr;gap:13px}.form-grade .inteiro{grid-column:1/-1}.modal-rodape{margin-top:19px;display:flex;justify-content:flex-end;gap:10px}.nota{font-size:12px;color:var(--fraco);line-height:1.45}.link{color:#8fc3ff;text-decoration:none;font-weight:700}.link:hover{text-decoration:underline}@media(max-width:820px){main{padding:20px 14px}.topo{align-items:stretch;flex-direction:column}.metricas,.grade{grid-template-columns:repeat(2,1fr)}.empresa-select{min-width:0}.form-grade{grid-template-columns:1fr}header{padding:12px 14px}}@media(max-width:480px){.metricas,.grade{grid-template-columns:1fr}.acoes .btn:not(.primario){display:none}.topo h1{font-size:24px}}
+/* Design System (ds-tokens.css): as variáveis legadas desta página apontam para os tokens, como painel-design.css (seção 1),
+   e os componentes repetem as regras de lá (topo, botões, campos, tabelas, chips, avisos, modais). Sem degradê; sombra só em modal. */
+:root,html.tema-claro{--azul:var(--action-strong);--azul-escuro:var(--brand-navy);--fundo:var(--surface-page);--escuro:var(--surface-page);--card:var(--surface-default);--card2:var(--surface-sunken);--borda:var(--border-default);--texto:var(--text-primary);--fraco:var(--text-secondary);--verde:var(--success-text);--laranja:var(--attention-text);--vermelho:var(--error-text);--raio:var(--radius-card)}
+[data-theme="dark"]{color-scheme:dark}[data-theme="light"]{color-scheme:light}
+body{background:var(--surface-page);color:var(--text-primary);font:var(--text-body)}
+button,input,select,textarea{font-family:var(--font-sans)}
+:is(button,a,input,textarea,select,summary,[tabindex]):focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+header{background:var(--surface-default);border-bottom:1px solid var(--border-default);box-shadow:none;padding:8px 24px;flex-wrap:wrap}
+.topo-marca-linha{display:flex;align-items:center;gap:8px;min-width:0}
+header .marca{display:flex;align-items:center;gap:8px;color:var(--text-primary);text-decoration:none;font:600 16px/24px var(--font-sans)}
+/* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (mesma regra do painel). */
+.marca-placa{display:inline-grid;place-content:center;width:32px;height:32px;border-radius:var(--radius-control);background:#f6f8fc;border:1px solid #e3e8f0;flex:none}
+.marca-placa img{width:24px;height:24px;display:block}
+.acoes{gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:500 14px/16px var(--font-sans);text-decoration:none;box-shadow:none}
+.btn:hover{background:var(--surface-sunken);border-color:var(--border-strong)}
+.btn.primario,html.tema-claro .btn.primario{background:var(--action-strong);border-color:transparent;color:var(--action-on)}
+.btn.primario:hover{background:var(--action-strong-hover)}
+.btn.perigo,html.tema-claro .btn.perigo{color:var(--error-text);border-color:var(--error-border)}
+.btn.perigo:hover{background:var(--error-bg)}
+.btn:disabled{background:var(--surface-sunken);color:var(--text-disabled);border-color:var(--border-default);opacity:1}
+header .tema-icone{width:40px;height:40px;padding:0;font-size:16px;line-height:1}
+.link,html.tema-claro .link,.linha-registro a{color:var(--action-text)}
+button.link{background:none;border:0;padding:0;font:inherit;font-weight:600;cursor:pointer}
+label,.empresa-select label{font:var(--text-label);color:var(--text-primary);text-transform:none;letter-spacing:0}
+select,input,textarea,html.tema-claro select,html.tema-claro input,html.tema-claro textarea{padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body);box-shadow:none}
+select,input:not([type="checkbox"]):not([type="radio"]){min-height:40px}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--focus-ring);outline-offset:2px;border-color:var(--border-strong)}
+input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
+[data-theme="dark"] input::-webkit-calendar-picker-indicator{filter:invert(.85)}
+.topo h1{font:var(--text-title);color:var(--text-primary)}
+.topo p,.card p,.nota,.vazio{color:var(--text-secondary)}
+.metrica,.card,.processo{background:var(--surface-default);border:1px solid var(--border-default);border-radius:var(--radius-card);box-shadow:none}
+.card{padding:16px}
+.card h2,.modal-corpo h2{font:var(--text-section);color:var(--text-primary)}
+.metrica{padding:16px}
+.metrica span{font:var(--text-label);color:var(--text-secondary)}
+.metrica b{font:600 28px/36px var(--font-sans);font-variant-numeric:tabular-nums}
+.processo:hover{border-color:var(--action-strong)}
+.processo h3{font:600 14px/22px var(--font-sans)}
+.processo small{color:var(--text-secondary)}
+.dado{background:var(--surface-sunken);border-color:var(--border-default);border-radius:var(--radius-control)}
+.dado span{font:var(--text-label);text-transform:none}
+.aba{color:var(--text-secondary);font:500 14px/20px var(--font-sans)}
+.aba:hover{color:var(--text-primary)}
+.aba.ativa{color:var(--text-primary);border-color:var(--action-strong);font-weight:600}
+.evento{background:var(--surface-sunken);border-left-color:var(--action-strong);border-radius:0 var(--radius-control) var(--radius-control) 0}
+.evento.urgente{border-left-color:var(--error-text)}
+.tabela-wrap{border:1px solid var(--border-default);border-radius:var(--radius-card)}
+.tabela th{background:var(--surface-sunken);color:var(--text-secondary);font:var(--text-label);text-transform:none;letter-spacing:0;padding:10px 12px;border-bottom:1px solid var(--border-default)}
+.tabela td{padding:10px 12px;line-height:22px;border-bottom:1px solid var(--border-default)}
+.tabela tbody tr:last-child td{border-bottom:0}
+.tabela tbody tr:hover{background:var(--surface-sunken)}
+.tag{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-sunken);color:var(--text-secondary);font:var(--text-label);white-space:nowrap;vertical-align:middle}
+.tag.valido,.tag.homologado,.tag.contratado,.tag.pago{background:var(--success-bg);border-color:var(--success-border);color:var(--success-text)}
+.tag.proximo,.tag.sessao,.tag.habilitacao,.tag.recurso{background:var(--attention-bg);border-color:var(--attention-border);color:var(--attention-text)}
+.tag.vencido,.tag.perdido,.tag.arquivado,.tag.cancelado{background:var(--error-bg);border-color:var(--error-border);color:var(--error-text)}
+.tag.triagem,.tag.preparacao{background:var(--info-bg);border-color:var(--info-border);color:var(--info-text)}
+.aviso{border-radius:var(--radius-card);padding:12px 16px}
+.aviso.erro{color:var(--error-text);border-color:var(--error-border);background:var(--error-bg)}
+.aviso.info{color:var(--info-text);border-color:var(--info-border);background:var(--info-bg)}
+.aviso-dados{border-left-color:var(--attention-border);background:var(--attention-bg);color:var(--attention-text)}
+.total-calculado{color:var(--action-text)}
+.modal{background:rgba(11,16,32,.5)}
+.modal-corpo{background:var(--surface-raised);border-color:var(--border-default);border-radius:var(--radius-modal);box-shadow:var(--shadow-overlay)}
+@media(max-width:820px){header{padding:8px 12px}}
+@media(max-width:480px){.topo h1{font-size:24px;line-height:32px}.acoes .btn.tema-icone{display:inline-flex}}
 </style>
 </head>
 <body>
-<header><a class="marca" href="painel.html" title="Voltar ao painel principal"><img src="logo-icone-branco.svg" alt="LicitaPlena">Central Operacional</a><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button><a class="btn" href="processos.html">Acompanhamento de licitações</a><a class="btn" href="painel.html">Voltar ao painel</a><button class="btn" id="btn-nova-empresa">+ Empresa</button><button class="btn primario" id="btn-novo-documento">+ Documento</button></div></header>
+<header><div class="topo-marca-linha"><button id="nav-gaveta-btn" type="button" aria-controls="menu-principal" aria-expanded="false">Menu</button><a class="marca" href="painel.html" title="Voltar ao painel principal"><span class="marca-placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a></div><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button><button class="btn" id="btn-nova-empresa">+ Empresa</button><button class="btn primario" id="btn-novo-documento">+ Documento</button></div></header>
+<div class="shell">
+<!-- Menu lateral: mesma estrutura e itens do menu do painel.html (duplicação intencional entre páginas). Comportamento em menu-lateral.js. -->
+<nav id="menu-principal" aria-label="Menu principal">
+  <button id="nav-colapsar-btn" type="button" title="Recolher menu" aria-controls="menu-principal">
+    <span class="nav-ico" aria-hidden="true">&#171;</span><span class="nav-label">Recolher</span>
+  </button>
+  <a href="/sistema" title="Hoje"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-house"></use></svg></span><span class="nav-label">Hoje</span></a>
+  <a href="painel.html#boletim" title="Boletim"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-clipboard-text"></use></svg></span><span class="nav-label">Boletim</span></a>
+  <a href="painel.html#oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-magnifying-glass"></use></svg></span><span class="nav-label">Encontrar Licitações</span></a>
+  <a href="painel.html#diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Inteligência de Mercado</span></a>
+  <a href="painel.html#empresa" title="Analisar concorrente"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Analisar concorrente</span></a>
+  <a href="painel.html#transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-handshake"></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></a>
+  <a href="painel.html#precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Pesquisa de Preços</span></a>
+  <a href="painel.html#kanban" title="Funil"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folders"></use></svg></span><span class="nav-label">Funil</span></a>
+  <a href="processos.html" title="Processos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folder-open"></use></svg></span><span class="nav-label">Processos</span></a>
+  <a href="operacao.html" class="ativo" aria-current="page" title="Minhas empresas e documentos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-files"></use></svg></span><span class="nav-label">Minhas empresas e documentos</span></a>
+  <a href="painel.html#juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-scales"></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></a>
+  <a href="painel.html#status" title="Status"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-circle"></use></svg></span><span class="nav-label">Status</span></a>
+</nav>
+<div class="nav-gaveta-fundo" id="nav-gaveta-fundo" hidden></div>
 <main>
-  <div class="topo"><div><h1>Documentos, prazos e prontidão</h1><p>Controle privado por empresa, com certidões, responsáveis e alertas de vencimento.</p><p class="nota" id="cota-empresas">Verificando empresas disponíveis...</p></div><div class="empresa-select"><label for="empresa-atual">Empresa ativa</label><select id="empresa-atual"></select></div></div>
+  <div class="topo"><div><h1>Minhas empresas e documentos</h1><p>Documentos, prazos e prontidão: controle privado por empresa, com certidões, responsáveis e alertas de vencimento.</p><p class="nota" id="cota-empresas">Verificando empresas disponíveis...</p></div><div class="empresa-select"><label for="empresa-atual">Empresa ativa</label><select id="empresa-atual"></select></div></div>
   <div id="aviso" class="aviso"></div>
   <section class="metricas"><div class="metrica ok"><span>Documentos válidos</span><b id="m-validos">—</b><span>com validade regular</span></div><div class="metrica alerta"><span>Vencem em até 30 dias</span><b id="m-proximos">—</b><span>alerta configurável: 30, 15, 7, 3 e 1 dia</span></div><div class="metrica vencido"><span>Documentos vencidos</span><b id="m-vencidos">—</b><span>pedem renovação</span></div><div class="metrica"><span>Prontidão da empresa</span><b id="m-prontidao">—</b><span>documentos essenciais válidos</span></div></section>
   <div class="abas"><button class="aba" data-aba="identificacao">Dados da empresa</button><button class="aba ativa" data-aba="documentos">Documentos e certidões</button><button class="aba" data-aba="agenda">Agenda operacional</button><button class="aba" data-aba="relatorio">Prontidão e relatório</button></div>
@@ -32,6 +121,7 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   <section id="aba-agenda" class="painel"><div class="card"><div class="card-topo"><div><h2>Agenda operacional</h2><p>Compromissos em atraso e próximos prazos da empresa.</p></div><button class="btn primario" id="btn-novo-evento">+ Compromisso</button></div><div id="lista-agenda" class="lista-agenda"></div></div></section>
   <section id="aba-relatorio" class="painel"><div class="grade"><div class="card"><h2>Checklist de habilitação</h2><p class="nota">Os documentos abaixo são indicadores operacionais. O edital de cada processo continua sendo a referência final.</p><div id="checklist"></div></div><div class="card"><h2>Exportação</h2><p>Exporte o recorte atual para conferência e prestação de contas.</p><button class="btn primario" id="btn-exportar">Baixar CSV de documentos</button><p class="nota">A exportação inclui somente a empresa ativa e não torna dados públicos.</p></div><div class="card"><h2>Histórico de renovações</h2><p class="nota">Nesta primeira fase, a troca de vencimento e arquivo preserva o registro do documento. A trilha detalhada de renovação será ativada junto à edição na próxima fatia.</p></div></div></section>
 </main>
+</div>
 
 <div id="modal-empresa" class="modal"><form id="form-empresa" class="modal-corpo"><h2>Adicionar empresa</h2><p class="nota" id="cota-empresas-modal"></p><div class="form-grade"><div class="inteiro"><label>Razão social</label><input name="razao_social" required maxlength="180"></div><div><label>CNPJ</label><input name="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18"></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-empresa">Cancelar</button><button class="btn primario">Salvar empresa</button></div></form></div>
 <div id="modal-documento" class="modal"><form id="form-documento" class="modal-corpo"><h2>Novo documento</h2><div class="form-grade"><div><label>Tipo</label><select name="tipo" id="doc-tipo"><option>Certidão Federal</option><option>Certidão Estadual</option><option>Certidão Municipal</option><option>FGTS</option><option>CNDT</option><option>Balanço patrimonial</option><option>Contrato social</option><option>Alvará / licença</option><option>Registro profissional</option><option>Atestado de capacidade técnica</option><option value="personalizado">Tipo personalizado</option></select></div><div id="campo-tipo-personalizado" style="display:none"><label>Nome do tipo</label><input name="tipo_personalizado" maxlength="100"></div><div><label>Emissão</label><input name="emissao" type="date"></div><div><label>Vencimento</label><input name="vencimento" type="date"></div><div><label>Órgão emissor</label><input name="orgao_emissor" maxlength="150"></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div><div class="inteiro"><label>Título complementar</label><input name="titulo" maxlength="180" placeholder="Ex.: Certidão negativa estadual — SEFAZ/AM"></div><div class="inteiro"><label>Arquivo</label><input name="arquivo" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"><p class="nota">O arquivo é enviado ao armazenamento privado da sua organização.</p></div><div class="inteiro"><label>Observações</label><textarea name="observacoes" rows="3" maxlength="2000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-documento">Cancelar</button><button class="btn primario" id="btn-salvar-documento">Salvar documento</button></div></form></div>
@@ -88,16 +178,16 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   function statusDoc(d) { if (!d.vencimento) return ["pendente", "Sem vencimento"]; const dias = Math.ceil((new Date(`${d.vencimento}T12:00:00`) - hoje()) / 86400000); if (dias < 0) return ["vencido", "Vencido"]; if (dias <= 30) return ["proximo", `Vence em ${dias} dia${dias === 1 ? "" : "s"}`]; return ["valido", "Válido"]; }
   async function autenticar() {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { location.replace("login.html"); return false; }
+    if (!session) { location.replace("login.html?voltar=/operacao"); return false; }
     usuarioIdentificacao = session.user.id;
     const { data: cliente } = await sb.from("clientes").select("status").eq("id", session.user.id).maybeSingle();
-    if (!cliente || cliente.status !== "aprovado") { await sb.auth.signOut(); location.replace("login.html"); return false; }
+    if (!cliente || cliente.status !== "aprovado") { await sb.auth.signOut(); location.replace("login.html?voltar=/operacao"); return false; }
     return true;
   }
   async function iniciar() {
     if (!await autenticar()) return;
     const { data: orgId, error } = await sb.rpc("bootstrap_operacao");
-    if (error) { aviso("A Central Operacional ainda precisa da migração do Supabase. Execute o arquivo supabase/operacao_licitacoes.sql no SQL Editor e recarregue esta página.", "erro"); return; }
+    if (error) { aviso("Minhas empresas e documentos ainda precisa da migração do Supabase. Execute o arquivo supabase/operacao_licitacoes.sql no SQL Editor e recarregue esta página.", "erro"); return; }
     estado.orgId = orgId;
     const { data: acesso, error: erroAcesso } = await sb.rpc("meu_acesso_operacao");
     if (erroAcesso) { aviso("Não foi possível verificar seu acesso à empresa. Tente novamente.", "erro"); return; }
@@ -217,11 +307,15 @@ html.tema-claro{--fundo:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--te
   $("empresa-atual").addEventListener("change", e => { try { localStorage.setItem("licitaplena_empresa_operacional_id", e.target.value); } catch (_) {} });
   const btnTema = $("btn-tema");
   function rotuloTema(){ const claro = document.documentElement.classList.contains("tema-claro"); btnTema.textContent = claro ? "☀" : "☾"; btnTema.title = claro ? "Mudar para tema escuro" : "Mudar para tema claro"; }
-  btnTema.addEventListener("click", () => { const claro = document.documentElement.classList.toggle("tema-claro"); try { localStorage.setItem("licitaplena_tema", claro ? "claro" : "escuro"); } catch (_) {} rotuloTema(); });
+  btnTema.addEventListener("click", () => { const claro = document.documentElement.classList.toggle("tema-claro"); document.documentElement.dataset.theme = claro ? "light" : "dark"; try { localStorage.setItem("licitaplena_tema", claro ? "claro" : "escuro"); } catch (_) {} rotuloTema(); });
   rotuloTema();
-  if (new URLSearchParams(location.search).get("aba") === "identificacao") document.querySelector('[data-aba="identificacao"]').click();
+  // ?aba= abre qualquer aba existente da página; valor fora da lista é ignorado (e nunca entra no seletor).
+  function abaDaUrl(busca, abas) { const aba = new URLSearchParams(busca).get("aba"); return abas.includes(aba) ? aba : null; }
+  const abaUrl = abaDaUrl(location.search, [...document.querySelectorAll(".aba")].map(b => b.dataset.aba));
+  if (abaUrl) document.querySelector('.aba[data-aba="' + abaUrl + '"]').click();
   iniciar();
 })();
 </script>
+<script src="menu-lateral.js"></script>
 </body>
 </html>

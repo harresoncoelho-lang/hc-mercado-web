@@ -1,7 +1,14 @@
 (function (global) {
   'use strict';
   // Lógica pura da casca comercial. Autorização vem só do handler real (consultar); a preferência não concede acesso.
-  const CHAVE_PREFERENCIA = 'licitaplena.contextoPreferido';
+  // Empresa ativa: mesma chave do painel e do operacao.html (só o id da empresa). A chave antiga guardava empresa + processo
+  // e só é lida uma vez, para migrar quem já tinha preferência salva.
+  const CHAVE_EMPRESA = 'licitaplena_empresa_operacional_id';
+  const CHAVE_PREFERENCIA_ANTIGA = 'licitaplena.contextoPreferido';
+  // Tema: mesma chave e valores do painel ("claro" | "escuro"), claro como padrão. A chave antiga ("light" | "dark") migra uma vez.
+  const CHAVE_TEMA = 'licitaplena_tema';
+  const CHAVE_TEMA_ANTIGA = 'licitaplena.tema';
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const MSG_LOGIN = 'Não foi possível entrar. Confira os dados e tente de novo.';
   const MSG_SEM_CONTEXTO = 'Nenhuma empresa autorizada para esta conta.';
   const MSG_SESSAO_ENCERRADA = 'Sessão encerrada.';
@@ -50,20 +57,56 @@
     return autorizados.find((x) => mesmoContexto(x, preferido)) || autorizados[0];
   }
 
+  // Devolve o id da empresa preferida (ou null). A preferência só escolhe entre empresas já autorizadas; não concede acesso.
   function lerPreferencia(storage) {
     try {
       const s = storage || global.localStorage;
-      const bruto = s && s.getItem(CHAVE_PREFERENCIA);
-      const o = bruto ? JSON.parse(bruto) : null;
-      return o && typeof o.empresaId === 'string' && typeof o.processoId === 'string' ? { empresaId: o.empresaId, processoId: o.processoId } : null;
+      if (!s) return null;
+      const atual = s.getItem(CHAVE_EMPRESA);
+      if (atual) return atual;
+      const bruto = s.getItem(CHAVE_PREFERENCIA_ANTIGA);
+      if (bruto === null) return null;
+      s.removeItem?.(CHAVE_PREFERENCIA_ANTIGA);
+      let o = null;
+      try { o = JSON.parse(bruto); } catch { o = null; }
+      if (!o || typeof o.empresaId !== 'string' || !o.empresaId) return null;
+      s.setItem(CHAVE_EMPRESA, o.empresaId);
+      return o.empresaId;
     } catch { return null; }
   }
 
   function gravarPreferencia(contexto, storage) {
     try {
       const s = storage || global.localStorage;
-      if (s && contexto) s.setItem(CHAVE_PREFERENCIA, JSON.stringify({ empresaId: contexto.empresaId, processoId: contexto.processoId }));
+      if (s && contexto && typeof contexto.empresaId === 'string' && contexto.empresaId) s.setItem(CHAVE_EMPRESA, contexto.empresaId);
     } catch { /* preferência é opcional */ }
+  }
+
+  // 'claro' | 'escuro'. Sem nada salvo, claro. A chave antiga é lida uma vez, gravada na nova e apagada.
+  function lerTema(storage) {
+    try {
+      const s = storage || global.localStorage;
+      if (!s) return 'claro';
+      const atual = s.getItem(CHAVE_TEMA);
+      if (atual === 'claro' || atual === 'escuro') return atual;
+      const antigo = s.getItem(CHAVE_TEMA_ANTIGA);
+      if (antigo === null) return 'claro';
+      const tema = antigo === 'dark' ? 'escuro' : 'claro';
+      s.setItem(CHAVE_TEMA, tema);
+      s.removeItem?.(CHAVE_TEMA_ANTIGA);
+      return tema;
+    } catch { return 'claro'; }
+  }
+
+  // Link direto /sistema?empresa=<uuid>&processo=<uuid>. Só devolve o par se os dois forem uuid; não concede acesso
+  // (o controlador ainda confere no catálogo e com consultar em kit-documentos).
+  function lerLinkDireto(busca) {
+    if (typeof busca !== 'string' || !busca) return null;
+    let p = null;
+    try { p = new global.URLSearchParams(busca); } catch { return null; }
+    const empresaId = (p.get('empresa') || '').trim().toLowerCase();
+    const processoId = (p.get('processo') || '').trim().toLowerCase();
+    return UUID.test(empresaId) && UUID.test(processoId) ? { empresaId, processoId } : null;
   }
 
   // Cadastro de processo: validação de campos no navegador (o servidor valida de novo e é a fonte final).
@@ -91,6 +134,6 @@
     return h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-8' + h.slice(17, 20) + '-' + h.slice(20, 32);
   }
 
-  const api = { CHAVE_PREFERENCIA, MSG_LOGIN, MSG_SEM_CONTEXTO, MSG_SESSAO_ENCERRADA, autorizarContextos, contextosDoCatalogo, escolherContexto, lerPreferencia, gravarPreferencia, validarProcessoNovo, novaTentativaId, LIMITES_PROCESSO };
+  const api = { CHAVE_EMPRESA, CHAVE_PREFERENCIA_ANTIGA, CHAVE_TEMA, CHAVE_TEMA_ANTIGA, lerTema, lerLinkDireto, MSG_LOGIN, MSG_SEM_CONTEXTO, MSG_SESSAO_ENCERRADA, autorizarContextos, contextosDoCatalogo, escolherContexto, lerPreferencia, gravarPreferencia, validarProcessoNovo, novaTentativaId, LIMITES_PROCESSO };
   global.LicitaPlenaComercialCore = api;
 })(globalThis);

@@ -23,7 +23,8 @@
     const CODIGOS = { [C.MSG.naoAprovado]: 'analise', [C.MSG.sessaoExpirada]: 'expirada', [C.MSG.usuarioMudou]: 'expirada', [globalThis.LicitaPlenaComercialCore.MSG_SESSAO_ENCERRADA]: 'saiu' };
     pedirLogin = (mensagem) => {
       const codigo = CODIGOS[mensagem];
-      globalThis.location.replace('/login?voltar=/sistema' + (codigo ? '&aviso=' + codigo : ''));
+      // O link direto (?empresa=&processo=) volta junto; o login.html só aceita caminho interno.
+      globalThis.location.replace('/login?voltar=' + encodeURIComponent('/sistema' + globalThis.location.search) + (codigo ? '&aviso=' + codigo : ''));
     };
   }
   const ctrl = C.criarControlador({
@@ -36,11 +37,11 @@
     identificacao: globalThis.OperacaoIdentificacao,
     itens: globalThis.LicitaItensProcesso,
     confirmar: (mensagem) => globalThis.confirm(mensagem),
+    busca: globalThis.location.search,
   });
 
-  let tema = 'light';
-  try { if (storage?.getItem('licitaplena.tema') === 'dark') tema = 'dark'; } catch { /* preferência opcional */ }
-  doc.documentElement.dataset.theme = tema;
+  // Mesma chave e valores do painel ("claro" | "escuro"); lerTema migra a chave antiga uma vez.
+  doc.documentElement.dataset.theme = globalThis.LicitaPlenaComercialCore.lerTema(storage) === 'escuro' ? 'dark' : 'light';
 
   // O formulário só existe na página do harness QA; sistema.html não tem login próprio.
   doc.getElementById('app-login')?.addEventListener('submit', (ev) => {
@@ -79,7 +80,7 @@
   doc.getElementById('tema').addEventListener('click', () => {
     const proximo = doc.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     doc.documentElement.dataset.theme = proximo;
-    try { storage?.setItem('licitaplena.tema', proximo); } catch { /* preferência opcional */ }
+    try { storage?.setItem('licitaplena_tema', proximo === 'dark' ? 'escuro' : 'claro'); } catch { /* preferência opcional */ }
   });
 
   ctrl.iniciar();
