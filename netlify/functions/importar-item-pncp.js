@@ -38,4 +38,4 @@ function criarHandler({enabled=()=>process.env.IMPORTACAO_PNCP_LOCAL==='1',servi
  }catch(error){return reply([400,403,404,409,422,429,502].includes(error.status)?error.status:503,{erro:error.status?error.message:'Importação indisponível. Nenhum resultado foi confirmado.'});}
  };
 }
-module.exports={handler:criarHandler(),criarHandler};
+module.exports={handler:criarHandler(),criarHandler,referencia};

@@ -205,3 +205,14 @@ test("segunda passada descarta trecho que não existe na fonte e registra", () =
   assert.deepEqual(descartadas.map((d) => d.motivo), ["trecho literal não existe na fonte", "trecho existe na fonte, mas não no documento citado", "trecho literal ausente ou curto demais para conferir"]);
   assert.equal(validarSegundaPassada("lixo", textoFonte).descartadas.length, 1);
 });
+
+test("código da IA é estável: depende só do texto normalizado, não da ordem; repetido não duplica", () => {
+  const { codigoEstavel } = require("../_exigencias");
+  assert.equal(codigoEstavel("IA", "  Certidão   CNDT "), codigoEstavel("IA", "certidão cndt"));
+  assert.match(codigoEstavel("IA", "x"), /^IA-[a-f0-9]{10}$/);
+  const textoFonte = "--- Edital (#1) ---\n[Página 1]\n8.1. Certidão negativa de débitos trabalhistas (CNDT).\n";
+  const ids = (lista) => juntarExigencias({ textoFonte, dossieIA: { declaracoesExigidas: lista } }).exigencias.filter((e) => e.id.startsWith("IA-")).map((e) => e.id);
+  const [a] = ids(["Declaração de visita técnica facultativa"]);
+  assert.ok(ids(["Amostra do produto em 3 dias", "Declaração de visita técnica facultativa"]).includes(a));
+  assert.equal(ids(["Amostra do produto em 3 dias", "Amostra do produto em 3 dias"]).length, 1);
+});

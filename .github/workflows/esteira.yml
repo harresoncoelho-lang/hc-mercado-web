@@ -1,0 +1,40 @@
+name: Esteira dos processos
+
+# Executa as tarefas da esteira (scripts/esteira_processos.js): itens do PNCP, exigências do
+# edital e cruzamento. Roda logo depois de cada geração de dossiês (é quando as exigências
+# podem sair) e, por segurança, a cada 2 h. Não escreve no repositório: só no Supabase.
+concurrency:
+  group: esteira-processos
+  cancel-in-progress: false
+
+on:
+  workflow_run:
+    workflows: ["Gerar dossiês dos editais (Gemini)"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    # Minuto 37 a cada 2 h (UTC); fora do minuto 9 do gerar-dossies.
+    - cron: "37 */2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  esteira:
+    # Dossiê que falhou não impede itens nem cruzamento: roda em qualquer conclusão do gerar-dossies.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Executar tarefas da esteira
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Segunda passada de IA desligada: sem chave de IA aqui até ela ser ligada.
+          ESTEIRA_SEGUNDA_PASSADA: "0"
+          LIMITE_MINUTOS_ESTEIRA: "10"
+        run: node scripts/esteira_processos.js

@@ -3,6 +3,7 @@
 // Nada some em silêncio: o que não se prova vai para "conferir", o que a IA não
 // listou ganha selo, e documento não lido trava a etapa em "aguardando_leitura".
 // O dono já perdeu uma licitação por uma declaração escondida num anexo.
+const { createHash } = require("node:crypto");
 const { catalogarRequisitos, paginasDaFonte, localizarReferencia } = require("./_edital_operacional");
 
 const LIMITE_TRECHO = 600;
@@ -29,6 +30,8 @@ const intersecao = (a, b) => [...a].filter((t) => b.has(t)).length;
 const cobertura = (alvo, fonte) => (alvo.size ? intersecao(alvo, fonte) / alvo.size : 0);
 const semelhanca = (a, b) => (Math.min(a.size, b.size) >= 2 ? intersecao(a, b) / Math.min(a.size, b.size) : 0);
 const nucleo = (texto) => String(texto).split(" Condição: ")[0].replace(/\s*\[[^\]]+\]/g, "").replace(/^\d+(?:\.\d+)*\.\s+|^\d+(?:\.\d+)+\s+/, "").trim();
+// Código estável: o mesmo texto da IA ganha o mesmo código em qualquer releitura (a resposta do usuário fica presa a ele).
+const codigoEstavel = (prefixo, texto) => `${prefixo}-${createHash("sha256").update(String(texto).toLowerCase().trim().replace(/\s+/g, " ")).digest("hex").slice(0, 10)}`;
 const referencias = (texto) => [...String(texto).matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]);
 
 function trechoNaPagina(pagina, alvo) {
@@ -107,7 +110,7 @@ function juntarExigencias({ fonteRegras, dossieIA, textoFonte, documentos } = {}
       origem: "leitura_deterministica", estado: "encontrado", aviso: AVISO_SO_REGRAS,
       ...(local || { documento, pagina, trecho: nucleo(r.texto).slice(0, LIMITE_TRECHO), ocorrencias: documento ? [{ documento, pagina, minuta: false }] : [] }) };
   });
-  let sequencia = 0;
+  const codigos = new Set();
   for (const item of itensDaIA(dossieIA, avisos)) {
     const local = localizar(item.texto, paginas);
     const chaves = tokens(nucleo(item.texto));
@@ -118,7 +121,11 @@ function juntarExigencias({ fonteRegras, dossieIA, textoFonte, documentos } = {}
       par.categoriaIA = par.categoriaIA || item.categoriaIA;
       continue;
     }
-    exigencias.push({ id: `IA${String(++sequencia).padStart(4, "0")}`, texto: nucleo(item.texto), textoIA: item.texto,
+    const id = codigoEstavel("IA", item.texto);
+    // Texto repetido pela IA é o mesmo item: duas linhas com o mesmo código quebrariam o upsert.
+    if (codigos.has(id)) continue;
+    codigos.add(id);
+    exigencias.push({ id, texto: nucleo(item.texto), textoIA: item.texto,
       categoriaFonte: item.categoriaFonte, categoriaIA: item.categoriaIA, chaves,
       ...(local ? { origem: "ia", estado: "encontrado", ...local }
         : { origem: "ia_sem_trecho", estado: "conferir", aviso: AVISO_SEM_TRECHO, documento: null, pagina: null, trecho: null, ocorrencias: [] }) });
@@ -339,5 +346,5 @@ function validarSegundaPassada(resposta, textoFonte) {
   return { aceitas, descartadas };
 }
 
-module.exports = { juntarExigencias, classificar, marcarIncomuns, coberturaPorDocumento, estadoDaEtapa,
+module.exports = { codigoEstavel, juntarExigencias, classificar, marcarIncomuns, coberturaPorDocumento, estadoDaEtapa,
   blocosParaSegundaPassada, validarSegundaPassada, separarPorDocumento };
