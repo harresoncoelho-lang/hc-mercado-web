@@ -14,8 +14,8 @@ function tarefa(etapa, extra = {}) {
 }
 
 // PostgREST mínimo em memória: só os caminhos que o robô usa.
-function supabaseFalso({ tarefas = [], origens = [], dossie = null, falharProcesso = false } = {}) {
-  const db = { tarefas, origens, dossie, exigencias: [], gravados: [] };
+function supabaseFalso({ tarefas = [], origens = [], dossie = null, falharProcesso = false, perfil = null } = {}) {
+  const db = { tarefas, origens, dossie, exigencias: [], gravados: [], perfil, leiturasPerfil: [] };
   const filtro = (params, chave) => decodeURIComponent(params.get(chave) || "").replace(/^eq\./, "");
   db.rest = async (caminho, opcoes = {}) => {
     const [tabela, consulta = ""] = caminho.split("?");
@@ -44,6 +44,11 @@ function supabaseFalso({ tarefas = [], origens = [], dossie = null, falharProces
       db.gravados.push(corpo);
       db.origens.push(corpo.p_numero);
       return resposta({ itemId: `item-${corpo.p_numero}`, estado: "importado" });
+    }
+    if (tabela === "operacao_perfil_empresa") {
+      db.leiturasPerfil.push(params.get("select"));
+      if (db.perfil === "sem_coluna") throw new Error(`Supabase REST ${caminho} -> HTTP 400: column uf_sede does not exist`);
+      return resposta(db.perfil ? [{ uf_sede: db.perfil.uf_sede ?? null }] : []);
     }
     if (tabela === "dossies_editais") return resposta(db.dossie ? [{ status: "pronto", versao: 1, dossie: db.dossie }] : []);
     if (tabela === "operacao_exigencias_processo" && metodo === "GET") {
@@ -241,6 +246,21 @@ test("exigências: preenche tipo_documento pelo mapeamento, sem sobrescrever o j
   await rodar({ rest: db.rest, agora: relogio });
   assert.equal(cndt.tipo_documento, "Trabalhista (definido à mão)");
   assert.equal(menor.tipo_documento, null);
+});
+
+test("exigências: UF da sede do perfil entra no incomum; o robô lê só uf_sede", async () => {
+  const dossie = { ...DOSSIE, estrutura: { ...DOSSIE.estrutura, documentosHabilitacao: [{ texto: "Certidão negativa de débitos estaduais (SEFAZ/PA)", categoria: "Fiscal, social e trabalhista" }] } };
+  const motivo = async (perfil) => {
+    const db = supabaseFalso({ tarefas: [tarefa("exigencias")], dossie, perfil });
+    assert.deepEqual(await rodar({ rest: db.rest, agora: relogio }), { feito: 1 });
+    assert.deepEqual(db.leiturasPerfil, ["uf_sede"], "nunca select=* (CPF e banco ficam fora)");
+    return db.exigencias.find((e) => /estaduais/.test(e.texto)).motivo_incomum;
+  };
+  assert.match(await motivo({ uf_sede: "AM" }), /UF diferente da sede \(PA; sede AM\)/);
+  assert.doesNotMatch(await motivo({ uf_sede: "PA" }) || "", /UF/);
+  assert.match(await motivo(null), /UF da sede não informada/);
+  // Banco sem a coluna (SQL ainda não reaplicado): a etapa não falha, segue sem UF.
+  assert.match(await motivo("sem_coluna"), /UF da sede não informada/);
 });
 
 test("exigências: linha manual não entra em removidas", async () => {

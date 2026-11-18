@@ -62,6 +62,12 @@ begin
  update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.png' where empresa_id=ea returning * into r;
  begin update public.operacao_perfil_empresa set cpf_representante='123.456.789-01' where empresa_id=ea; raise exception 'CPF com máscara aceito';
  exception when check_violation then null; end;
+ -- UF da sede: só 2 letras maiúsculas.
+ update public.operacao_perfil_empresa set uf_sede='AM' where empresa_id=ea;
+ begin update public.operacao_perfil_empresa set uf_sede='am' where empresa_id=ea; raise exception 'UF minúscula aceita';
+ exception when check_violation then null; end;
+ begin update public.operacao_perfil_empresa set uf_sede='AMZ' where empresa_id=ea; raise exception 'UF de 3 letras aceita';
+ exception when check_violation then null; end;
  begin update public.operacao_perfil_empresa set banco='[]' where empresa_id=ea; raise exception 'Banco não-objeto aceito';
  exception when check_violation then null; end;
  begin update public.operacao_perfil_empresa set proposta_padrao='{"outro":1}' where empresa_id=ea; raise exception 'Chave extra na proposta aceita';

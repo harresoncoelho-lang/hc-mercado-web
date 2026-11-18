@@ -2,7 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {createHash}=require('node:crypto');
 const {handler}=require('../empresa-identificacao');
-const {cpfValido,validarPerfilEmpresa,validarPremissas,dimensoesImagem}=require('../_empresa_identificacao');
+const {cpfValido,validarPerfilEmpresa,validarPremissas,dimensoesImagem,ufDoEndereco}=require('../_empresa_identificacao');
 const ids={empresa:'11111111-1111-1111-1111-111111111111',org:'44444444-4444-4444-4444-444444444444',outra:'55555555-5555-5555-5555-555555555555'};
 const CPF='52998224725';const BANCO={banco:'Banco QA 341',agencia:'9876',conta:'54321-0',pix:'chave-pix-qa@exemplo.com',favorecido:'Favorecido QA'};
 const sha=b=>createHash('sha256').update(b).digest('hex');
@@ -17,7 +17,8 @@ function fixture(t,changes={}){
   else if(url.includes('/clientes?'))data=[{status:'aprovado'}];
   else if(url.includes('/rpc/identificacao_empresa_habilitada'))data=true;
   else if(url.includes('/operacao_empresas?'))data=[{id:ids.empresa,organizacao_id:ids.org,razao_social:'Empresa QA',cnpj:'11222333000181'}];
-  else if(url.includes('/operacao_identificacao_empresa?')||url.includes('/operacao_documentos?'))data=[];
+  else if(url.includes('/operacao_identificacao_empresa?'))data=state.identificacao||[];
+  else if(url.includes('/operacao_documentos?'))data=[];
   else if(url.includes('/operacao_membros?'))data=[{usuario_id:'usuario',organizacao_id:ids.org,empresa_id:null,papel:state.papel}];
   else if(url.includes('/operacao_perfil_empresa')){
    if(op.method==='POST'){const row=JSON.parse(op.body);state.escritas.push(['perfil',row]);state.perfil={...state.perfil,...row,versao:(state.perfil?.versao||0)+1};data=[state.perfil];}
@@ -149,4 +150,27 @@ test('premissasRemover inválido responde 422 e não grava nada; Padrão nunca �
  ];
  for(const [extra,campo] of casos){const r=await f.run({acao:'salvarPerfil',perfil:{},...extra});assert.equal(r.statusCode,422,JSON.stringify(extra));assert.equal(r.json.campo,campo,JSON.stringify(extra));}
  assert.equal(f.state.escritas.length,0);
+});
+test('uf_sede: salva normalizada, recusa fora da lista e sugere a UF do endereço confirmado só quando vazia',async t=>{
+ assert.deepEqual(validarPerfilEmpresa({uf_sede:' am '}),{uf_sede:'AM'});
+ assert.deepEqual(validarPerfilEmpresa({uf_sede:''}),{uf_sede:null});
+ for(const v of ['XX','AMZ',12,'A M'])assert.throws(()=>validarPerfilEmpresa({uf_sede:v}),e=>e.status===422&&e.campo==='uf_sede'&&!e.message.includes(String(v)));
+ assert.equal(ufDoEndereco('Rua das Flores, 10, Centro, Manaus/AM, CEP 69000-000'),'AM');
+ assert.equal(ufDoEndereco('AV BRASIL 100 SALA 2 CENTRO BELEM - PA 66000-000'),'PA');
+ assert.equal(ufDoEndereco('Rua de Souza, 10, Centro, Manaus, am'),'AM');
+ assert.equal(ufDoEndereco('Rua de Souza, 10, Centro'),null);
+ assert.equal(ufDoEndereco(null),null);
+ const f=fixture(t);
+ const s=await f.run({acao:'salvarPerfil',perfil:{uf_sede:'pa'}});assert.equal(s.statusCode,200);
+ assert.equal(f.state.escritas[0][1].uf_sede,'PA');
+ assert.equal((await f.run({acao:'lerPerfil'})).json.perfil.uf_sede,'PA');
+ assert.equal((await f.run({acao:'salvarPerfil',perfil:{uf_sede:'ZZ'}})).json.campo,'uf_sede');
+ // Sem UF salva: sugere a do endereço confirmado; identificação invalidada não sugere.
+ f.state.perfil={...f.state.perfil,uf_sede:null};
+ f.state.identificacao=[{dados_confirmados:{endereco:'Rua X, 1, Manaus/AM'},proveniencia:[],invalidado_em:null}];
+ assert.equal((await f.run({acao:'lerPerfil'})).json.ufSedeSugerida,'AM');
+ f.state.identificacao[0].invalidado_em='2026-11-01T00:00:00Z';
+ assert.equal((await f.run({acao:'lerPerfil'})).json.ufSedeSugerida,null);
+ f.state.identificacao[0].invalidado_em=null;f.state.perfil.uf_sede='PA';
+ assert.equal((await f.run({acao:'lerPerfil'})).json.ufSedeSugerida,null);
 });

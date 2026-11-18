@@ -142,6 +142,15 @@ function linhaExigencia(tarefa, e, geradoEm) {
     motivo_incomum: textoOuNulo(e.motivoIncomum, 500), gerado_em: geradoEm };
 }
 
+// Só a coluna uf_sede: o perfil guarda CPF e banco, que o robô nunca lê. Banco sem a coluna
+// (operacao_perfil_empresa.sql antigo) ou falha na leitura: segue sem UF, como antes.
+async function lerUfSede(rest, tarefa) {
+  try {
+    const [p] = await json(rest, `operacao_perfil_empresa?empresa_id=eq.${q(tarefa.empresa_id)}&organizacao_id=eq.${q(tarefa.organizacao_id)}&select=uf_sede`);
+    return typeof p?.uf_sede === "string" ? p.uf_sede : undefined;
+  } catch { return undefined; }
+}
+
 async function etapaExigencias(tarefa, { rest, agora, segundaPassadaLigada, chamarIA }) {
   const processo = await carregarProcesso(rest, tarefa);
   const [linha] = await json(rest, `dossies_editais?numero_controle_pncp=eq.${q(processo.origem_externa_id)}&select=status,versao,dossie`);
@@ -157,7 +166,7 @@ async function etapaExigencias(tarefa, { rest, agora, segundaPassadaLigada, cham
     todas = [...exigencias, ...resumoSegunda.aceitas.map((a) => ({ ...a, categoria: ex.classificar(a) }))];
     delete resumoSegunda.aceitas;
   }
-  const marcadas = ex.marcarIncomuns(todas);
+  const marcadas = ex.marcarIncomuns(todas, { ufSede: await lerUfSede(rest, tarefa) });
   const cobertura = ex.coberturaPorDocumento({ documentos: dossie.estrutura?.coberturaLeitura, exigencias: marcadas, textoPorDocumento });
   const etapa = ex.estadoDaEtapa(cobertura);
   const geradoEm = iso(agora());

@@ -30,7 +30,7 @@
       case 'executando': return { texto: etapa === 'itens' ? 'Buscando os itens…' : 'Lendo o edital…', tom: 'andamento' };
       case 'pendente': return { texto: d.situacao === 'aguardando_dossie' ? 'Esperando o edital ser lido…' : 'Na fila…', tom: 'andamento' };
       case 'aguardando_leitura': return { texto: 'Não consegui ler todos os anexos', tom: 'erro' };
-      case 'falhou': return { texto: 'Falhou: tentar de novo', tom: 'erro', apoio: 'Ainda não dá para pedir isso por aqui. Fale com o suporte.' };
+      case 'falhou': return { texto: 'Falhou', tom: 'erro', acao: 'tentar' };
       case 'feito':
         if (etapa === 'itens' && Number.isInteger(d.total)) return { texto: d.total === 1 ? 'Pronto: 1 item' : `Pronto: ${d.total} itens`, tom: 'ok' };
         return { texto: 'Pronto', tom: 'ok' };
@@ -114,6 +114,19 @@
     return pedidos;
   }
 
+  // RPC esteira_tentar_de_novo (operacao_esteira.sql): o banco confere papel, estado 'falhou' e o teto de 3 por dia.
+  // As mensagens P0001 do banco já são para o usuário; o resto vira texto fixo (sem erro técnico na tela).
+  async function tentarDeNovo(cliente, processoId, etapa) {
+    try {
+      const { error } = await cliente.rpc('esteira_tentar_de_novo', { p_processo: processoId, p_etapa: etapa });
+      if (!error) return { ok: true, mensagem: 'Pedido feito. A etapa voltou para a fila.' };
+      if (error.code === '42501') return { ok: false, mensagem: 'Seu acesso não permite tentar de novo. Peça a um gestor ou operador.' };
+      if (error.code === 'P0001' && typeof error.message === 'string' && error.message) return { ok: false, mensagem: error.message.replace(/\.?$/, '.') };
+      if (error.code === 'PGRST202' || error.code === '42883') return { ok: false, mensagem: 'Ainda não dá para pedir isso por aqui. Fale com o suporte.' };
+    } catch { /* sem conexão: mensagem genérica abaixo */ }
+    return { ok: false, mensagem: 'Não foi possível pedir agora. Tente de novo.' };
+  }
+
   const formatarData = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(8, 10) + '/' + v.slice(5, 7) + '/' + v.slice(0, 4) : '');
 
   function montar({ alvo, contexto, cliente, requisitar, documento = global.document }) {
@@ -128,6 +141,7 @@
     let declaracoesDisponiveis = false;
     let ocupado = false;
     let avisoDecl = '';
+    let avisoFaixa = '';
     const filtro = (q) => q.eq('empresa_id', contexto.empresaId).eq('processo_id', contexto.processoId);
 
     function h(tag, props, ...filhos) {
@@ -173,8 +187,10 @@
       render();
     }
 
-    function etapaLi(nome, r) {
-      return h('li', { 'data-tom': r.tom }, h('span', { classe: 'esteira-etapa', texto: nome }), h('strong', { texto: r.texto }), r.apoio ? h('span', { classe: 'esteira-apoio', texto: r.apoio }) : null);
+    function etapaLi(nome, r, etapa) {
+      return h('li', { 'data-tom': r.tom }, h('span', { classe: 'esteira-etapa', texto: nome }), h('strong', { texto: r.texto }),
+        r.apoio ? h('span', { classe: 'esteira-apoio', texto: r.apoio }) : null,
+        r.acao === 'tentar' ? h('button', { type: 'button', 'data-acao': 'tentar', 'data-etapa': etapa, disabled: ocupado, texto: 'Tentar de novo' }) : null);
     }
 
     function selos(e) {
@@ -227,12 +243,13 @@
       const tEx = tarefas.get('exigencias');
       const exigidas = exigencias.filter((e) => e.categoria === 'declaracao' && e.resposta !== 'nao_se_aplica').length;
       const faixa = h('ol', { classe: 'esteira-faixa', 'aria-label': 'Andamento da leitura do edital' },
-        etapaLi('Itens', rotuloEtapa('itens', tarefas.get('itens'))),
-        etapaLi('Exigências', rotuloEtapa('exigencias', tEx)),
+        etapaLi('Itens', rotuloEtapa('itens', tarefas.get('itens')), 'itens'),
+        etapaLi('Exigências', rotuloEtapa('exigencias', tEx), 'exigencias'),
         etapaLi('Documentos', declaracoesDisponiveis ? rotuloDocumentos(exigidas, docs) : { texto: 'Indisponível', tom: 'neutro' }));
       const leitura = alertasLeitura(tEx);
       const cobertura = alertasCobertura(tEx);
-      const filhos = [h('h2', { classe: 'app-subtitulo', texto: 'Checklist do edital' }), faixa];
+      const filhos = [h('h2', { classe: 'app-subtitulo', texto: 'Checklist do edital' }), faixa,
+        avisoFaixa ? h('p', { classe: 'esteira-apoio', role: 'status', 'aria-live': 'polite', texto: avisoFaixa }) : null].filter(Boolean);
       if (leitura.length) filhos.push(h('div', { classe: 'esteira-alerta', 'data-tom': 'erro', role: 'alert' },
         h('strong', { texto: 'Leitura incompleta: o checklist pode estar faltando exigências.' }),
         h('ul', null, leitura.map((a) => h('li', null, a.texto, a.motivo ? h('span', { classe: 'esteira-motivo', texto: ' ' + a.motivo }) : null)))));
@@ -314,6 +331,15 @@
       ocupado = false; render();
     }
 
+    async function tentar(etapa) {
+      ocupado = true; avisoFaixa = 'Pedindo de novo…'; render();
+      const r = await tentarDeNovo(cliente, contexto.processoId, etapa);
+      if (!vivo) return;
+      avisoFaixa = r.mensagem;
+      ocupado = false;
+      await carregar();
+    }
+
     alvo.addEventListener('change', (ev) => {
       const d = ev.target?.dataset || {};
       if (d.exigencia) void responder(d.exigencia, ev.target.value);
@@ -323,13 +349,14 @@
       if (!b || ocupado) return;
       if (b.dataset.acao === 'gerar') void gerar();
       else if (b.dataset.acao === 'baixar') void baixar();
+      else if (b.dataset.acao === 'tentar') void tentar(b.dataset.etapa);
     });
     if (cliente && typeof cliente.from === 'function') void carregar();
 
     return { fechar() { vivo = false; geracao += 1; alvo.replaceChildren(); }, atualizar: () => carregar() };
   }
 
-  const api = { montar, rotuloEtapa, rotuloDocumentos, contarDeclaracoes, alertasLeitura, alertasCobertura, ordenarExigencias,
+  const api = { montar, tentarDeNovo, rotuloEtapa, rotuloDocumentos, contarDeclaracoes, alertasLeitura, alertasCobertura, ordenarExigencias,
     contarPendencias, loteDeclaracoes, tabelaAusente, SITUACOES, RESPOSTAS, CATEGORIAS };
   global.LicitaChecklistEsteira = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

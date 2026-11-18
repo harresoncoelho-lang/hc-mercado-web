@@ -157,5 +157,49 @@ drop trigger if exists carimbar_criador_processo on public.operacao_processos;
 create trigger carimbar_criador_processo before insert on public.operacao_processos
   for each row execute function public.carimbar_criador_processo();
 
+-- "Tentar de novo" do checklist: gestor/operador devolve à fila uma etapa que falhou.
+-- Teto de 3 recolocações por processo/etapa por dia (horário de Brasília), contadas em detalhe.recolocacoes.
+-- Processo inexistente, de outra organização ou papel leitura recebem o mesmo erro (não revela se existe).
+create or replace function public.esteira_tentar_de_novo(p_processo uuid, p_etapa text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare
+ t public.operacao_esteira_tarefas;
+ v_hoje text := to_char(now() at time zone 'America/Sao_Paulo', 'YYYY-MM-DD');
+ v_n int;
+begin
+ select * into t from public.operacao_esteira_tarefas where processo_id = p_processo and etapa = p_etapa for update;
+ if t.processo_id is null or not public.pode_escrever_empresa_operacao(t.organizacao_id, t.empresa_id) then
+  raise exception 'Seu acesso não permite tentar de novo esta etapa' using errcode = '42501';
+ end if;
+ if t.estado <> 'falhou' then
+  raise exception 'Só uma etapa que falhou pode ser tentada de novo' using errcode = 'P0001';
+ end if;
+ v_n := case when t.detalhe->'recolocacoes'->>'dia' = v_hoje
+             then coalesce((t.detalhe->'recolocacoes'->>'total')::int, 0) else 0 end;
+ if v_n >= 3 then
+  raise exception 'Esta etapa já foi tentada de novo 3 vezes hoje. Tente amanhã ou fale com o suporte' using errcode = 'P0001';
+ end if;
+ update public.operacao_esteira_tarefas
+    set estado = 'pendente', tentativas = 0, proximo_em = now(), erro = null,
+        detalhe = t.detalhe || jsonb_build_object('recolocacoes', jsonb_build_object('dia', v_hoje, 'total', v_n + 1))
+  where processo_id = p_processo and etapa = p_etapa;
+end $$;
+revoke all on function public.esteira_tentar_de_novo(uuid, text) from public, anon, authenticated, service_role;
+grant execute on function public.esteira_tentar_de_novo(uuid, text) to authenticated;
+
+-- O robô regrava detalhe inteiro; a contagem de recolocações sobrevive para o teto diário não zerar.
+create or replace function public.preservar_recolocacoes_esteira()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+ if old.detalhe ? 'recolocacoes' and not new.detalhe ? 'recolocacoes' then
+  new.detalhe := new.detalhe || jsonb_build_object('recolocacoes', old.detalhe->'recolocacoes');
+ end if;
+ return new;
+end $$;
+revoke all on function public.preservar_recolocacoes_esteira() from public, anon, authenticated, service_role;
+drop trigger if exists preservar_recolocacoes_esteira on public.operacao_esteira_tarefas;
+create trigger preservar_recolocacoes_esteira before update of detalhe on public.operacao_esteira_tarefas
+  for each row execute function public.preservar_recolocacoes_esteira();
+
 notify pgrst, 'reload schema';
 commit;

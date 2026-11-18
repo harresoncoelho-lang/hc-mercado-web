@@ -4,12 +4,12 @@
 (function (raiz) {
   'use strict';
   const LOGO = Object.freeze({ bytes: 512 * 1024, px: 2000 });
-  const SIMPLES = ['nome_fantasia', 'telefone', 'email', 'inscricao_estadual', 'inscricao_municipal', 'porte', 'regime_tributario', 'aliquota_efetiva', 'tributos_fonte', 'cpf_representante'];
+  const SIMPLES = ['nome_fantasia', 'telefone', 'email', 'inscricao_estadual', 'inscricao_municipal', 'porte', 'regime_tributario', 'aliquota_efetiva', 'tributos_fonte', 'cpf_representante', 'uf_sede'];
   const GRUPOS = { banco: ['banco', 'agencia', 'conta', 'pix', 'favorecido'], proposta_padrao: ['validade', 'pagamento', 'prazo_entrega'] };
   const PERCENTUAIS = ['tributos_percentual', 'frete_percentual', 'garantia_percentual', 'margem_percentual', 'margem_minima_percentual'];
   const ROTULOS = {
     nome_fantasia: 'Nome fantasia', telefone: 'Telefone', email: 'E-mail', inscricao_estadual: 'Inscrição estadual', inscricao_municipal: 'Inscrição municipal',
-    porte: 'Porte', regime_tributario: 'Regime tributário', aliquota_efetiva: 'Alíquota efetiva (%)', tributos_fonte: 'De onde vem a alíquota', cpf_representante: 'CPF do representante',
+    porte: 'Porte', regime_tributario: 'Regime tributário', aliquota_efetiva: 'Alíquota efetiva (%)', tributos_fonte: 'De onde vem a alíquota', cpf_representante: 'CPF do representante', uf_sede: 'UF da sede',
     'banco.banco': 'Banco', 'banco.agencia': 'Agência', 'banco.conta': 'Conta', 'banco.pix': 'Chave Pix', 'banco.favorecido': 'Favorecido',
     'proposta_padrao.validade': 'Validade da proposta', 'proposta_padrao.pagamento': 'Condição de pagamento', 'proposta_padrao.prazo_entrega': 'Prazo de entrega',
     segmento: 'Segmento', uf: 'UF', tributos_percentual: 'Tributos (%)', frete_percentual: 'Frete (%)', garantia_percentual: 'Garantia (%)', margem_percentual: 'Margem (%)', margem_minima_percentual: 'Margem mínima (%)',
@@ -57,10 +57,12 @@
     for (const [g, chaves] of Object.entries(GRUPOS)) for (const k of chaves) v[`${g}.${k}`] = texto(p[g]?.[k]);
     return v;
   }
-  // Nada digitado duas vezes: o favorecido vazio vem da razão social já cadastrada.
-  function sugestoes(valores, empresa) {
+  // Nada digitado duas vezes: o favorecido vazio vem da razão social já cadastrada e a UF da sede
+  // vazia vem do endereço confirmado na identificação (ufSedeSugerida do servidor).
+  function sugestoes(valores, empresa, ufSedeSugerida) {
     const s = { ...valores };
     if (!s['banco.favorecido'] && empresa?.razao_social) s['banco.favorecido'] = empresa.razao_social;
+    if (!s.uf_sede && UFS.includes(ufSedeSugerida)) s.uf_sede = ufSedeSugerida;
     return s;
   }
   // Linha "Padrão (todos)" sempre existe e vem primeiro.
@@ -119,13 +121,15 @@
   }
 
   // ---------- Tela ----------
+  const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
   const OPCOES = {
+    uf_sede: [['', 'Escolha'], ...UFS.map(uf => [uf, uf])],
     porte: [['', 'Escolha'], ['mei', 'MEI'], ['me', 'Microempresa (ME)'], ['epp', 'Pequeno porte (EPP)'], ['demais', 'Demais']],
     regime_tributario: [['', 'Escolha'], ['mei', 'MEI'], ['simples', 'Simples Nacional'], ['presumido', 'Lucro presumido'], ['real', 'Lucro real']],
     tributos_fonte: [['manual', 'Eu informo'], ['contador', 'Informada pelo contador']],
   };
   const CAMPOS_TELA = [
-    ['Contato', [['nome_fantasia', 180], ['telefone', 30, 'tel'], ['email', 254, 'email'], ['inscricao_estadual', 30], ['inscricao_municipal', 30], ['cpf_representante', 14, 'cpf']]],
+    ['Contato', [['nome_fantasia', 180], ['telefone', 30, 'tel'], ['email', 254, 'email'], ['inscricao_estadual', 30], ['inscricao_municipal', 30], ['uf_sede'], ['cpf_representante', 14, 'cpf']]],
     ['Impostos', [['porte'], ['regime_tributario'], ['aliquota_efetiva', 7, 'decimal'], ['tributos_fonte']]],
     ['Dados bancários', [['banco.banco', 120], ['banco.agencia', 120, 'numeric'], ['banco.conta', 120], ['banco.pix', 120], ['banco.favorecido', 120]]],
     ['Proposta padrão', [['proposta_padrao.validade', 200], ['proposta_padrao.pagamento', 200], ['proposta_padrao.prazo_entrega', 200]]],
@@ -187,7 +191,7 @@
       if (resposta.logoUrl) { $('perfil-logo-previa').src = resposta.logoUrl; $('perfil-logo-previa').hidden = false; }
       const preencher = v => { for (const el of alvo.querySelectorAll('[data-campo]')) el.value = v[el.dataset.campo] ?? ''; };
       const lerCampos = () => Object.fromEntries([...alvo.querySelectorAll('[data-campo]')].map(el => [el.dataset.campo, el.value]));
-      preencher(sugestoes(inicial, empresa));
+      preencher(sugestoes(inicial, empresa, resposta.ufSedeSugerida));
       function desenharLinhas() {
         $('perfil-premissas').innerHTML = linhas.map((l, i) => `<tr id="perfil-premissas-${i}">
           ${i === 0 ? '<td colspan="2"><strong>Padrão (todos)</strong></td>' : `<td><input id="perfil-premissas-${i}-segmento" data-i="${i}" data-k="segmento" maxlength="80" aria-label="Segmento, linha ${i + 1}" placeholder="Ex.: limpeza"></td><td><input id="perfil-premissas-${i}-uf" data-i="${i}" data-k="uf" maxlength="2" aria-label="UF, linha ${i + 1}" placeholder="Todas" class="perfil-uf"></td>`}

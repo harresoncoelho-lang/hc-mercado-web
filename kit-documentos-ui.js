@@ -14,6 +14,13 @@
       ? { link: 'Conferir dados da empresa', aberto: 'Identificação aberta nesta página. Consulte novamente os dados antes de preparar a prévia.' }
       : { link: 'Conferir dados da empresa (nova aba)', aberto: 'Cadastro aberto em outra aba. Consulte novamente os dados antes de preparar a prévia.' };
   }
+  // O rascunho guarda o marcador {{cpf_representante}}; o CPF real só entra no DOCX exportado (lido na hora no servidor).
+  // Na tela o marcador aparece legível e volta a ser marcador ao salvar.
+  const MARCADOR_CPF = /\{\{\s*cpf_representante\s*\}\}/g, ROTULO_CPF = '[CPF do representante]';
+  // Peça legada (gerada antes da correção A1) pode ter o CPF formatado no texto: também vira o rótulo, e ao salvar, marcador.
+  const CPF_FORMATADO = /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g;
+  const textoParaTela = t => String(t ?? '').replace(MARCADOR_CPF, ROTULO_CPF).replace(CPF_FORMATADO, ROTULO_CPF);
+  const textoParaSalvar = t => String(t ?? '').split(ROTULO_CPF).join('{{cpf_representante}}');
   function criarControle() {
     let geracao = 0, aberto = false, hash = '', revisado = false, documentoId, versao;
     const vigente = g => aberto && g === geracao;
@@ -70,7 +77,7 @@
       <div class="kit-alerta" data-descarte hidden><p>Há alterações não salvas nesta peça. Salve antes de sair para preservá-las.</p><button type="button" class="btn" data-cancelar-troca>Continuar editando</button><button type="button" class="btn" data-descartar>Descartar alterações e continuar</button></div>
       <form novalidate><h4 tabindex="-1" data-peca>Nova declaração</h4><p class="kit-estado" data-estado></p><p data-historico></p>
       <label>Tipo de documento<select name="tipo"><option value="declaracao">Declaração com texto informado</option><option value="proposta">Proposta de materiais</option></select></label>
-      <div data-declaracao>${campo('titulo', 'Título da declaração', 'maxlength="180"')}<label>Texto do modelo (até 20.000 caracteres)<textarea name="texto" maxlength="20000" rows="6"></textarea></label>${campo('fonte', 'Referência informada pelo usuário (opcional; não verificada)', 'maxlength="1000"')}<p>Variáveis permitidas: {{razao_social}}, {{cnpj}}, {{endereco}}, {{representante}}, {{cargo}}, {{numero_edital}}, {{orgao}}.</p></div>
+      <div data-declaracao>${campo('titulo', 'Título da declaração', 'maxlength="180"')}<label>Texto do modelo (até 20.000 caracteres)<textarea name="texto" maxlength="20000" rows="6"></textarea></label>${campo('fonte', 'Referência informada pelo usuário (opcional; não verificada)', 'maxlength="1000"')}<p>Variáveis permitidas: {{razao_social}}, {{cnpj}}, {{endereco}}, {{representante}}, {{cargo}}, {{numero_edital}}, {{orgao}}. Para o CPF do representante, escreva [CPF do representante]: o número só entra no arquivo exportado.</p></div>
       <div data-proposta hidden><p>Selecione os itens (limite técnico e tamanho total serão conferidos). Quantidade, preço ofertado, marca e modelo vêm do cadastro. Informe a unidade manualmente.</p><p data-contagem-itens></p><button type="button" class="btn" data-ver-selecionados>Ver selecionados</button><div data-itens></div><button type="button" class="btn" data-itens-anterior>Itens anteriores</button><button type="button" class="btn" data-itens-proxima>Próximos itens</button><div data-itens-ausentes></div>${campo('validade', 'Validade da proposta', 'maxlength="500"')}${campo('prazoEntrega', 'Prazo de entrega', 'maxlength="500"')}${campo('pagamento', 'Condições de pagamento', 'maxlength="500"')}</div>
       <div class="kit-acoes"><button type="button" class="btn primario" data-salvar disabled>Salvar rascunho</button><button type="submit" class="btn" data-preparar disabled>Preparar prévia</button><button type="button" class="btn" data-recarregar hidden>Carregar versão do servidor</button></div></form>
       <section class="kit-previa" aria-label="Revisão da peça"><h4 tabindex="-1" data-titulo-previa>Prévia integral</h4><pre data-previa>Salve o rascunho e prepare a prévia para conferir todo o conteúdo.</pre><div data-fontes></div>
@@ -163,19 +170,19 @@
       if (id) { const checked = input.dataset.item !== undefined ? input.checked : selecao.tem(id); selecao.definir(id, checked, form.elements['unidade-' + id]?.value || ''); el('[data-contagem-itens]').textContent = selecao.campos().itemIds.length + ' selecionados'; }
     }
     function lerCampos() {
-      if (form.elements.tipo.value === 'declaracao') return { declaracao: Object.fromEntries(['titulo', 'texto', 'fonte'].map(n => [n, form.elements[n].value])) };
+      if (form.elements.tipo.value === 'declaracao') return { declaracao: Object.fromEntries(['titulo', 'texto', 'fonte'].map(n => [n, n === 'texto' ? textoParaSalvar(form.elements[n].value) : form.elements[n].value])) };
       return { proposta: { ...selecao.campos(), ...Object.fromEntries(['validade', 'prazoEntrega', 'pagamento'].map(n => [n, form.elements[n].value])) } };
     }
     function camposIguais(d) {
       const atual = lerCampos()[d.tipo], salvo = d.dados[d.tipo];
-      if (d.tipo === 'declaracao') return ['titulo', 'texto', 'fonte'].every(n => atual[n] === salvo[n]);
+      if (d.tipo === 'declaracao') return ['titulo', 'fonte'].every(n => atual[n] === salvo[n]) && textoParaTela(atual.texto) === textoParaTela(salvo.texto);
       return ['validade', 'prazoEntrega', 'pagamento'].every(n => atual[n] === salvo[n]) && atual.itemIds.length === salvo.itemIds.length && atual.itemIds.every((id, i) => id === salvo.itemIds[i] && atual.unidades[id] === salvo.unidades[id]);
     }
     function preencher(d) {
       form.reset(); form.elements.tipo.value = d.tipo;
       const campos = d.dados?.[d.tipo] || {};
       selecao.restaurar(campos); renderItens();
-      for (const n of ['titulo', 'texto', 'fonte', 'validade', 'prazoEntrega', 'pagamento']) form.elements[n].value = campos[n] || '';
+      for (const n of ['titulo', 'texto', 'fonte', 'validade', 'prazoEntrega', 'pagamento']) form.elements[n].value = n === 'texto' && d.tipo === 'declaracao' ? textoParaTela(campos[n]) : campos[n] || '';
 
     }
     function nova(tipo, focar = true) {
@@ -432,6 +439,6 @@
     nova('declaracao', false); void consultar();
     return { fechar() { void cancelarLeitura();controle.fechar(); alvo.replaceChildren(); }, temAlteracoesNaoSalvas, atualizarItens };
   }
-  global.LicitaKitDocumentos = { criarControle, criarSelecao, montar, mensagemFalha, alvoCadastro, textosCadastro };
+  global.LicitaKitDocumentos = { textoParaTela, textoParaSalvar, criarControle, criarSelecao, montar, mensagemFalha, alvoCadastro, textosCadastro };
 })(globalThis);
 

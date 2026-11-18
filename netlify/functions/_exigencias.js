@@ -170,7 +170,9 @@ const TIPOS_DOCUMENTO = [
   ["Contrato social", /contrato social|ato constitutivo|estatuto social/],
   ["Atestado de capacidade técnica", /atestados? de capacidade tecnica|atestados?[^.;]{0,80}(?:aptidao|qualificacao tecnica|capacidade tecnica)|(?:aptidao|capacidade tecnica)[^.;]{0,80}atestado/],
 ];
-// Sem tipo fixo correspondente (falência é tipo personalizado) ou não é documento da empresa.
+// Certidão de falência só quando o texto pede a certidão; "declaração ... falência" continua sem tipo.
+const CERTIDAO_FALENCIA = /certidao[^.;]{0,60}(?:falencia|recuperacao judicial|concordata)/;
+// Sem tipo fixo correspondente ou não é documento da empresa.
 const SEM_TIPO = /declara|falencia|recuperacao judicial|concordata|visita|vistoria|dispensad/;
 const CATEGORIAS_SEM_TIPO = new Set(["declaracao", "proposta", "amostra", "visita", "garantia", "credenciamento"]);
 
@@ -178,6 +180,7 @@ function tipoDocumentoDaExigencia(texto, categoria) {
   if (CATEGORIAS_SEM_TIPO.has(categoria)) return null;
   // Órgãos com "federal/estadual" no nome não indicam a esfera da certidão.
   const t = simples(texto).replace(/caixa economica federal|lei federal|governo federal|justica (?:federal|estadual)|distrito federal/g, " ");
+  if (t && CERTIDAO_FALENCIA.test(t) && !/declara|dispensad/.test(t)) return "Certidão de falência";
   if (!t || SEM_TIPO.test(t)) return null;
   const tipos = TIPOS_DOCUMENTO.filter(([, re]) => re.test(t)).map(([tipo]) => tipo);
   // Mais de um tipo numa frase ("Fazenda Federal, Estadual e Municipal"): não dá para cruzar um só.

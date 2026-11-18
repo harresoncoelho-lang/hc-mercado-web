@@ -110,6 +110,10 @@ drop trigger if exists proteger_premissa_padrao on public.operacao_premissas_emp
 create trigger proteger_premissa_padrao before delete on public.operacao_premissas_empresa
   for each row execute function public.proteger_premissa_padrao();
 
+-- UF da sede: a esteira compara com a UF das certidões pedidas (marcarIncomuns). O robô lê só esta coluna.
+alter table public.operacao_perfil_empresa
+  add column if not exists uf_sede text check (uf_sede ~ '^[A-Z]{2}$');
+
 -- Caminho da logo igual à regra da Function (tipoCaminhoLogo): <org>/<empresa>/perfil/logo-<hash>.(png|jpg|jpeg),
 -- com o hash do nome igual a logo_hash. Barra '..', outra pasta ou outro nome.
 alter table public.operacao_perfil_empresa drop constraint if exists operacao_perfil_empresa_logo_caminho_check;

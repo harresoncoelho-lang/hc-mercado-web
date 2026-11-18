@@ -87,3 +87,15 @@ test('textos do cadastro: com hook dizem que a identificação está nesta pági
   assert.doesNotMatch(casca.link + casca.aberto, /nova aba|outra aba/);
   assert.match(casca.aberto, /nesta página/);
 });
+test('rascunho: marcador do CPF aparece como [CPF do representante] e volta ao marcador ao salvar', () => {
+  const { textoParaTela, textoParaSalvar } = carregar();
+  const salvo = 'Eu, {{representante}}, CPF {{cpf_representante}}, e de novo {{ cpf_representante }}.';
+  const tela = textoParaTela(salvo);
+  assert.equal(tela, 'Eu, {{representante}}, CPF [CPF do representante], e de novo [CPF do representante].');
+  assert.ok(!/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/.test(tela) && !tela.includes('cpf_representante'));
+  assert.equal(textoParaSalvar(tela), 'Eu, {{representante}}, CPF {{cpf_representante}}, e de novo {{cpf_representante}}.');
+  assert.equal(textoParaSalvar(textoParaTela('Sem CPF.')), 'Sem CPF.');
+  assert.equal(textoParaTela(null), '');
+  // Peça legada com o CPF formatado no texto: a tela não mostra o número e salvar grava o marcador.
+  assert.equal(textoParaSalvar(textoParaTela('CPF 529.982.247-25, inscrito.')), 'CPF {{cpf_representante}}, inscrito.');
+});

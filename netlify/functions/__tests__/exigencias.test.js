@@ -233,6 +233,9 @@ test("tipoDocumentoDaExigencia: casa cada certidão com o tipo fixo da Central d
     ["Ato constitutivo, estatuto ou contrato social em vigor", "juridica", "Contrato social"],
     ["Atestado de capacidade técnica emitido por pessoa jurídica de direito público ou privado", "tecnica", "Atestado de capacidade técnica"],
     ["Comprovação de aptidão por meio de atestados fornecidos por pessoas jurídicas", "tecnica", "Atestado de capacidade técnica"],
+    ["Certidão negativa de falência e recuperação judicial expedida pelo distribuidor da sede", "economica", "Certidão de falência"],
+    ["Certidão negativa de recuperação judicial", "economica", "Certidão de falência"],
+    ["Certidão negativa de falência ou concordata expedida pelo distribuidor da Justiça Estadual", "juridica", "Certidão de falência"],
   ];
   for (const [texto, categoria, esperado] of casos) assert.equal(tipoDocumentoDaExigencia(texto, categoria), esperado, texto);
 });
@@ -244,8 +247,11 @@ test("tipoDocumentoDaExigencia: na dúvida devolve null (falsos positivos)", () 
     ["Declaração de que não emprega menor de dezoito anos em trabalho noturno", "fiscal"],
     ["Declaração de cumprimento dos direitos trabalhistas previstos na Constituição", "declaracao"],
     ["Declaração de regularidade fiscal federal", "fiscal"],
-    // Falência não tem tipo fixo na Central de documentos (vira tipo personalizado).
-    ["Certidão negativa de falência e recuperação judicial expedida pelo distribuidor da sede", "economica"],
+    // Falência sem pedir a certidão, ou como declaração, não cruza com documento.
+    ["Declaração de que a empresa não está sob falência, recuperação judicial ou concordata", "economica"],
+    ["Declaração de inexistência de pedido de falência", "juridica"],
+    ["Prova de que não há pedido de falência contra a licitante", "economica"],
+    ["Fica dispensada a certidão negativa de falência para ME/EPP", "economica"],
     // Mais de uma esfera numa só exigência: não dá para cruzar um único documento.
     ["Prova de regularidade para com a Fazenda Federal, Estadual e Municipal", "fiscal"],
     ["Prova de regularidade fiscal e trabalhista", "fiscal"],

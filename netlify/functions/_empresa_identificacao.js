@@ -21,6 +21,14 @@ function validarConfirmacao(body,empresa){
 }
 // ---------- Perfil da empresa (esteira E10). Mensagens nunca repetem o valor recebido (LGPD). ----------
 const PORTES=['mei','me','epp','demais'];const REGIMES=['mei','simples','presumido','real'];
+const UFS=['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+// Sugestão de UF da sede a partir do endereço confirmado na identificação ("Manaus/AM", "Manaus - AM, CEP ...").
+// Última sigla válida isolada por separador; sem sigla, não sugere (o usuário escolhe).
+function ufDoEndereco(endereco){
+ if(typeof endereco!=='string')return null;
+ const siglas=[...endereco.matchAll(/(?:^|[\s,/(-])([A-Za-z]{2})(?=\s*(?:$|[,.)/-]|\s+(?:cep\b|\d{2}\.?\d{3}-?\d{3})))/gi)].map(m=>m[1].toUpperCase()).filter(uf=>UFS.includes(uf));
+ return siglas.length?siglas[siglas.length-1]:null;
+}
 const PERCENTUAIS_PREMISSA=['tributos_percentual','frete_percentual','garantia_percentual','margem_percentual','margem_minima_percentual'];
 const LOGO=Object.freeze({bytes:512*1024,px:2000});
 const normal=s=>s.normalize('NFKC').trim().replace(/\s+/g,' ');
@@ -39,6 +47,7 @@ const VALIDADORES={
  telefone:(v,c)=>{const s=texto(30,8)(v,c);const d=s.replace(/\D/g,'').length;if(!/^[0-9()+\-.\s]+$/.test(s)||d<10||d>13)falhar('Telefone inválido.',422,c);return s;},
  email:(v,c)=>{const s=texto(254)(v,c).toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s))falhar('E-mail inválido.',422,c);return s;},
  porte:lista(PORTES),regime_tributario:lista(REGIMES),
+ uf_sede:(v,c)=>{const s=typeof v==='string'?v.trim().toUpperCase():'';if(!UFS.includes(s))falhar('UF inválida.',422,c);return s;},
  aliquota_efetiva:(v,c)=>percentual(v,c,99.999),
  cpf_representante:(v,c)=>{const d=typeof v==='string'?v.replace(/[.\-\s]/g,''):'';if(!cpfValido(d))falhar('CPF inválido. Confira os dígitos.',422,c);return d;},
  banco:(v,c)=>objetoCurto(v,c,['banco','agencia','conta','pix','favorecido'],120),
@@ -120,4 +129,4 @@ async function lerAte(r,max){
  try{for(;;){const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');chunks.push(Buffer.from(value));}}finally{await reader.cancel();}
  return Buffer.concat(chunks);
 }
-module.exports={lerAte,LIMITES,LOGO,falhar,caminhoPermitido,validarArquivo,validarConfirmacao,cpfValido,mascararCpf,validarPerfilEmpresa,validarPremissas,validarPremissasRemover,tipoCaminhoLogo,dimensoesImagem,validarLogo};
+module.exports={lerAte,LIMITES,LOGO,UFS,ufDoEndereco,falhar,caminhoPermitido,validarArquivo,validarConfirmacao,cpfValido,mascararCpf,validarPerfilEmpresa,validarPremissas,validarPremissasRemover,tipoCaminhoLogo,dimensoesImagem,validarLogo};

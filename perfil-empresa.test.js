@@ -126,8 +126,21 @@ test('erro 422: campo do servidor vira id da tela e rótulo simples', () => {
 
 test('ids gerados pelo mapeamento existem para todos os campos do servidor', () => {
   // Erro em campo sem id na tela não destacaria nada: confere a lista inteira do contrato.
-  const campos = ['nome_fantasia', 'telefone', 'email', 'inscricao_estadual', 'inscricao_municipal', 'porte', 'regime_tributario', 'aliquota_efetiva', 'tributos_fonte', 'cpf_representante', 'banco.banco', 'banco.agencia', 'banco.conta', 'banco.pix', 'banco.favorecido', 'proposta_padrao.validade', 'proposta_padrao.pagamento', 'proposta_padrao.prazo_entrega'];
+  const campos = ['nome_fantasia', 'telefone', 'email', 'inscricao_estadual', 'inscricao_municipal', 'porte', 'regime_tributario', 'aliquota_efetiva', 'tributos_fonte', 'cpf_representante', 'uf_sede', 'banco.banco', 'banco.agencia', 'banco.conta', 'banco.pix', 'banco.favorecido', 'proposta_padrao.validade', 'proposta_padrao.pagamento', 'proposta_padrao.prazo_entrega'];
   const fonte = require('node:fs').readFileSync(require.resolve('./perfil-empresa'), 'utf8');
   for (const c of campos) assert.ok(fonte.includes(`['${c}'`), c);
   assert.deepEqual(Object.keys(P.valoresDoPerfil(null)).sort(), [...campos].sort());
+});
+
+test('UF da sede: sugestão do endereço só preenche vazio, vira alteração a salvar e passa no servidor', () => {
+  const inicial = P.valoresDoPerfil(null), linhas = P.linhasDePremissas([]);
+  const atual = P.sugestoes(inicial, {}, 'AM');
+  assert.equal(atual.uf_sede, 'AM');
+  const corpo = P.montarPayload(inicial, atual, linhas, linhas);
+  assert.deepEqual(S.validarPerfilEmpresa(corpo.perfil), { uf_sede: 'AM' });
+  assert.equal(P.sugestoes({ ...inicial, uf_sede: 'PA' }, {}, 'AM').uf_sede, 'PA', 'a escolha salva vence a sugestão');
+  assert.equal(P.sugestoes(inicial, {}, 'XX').uf_sede, '', 'sugestão fora da lista é ignorada');
+  assert.equal(P.sugestoes(inicial, {}, null).uf_sede, '');
+  assert.equal(P.valoresDoPerfil({ uf_sede: 'RR' }).uf_sede, 'RR');
+  assert.equal(P.rotuloDoCampo('uf_sede'), 'UF da sede');
 });

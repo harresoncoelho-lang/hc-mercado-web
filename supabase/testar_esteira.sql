@@ -171,9 +171,80 @@ do $$ declare s text; begin
   then raise exception 'Teto diário de interesse: % interesse',(select count(*) from public.fila_dossies where numero_controle_pncp like '33444555000181-1-%' and origem='interesse');end if;
 end $$;
 
+-- Tentar de novo: só gestor/operador da empresa, só etapa 'falhou', no máximo 3 por processo/etapa por dia.
+reset role;
+insert into auth.users(id,email) values
+ ('f7000000-0000-4000-8000-000000000003','esteira-l@qa.invalid'),('f7000000-0000-4000-8000-000000000004','esteira-o@qa.invalid');
+insert into public.clientes(id,nome,email,status) values
+ ('f7000000-0000-4000-8000-000000000003','QA esteira L','esteira-l@qa.invalid','aprovado'),
+ ('f7000000-0000-4000-8000-000000000004','QA esteira O','esteira-o@qa.invalid','aprovado');
+insert into public.operacao_membros(organizacao_id,usuario_id,papel,empresa_id) values
+ ('f7000000-0000-4000-8000-00000000000a','f7000000-0000-4000-8000-000000000003','leitura',null),
+ ('f7000000-0000-4000-8000-00000000000c','f7000000-0000-4000-8000-000000000004','gestor',null);
+update public.operacao_esteira_tarefas set estado='falhou', tentativas=5, erro='HTTP 500', proximo_em=now()+interval '1 day', detalhe='{"total":3}'
+ where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='itens';
+update public.operacao_esteira_tarefas set estado='pendente'
+ where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='exigencias';
+set local role authenticated;
+do $$ declare p uuid:='f7000000-0000-4000-8000-000000000021'; u text; r record; begin
+ -- Leitura da mesma org, gestor de outra org e operador de outra empresa: mesmo erro, nada muda.
+ foreach u in array array['f7000000-0000-4000-8000-000000000003','f7000000-0000-4000-8000-000000000004','f7000000-0000-4000-8000-000000000002'] loop
+  perform set_config('request.jwt.claim.sub',u,true);
+  begin perform public.esteira_tentar_de_novo(p,'itens'); raise exception 'Recolocou sem permissão: %',u;
+  exception when insufficient_privilege then null; end;
+ end loop;
+ perform set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000001',true);
+ begin perform public.esteira_tentar_de_novo('f7000000-0000-4000-8000-0000000000ff','itens'); raise exception 'Processo inexistente aceito';
+ exception when insufficient_privilege then null; end;
+ -- Etapa que não falhou é recusada.
+ begin perform public.esteira_tentar_de_novo(p,'exigencias'); raise exception 'Etapa pendente recolocada';
+ exception when raise_exception then if sqlerrm not like 'Só uma etapa que falhou%' then raise; end if; end;
+ select * into r from public.operacao_esteira_tarefas where processo_id=p and etapa='itens';
+ if r.estado<>'falhou' or r.tentativas<>5 then raise exception 'Recusa mexeu na tarefa: %',r;end if;
+ -- Gestor recoloca: pendente, tentativas 0, agora, sem erro; detalhe do robô fica e a contagem sobe.
+ perform public.esteira_tentar_de_novo(p,'itens');
+ select * into r from public.operacao_esteira_tarefas where processo_id=p and etapa='itens';
+ if r.estado<>'pendente' or r.tentativas<>0 or r.erro is not null or r.proximo_em>now()
+    or (r.detalhe->>'total')::int<>3 or (r.detalhe->'recolocacoes'->>'total')::int<>1
+  then raise exception 'Recolocação: %',r;end if;
+end $$;
+-- Robô regrava detalhe (sem recolocacoes) e falha de novo duas vezes: a contagem continua; a 4ª no dia é recusada.
+set local role service_role;
+update public.operacao_esteira_tarefas set estado='falhou', detalhe='{"total":3}' where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='itens';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000001',true);
+select public.esteira_tentar_de_novo('f7000000-0000-4000-8000-000000000021','itens');
+set local role service_role;
+update public.operacao_esteira_tarefas set estado='falhou' where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='itens';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000001',true);
+select public.esteira_tentar_de_novo('f7000000-0000-4000-8000-000000000021','itens');
+set local role service_role;
+update public.operacao_esteira_tarefas set estado='falhou' where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='itens';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000001',true);
+do $$ declare r record; begin
+ begin perform public.esteira_tentar_de_novo('f7000000-0000-4000-8000-000000000021','itens'); raise exception 'Quarta recolocação no dia aceita';
+ exception when raise_exception then if sqlerrm not like '%3 vezes hoje%' then raise; end if; end;
+ select * into r from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='itens';
+ if r.estado<>'falhou' or (r.detalhe->'recolocacoes'->>'total')::int<>3 then raise exception 'Teto diário: %',r;end if;
+end $$;
+-- Contagem de outro dia não vale: volta a liberar.
+set local role service_role;
+update public.operacao_esteira_tarefas set detalhe='{"recolocacoes":{"dia":"2000-01-01","total":3}}' where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='itens';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000001',true);
+select public.esteira_tentar_de_novo('f7000000-0000-4000-8000-000000000021','itens');
+do $$ begin
+ if (select detalhe->'recolocacoes'->>'total' from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000021' and etapa='itens')<>'1'
+  then raise exception 'Contagem de outro dia não zerou';end if;
+end $$;
+
 set local role anon;
 do $$ begin
  begin perform 1 from public.operacao_esteira_tarefas; raise exception 'anon leu tarefas'; exception when insufficient_privilege then null; end;
+ begin perform public.esteira_tentar_de_novo('f7000000-0000-4000-8000-000000000021','itens'); raise exception 'anon recolocou';
+ exception when insufficient_privilege then null; end;
  raise notice 'testar_esteira: ok';
 end $$;
 rollback;

@@ -1,5 +1,5 @@
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
-const {falhar,LIMITES,LOGO,validarArquivo,validarConfirmacao,mascararCpf,validarPerfilEmpresa,validarPremissas,validarPremissasRemover,tipoCaminhoLogo,validarLogo,lerAte}=require('./_empresa_identificacao');
+const {falhar,LIMITES,LOGO,ufDoEndereco,validarArquivo,validarConfirmacao,mascararCpf,validarPerfilEmpresa,validarPremissas,validarPremissasRemover,tipoCaminhoLogo,validarLogo,lerAte}=require('./_empresa_identificacao');
 const {createHash,randomUUID}=require('node:crypto');
 const {carregarContextoIdentificacao}=require('./_empresa_identificacao_contexto');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
@@ -28,7 +28,10 @@ const ACOES_PERFIL={
   const filtro=`empresa_id=eq.${c.empresa.id}&organizacao_id=eq.${c.empresa.organizacao_id}`;
   const [perfis,premissas]=await comTabelaPerfil(Promise.all([c.rest(`operacao_perfil_empresa?${filtro}&select=*`),c.rest(`operacao_premissas_empresa?${filtro}&select=${COLUNAS_PREMISSA}&order=segmento,uf`)]));
   const perfil=perfis[0]||null;
-  return {papel,perfil:perfilPublicoEmpresa(perfil,body.mostrarCpf===true&&papel==='gestor'),premissas,logoUrl:await urlLogo(c,perfil)};
+  // UF da sede vazia: sugere a do endereço já confirmado na identificação (a tela pré-preenche, o usuário salva).
+  const identificada=(c.identificacoes||[]).find(i=>!i.invalidado_em);
+  const ufSedeSugerida=perfil?.uf_sede?null:ufDoEndereco(identificada?.dados_confirmados?.endereco);
+  return {papel,perfil:perfilPublicoEmpresa(perfil,body.mostrarCpf===true&&papel==='gestor'),premissas,logoUrl:await urlLogo(c,perfil),ufSedeSugerida};
  },
  async salvarPerfil(body,c){
   if(await papelNaEmpresa(c)==='leitura')falhar('Seu papel não permite alterar o perfil.',403);
@@ -65,8 +68,8 @@ exports.handler=async event=>{
  if(typeof event.body!=='string'||event.body.length>Math.ceil(LIMITES.upload/3)*4+4096)falhar('Solicitação muito grande.',413);
  let body;try{body=JSON.parse(event.body);}catch{falhar('Solicitação inválida.');}
  if(!uuid(body.empresaId))falhar('Empresa inválida.');
- const {empresa,documentos,documento,baixar,perfilPublico,validarPerfil,request,rest}=await carregarContextoIdentificacao(event,auth.userId,body.empresaId);
- if(Object.hasOwn(ACOES_PERFIL,body.acao))return resposta(200,await ACOES_PERFIL[body.acao](body,{empresa,request,rest,userId:auth.userId}));
+ const {empresa,documentos,perfis,documento,baixar,perfilPublico,validarPerfil,request,rest}=await carregarContextoIdentificacao(event,auth.userId,body.empresaId);
+ if(Object.hasOwn(ACOES_PERFIL,body.acao))return resposta(200,await ACOES_PERFIL[body.acao](body,{empresa,request,rest,userId:auth.userId,identificacoes:perfis}));
  if(body.acao==='consultar'){
  const perfil=await validarPerfil();
  return resposta(200,{empresa,documentos,perfil:perfilPublico(perfil)});

@@ -11,8 +11,7 @@ test('rótulos de estado da etapa', () => {
   assert.equal(C.rotuloEtapa('exigencias', { estado: 'pendente' }).texto, 'Na fila…');
   assert.equal(C.rotuloEtapa('exigencias', { estado: 'aguardando_leitura' }).tom, 'erro');
   const falhou = C.rotuloEtapa('itens', { estado: 'falhou', erro: 'HTTP 500 interno' });
-  assert.equal(falhou.texto, 'Falhou: tentar de novo');
-  assert.ok(!falhou.apoio.includes('HTTP'), 'erro técnico não vai para a tela');
+  assert.deepEqual(falhou, { texto: 'Falhou', tom: 'erro', acao: 'tentar' }, 'erro técnico não vai para a tela; vira botão');
   assert.deepEqual(C.rotuloEtapa('itens', { estado: 'feito', detalhe: { total: 12 } }), { texto: 'Pronto: 12 itens', tom: 'ok' });
   assert.equal(C.rotuloEtapa('itens', { estado: 'feito', detalhe: { total: 1 } }).texto, 'Pronto: 1 item');
   assert.equal(C.rotuloEtapa('exigencias', { estado: 'feito', detalhe: {} }).texto, 'Pronto');
@@ -95,4 +94,19 @@ test('tabela ausente: 42P01, PGRST205 ou 404; outros erros não escondem', () =>
   assert.equal(C.tabelaAusente({ status: 404 }), true);
   assert.equal(C.tabelaAusente({ code: '42501' }), false);
   assert.equal(C.tabelaAusente(null), false);
+});
+
+test('tentar de novo: chama a RPC com processo e etapa e traduz cada recusa do banco', async () => {
+  const chamadas = [];
+  const cliente = (error) => ({ rpc: async (nome, args) => { chamadas.push([nome, args]); return { data: null, error }; } });
+  assert.deepEqual(await C.tentarDeNovo(cliente(null), 'p1', 'itens'), { ok: true, mensagem: 'Pedido feito. A etapa voltou para a fila.' });
+  assert.deepEqual(chamadas[0], ['esteira_tentar_de_novo', { p_processo: 'p1', p_etapa: 'itens' }]);
+  assert.match((await C.tentarDeNovo(cliente({ code: '42501', message: 'x' }), 'p1', 'itens')).mensagem, /Seu acesso não permite/);
+  const teto = await C.tentarDeNovo(cliente({ code: 'P0001', message: 'Esta etapa já foi tentada de novo 3 vezes hoje. Tente amanhã ou fale com o suporte' }), 'p1', 'itens');
+  assert.deepEqual(teto, { ok: false, mensagem: 'Esta etapa já foi tentada de novo 3 vezes hoje. Tente amanhã ou fale com o suporte.' });
+  assert.match((await C.tentarDeNovo(cliente({ code: 'PGRST202' }), 'p1', 'itens')).mensagem, /Fale com o suporte/);
+  const tecnico = await C.tentarDeNovo(cliente({ code: '500', message: 'HTTP 500 interno' }), 'p1', 'itens');
+  assert.equal(tecnico.ok, false);
+  assert.ok(!tecnico.mensagem.includes('HTTP'), 'erro técnico não vai para a tela');
+  assert.equal((await C.tentarDeNovo({ rpc: async () => { throw new Error('rede'); } }, 'p1', 'itens')).ok, false);
 });
