@@ -100,6 +100,24 @@ test('resposta com ids divergentes não autoriza o contexto', async () => {
   assert.equal(autorizados.length, 0);
 });
 
+test('contextosDoCatalogo monta o Hoje só com empresas do catálogo, sem repetir par e com exibição em texto', () => {
+  const core = carregarCore();
+  const empresas = [{ empresaId: 'a', razaoSocial: ' Empresa A ' }, { empresaId: 'b', razaoSocial: 7 }];
+  const lista = core.contextosDoCatalogo([
+    { empresaId: 'a', processoId: 'pa', numero: '10/2026', objeto: 'Papel', status: 'triagem', prazo: '2026-12-01T13:00:00+00:00' },
+    { empresaId: 'a', processoId: 'pa' },
+    { empresaId: 'b', processoId: 'pb', numero: 5, objeto: { x: 1 } },
+    { empresaId: 'fora', processoId: 'px', numero: '1' },
+    { empresaId: 'a', processoId: '' },
+    null,
+  ], empresas);
+  assert.deepEqual(JSON.parse(JSON.stringify(lista)), [
+    { empresaId: 'a', processoId: 'pa', empresaRotulo: 'Empresa A', processoRotulo: 'Processo 10/2026', rotulo: 'Empresa A · Processo 10/2026', objeto: 'Papel', status: 'triagem', prazo: '2026-12-01T13:00:00+00:00' },
+    { empresaId: 'b', processoId: 'pb', empresaRotulo: 'Empresa', processoRotulo: 'Processo sem número', rotulo: 'Empresa · Processo sem número', objeto: '', status: '', prazo: '' },
+  ]);
+  assert.equal(core.contextosDoCatalogo(null, null).length, 0);
+});
+
 test('preferência nunca concede acesso: não autorizada cai no primeiro autorizado', () => {
   const core = carregarCore();
   const autorizados = [{ empresaId: 'a', processoId: 'pa', rotulo: 'A' }];

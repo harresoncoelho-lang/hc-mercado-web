@@ -27,6 +27,23 @@
     return autorizados;
   }
 
+  // Hoje a partir do catálogo (contextos-operacao, lido com o token do usuário e RLS): uma requisição, sem consultar por processo.
+  // Só entra processo de empresa do próprio catálogo; o acesso de fato é confirmado por consultar ao abrir.
+  function contextosDoCatalogo(contextos, empresas) {
+    const txt = (v) => (typeof v === 'string' ? v.trim() : '');
+    const razoes = new Map((Array.isArray(empresas) ? empresas : []).filter((e) => e && typeof e.empresaId === 'string').map((e) => [e.empresaId, txt(e.razaoSocial) || 'Empresa']));
+    const lista = [];
+    for (const c of Array.isArray(contextos) ? contextos : []) {
+      if (!c || typeof c.processoId !== 'string' || !c.processoId || !razoes.has(c.empresaId)) continue;
+      if (lista.some((x) => mesmoContexto(x, c))) continue;
+      const razao = razoes.get(c.empresaId);
+      const numero = txt(c.numero);
+      const processoRotulo = numero ? 'Processo ' + numero : 'Processo sem número';
+      lista.push({ empresaId: c.empresaId, processoId: c.processoId, empresaRotulo: razao, processoRotulo, rotulo: razao + ' · ' + processoRotulo, objeto: txt(c.objeto), status: txt(c.status), prazo: txt(c.prazo) });
+    }
+    return lista;
+  }
+
   // Preferido só é escolhido se já estiver entre os autorizados.
   function escolherContexto(autorizados, preferido) {
     if (!Array.isArray(autorizados) || !autorizados.length) return null;
@@ -51,6 +68,7 @@
 
   // Cadastro de processo: validação de campos no navegador (o servidor valida de novo e é a fonte final).
   const LIMITES_PROCESSO = { objetoMin: 3, objetoMax: 500, numeroMax: 60, orgaoMax: 200, modalidadeMax: 60 };
+  // eslint-disable-next-line no-control-regex -- o objetivo é justamente recusar caracteres de controle.
   const CONTROLE = /[\u0000-\u001f\u007f]/;
   function validarProcessoNovo(campos) {
     const c = campos && typeof campos === 'object' ? campos : {};
@@ -73,6 +91,6 @@
     return h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-8' + h.slice(17, 20) + '-' + h.slice(20, 32);
   }
 
-  const api = { CHAVE_PREFERENCIA, MSG_LOGIN, MSG_SEM_CONTEXTO, MSG_SESSAO_ENCERRADA, autorizarContextos, escolherContexto, lerPreferencia, gravarPreferencia, validarProcessoNovo, novaTentativaId, LIMITES_PROCESSO };
+  const api = { CHAVE_PREFERENCIA, MSG_LOGIN, MSG_SEM_CONTEXTO, MSG_SESSAO_ENCERRADA, autorizarContextos, contextosDoCatalogo, escolherContexto, lerPreferencia, gravarPreferencia, validarProcessoNovo, novaTentativaId, LIMITES_PROCESSO };
   global.LicitaPlenaComercialCore = api;
 })(globalThis);

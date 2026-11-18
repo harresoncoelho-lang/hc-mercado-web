@@ -21,9 +21,9 @@ function banco() {
       { id: EMP_B, organizacao_id: ORG_B, razao_social: "B", ativo: true },
     ],
     operacao_processos: [
-      { id: PROC_A, empresa_id: EMP_A, organizacao_id: ORG_A },
-      { id: PROC_A2, empresa_id: EMP_A2, organizacao_id: ORG_A },
-      { id: PROC_B, empresa_id: EMP_B, organizacao_id: ORG_B },
+      { id: PROC_A, empresa_id: EMP_A, organizacao_id: ORG_A, numero: "10/2026", objeto: "Papel A4", status: "triagem", data_sessao: "2026-12-01T13:00:00+00:00" },
+      { id: PROC_A2, empresa_id: EMP_A2, organizacao_id: ORG_A, numero: null, objeto: "Toner", status: "preparacao", data_sessao: null },
+      { id: PROC_B, empresa_id: EMP_B, organizacao_id: ORG_B, numero: "99/2026", objeto: "Segredo B", status: "triagem", data_sessao: null },
     ],
   };
 }
@@ -33,6 +33,7 @@ function filtrar(linhas, sp) {
   for (const [k, v] of sp) {
     if (k === "select" || k === "order") continue;
     if (v.startsWith("eq.")) r = r.filter((l) => String(l[k]) === v.slice(3));
+    else if (v.startsWith("neq.")) r = r.filter((l) => String(l[k]) !== v.slice(4));
     else if (v.startsWith("in.(")) { const lista = v.slice(4, -1).split(","); r = r.filter((l) => lista.includes(String(l[k]))); }
   }
   return r;
@@ -70,7 +71,7 @@ test("devolve só a empresa do vínculo e seus processos, lendo com o token do u
   assert.equal(r.statusCode, 200);
   assert.equal(r.headers["Cache-Control"], "no-store");
   const corpo = JSON.parse(r.body);
-  assert.deepEqual(corpo, { userId: U, empresas: [{ empresaId: EMP_A, razaoSocial: "A" }], contextos: [{ empresaId: EMP_A, processoId: PROC_A }] });
+  assert.deepEqual(corpo, { userId: U, empresas: [{ empresaId: EMP_A, razaoSocial: "A" }], contextos: [{ empresaId: EMP_A, processoId: PROC_A, numero: "10/2026", objeto: "Papel A4", status: "triagem", prazo: "2026-12-01T13:00:00+00:00" }] });
   for (const c of chamadas.filter((x) => x.caminho.startsWith("/rest/"))) {
     assert.equal(c.auth, "Bearer TOKEN-U");
     assert.match(c.apikey, /^sb_publishable_/);
@@ -116,4 +117,26 @@ test("fonte no limite de linhas falha fechado (503), sem lista truncada; método
   assert.equal(r.statusCode, 503);
   assert.equal(JSON.parse(r.body).contextos, undefined);
   assert.equal((await handler(evento(undefined, "POST"))).statusCode, 405);
+}));
+
+test("processo arquivado não entra no catálogo, nem se a fonte ignorar o filtro", () => comFetch(async () => {
+  const b = banco();
+  b.operacao_membros[0].empresa_id = null;
+  b.operacao_processos[1].status = "arquivado";
+  const chamadas = instalarFetch(b);
+  const corpo = JSON.parse((await handler(evento())).body);
+  assert.deepEqual(corpo.contextos.map((c) => c.processoId), [PROC_A]);
+  assert.ok(chamadas.some((c) => c.caminho === "/rest/v1/operacao_processos"));
+  // Fonte que devolve o arquivado mesmo assim: o handler descarta de novo.
+  const rls = global.fetch;
+  global.fetch = async (url, op) => (new URL(url).pathname === "/rest/v1/operacao_processos" ? Response.json([{ ...b.operacao_processos[1] }]) : rls(url, op));
+  assert.deepEqual(JSON.parse((await handler(evento())).body).contextos, []);
+}));
+
+test("campos de exibição são sempre string e com tamanho limitado", () => comFetch(async () => {
+  const b = banco();
+  Object.assign(b.operacao_processos[0], { numero: 123, objeto: "x".repeat(900), status: { a: 1 }, data_sessao: undefined });
+  instalarFetch(b);
+  const [c] = JSON.parse((await handler(evento())).body).contextos;
+  assert.deepEqual({ ...c, objeto: c.objeto.length }, { empresaId: EMP_A, processoId: PROC_A, numero: "", objeto: 500, status: "", prazo: "" });
 }));

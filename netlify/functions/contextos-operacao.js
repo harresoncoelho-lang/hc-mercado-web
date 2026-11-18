@@ -6,7 +6,9 @@
 // - Mesma regra de vínculo da descoberta e de criar-processo: membro gestor/operador da organização,
 //   com empresa_id nulo (toda a organização) ou igual à empresa.
 // - Falha fechado se a fonte devolver o máximo de linhas, em vez de entregar lista truncada.
-// O controlador ainda confirma cada processo no kit-documentos (acao consultar) antes de listá-lo.
+// - Processo arquivado não entra (status 'arquivado', mesmo valor do painel.html).
+// - Devolve os campos de exibição (número, objeto, status, prazo) para o Hoje montar a lista com uma requisição só;
+//   o controlador confirma o processo no kit-documentos (acao consultar) só quando o usuário o abre.
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
 const ANON='sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb';
@@ -15,6 +17,8 @@ const PAPEIS_ACESSO=['gestor','operador'];
 const MAX_LINHAS=1000;
 const emLista=ids=>'('+ids.join(',')+')';
 const uuid=v=>typeof v==='string'&&UUID.test(v);
+// Exibição: sempre string, com teto (mesmos limites do cadastro de processo para número e objeto).
+const texto=(v,max)=>typeof v==='string'?v.slice(0,max):'';
 
 exports.handler=async event=>{
  // no-store: a resposta é o catálogo privado do usuário e não pode ficar em cache intermediário.
@@ -49,10 +53,10 @@ exports.handler=async event=>{
   if(!empresas.length)return resposta(200,vazio);
   const porId=new Map(empresas.map(e=>[e.id,e]));
 
-  const processos=await ler(`operacao_processos?empresa_id=in.${emLista([...porId.keys()])}&select=id,empresa_id,organizacao_id&order=criado_em.desc`);
+  const processos=await ler(`operacao_processos?empresa_id=in.${emLista([...porId.keys()])}&status=neq.arquivado&select=id,empresa_id,organizacao_id,numero,objeto,status,data_sessao&order=criado_em.desc`);
   // Processo só entra se a empresa autorizada e a organização baterem; linha extra da fonte nunca entra.
-  const contextos=processos.filter(p=>p&&uuid(p.id)&&porId.get(p.empresa_id)?.organizacao_id===p.organizacao_id)
-   .map(p=>({empresaId:p.empresa_id,processoId:p.id}));
+  const contextos=processos.filter(p=>p&&uuid(p.id)&&p.status!=='arquivado'&&porId.get(p.empresa_id)?.organizacao_id===p.organizacao_id)
+   .map(p=>({empresaId:p.empresa_id,processoId:p.id,numero:texto(p.numero,60),objeto:texto(p.objeto,500),status:texto(p.status,40),prazo:texto(p.data_sessao,40)}));
   return resposta(200,{userId,empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos});
  }catch{
   return resposta(503,{erro:'Não foi possível carregar suas empresas agora. Tente de novo em instantes.'});

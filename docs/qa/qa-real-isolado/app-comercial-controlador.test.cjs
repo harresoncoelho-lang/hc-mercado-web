@@ -56,6 +56,15 @@ function criarServidor(opcoes = {}) {
   ], autorizados: opcoes.autorizados || ['a1'], paginadas: opcoes.paginadas || [] };
   const chamadas = [];
   const corpos = [];
+  // Catálogo como o handler real (contextos-operacao): só pares que o vínculo autoriza, com rótulos de exibição.
+  // divergente:true simula catálogo que lista par que o consultar recusa (o Hoje lista; abrir é barrado).
+  const catalogo = () => {
+    const contextos = estado.contextos.filter((c) => opcoes.divergente || estado.autorizados.includes(c.empresaId))
+      .map((c) => ({ numero: 'QA-' + c.processoId, ...c }));
+    const empresas = estado.empresas.length ? estado.empresas
+      : [...new Set(contextos.map((c) => c.empresaId))].map((id) => ({ empresaId: id, razaoSocial: 'Empresa ' + id.toUpperCase() }));
+    return { contextos, empresas };
+  };
   const roteador = {
     login: null, logout: null, sessao: null, kit: null, criar: null,
   };
@@ -75,7 +84,7 @@ function criarServidor(opcoes = {}) {
     if (url === '/qa/session') {
       if (roteador.sessao) return roteador.sessao(op);
       if (!estado.logado) return resposta(401, {});
-      return resposta(200, { userId: 'u1', accessToken: 'qa-cookie-session', contextos: estado.contextos, empresas: estado.empresas });
+      return resposta(200, { userId: 'u1', accessToken: 'qa-cookie-session', ...catalogo() });
     }
     if (url === '/api/criar-processo') {
       const corpo = JSON.parse(op.body);
@@ -141,7 +150,7 @@ function criar(opcoes = {}) {
 async function entrarEAbrir(t) {
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
   const par = t.srv.estado.contextos.find((c) => t.srv.estado.autorizados.includes(c.empresaId));
-  if (par && t.ctrl.estado().tela === 'area') t.ctrl.abrirProcesso(par.empresaId, par.processoId);
+  if (par && t.ctrl.estado().tela === 'area') await t.ctrl.abrirProcesso(par.empresaId, par.processoId);
 }
 
 const montagens = (mod) => mod.log.filter((e) => e.tipo === 'kit.montar').length;
@@ -163,7 +172,7 @@ test('login ok monta só o contexto autorizado, desabilita o botão enquanto pen
   assert.equal(t.el('hoje').hidden, false);
   assert.equal(t.el('area').hidden, true);
   assert.equal(montagens(t.mod), 0);
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   assert.equal(t.el('area').hidden, false);
   assert.equal(montagens(t.mod), 1);
   const montado = t.mod.log.find((e) => e.tipo === 'kit.montar').contexto;
@@ -269,7 +278,7 @@ test('erro ao verificar sessão mostra Tentar de novo, sem dados antigos, e a no
   await t.ctrl.tentarNovamente();
   assert.equal(t.ctrl.estado().tela, 'area');
   assert.equal(montagens(t.mod), 0, 'retorno ao Hoje não monta módulo sozinho');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   assert.equal(montagens(t.mod), 1);
 });
 
@@ -294,7 +303,7 @@ test('preferência salva de empresa não autorizada cai na primeira autorizada',
 test('trocar empresa fecha o módulo anterior e monta o novo contexto', async () => {
   const t = criar({ autorizados: ['a1', 'b1'] });
   await entrarEAbrir(t);
-  t.ctrl.selecionarIndice(1);
+  await t.ctrl.selecionarIndice(1);
   const montados = t.mod.log.filter((e) => e.tipo === 'kit.montar');
   assert.equal(montados.at(-1).contexto.empresaId, 'b1');
   assert.ok(fechamentos(t.mod) >= 1);
@@ -335,7 +344,7 @@ test('segundo login enquanto um está pendente é ignorado', async () => {
 
 // Callback obterSessao efetivamente entregue ao kit.montar (é o que os módulos reais chamam).
 const obterDoKit = (t) => t.mod.log.find((e) => e.tipo === 'kit.montar').obter;
-const sessaoU2 = () => resposta(200, { userId: 'u2', accessToken: 'x', contextos: [{ empresaId: 'a1', processoId: 'pa' }] });
+const sessaoU2 = () => resposta(200, { userId: 'u2', accessToken: 'x', contextos: [{ empresaId: 'a1', processoId: 'pa' }], empresas: [{ empresaId: 'a1', razaoSocial: 'Empresa A1' }] });
 
 test('obterSessao do kit: 401 com sessão ativa limpa a casca, mostra expiração e não repete a consulta', async () => {
   const t = criar({ autorizados: ['a1'] });
@@ -423,18 +432,61 @@ test('obterSessao do kit: resposta válida do mesmo usuário devolve a sessão',
 });
 
 // Cenário do caso real: B200 autorizada e paginada; A403 não autorizada.
-const cenarioB200 = () => criar({
+const cenarioB200 = (extra = {}) => criar({ ...extra,
   contextos: [{ empresaId: 'b200', processoId: 'pb200' }, { empresaId: 'a403', processoId: 'pa403' }],
   autorizados: ['b200'],
   paginadas: ['b200'],
 });
 
-test('consulta de contexto envia itensPaginados:true em todas as chamadas de consultar', async () => {
+test('consultar só roda ao abrir o processo e sempre com itensPaginados:true', async () => {
   const t = cenarioB200();
   await t.ctrl.entrar('operador-b@qa.invalid', 'x');
+  assert.equal(t.srv.corpos.filter((c) => c.acao === 'consultar').length, 0, 'montar o Hoje não consulta processo');
+  await t.ctrl.abrirProcesso('b200', 'pb200');
   const consultas = t.srv.corpos.filter((c) => c.acao === 'consultar');
-  assert.equal(consultas.length, 2);
+  assert.equal(consultas.length, 1);
   assert.ok(consultas.every((c) => c.itensPaginados === true));
+});
+
+test('Hoje mostra objeto, situação e prazo do catálogo como texto', async () => {
+  const t = criar({ autorizados: ['a1'], contextos: [{ empresaId: 'a1', processoId: 'pa', objeto: '<b>Papel</b>', status: 'triagem', prazo: '2026-12-01T13:00:00+00:00' }] });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  const textos = [];
+  const varrer = (n) => { if (n.className === 'hoje-detalhe') textos.push(n.textContent); for (const f of n.filhos || []) varrer(f); };
+  varrer(t.el('hoje-lista'));
+  assert.equal(textos.length, 1);
+  assert.match(textos[0], /^<b>Papel<\/b> · Situação: triagem · Sessão: 01\/12\/2026/);
+});
+
+test('100 processos = 1 requisição para montar o Hoje', async () => {
+  const contextos = Array.from({ length: 100 }, (_, i) => ({ empresaId: 'a1', processoId: 'p' + i }));
+  const t = criar({ contextos, autorizados: ['a1'] });
+  await t.ctrl.entrar('operador-a@qa.invalid', 'x');
+  assert.equal(t.ctrl.estado().tela, 'area');
+  assert.equal(t.ctrl.estado().autorizados.length, 100);
+  assert.deepEqual(t.srv.chamadas, ['POST /qa/login', 'GET /qa/session']);
+});
+
+test('catálogo divergente: par listado que o consultar recusa (403) não monta nada e sai da lista', async () => {
+  const t = cenarioB200({ divergente: true });
+  await t.ctrl.entrar('operador-b@qa.invalid', 'x');
+  assert.equal(t.ctrl.estado().autorizados.length, 2);
+  await t.ctrl.abrirProcesso('a403', 'pa403');
+  assert.equal(montagens(t.mod), 0);
+  assert.equal(t.mod.log.some((e) => e.tipo === 'ident.abrir' || e.tipo === 'itens.montar'), false);
+  assert.equal(t.ctrl.estado().visao, 'hoje');
+  assert.equal(t.el('app-aviso').textContent, 'Este processo não está disponível para sua conta.');
+  assert.deepEqual(JSON.parse(JSON.stringify(t.ctrl.estado().autorizados)), ['Empresa B200 · Processo QA-pb200']);
+  assert.equal(botoesDe(t.el('hoje-lista')).some((b) => b.processo === 'pa403'), false);
+});
+
+test('consultar com ids divergentes ao abrir é recusado como não autorizado', async () => {
+  const t = cenarioB200();
+  t.srv.roteador.kit = async (c) => resposta(200, { empresa: { id: 'outra', razaoSocial: 'X' }, processo: { id: c.processoId, numero: '1' } });
+  await t.ctrl.entrar('operador-b@qa.invalid', 'x');
+  await t.ctrl.abrirProcesso('b200', 'pb200');
+  assert.equal(montagens(t.mod), 0);
+  assert.equal(t.ctrl.estado().autorizados.length, 0);
 });
 
 test('B200 aparece como autorizada, A403 não aparece e 403 não vira erro de carregamento', async () => {
@@ -442,7 +494,7 @@ test('B200 aparece como autorizada, A403 não aparece e 403 não vira erro de ca
   await t.ctrl.entrar('operador-b@qa.invalid', 'x');
   assert.equal(t.ctrl.estado().tela, 'area');
   assert.deepEqual(JSON.parse(JSON.stringify(t.ctrl.estado().autorizados)), ['Empresa B200 · Processo QA-pb200']);
-  t.ctrl.abrirProcesso('b200', 'pb200');
+  await t.ctrl.abrirProcesso('b200', 'pb200');
   const montado = t.mod.log.find((e) => e.tipo === 'kit.montar').contexto;
   assert.equal(JSON.parse(JSON.stringify(montado)).empresaId, 'b200');
   assert.equal(t.el('app-aviso').textContent, '');
@@ -456,27 +508,29 @@ test('guarda do handler: consultar paginado sem itensPaginados:true responde 409
   assert.equal(ok.status, 200);
 });
 
-test('409 de carregamento não é confundido com não autorizado: mostra erro com Tentar de novo', async () => {
+test('409 ao abrir não é confundido com não autorizado: avisa, não monta e mantém o par na lista', async () => {
   const t = cenarioB200();
   t.srv.roteador.kit = async () => resposta(409, {});
   await t.ctrl.entrar('operador-b@qa.invalid', 'x');
-  assert.equal(t.ctrl.estado().tela, 'erro-empresas');
-  assert.equal(t.el('app-aviso').textContent, 'Não foi possível carregar suas empresas. Tente de novo.');
+  await t.ctrl.abrirProcesso('b200', 'pb200');
+  assert.equal(t.ctrl.estado().tela, 'area');
+  assert.equal(t.ctrl.estado().visao, 'hoje');
+  assert.equal(t.el('app-aviso').textContent, 'Não foi possível abrir o processo. Tente de novo.');
   assert.equal(t.el('app-aviso').dataset.estado, 'erro');
-  assert.equal(t.el('tentar').hidden, false);
-  assert.equal(t.el('sair').hidden, false);
   assert.equal(montagens(t.mod), 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(t.ctrl.estado().autorizados)), ['Empresa B200 · Processo QA-pb200']);
 });
 
-test('falha de rede na consulta também fica em erro-empresas e a nova tentativa recupera B200', async () => {
+test('falha de rede ao abrir avisa sem montar; nova tentativa de abrir monta B200', async () => {
   const t = cenarioB200();
   t.srv.roteador.kit = async () => { throw new Error('rede caiu'); };
   await t.ctrl.entrar('operador-b@qa.invalid', 'x');
-  assert.equal(t.ctrl.estado().tela, 'erro-empresas');
+  await t.ctrl.abrirProcesso('b200', 'pb200');
+  assert.equal(montagens(t.mod), 0);
+  assert.equal(t.el('app-aviso').textContent, 'Não foi possível abrir o processo. Tente de novo.');
   t.srv.roteador.kit = null;
-  await t.ctrl.tentarNovamente();
-  assert.equal(t.ctrl.estado().tela, 'area');
-  assert.deepEqual(JSON.parse(JSON.stringify(t.ctrl.estado().autorizados)), ['Empresa B200 · Processo QA-pb200']);
+  await t.ctrl.abrirProcesso('b200', 'pb200');
+  assert.equal(montagens(t.mod), 1);
 });
 
 test('somente 403 em todos os contextos mostra sem empresa autorizada, não erro', async () => {
@@ -495,11 +549,11 @@ test('seleção separa empresa e processo: processos listados são só da empres
   assert.deepEqual(t.el('empresa-ativa').filhos.map((o) => o.value), ['a1', 'b1']);
   assert.deepEqual(t.el('processo-ativo').filhos.map((o) => o.value), ['pa', 'pa2']);
   assert.equal(t.el('processo-bloco').hidden, false);
-  t.ctrl.selecionarProcesso('pa2');
+  await t.ctrl.selecionarProcesso('pa2');
   assert.equal(t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto.processoId, 'pa2');
-  t.ctrl.selecionarProcesso('pb');
+  await t.ctrl.selecionarProcesso('pb');
   assert.equal(t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto.processoId, 'pa2', 'processo de outra empresa é ignorado');
-  t.ctrl.selecionarEmpresa('b1');
+  await t.ctrl.selecionarEmpresa('b1');
   const ultimo = t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto;
   assert.deepEqual({ empresaId: ultimo.empresaId, processoId: ultimo.processoId }, { empresaId: 'b1', processoId: 'pb' });
   assert.deepEqual(t.el('processo-ativo').filhos.map((o) => o.value), ['pb']);
@@ -513,7 +567,7 @@ test('troca de empresa limpa o módulo anterior; resposta antiga da empresa ante
   const seg = adiar();
   t.srv.roteador.sessao = () => seg.p;
   const pendente = montagemA.obter();
-  t.ctrl.selecionarEmpresa('b1');
+  await t.ctrl.selecionarEmpresa('b1');
   assert.ok(fechamentos(t.mod) > fechamentosAntes, 'módulo da empresa anterior foi fechado');
   seg.resolve(resposta(200, { userId: 'u1', accessToken: 'qa-cookie-session', contextos: TRES_PARES }));
   assert.equal(await pendente, null, 'resposta obsoleta não entrega sessão ao módulo antigo');
@@ -525,7 +579,7 @@ test('empresa sem processo autorizado não aparece e não pode ser selecionada',
   await entrarEAbrir(t);
   assert.deepEqual(t.el('empresa-ativa').filhos.map((o) => o.value), ['a1'], 'b1 foi recusada pelo handler e não aparece');
   const antes = montagens(t.mod);
-  t.ctrl.selecionarEmpresa('b1');
+  await t.ctrl.selecionarEmpresa('b1');
   assert.equal(montagens(t.mod), antes);
   const semNada = criar({ autorizados: [], contextos: [{ empresaId: 'a1', processoId: 'pa' }] });
   await semNada.ctrl.entrar('operador-a@qa.invalid', 'x');
@@ -547,7 +601,7 @@ test('cancelar a troca com alterações não salvas preserva rascunho, módulos 
   await entrarEAbrir(t);
   t.mod.sujo.kit = true;
   const montagensAntes = montagens(t.mod), fechamentosAntes = fechamentos(t.mod);
-  t.ctrl.selecionarEmpresa('b1');
+  await t.ctrl.selecionarEmpresa('b1');
   assert.equal(confirmar.chamadas.length, 1);
   assert.match(confirmar.chamadas[0], /não salvas/);
   assert.equal(montagens(t.mod), montagensAntes, 'nenhum módulo novo foi montado');
@@ -562,7 +616,7 @@ test('cancelar a troca de processo também preserva o contexto', async () => {
   const t = criar({ autorizados: ['a1', 'b1'], contextos: TRES_PARES, confirmar: confirmador(false) });
   await entrarEAbrir(t);
   t.mod.sujo.ident = true;
-  t.ctrl.selecionarProcesso('pa2');
+  await t.ctrl.selecionarProcesso('pa2');
   assert.equal(t.el('processo-ativo').value, 'pa');
   assert.equal(t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto.processoId, 'pa');
 });
@@ -572,7 +626,7 @@ test('aceitar a troca descarta as alterações e monta o novo contexto', async (
   const t = criar({ autorizados: ['a1', 'b1'], contextos: TRES_PARES, confirmar });
   await entrarEAbrir(t);
   t.mod.sujo.kit = true;
-  t.ctrl.selecionarEmpresa('b1');
+  await t.ctrl.selecionarEmpresa('b1');
   assert.equal(confirmar.chamadas.length, 1);
   assert.ok(fechamentos(t.mod) >= 1, 'módulo anterior fechado');
   assert.equal(t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto.empresaId, 'b1');
@@ -584,7 +638,7 @@ test('sem alterações não pede confirmação; revisão confirmada (sem pendên
   await entrarEAbrir(t);
   t.mod.sujo.kit = true;
   t.mod.sujo.kit = false;
-  t.ctrl.selecionarEmpresa('b1');
+  await t.ctrl.selecionarEmpresa('b1');
   assert.equal(confirmar.chamadas.length, 0);
   assert.equal(t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto.empresaId, 'b1');
 });
@@ -594,7 +648,7 @@ test('sem confirmação disponível, alteração não salva cancela a troca (pad
   await entrarEAbrir(t);
   t.mod.sujo.kit = true;
   const antes = montagens(t.mod);
-  t.ctrl.selecionarEmpresa('b1');
+  await t.ctrl.selecionarEmpresa('b1');
   assert.equal(montagens(t.mod), antes);
   assert.equal(t.el('empresa-ativa').value, 'a1');
 });
@@ -640,20 +694,14 @@ test('Hoje: estado de carregamento, vazio e erro têm textos honestos e distinto
   assert.equal(vazio.el('hoje').hidden, false);
   assert.equal(vazio.el('hoje-estado').textContent, 'Nenhuma empresa autorizada para esta conta.');
   assert.equal(vazio.el('hoje-lista').filhos.length, 0);
-
-  const erro = cenarioB200();
-  erro.srv.roteador.kit = async () => resposta(409, {});
-  await erro.ctrl.entrar('operador-b@qa.invalid', 'x');
-  assert.equal(erro.el('hoje-estado').textContent, 'Não foi possível carregar suas empresas. Tente de novo.');
-  assert.equal(erro.el('hoje-lista').filhos.length, 0);
 });
 
 test('abrirProcesso ignora par que não está na lista autorizada desta sessão', async () => {
   const t = criar({ autorizados: ['a1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }, { empresaId: 'b1', processoId: 'pb' }] });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
   const antes = montagens(t.mod);
-  t.ctrl.abrirProcesso('b1', 'pb');
-  t.ctrl.abrirProcesso('a1', 'pb');
+  await t.ctrl.abrirProcesso('b1', 'pb');
+  await t.ctrl.abrirProcesso('a1', 'pb');
   assert.equal(montagens(t.mod), antes);
   assert.equal(t.ctrl.estado().visao, 'hoje');
   assert.equal(t.el('hoje').hidden, false);
@@ -663,7 +711,7 @@ test('voltar ao Hoje mantém módulo, contexto e rascunho; reabrir o mesmo proce
   const confirmar = confirmador(false);
   const t = criar({ autorizados: ['a1', 'b1'], contextos: TRES_PARES, confirmar });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   t.mod.sujo.kit = true;
   const montadasAntes = montagens(t.mod), fechadasAntes = fechamentos(t.mod);
   t.ctrl.voltarHoje();
@@ -673,7 +721,7 @@ test('voltar ao Hoje mantém módulo, contexto e rascunho; reabrir o mesmo proce
   assert.equal(t.el('hoje-titulo').focused, true);
   assert.equal(fechamentos(t.mod), fechadasAntes, 'voltar não fecha o módulo');
   assert.equal(confirmar.chamadas.length, 0, 'voltar não pede confirmação');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   assert.equal(montagens(t.mod), montadasAntes, 'mesmo processo não remonta');
   assert.equal(t.ctrl.estado().visao, 'processo');
 });
@@ -682,11 +730,11 @@ test('troca de processo pelo Hoje com alteração não salva: cancelar mantém o
   const confirmar = confirmador(false);
   const t = criar({ autorizados: ['a1', 'b1'], contextos: TRES_PARES, confirmar });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   t.mod.sujo.kit = true;
   t.ctrl.voltarHoje();
   const montadasAntes = montagens(t.mod);
-  t.ctrl.abrirProcesso('b1', 'pb');
+  await t.ctrl.abrirProcesso('b1', 'pb');
   assert.equal(confirmar.chamadas.length, 1);
   assert.equal(montagens(t.mod), montadasAntes, 'nenhum módulo novo');
   assert.equal(t.ctrl.estado().visao, 'hoje');
@@ -698,10 +746,10 @@ test('troca de processo pelo Hoje com confirmação aceita descarta a alteraçã
   const confirmar = confirmador(true);
   const t = criar({ autorizados: ['a1', 'b1'], contextos: TRES_PARES, confirmar });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   t.mod.sujo.kit = true;
   t.ctrl.voltarHoje();
-  t.ctrl.abrirProcesso('b1', 'pb');
+  await t.ctrl.abrirProcesso('b1', 'pb');
   assert.equal(confirmar.chamadas.length, 1);
   assert.ok(fechamentos(t.mod) >= 1);
   assert.equal(t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto.empresaId, 'b1');
@@ -711,13 +759,13 @@ test('troca de processo pelo Hoje com confirmação aceita descarta a alteraçã
 test('resposta tardia do processo anterior não entrega sessão ao módulo após abrir outro processo', async () => {
   const t = criar({ autorizados: ['a1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }, { empresaId: 'a1', processoId: 'pa2' }] });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   const obterPa = t.mod.log.filter((e) => e.tipo === 'kit.montar')[0].obter;
   const tarde = adiar();
   t.srv.roteador.sessao = () => tarde.p;
   const pendente = obterPa();
   t.ctrl.voltarHoje();
-  t.ctrl.abrirProcesso('a1', 'pa2');
+  await t.ctrl.abrirProcesso('a1', 'pa2');
   tarde.resolve(resposta(200, { userId: 'u1', accessToken: 'x', contextos: [] }));
   assert.equal(await pendente, null, 'módulo do processo anterior não recebe sessão tardia');
   assert.equal(t.mod.log.filter((e) => e.tipo === 'kit.montar').at(-1).contexto.processoId, 'pa2');
@@ -728,7 +776,7 @@ test('resposta tardia do processo anterior não entrega sessão ao módulo após
 const TEXTO_A = 'EMPRESA A1';
 const cardsA = (t) => botoesDe(t.el('hoje-lista')).filter((b) => b.empresa === 'a1');
 const flush = () => new Promise((r) => setImmediate(r));
-const sessaoB = () => resposta(200, { userId: 'u2', accessToken: 'x', contextos: [{ empresaId: 'b1', processoId: 'pb' }] });
+const sessaoB = () => resposta(200, { userId: 'u2', accessToken: 'x', contextos: [{ empresaId: 'b1', processoId: 'pb' }], empresas: [{ empresaId: 'b1', razaoSocial: 'Empresa B1' }] });
 
 test('Hoje: voltar ao Hoje e trocar processo preservam a lista e o rascunho', async () => {
   const confirmar = confirmador(false);
@@ -737,7 +785,7 @@ test('Hoje: voltar ao Hoje e trocar processo preservam a lista e o rascunho', as
   t.mod.sujo.kit = true;
   t.ctrl.voltarHoje();
   assert.equal(botoesDe(t.el('hoje-lista')).length, 3, 'voltar não apaga a lista');
-  t.ctrl.abrirProcesso('a1', 'pa2');
+  await t.ctrl.abrirProcesso('a1', 'pa2');
   assert.equal(confirmar.chamadas.length, 1);
   assert.equal(botoesDe(t.el('hoje-lista')).length, 3, 'troca cancelada não apaga a lista');
   assert.equal(t.mod.sujo.kit, true, 'rascunho preservado');
@@ -965,7 +1013,7 @@ test('troca de empresa durante preparação pede confirmação quando há altera
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
   t.ctrl.prepararEmpresa('z1');
   t.mod.sujo.ident = true;
-  t.ctrl.selecionarEmpresa('a1');
+  await t.ctrl.selecionarEmpresa('a1');
   assert.equal(t.ctrl.estado().identDe.empresaId, 'z1', 'alterações de z1 preservadas');
   assert.equal(t.el('empresa-ativa').value, 'z1', 'seletor volta à empresa preparada');
   assert.equal(idents(t).length, 1);
@@ -987,9 +1035,9 @@ test('troca confirmada descarta a identificação anterior e monta a nova empres
 test('seletor de empresa sem processo abre a preparação, nunca o kit', async () => {
   const t = cenarioZ();
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   const antes = kitsMontados(t);
-  t.ctrl.selecionarEmpresa('z1');
+  await t.ctrl.selecionarEmpresa('z1');
   assert.equal(t.ctrl.estado().visao, 'preparar');
   assert.equal(kitsMontados(t), antes, 'nenhum kit novo para empresa sem processo');
   assert.equal(t.ctrl.estado().kitMontado, false);
@@ -999,7 +1047,7 @@ test('empresa fora da descoberta não monta identificação nem kit (isolamento)
   const t = cenarioZ();
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
   t.ctrl.prepararEmpresa('b9-fora');
-  t.ctrl.selecionarEmpresa('b9-fora');
+  await t.ctrl.selecionarEmpresa('b9-fora');
   assert.equal(idents(t).length, 0);
   assert.equal(kitsMontados(t), 0);
   assert.equal(t.ctrl.estado().visao, 'hoje');
@@ -1027,7 +1075,7 @@ test('itens do processo montam com o mesmo contexto do kit (empresa + processo) 
   t.ctrl.prepararEmpresa('z1');
   assert.equal(itensMontados(t).length, 0, 'sem itens na preparação de empresa sem processo');
   assert.equal(t.el('itens-processo').hidden, true);
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   assert.equal(JSON.stringify(itensMontados(t).map((e) => e.contexto)), JSON.stringify([{ empresaId: 'a1', processoId: 'pa' }]));
   assert.equal(t.el('itens-processo').hidden, false);
   assert.equal(t.ctrl.estado().itensMontado, true);
@@ -1036,10 +1084,10 @@ test('itens do processo montam com o mesmo contexto do kit (empresa + processo) 
 test('itens somem ao voltar ao Hoje e são desmontados ao trocar de processo', async () => {
   const t = cenarioZ({ autorizados: ['a1', 'z1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }, { empresaId: 'a1', processoId: 'pa2' }] });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   t.ctrl.voltarHoje();
   assert.equal(t.el('itens-processo').hidden, true, 'oculto no Hoje');
-  t.ctrl.abrirProcesso('a1', 'pa2');
+  await t.ctrl.abrirProcesso('a1', 'pa2');
   assert.equal(t.mod.log.filter((e) => e.tipo === 'itens.fechar').length >= 1, true, 'módulo anterior encerrado');
   assert.equal(JSON.stringify(itensMontados(t).at(-1).contexto), JSON.stringify({ empresaId: 'a1', processoId: 'pa2' }));
 });
@@ -1048,9 +1096,9 @@ test('alterações não salvas em itens pedem confirmação antes de trocar de p
   let perguntas = 0;
   const t = cenarioZ({ autorizados: ['a1', 'z1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }, { empresaId: 'a1', processoId: 'pa2' }], confirmar: () => { perguntas += 1; return false; } });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   t.mod.sujo.itens = true;
-  t.ctrl.abrirProcesso('a1', 'pa2');
+  await t.ctrl.abrirProcesso('a1', 'pa2');
   assert.equal(perguntas, 1);
   assert.equal(t.ctrl.estado().identDe.empresaId, 'a1');
   assert.equal(itensMontados(t).length, 1, 'não remontou sem confirmação');
@@ -1059,7 +1107,7 @@ test('alterações não salvas em itens pedem confirmação antes de trocar de p
 test('sair encerra os itens do processo', async () => {
   const t = cenarioZ();
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   await t.ctrl.sair();
   assert.equal(t.ctrl.estado().itensMontado, false);
   assert.equal(t.mod.log.some((e) => e.tipo === 'itens.fechar'), true);
@@ -1072,7 +1120,7 @@ const atualizacoes = (t) => t.mod.log.filter((e) => e.tipo === 'kit.atualizarIte
 test('item salvo chama atualizarItens do kit do mesmo contexto ativo (uma vez)', async () => {
   const t = cenarioZ({ autorizados: ['a1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }] });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   assert.equal(typeof ultimoAoSalvar(t), 'function', 'gancho entregue ao módulo de itens');
   ultimoAoSalvar(t)();
   assert.equal(atualizacoes(t).length, 1);
@@ -1082,9 +1130,9 @@ test('item salvo chama atualizarItens do kit do mesmo contexto ativo (uma vez)',
 test('contexto trocado: gancho do processo anterior não atualiza o kit do novo processo', async () => {
   const t = cenarioZ({ autorizados: ['a1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }, { empresaId: 'a1', processoId: 'pa2' }] });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   const antigo = ultimoAoSalvar(t);
-  t.ctrl.abrirProcesso('a1', 'pa2');
+  await t.ctrl.abrirProcesso('a1', 'pa2');
   antigo();
   assert.equal(atualizacoes(t).length, 0, 'resposta/callback antigo ignorado');
   ultimoAoSalvar(t)();
@@ -1095,7 +1143,7 @@ test('contexto trocado: gancho do processo anterior não atualiza o kit do novo 
 test('voltar ao Hoje preserva o kit: gancho do MESMO kit ainda atualiza (catálogo e revisão ficam corretos ao reabrir)', async () => {
   const t = cenarioZ({ autorizados: ['a1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }] });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   const cb = ultimoAoSalvar(t);
   t.ctrl.voltarHoje();
   cb();
@@ -1105,7 +1153,7 @@ test('voltar ao Hoje preserva o kit: gancho do MESMO kit ainda atualiza (catálo
 test('kit fechado (sair) bloqueia o gancho antigo', async () => {
   const t = cenarioZ({ autorizados: ['a1'], contextos: [{ empresaId: 'a1', processoId: 'pa' }] });
   await t.ctrl.entrar('operador-a@qa.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   const cb = ultimoAoSalvar(t);
   await t.ctrl.sair();
   cb();

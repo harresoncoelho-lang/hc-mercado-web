@@ -13,10 +13,11 @@
     erroSair: 'Não foi possível encerrar a sessão. Tente de novo.',
     erroEntrar: CORE.MSG_LOGIN,
     semContexto: CORE.MSG_SEM_CONTEXTO,
-    empresasNaoCarregadas: 'Não foi possível carregar suas empresas. Tente de novo.',
     encerrada: CORE.MSG_SESSAO_ENCERRADA,
     descartarAlteracoes: 'Há alterações não salvas nesta peça. Se trocar agora, elas serão descartadas. Continuar?',
     erroNovoProcesso: 'Não foi possível cadastrar o processo. Tente de novo.',
+    processoNaoAutorizado: 'Este processo não está disponível para sua conta.',
+    processoNaoCarregado: 'Não foi possível abrir o processo. Tente de novo.',
     naoAprovado: 'Seu cadastro ainda está em análise. Você recebe um aviso assim que for aprovado.',
   };
 
@@ -100,7 +101,9 @@
     };
   }
 
-  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, confirmar = null, autenticacao = null }) {
+  // pedirLogin(mensagem): produção não tem formulário próprio; quando a casca cai no login, quem chama redireciona
+  // para o login.html. Sem ele (QA), o formulário da própria página continua sendo usado.
+  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, confirmar = null, autenticacao = null, pedirLogin = null }) {
     const auth = autenticacao || autenticacaoQA(fetch);
     const el = (id) => doc.getElementById(id);
     let epoca = 0;
@@ -130,20 +133,24 @@
     function aviso(texto, estado) {
       el('app-aviso').textContent = texto || '';
       el('app-aviso').dataset.estado = estado || '';
+      // Todo mostrar('login') é seguido de aviso(): é aqui que a mensagem do motivo já está definida.
+      if (tela === 'login' && pedirLogin) pedirLogin(texto || '');
     }
 
     function setBusy(v) {
       ocupado = v;
-      el('login-entrar').disabled = v;
+      const entrarBtn = el('login-entrar');
+      if (entrarBtn) entrarBtn.disabled = v;
       el('sair').disabled = v;
       el('tentar').disabled = v;
     }
 
     function mostrar(t) {
       tela = t;
-      el('login').hidden = t !== 'login';
-      el('sair').hidden = !(t === 'area' || t === 'sem-contexto' || t === 'erro-sair' || t === 'erro-empresas');
-      el('tentar').hidden = !(t === 'erro-sessao' || t === 'erro-empresas');
+      const login = el('login');
+      if (login) login.hidden = t !== 'login';
+      el('sair').hidden = !(t === 'area' || t === 'sem-contexto' || t === 'erro-sair');
+      el('tentar').hidden = t !== 'erro-sessao';
       atualizarVisao();
     }
 
@@ -151,7 +158,7 @@
     function atualizarVisao() {
       const processo = tela === 'area' && visao === 'processo';
       const preparar = tela === 'area' && visao === 'preparar';
-      const hoje = tela === 'area' ? visao === 'hoje' : ['carregando', 'sem-contexto', 'erro-empresas'].includes(tela);
+      const hoje = tela === 'area' ? visao === 'hoje' : ['carregando', 'sem-contexto'].includes(tela);
       el('area').hidden = !(processo || preparar);
       // Kit só existe com processo: em preparação ele fica oculto e sem montagem.
       el('kit').hidden = !processo;
@@ -167,11 +174,16 @@
     function textoHoje() {
       if (tela === 'carregando') return 'Carregando empresas e processos autorizados…';
       if (tela === 'sem-contexto') return CORE.MSG_SEM_CONTEXTO;
-      if (tela === 'erro-empresas') return MSG.empresasNaoCarregadas;
       return '';
     }
 
-    // Lista só o que o servidor autorizou nesta sessão. Sem métricas, datas ou prazos.
+    // Lista o catálogo do servidor desta sessão (número, objeto, situação e prazo como texto). Sem métricas.
+    // Prazo chega como texto ISO; data inválida aparece como veio (textContent, sem HTML).
+    function formatarPrazo(v) {
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? v : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' });
+    }
+
     function renderizarHoje() {
       el('hoje-lista').replaceChildren(...empresasAutorizadas().map((e) => {
         const bloco = doc.createElement('article');
@@ -190,6 +202,9 @@
           const item = doc.createElement('li');
           const texto = doc.createElement('p');
           texto.textContent = a.processoRotulo;
+          const detalhe = doc.createElement('p');
+          detalhe.className = 'hoje-detalhe';
+          detalhe.textContent = [a.objeto, a.status && 'Situação: ' + a.status, a.prazo && 'Sessão: ' + formatarPrazo(a.prazo)].filter(Boolean).join(' · ');
           const botao = doc.createElement('button');
           botao.type = 'button';
           botao.className = 'app-primario';
@@ -197,7 +212,7 @@
           botao.setAttribute('aria-label', 'Abrir ' + a.processoRotulo + ' de ' + e.rotulo);
           botao.dataset.empresa = a.empresaId;
           botao.dataset.processo = a.processoId;
-          item.append(texto, botao);
+          item.append(texto, ...(detalhe.textContent ? [detalhe] : []), botao);
           lista.append(item);
         }
         bloco.append(lista);
@@ -365,9 +380,32 @@
       if (atual) el('processo-ativo').value = atual.processoId;
     }
 
-    function selecionar(contexto) {
+    // Abrir processo: o handler real (consultar) confirma empresa e processo antes de montar qualquer módulo.
+    // 403/404 tira o par da lista desta sessão; outra falha mantém a lista e só avisa. Resposta obsoleta (época) não monta.
+    async function selecionar(candidato) {
       // Kit só monta com processo: contexto sem processoId nunca chega aqui.
-      if (!contexto || typeof contexto.processoId !== 'string' || !contexto.processoId) return;
+      if (!candidato || typeof candidato.processoId !== 'string' || !candidato.processoId) return;
+      const e = epoca;
+      let falha = false;
+      const [confirmado] = await CORE.autorizarContextos([candidato], async (c) => {
+        const r = await consultarContexto(c);
+        falha = r.falha === true;
+        return r;
+      });
+      if (e !== epoca || tela !== 'area') return;
+      if (!confirmado) {
+        if (!falha) {
+          autorizados = autorizados.filter((a) => !(a.empresaId === candidato.empresaId && a.processoId === candidato.processoId));
+          preencherSeletores();
+          renderizarHoje();
+        }
+        restaurarSeletores();
+        atualizarVisao();
+        aviso(falha ? MSG.processoNaoCarregado : MSG.processoNaoAutorizado, 'erro');
+        return;
+      }
+      // Rótulos confirmados pelo servidor; detalhes de exibição continuam os do catálogo.
+      const contexto = { ...candidato, ...confirmado };
       atual = contexto;
       fecharAreas();
       novoEmpresaId = null;
@@ -426,20 +464,13 @@
         return;
       }
       sessao = r.sessao;
-      let falhas = 0;
-      const aut = await CORE.autorizarContextos(sessao.contextos, async (c) => {
-        const r = await consultarContexto(c);
-        if (r.falha) falhas += 1;
-        return r;
-      });
-      if (e !== epoca) return;
-      autorizados = aut;
+      // Uma requisição só (o catálogo): consultar roda por processo apenas quando ele é aberto (selecionar).
+      autorizados = CORE.contextosDoCatalogo(sessao.contextos, sessao.empresas);
       empresasSessao = sessao.empresas || [];
       if (!empresasAutorizadas().length) {
         fecharAreas();
         limparSessaoVisivel();
-        if (falhas > 0) { mostrar('erro-empresas'); aviso(MSG.empresasNaoCarregadas, 'erro'); }
-        else { mostrar('sem-contexto'); aviso(MSG.semContexto, 'vazio'); }
+        mostrar('sem-contexto'); aviso(MSG.semContexto, 'vazio');
         return;
       }
       preencherSeletores();
@@ -489,7 +520,7 @@
       if (!lista.length) { prepararEmpresa(empresaId); return; }
       if (!podeTrocar()) { restaurarSeletores(); return; }
       ++epoca;
-      selecionar(lista[0]);
+      return selecionar(lista[0]);
     }
 
     // Preparar empresa autorizada (com ou sem processo): monta só a identificação existente. Sem kit, sem processo.
@@ -525,7 +556,7 @@
       if (!contexto || tela !== 'area') return;
       if (!podeTrocar()) { restaurarSeletores(); return; }
       ++epoca;
-      selecionar(contexto);
+      return selecionar(contexto);
     }
 
     // Abre o processo a partir do Hoje. Só par da lista autorizada nesta sessão; resposta da visão anterior fica obsoleta.
@@ -540,7 +571,7 @@
       }
       if (!podeTrocar()) return;
       ++epoca;
-      selecionar(contexto);
+      return selecionar(contexto);
     }
 
     // Cadastro de processo: formulário no Hoje, só para empresa autorizada da descoberta.
@@ -609,8 +640,7 @@
         renderizarHoje();
         atualizarVisao();
         aviso('Processo cadastrado.', 'ok');
-        abrirProcesso(empresaId, p.id);
-        return;
+        return abrirProcesso(empresaId, p.id);
       }
       if (r && r.status === 401) { encerrarPorSessao('login', MSG.sessaoExpirada); return; }
       el('novo-processo-erro').textContent = corpo && typeof corpo.erro === 'string' ? corpo.erro : MSG.erroNovoProcesso;
@@ -628,7 +658,7 @@
       const contexto = autorizados[i];
       if (!contexto || tela !== 'area') return;
       ++epoca;
-      selecionar(contexto);
+      return selecionar(contexto);
     }
 
     function tentarNovamente() {

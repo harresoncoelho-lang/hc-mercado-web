@@ -48,7 +48,7 @@ function criar(opcoes = {}) {
   const C = carregar();
   const { cliente, estado } = criarCliente(opcoes);
   const chamadas = [];
-  const catalogo = opcoes.catalogo || { userId: 'u1', empresas: [{ empresaId: 'a1', razaoSocial: 'Empresa A' }], contextos: [{ empresaId: 'a1', processoId: 'pa' }] };
+  const catalogo = opcoes.catalogo || { userId: 'u1', empresas: [{ empresaId: 'a1', razaoSocial: 'Empresa A' }], contextos: [{ empresaId: 'a1', processoId: 'pa', numero: '1' }] };
   const fetch = async (url, op = {}) => {
     if (url.startsWith('/qa/')) throw new Error('rota QA chamada em produção: ' + url);
     chamadas.push({ url, auth: op.headers?.Authorization || null, corpo: op.body ? JSON.parse(op.body) : null });
@@ -69,12 +69,13 @@ function criar(opcoes = {}) {
   };
   let requisitarItens = null;
   const autenticacao = C.criarAutenticacaoSupabase({ cliente, fetch });
-  const ctrl = C.criarControlador({ doc: criarDom(), fetch, storage: null, autenticacao,
+  const logins = [];
+  const ctrl = C.criarControlador({ doc: criarDom(), fetch, storage: null, autenticacao, pedirLogin: opcoes.redirecionar ? (m) => logins.push(m) : null,
     kit: { montar: () => ({ fechar() {} }) },
     identificacao: { montar: () => ({ abrir() {}, limpar() {} }) },
     itens: { montar: (o) => { requisitarItens = o.requisitar; return { fechar() {} }; } },
   });
-  return { ctrl, estado, chamadas, autenticacao, itens: () => requisitarItens };
+  return { ctrl, estado, chamadas, autenticacao, logins, MSG: C.MSG, itens: () => requisitarItens };
 }
 
 test('login aprovado: catálogo e consulta do kit levam o Bearer real do Supabase, nada de /qa/*', async () => {
@@ -82,7 +83,9 @@ test('login aprovado: catálogo e consulta do kit levam o Bearer real do Supabas
   await t.ctrl.entrar('operador@example.invalid', 'x');
   assert.equal(t.ctrl.estado().tela, 'area');
   assert.deepEqual([...t.ctrl.estado().autorizados], ['Empresa A · Processo 1']);
-  assert.ok(t.chamadas.length >= 2);
+  assert.deepEqual(t.chamadas.map((c) => c.url), ['/api/contextos-operacao'], 'o Hoje sai do catálogo, sem consultar por processo');
+  await t.ctrl.abrirProcesso('a1', 'pa');
+  assert.equal(t.chamadas.at(-1).corpo.acao, 'consultar');
   for (const c of t.chamadas) assert.equal(c.auth, 'Bearer TOKEN-1', c.url);
 });
 
@@ -115,7 +118,7 @@ test('senha errada fica no login; sem sessão local não pede catálogo', async 
 test('token renovado: itens e criar-processo usam o token atual, não o do início', async () => {
   const t = criar();
   await t.ctrl.entrar('operador@example.invalid', 'x');
-  t.ctrl.abrirProcesso('a1', 'pa');
+  await t.ctrl.abrirProcesso('a1', 'pa');
   t.estado.sessao = { ...t.estado.sessao, access_token: 'TOKEN-2' };
   await t.itens()('/api/kit-documentos', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"acao":"x"}' });
   assert.equal(t.chamadas.at(-1).auth, 'Bearer TOKEN-2');
@@ -142,4 +145,21 @@ test('sair encerra a sessão Supabase', async () => {
   await t.ctrl.sair();
   assert.equal(t.ctrl.estado().tela, 'login');
   assert.equal(t.estado.sessao, null);
+});
+
+test('com pedirLogin (produção), cair no login redireciona com o motivo; tela de sistema não pede login', async () => {
+  const semSessao = criar({ redirecionar: true });
+  await semSessao.ctrl.iniciar();
+  assert.deepEqual(semSessao.logins, ['']);
+  const pendente = criar({ status: 'pendente', redirecionar: true });
+  pendente.estado.sessao = { access_token: 'TOKEN-1', user: { id: 'u1' } };
+  await pendente.ctrl.iniciar();
+  assert.deepEqual(pendente.logins, [pendente.MSG.naoAprovado]);
+  const aprovado = criar({ redirecionar: true });
+  aprovado.estado.sessao = { access_token: 'TOKEN-1', user: { id: 'u1' } };
+  await aprovado.ctrl.iniciar();
+  assert.equal(aprovado.ctrl.estado().tela, 'area');
+  assert.deepEqual(aprovado.logins, []);
+  await aprovado.ctrl.sair();
+  assert.deepEqual(aprovado.logins, ['Sessão encerrada.']);
 });
