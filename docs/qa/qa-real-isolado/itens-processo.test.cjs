@@ -276,3 +276,21 @@ test('UI espelha o total: overflow do produto é recusado no formulário antes d
   assert.ok(v.erros.total, 'erro de total presente');
   assert.equal(ui.validarItemCampos({ identificador: '1', descricao: 'x', quantidade: '2.500', valorUnitario: '1.10' }).ok, true);
 });
+
+test('importação PNCP na tela de itens: número do item no limite do handler e resposta tratada como em processos.html', () => {
+  const ui = require('../../../itens-processo-ui.js');
+  assert.deepEqual(['1', ' 42 ', '1000000'].map(ui.numeroItemImportacao), [1, 42, 1000000]);
+  for (const v of ['', '0', '-1', '1.5', '01', '1000001', '1e3', 'abc', null]) assert.equal(ui.numeroItemImportacao(v), null, String(v));
+  // Mesma mensagem do handler quando IMPORTACAO_PNCP_LOCAL está desligada.
+  const { criarHandler } = require('../../../netlify/functions/importar-item-pncp.js');
+  return criarHandler({ enabled: () => false })({ httpMethod: 'POST', headers: {}, body: '{}' }).then((r) => {
+    const desligada = ui.respostaImportacao(r.statusCode, JSON.parse(r.body));
+    assert.deepEqual(desligada, { ok: false, texto: ui.MSG.desligada });
+    assert.deepEqual(ui.respostaImportacao(200, { itemId: 'i1', estado: 'inalterado', mensagem: 'x' }), { ok: true, texto: ui.MSG.inalterado });
+    assert.deepEqual(ui.respostaImportacao(200, { itemId: 'i1', estado: 'importado', mensagem: 'Item com origem PNCP armazenado.' }), { ok: true, texto: 'Item com origem PNCP armazenado.' });
+    assert.deepEqual(ui.respostaImportacao(200, { estado: 'importado' }), { ok: false, texto: ui.MSG.erroImportar }, 'sem itemId não conta como importado');
+    assert.deepEqual(ui.respostaImportacao(429, { erro: 'Aguarde sete segundos antes de consultar outro item.' }), { ok: false, texto: 'Aguarde sete segundos antes de consultar outro item.' });
+    assert.deepEqual(ui.respostaImportacao(503, null), { ok: false, texto: ui.MSG.erroImportar });
+    assert.equal(ui.respostaImportacao(409, { erro: 'x'.repeat(900) }).texto.length, 300);
+  });
+});

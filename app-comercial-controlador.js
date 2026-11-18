@@ -47,7 +47,9 @@
   function lerCatalogo(j, accessToken) {
     if (!j || typeof j.userId !== 'string') return { estado: 'erro' };
     const empresas = Array.isArray(j.empresas) ? j.empresas.filter((e) => e && typeof e.empresaId === 'string').map((e) => ({ empresaId: e.empresaId, razaoSocial: typeof e.razaoSocial === 'string' ? e.razaoSocial.trim() : '' })) : [];
-    return { estado: 'ok', sessao: { userId: j.userId, accessToken: accessToken || j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas } };
+    // Certidões e prazos: lista, null (o servidor não conseguiu ler) ou ausente (fonte sem esses blocos, como o QA).
+    const bloco = (v) => (Array.isArray(v) ? v : v === null ? null : undefined);
+    return { estado: 'ok', sessao: { userId: j.userId, accessToken: accessToken || j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas, certidoes: bloco(j.certidoes), prazos: bloco(j.prazos) } };
   }
 
   // Produção (sistema.html): Supabase Auth no navegador, mesmo fluxo do login.html, inclusive recusar e
@@ -187,7 +189,79 @@
       return Number.isNaN(d.getTime()) ? v : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' });
     }
 
+    // Topo do Hoje: certidões vencidas ou vencendo em 30 dias e prazos dos próximos 7 dias. Tudo por textContent.
+    // A situação vai em texto (Atrasado/Atenção) além da cor; a página do harness QA não tem o bloco.
+    function blocoAlerta(id, titulo, itens, vazio, montarItem) {
+      const sec = doc.createElement('section');
+      sec.className = 'app-cartao hoje-alerta';
+      sec.setAttribute('aria-labelledby', id);
+      const h = doc.createElement('h2');
+      h.id = id;
+      h.textContent = titulo;
+      sec.append(h);
+      if (!Array.isArray(itens) || !itens.length) {
+        const p = doc.createElement('p');
+        p.className = 'app-apoio';
+        p.textContent = itens === null ? 'Não foi possível carregar agora. Tente de novo em instantes.' : vazio;
+        sec.append(p);
+        return sec;
+      }
+      const ul = doc.createElement('ul');
+      for (const x of itens) ul.append(montarItem(x));
+      sec.append(ul);
+      return sec;
+    }
+    function linhaAlerta(situacao, rotuloSituacao, principal, detalhe) {
+      const li = doc.createElement('li');
+      li.dataset.situacao = situacao;
+      const selo = doc.createElement('span');
+      selo.className = 'hoje-selo';
+      selo.textContent = rotuloSituacao;
+      const p = doc.createElement('p');
+      p.textContent = principal;
+      const d = doc.createElement('p');
+      d.className = 'hoje-detalhe';
+      d.textContent = detalhe;
+      li.append(selo, p, d);
+      return li;
+    }
+    function renderizarAlertas() {
+      const alvo = el('hoje-alertas');
+      if (!alvo) return;
+      const certidoes = sessao?.certidoes, prazos = sessao?.prazos;
+      alvo.hidden = certidoes === undefined && prazos === undefined;
+      if (alvo.hidden) { alvo.replaceChildren(); return; }
+      const nomes = new Map(empresasAutorizadas().map((e) => [e.empresaId, e.rotulo]));
+      const txt = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+      const filhos = [];
+      if (certidoes !== undefined) filhos.push(blocoAlerta('hoje-certidoes-titulo', 'Certidões vencendo', certidoes, 'Nenhuma certidão vencida ou vencendo nos próximos 30 dias.', (c) => {
+        const vencida = c.situacao === 'vencido';
+        const empresa = nomes.get(c.empresaId) || 'Empresa';
+        const li = linhaAlerta(vencida ? 'atrasado' : 'atencao', vencida ? 'Atrasado' : 'Atenção',
+          [txt(c.tipo, 120) || 'Documento', txt(c.titulo, 200)].filter(Boolean).join(' · '),
+          [empresa, CORE.textoVencimentoCertidao(c.dias, txt(c.vencimento, 10))].filter(Boolean).join(' · '));
+        const href = CORE.linkDocumentos(c.empresaId);
+        if (href) {
+          const a = doc.createElement('a');
+          a.href = href;
+          a.textContent = 'Ver documentos';
+          a.setAttribute('aria-label', 'Ver documentos de ' + empresa);
+          li.append(a);
+        }
+        return li;
+      }));
+      const processos = new Map(autorizados.map((a) => [a.processoId, a.processoRotulo]));
+      if (prazos !== undefined) filhos.push(blocoAlerta('hoje-prazos-titulo', 'Próximos prazos', prazos, 'Nenhum prazo nos próximos 7 dias.', (p) => {
+        const quando = typeof p.vencimento === 'string' ? formatarPrazo(p.vencimento) : '';
+        return linhaAlerta(p.dias <= 1 ? 'atencao' : 'em-dia', CORE.textoDiasPrazo(p.dias),
+          txt(p.titulo, 200) || 'Prazo',
+          [nomes.get(p.empresaId) || (p.empresaId ? 'Empresa' : 'Toda a organização'), processos.get(p.processoId), quando].filter(Boolean).join(' · '));
+      }));
+      alvo.replaceChildren(...filhos);
+    }
+
     function renderizarHoje() {
+      renderizarAlertas();
       el('hoje-lista').replaceChildren(...empresasAutorizadas().map((e) => {
         const bloco = doc.createElement('article');
         bloco.className = 'app-cartao hoje-empresa';
@@ -239,6 +313,7 @@
     // Não é chamada por voltarHoje, selecionar nem troca de processo.
     function limparSessaoVisivel() {
       el('hoje-lista').replaceChildren();
+      el('hoje-alertas')?.replaceChildren();
       atual = null;
       empresasSessao = [];
       novoEmpresaId = null;

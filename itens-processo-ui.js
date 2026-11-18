@@ -5,6 +5,7 @@
 (function (global) {
   'use strict';
   const LIMITE = 999999999999999n; // mesmo limite de escala do kit (decimal() em _kit_documentos.js)
+  // eslint-disable-next-line no-control-regex -- remove caracteres de controle de texto digitado
   const CONTROLE = /[\u0000-\u001f\u007f]/;
   const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
   const MSG = {
@@ -14,7 +15,33 @@
     editando: 'Ao salvar, uma revisão já confirmada desta proposta deixa de valer. Prepare e confirme de novo antes de exportar.',
     divergente: 'Resposta de outro cadastro descartada. Recarregue a página.',
     conexao: 'Não foi possível salvar agora. Tente de novo; o mesmo cadastro não será duplicado.',
+    numeroImportar: 'Informe o número do item no edital (só números, de 1 a 1000000). Ex.: 3',
+    importando: 'Importando item do PNCP…',
+    importado: 'Item importado do PNCP. Informe sua oferta (valor unitário) editando o item.',
+    inalterado: 'Este item já estava importado e não mudou no PNCP. Nada foi alterado.',
+    desligada: 'A importação de itens do PNCP ainda não está ligada. Cadastre o item pelo formulário acima.',
+    erroImportar: 'Não foi possível importar o item. Tente de novo em instantes.',
   };
+  // Mesmo texto que o handler importar-item-pncp devolve quando IMPORTACAO_PNCP_LOCAL não está ligada (503).
+  const ERRO_DESLIGADA = 'Importação rastreável ainda não habilitada.';
+
+  // Número do item no edital, mesmo limite do handler (inteiro de 1 a 1000000). Inválido: null.
+  function numeroItemImportacao(textoDigitado) {
+    const t = typeof textoDigitado === 'string' ? textoDigitado.trim() : '';
+    if (!/^[1-9][0-9]{0,6}$/.test(t)) return null;
+    const n = Number(t);
+    return n <= 1000000 ? n : null;
+  }
+  // Resposta de /api/importar-item-pncp → { ok, texto }. Mensagem do servidor só como texto curto.
+  function respostaImportacao(status, j) {
+    const msg = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 300) : '');
+    if (status === 200 && j && typeof j.itemId === 'string') {
+      if (j.estado === 'inalterado') return { ok: true, texto: MSG.inalterado };
+      return { ok: true, texto: msg(j.mensagem) || MSG.importado };
+    }
+    if (status === 503 && j?.erro === ERRO_DESLIGADA) return { ok: false, texto: MSG.desligada };
+    return { ok: false, texto: msg(j?.erro) || MSG.erroImportar };
+  }
 
   // Decimal canônico, positivo e dentro do limite. Retorna BigInt escalado ou null.
   function decimalPositivo(texto, escala) {
@@ -57,7 +84,6 @@
 
   function montar({ alvo, contexto, requisitar = global.fetch.bind(global), aoSalvar = null }) {
     if (!alvo || !contexto || !UUID.test(contexto.empresaId || '') || !UUID.test(contexto.processoId || '')) throw new Error('Contexto de itens inválido');
-    const doc = alvo.ownerDocument;
     let vivo = true, ocupado = false, edicao = null, tentativa = null, itens = [], cursor = null, maisItens = false, geracao = 0;
     alvo.innerHTML = `<h2 id="itens-titulo" tabindex="-1">Itens do processo</h2>
       <p data-item-estado role="status" aria-live="polite"></p>
@@ -72,7 +98,13 @@
         <p data-item-erros role="alert"></p>
         <div class="itens-acoes"><button type="submit" class="app-primario" data-item-salvar>Salvar item</button><button type="button" data-item-cancelar hidden>Cancelar edição</button></div>
       </form>
-      <div class="itens-acoes"><button type="button" data-item-atualizar>Atualizar itens</button></div>
+      <div class="itens-acoes"><button type="button" data-item-atualizar>Atualizar itens</button><button type="button" data-item-importar-abrir aria-expanded="false" aria-controls="itens-importar">Importar itens do edital (PNCP)</button></div>
+      <form data-item-importar id="itens-importar" class="itens-importar" hidden novalidate>
+        <label>Número do item no edital <input name="numeroItem" inputmode="numeric" pattern="[0-9]*" maxlength="7" autocomplete="off" placeholder="Ex.: 3"></label>
+        <p class="itens-importar-ajuda">Um item por vez, direto do PNCP. Aguarde alguns segundos entre uma importação e outra.</p>
+        <p data-item-importar-estado role="status" aria-live="polite"></p>
+        <div class="itens-acoes"><button type="submit" class="app-primario" data-item-importar-enviar>Importar este item</button></div>
+      </form>
       <div data-item-lista></div>
       <button type="button" data-item-mais hidden>Carregar mais itens</button>`;
     const el = (s) => alvo.querySelector(s);
@@ -84,7 +116,7 @@
       const c = campos(), t = totalCentavos(c.quantidade, c.valorUnitario);
       el('[data-item-total]').textContent = t === null ? 'Total do item: informe quantidade e valor válidos.' : `Total do item: ${reais(t)}`;
     }
-    function bloquear(v) { ocupado = v; el('[data-item-salvar]').disabled = v; el('[data-item-atualizar]').disabled = v; el('[data-item-mais]').disabled = v; }
+    function bloquear(v) { ocupado = v; el('[data-item-salvar]').disabled = v; el('[data-item-atualizar]').disabled = v; el('[data-item-mais]').disabled = v; el('[data-item-importar-enviar]').disabled = v; }
 
     function renderLista() {
       el('[data-item-lista]').innerHTML = itens.length
@@ -155,6 +187,32 @@
       el('[data-item-cancelar]').hidden = false; atualizarTotal(); estado(MSG.editando, 'vazio');
       el('#itens-titulo')?.focus?.();
     }
+    // Importação PNCP: mesmo endpoint e regra de processos.html; o servidor confere empresa, processo e vínculo.
+    const formImportar = el('[data-item-importar]');
+    // Retorno ao lado do botão: no celular o topo do cartão fica fora da tela.
+    function avisoImportar(t, tipo) { const p = el('[data-item-importar-estado]'); p.textContent = t || ''; p.dataset.situacao = tipo || ''; }
+    async function importar(ev) {
+      ev.preventDefault();
+      if (ocupado || !vivo) return;
+      const numeroItem = numeroItemImportacao(formImportar.elements.numeroItem.value);
+      if (numeroItem === null) { avisoImportar(MSG.numeroImportar, 'erro'); formImportar.elements.numeroItem.focus?.(); return; }
+      const g = geracao; bloquear(true); avisoImportar(MSG.importando, 'carregando');
+      let r = null, j = null;
+      try {
+        r = await requisitar('/api/importar-item-pncp', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ empresaId: contexto.empresaId, processoId: contexto.processoId, numeroItem }) });
+        j = await r.json().catch(() => null);
+      } catch { r = null; }
+      if (!vivo || g !== geracao) return;
+      bloquear(false);
+      if (!r) { avisoImportar(MSG.erroImportar, 'erro'); return; }
+      const resultado = respostaImportacao(r.status, j);
+      if (!resultado.ok) { avisoImportar(resultado.texto, 'erro'); return; }
+      formImportar.reset();
+      avisoImportar(resultado.texto, 'ok');
+      if (typeof aoSalvar === 'function') { try { aoSalvar(); } catch { /* sem efeito na importação */ } }
+      await carregar({ reiniciar: true });
+    }
     function cancelarEdicao() { edicao = null; tentativa = null; form.reset(); el('[data-item-cancelar]').hidden = true; atualizarTotal(); estado('', ''); }
 
     form.addEventListener('submit', salvar);
@@ -162,6 +220,12 @@
     el('[data-item-cancelar]').addEventListener('click', cancelarEdicao);
     el('[data-item-atualizar]').addEventListener('click', () => { void carregar({ reiniciar: true }); });
     el('[data-item-mais]').addEventListener('click', () => { void carregar({ reiniciar: false }); });
+    el('[data-item-importar-abrir]').addEventListener('click', (ev) => {
+      formImportar.hidden = !formImportar.hidden;
+      ev.currentTarget.setAttribute('aria-expanded', String(!formImportar.hidden));
+      if (!formImportar.hidden) formImportar.elements.numeroItem.focus?.();
+    });
+    formImportar.addEventListener('submit', importar);
     alvo.addEventListener('click', (ev) => {
       const b = ev.target && ev.target.closest ? ev.target.closest('button[data-item-editar]') : null;
       if (b) editar(b.dataset.itemEditar);
@@ -175,7 +239,7 @@
     };
   }
 
-  const api = { montar, validarItemCampos, totalCentavos, reais, decimalPositivo, MSG };
+  const api = { montar, validarItemCampos, totalCentavos, reais, decimalPositivo, numeroItemImportacao, respostaImportacao, MSG };
   global.LicitaItensProcesso = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

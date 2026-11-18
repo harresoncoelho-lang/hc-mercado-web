@@ -163,3 +163,60 @@ test('com pedirLogin (produção), cair no login redireciona com o motivo; tela 
   await aprovado.ctrl.sair();
   assert.deepEqual(aprovado.logins, ['Sessão encerrada.']);
 });
+
+// Topo do Hoje: certidões e prazos chegam do mesmo catálogo e viram texto (textContent), com a situação escrita.
+const EMP = 'aaaaaaaa-0000-4000-8000-000000000002';
+const textos = (n) => [n.textContent, ...(n.filhos || []).flatMap(textos)].filter(Boolean);
+const links = (n) => [...(n.href ? [n.href] : []), ...(n.filhos || []).flatMap(links)];
+
+test('Hoje mostra certidões vencidas/vencendo e próximos prazos, com situação em texto e link para documentos', async () => {
+  const dom = criarDom();
+  const C = carregar();
+  const { cliente } = criarCliente();
+  const catalogo = { userId: 'u1', empresas: [{ empresaId: EMP, razaoSocial: 'Empresa A' }], contextos: [{ empresaId: EMP, processoId: 'pa', numero: '1' }],
+    certidoes: [{ empresaId: EMP, tipo: '<b>CND</b>', titulo: '', vencimento: '2026-11-10', dias: -8, situacao: 'vencido' }, { empresaId: EMP, tipo: 'FGTS', titulo: 'CRF', vencimento: '2026-12-01', dias: 13, situacao: 'vencendo' }],
+    prazos: [{ origem: 'processo', empresaId: EMP, processoId: 'pa', categoria: 'proposta', titulo: 'Prazo de propostas', vencimento: '2026-11-19T13:00:00+00:00', dias: 1 }] };
+  const fetch = async (url, op) => (url === '/api/contextos-operacao' && op.headers.Authorization === 'Bearer TOKEN-1' ? resposta(200, catalogo) : resposta(404, {}));
+  const ctrl = C.criarControlador({ doc: dom, fetch, storage: null, autenticacao: C.criarAutenticacaoSupabase({ cliente, fetch }), kit: { montar: () => ({ fechar() {} }) }, identificacao: { montar: () => ({ abrir() {}, limpar() {} }) } });
+  await ctrl.entrar('operador@example.invalid', 'x');
+  const alvo = dom.getElementById('hoje-alertas');
+  assert.equal(alvo.hidden, false);
+  const t = textos(alvo);
+  assert.ok(t.includes('Certidões vencendo') && t.includes('Próximos prazos'));
+  assert.ok(t.includes('<b>CND</b>'), 'texto do banco vai como texto, sem virar HTML');
+  assert.ok(t.includes('Atrasado') && t.includes('Atenção'));
+  assert.ok(t.includes('Empresa A · Vencida há 8 dias (10/11/2026)'));
+  assert.ok(t.includes('Empresa A · Vence em 13 dias (01/12/2026)'));
+  assert.ok(t.includes('Amanhã') && t.includes('Prazo de propostas'));
+  assert.deepEqual(links(alvo), ['operacao.html?aba=documentos&empresa=' + EMP, 'operacao.html?aba=documentos&empresa=' + EMP]);
+});
+
+test('bloco que o servidor não leu (null) avisa; catálogo sem os blocos (QA) esconde o topo', async () => {
+  const C = carregar();
+  const dom = criarDom();
+  const { cliente } = criarCliente();
+  const catalogo = { userId: 'u1', empresas: [{ empresaId: EMP, razaoSocial: 'Empresa A' }], contextos: [], certidoes: null, prazos: [] };
+  const fetch = async () => resposta(200, catalogo);
+  const ctrl = C.criarControlador({ doc: dom, fetch, storage: null, autenticacao: C.criarAutenticacaoSupabase({ cliente, fetch }), kit: { montar: () => ({ fechar() {} }) }, identificacao: { montar: () => ({ abrir() {}, limpar() {} }) } });
+  await ctrl.entrar('operador@example.invalid', 'x');
+  const t = textos(dom.getElementById('hoje-alertas'));
+  assert.ok(t.includes('Não foi possível carregar agora. Tente de novo em instantes.'));
+  assert.ok(t.includes('Nenhum prazo nos próximos 7 dias.'));
+  const semBlocos = criarDom();
+  const fetch2 = async () => resposta(200, { ...catalogo, certidoes: undefined, prazos: undefined });
+  const ctrl2 = C.criarControlador({ doc: semBlocos, fetch: fetch2, storage: null, autenticacao: C.criarAutenticacaoSupabase({ cliente, fetch: fetch2 }), kit: { montar: () => ({ fechar() {} }) }, identificacao: { montar: () => ({ abrir() {}, limpar() {} }) } });
+  await ctrl2.entrar('operador@example.invalid', 'x');
+  assert.equal(semBlocos.getElementById('hoje-alertas').hidden, true);
+});
+
+test('textos de situação: dias inválidos não viram texto; link só com uuid', () => {
+  const contexto = { globalThis: {} };
+  vm.runInNewContext(fs.readFileSync(path.join(raiz, 'app-comercial-core.js'), 'utf8'), contexto);
+  const core = contexto.globalThis.LicitaPlenaComercialCore;
+  assert.equal(core.textoVencimentoCertidao(-1, '2026-11-17'), 'Vencida há 1 dia (17/11/2026)');
+  assert.equal(core.textoVencimentoCertidao(0, 'x'), 'Vence hoje');
+  assert.equal(core.textoVencimentoCertidao('3', '2026-11-21'), '');
+  assert.deepEqual([0, 1, 7, -1, 1.5].map(core.textoDiasPrazo), ['Hoje', 'Amanhã', 'Em 7 dias', '', '']);
+  assert.equal(core.linkDocumentos(EMP), 'operacao.html?aba=documentos&empresa=' + EMP);
+  assert.equal(core.linkDocumentos('../x'), null);
+});

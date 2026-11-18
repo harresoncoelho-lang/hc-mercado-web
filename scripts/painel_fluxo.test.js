@@ -133,3 +133,40 @@ test("endereço #seção só abre seções que existem no menu", () => {
   assert.equal(secaoDoHash("#%E0%A4%A", alvos), null, "hash malformado não quebra a página");
   assert.equal(secaoDoHash("#__proto__", alvos), null);
 });
+
+// Cartão acompanhado (Boletim, Encontrar Licitações e Funil) → processo no sistema.
+const codigoLink = html.match(/ {2}function linkSistemaProcesso\(empresaId, processoId\) \{[\s\S]*?\n {2}\}/)[0];
+const codigoLinkCard = html.match(/ {2}function atualizarLinkSistemaCard\(card, statusMapa, kanbanMapa\) \{[\s\S]*?\n {2}\}/)[0];
+
+test("link 'Abrir no sistema' só sai com empresa e processo uuid", () => {
+  const contexto = vm.createContext({});
+  vm.runInContext(codigoLink, contexto);
+  const E = "aaaaaaaa-0000-4000-8000-000000000001", P = "bbbbbbbb-0000-4000-8000-000000000002";
+  assert.equal(contexto.linkSistemaProcesso(E, P), `/sistema?empresa=${E}&processo=${P}`);
+  for (const [e, p] of [[E, null], [null, P], [E, "x&processo=y"], ["../painel", P], [E, 123], [E, ` ${P}`]]) {
+    assert.equal(contexto.linkSistemaProcesso(e, p), null);
+  }
+});
+
+test("cartão ganha o link só quando acompanhado pela empresa ativa com processo salvo; sem status o link sai", () => {
+  const E = "aaaaaaaa-0000-4000-8000-000000000001", P = "bbbbbbbb-0000-4000-8000-000000000002";
+  const criados = [];
+  const contexto = vm.createContext({
+    empresaOperacionalId: E, empresaAcompanhamentoPronta: true,
+    document: { createElement: () => { const a = { removido: false, remove() { this.removido = true; } }; criados.push(a); return a; } },
+  });
+  vm.runInContext(codigoLink + codigoLinkCard, contexto);
+  let link = null;
+  const acoes = { append: (a) => { link = a; } };
+  const card = { dataset: { id: "ed1" }, querySelector: (s) => (s === ".link-sistema" ? (link && !link.removido ? link : null) : acoes) };
+  contexto.atualizarLinkSistemaCard(card, { ed1: "interesse" }, { ed1: { processoId: P } });
+  assert.equal(link.href, `/sistema?empresa=${E}&processo=${P}`);
+  assert.equal(link.textContent, "Abrir no sistema");
+  contexto.atualizarLinkSistemaCard(card, {}, { ed1: { processoId: P } });
+  assert.equal(link.removido, true, "tirou do acompanhamento, o link some");
+  contexto.atualizarLinkSistemaCard(card, { ed1: "interesse" }, {});
+  assert.equal(criados.length, 1, "sem processo salvo não cria link");
+  contexto.empresaAcompanhamentoPronta = false;
+  contexto.atualizarLinkSistemaCard(card, { ed1: "interesse" }, { ed1: { processoId: P } });
+  assert.equal(criados.length, 1, "empresa ainda carregando não mostra link");
+});

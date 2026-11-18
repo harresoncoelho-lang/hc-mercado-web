@@ -105,6 +105,34 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .app-botao-link{display:inline-flex;align-items:center;min-height:44px;padding:var(--space-8) var(--space-16);border-radius:var(--radius-control);border:1px solid var(--action-strong);font:var(--text-body);font-weight:600;text-decoration:none}
 .app-botao-link:hover{background:var(--action-strong-hover);border-color:var(--action-strong-hover)}
 
+/* Topo do Hoje: certidões vencendo e próximos prazos. Situação em texto (selo) e cor; só tokens do DS. */
+.hoje-alertas{display:grid;gap:var(--space-16);margin-top:var(--space-16)}
+.hoje-alertas[hidden]{display:none}
+.hoje-alerta{max-width:none;min-width:0}
+.hoje-alerta h2{font:var(--text-section);color:var(--text-primary);margin:0 0 var(--space-8)}
+.hoje-alerta ul{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-8)}
+.hoje-alerta li{display:grid;grid-template-columns:auto 1fr;gap:var(--space-4) var(--space-8);align-items:baseline;padding:var(--space-8) 0;border-top:1px solid var(--border-default);min-width:0}
+.hoje-alerta li:first-child{border-top:0}
+.hoje-alerta li p{margin:0;font:var(--text-body);color:var(--text-primary);overflow-wrap:anywhere;min-width:0}
+.hoje-alerta li .hoje-detalhe,.hoje-alerta li a{grid-column:2}
+.hoje-alerta li .hoje-detalhe{color:var(--text-secondary)}
+.hoje-alerta li a{color:var(--action-text);display:inline-flex;align-items:center;min-height:44px;width:max-content}
+.hoje-selo{padding:2px var(--space-8);border-radius:999px;border:1px solid var(--success-border);background:var(--success-bg);color:var(--success-text);font:var(--text-label);white-space:nowrap}
+.hoje-alerta li[data-situacao="atencao"] .hoje-selo{border-color:var(--attention-border);background:var(--attention-bg);color:var(--attention-text)}
+.hoje-alerta li[data-situacao="atrasado"] .hoje-selo{border-color:var(--error-border);background:var(--error-bg);color:var(--error-text)}
+@media (min-width:641px){
+  .hoje-alertas{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));max-width:960px}
+}
+
+/* Importação de item do PNCP dentro de Itens do processo. */
+.itens-importar{display:grid;gap:var(--space-8);margin-top:var(--space-12);padding:var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control)}
+.itens-importar[hidden]{display:none}
+.itens-importar-ajuda{margin:0;font:var(--text-body);color:var(--text-secondary)}
+.itens-importar [data-item-importar-estado]{margin:0;font:var(--text-body);color:var(--text-secondary);overflow-wrap:anywhere}
+.itens-importar [data-item-importar-estado]:empty{display:none}
+.itens-importar [data-situacao="erro"]{color:var(--error-text)}
+.itens-importar [data-situacao="ok"]{color:var(--success-text)}
+
 /* Identificação da empresa (empresa-identificacao-ui.js). Markup real: #identificacao > details > summary, p, p[role=status], label+campo em pares, select, input file, botões .defesa-botao, div de sugestões, checkbox e label.
    Desktop (641px+): duas colunas label | campo; textos, botões, arquivo, tipo e sugestões ocupam a largura toda; checkbox e label ficam na mesma linha.
    Mobile: uma coluna, rótulo acima do campo; checkbox e label na mesma linha.

@@ -773,6 +773,7 @@
   }
   .btn-ia-edital:hover { background: rgba(46,141,255,0.22); }
   .btn-ia-edital:disabled { opacity: 0.6; cursor: default; }
+  a.btn-ia-edital { display: inline-flex; align-items: center; text-decoration: none; }
   .boletim-itens { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--borda); }
   .itens-vazio { color: var(--texto-fraco); font-size: 12.5px; margin: 0; }
   .itens-licitacao-lista { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
@@ -874,6 +875,11 @@
     flex: 1; font-size: 11px; font-weight: 700; padding: 6px 4px; border-radius: 7px;
     border: 1px solid var(--borda); background: var(--fundo-fraco); color: var(--texto); cursor: pointer;
   }
+  .kanban-btn-sistema {
+    display: block; margin-top: 10px; padding: 8px; border-radius: 7px; text-align: center; text-decoration: none;
+    background: rgba(46,141,255,0.12); border: 1px solid rgba(46,141,255,0.4); color: var(--azul-texto); font-size: 12px; font-weight: 700;
+  }
+  .kanban-btn-sistema:hover { background: rgba(46,141,255,0.22); }
   .kanban-card-acoes button:hover { border-color: var(--azul); color: var(--azul-texto); }
   .kanban-card-remover { background: none; border: none; color: var(--texto-fraco); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
   .kanban-card-remover:hover { color: var(--vermelho-texto); }
@@ -4639,10 +4645,12 @@
   // Guarda os dados necessários pra desenhar o card no Kanban mesmo depois que a licitação
   // sair do boletim do dia (o boletim só mostra as últimas 24-48h, mas o acompanhamento
   // precisa continuar existindo até o usuário decidir tirar).
-  function salvarSnapshotKanban(id, edital, empresaId = empresaOperacionalId) {
+  function salvarSnapshotKanban(id, edital, empresaId = empresaOperacionalId, processoId = null) {
     if (!edital) return;
     const mapa = lerMapa("kanban-editais", empresaId);
     mapa[id] = {
+      // Id do processo em operacao_processos (do upsert ou da carga da empresa): monta o link "Abrir no sistema".
+      processoId: processoId || mapa[id]?.processoId || null,
       objeto: edital.objeto || "",
       orgao: edital.orgao || "",
       municipio: edital.municipio || "",
@@ -4850,10 +4858,32 @@
     if (processo.decisao === "participar" || !["triagem"].includes(processo.status)) return "participando";
     return "interesse";
   }
+  // Link direto para o processo no sistema. Não concede acesso: o sistema.html confere o par no catálogo do usuário.
+  function linkSistemaProcesso(empresaId, processoId) {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof empresaId !== "string" || typeof processoId !== "string" || !uuid.test(empresaId) || !uuid.test(processoId)) return null;
+    return `/sistema?empresa=${encodeURIComponent(empresaId)}&processo=${encodeURIComponent(processoId)}`;
+  }
+  // "Abrir no sistema" só no cartão já acompanhado pela empresa ativa e com o processo salvo no mapa.
+  function atualizarLinkSistemaCard(card, statusMapa, kanbanMapa) {
+    const id = card.dataset.id;
+    const href = empresaAcompanhamentoPronta && statusMapa[id] ? linkSistemaProcesso(empresaOperacionalId, kanbanMapa[id]?.processoId) : null;
+    let link = card.querySelector(".link-sistema");
+    if (!href) { link?.remove(); return; }
+    if (!link) {
+      link = document.createElement("a");
+      link.className = "btn-ia-edital link-sistema";
+      link.textContent = "Abrir no sistema";
+      card.querySelector(".boletim-acoes-principais")?.append(link);
+    }
+    link.href = href;
+  }
   function atualizarStatusAcompanhamentoNaTela() {
     const status = lerMapa("status-licitacao");
     const anotacoes = lerMapa("anotacoes-licitacao");
+    const kanban = lerMapa("kanban-editais");
     document.querySelectorAll(".boletim-card").forEach(card => {
+      atualizarLinkSistemaCard(card, status, kanban);
       const seletor = card.querySelector(".select-status-licitacao");
       const anotacao = card.querySelector(".anotacao-licitacao");
       if (seletor) { seletor.value = status[card.dataset.id] || ""; seletor.disabled = !empresaAcompanhamentoPronta; }
@@ -4894,7 +4924,7 @@
       if (!valor) continue;
       status[id] = valor;
       snapshots[id] = {
-        ...(anteriores[id] || {}), objeto: processo.objeto || "", orgao: processo.orgao || "",
+        ...(anteriores[id] || {}), processoId: processo.id, objeto: processo.objeto || "", orgao: processo.orgao || "",
         numeroControlePNCP: /^\d{14}-\d-\d+\/\d{4}$/.test(id) ? id : (anteriores[id]?.numeroControlePNCP || null),
         link: processo.url_origem || anteriores[id]?.link || null,
         modalidade: processo.modalidade || null, fonte: processo.sistema || null,
@@ -4979,7 +5009,7 @@
       const resultado = await agendarSincronizacaoDossie(id, edital, status, true, empresaId);
       empresaNome = resultado?.empresa || empresaNome;
       definirNoMapa("status-licitacao", id, status, empresaId);
-      salvarSnapshotKanban(id, edital, empresaId);
+      salvarSnapshotKanban(id, edital, empresaId, resultado?.id);
     } else {
       const { organizacaoId } = await empresaOperacionalParaDossie(empresaId);
       const { error } = await window.__sbClient.from("operacao_processos").update({ status: "arquivado", atualizado_em: new Date().toISOString() })
@@ -5078,6 +5108,7 @@
 
   function montarCardKanban(id, edital, valorStatus, anotacaoAtual) {
     const classePrazo = classePrazoKanban(edital.encerramento);
+    const linkSistema = linkSistemaProcesso(empresaOperacionalId, edital.processoId);
     const prazoHtml = edital.encerramento
       ? `<span class="kanban-card-prazo ${classePrazo || ""}"><svg class='icone-ph'><use href='#ph-timer'></use></svg> ${escapeHtml([textoPrazo(edital.encerramento), formatarPrazoPropostas(edital.encerramento).split(" (")[0]].filter(Boolean).join(" · "))}</span>`
       : "";
@@ -5098,6 +5129,7 @@
         ${prazoHtml}
         <select class="kanban-card-mover" data-id="${escapeHtml(id)}" title="Mover para outra coluna">${opcoesMoverHtml}</select>
         <textarea class="kanban-card-anotacao" data-id="${escapeHtml(id)}" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual || "")}</textarea>
+        ${linkSistema ? `<a class="kanban-btn-sistema" href="${escapeHtml(linkSistema)}">Abrir no sistema</a>` : ""}
         <div class="kanban-card-acoes">
           <button type="button" class="kanban-btn-dossie" data-id="${escapeHtml(id)}">Dossiê</button>
           <button type="button" class="kanban-btn-resumir" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumo</button>
@@ -6151,6 +6183,8 @@
         if (resultados[idx]) salvarSnapshotKanban(id, resultados[idx]);
       }
     });
+    const kanbanMapaAtual = lerMapa("kanban-editais");
+    container.querySelectorAll(".boletim-card").forEach((card) => atualizarLinkSistemaCard(card, statusMapaAtual, kanbanMapaAtual));
     container.querySelectorAll(".boletim-card").forEach((card) => {
       const id = card.dataset.id;
       const btnFav = card.querySelector(".btn-favoritar");

@@ -9,6 +9,9 @@
 // - Processo arquivado não entra (status 'arquivado', mesmo valor do painel.html).
 // - Devolve os campos de exibição (número, objeto, status, prazo) para o Hoje montar a lista com uma requisição só;
 //   o controlador confirma o processo no kit-documentos (acao consultar) só quando o usuário o abre.
+// - Certidões vencidas ou vencendo em até 30 dias e prazos/agenda dos próximos 7 dias, contados pelo dia de Brasília,
+//   com o mesmo token e o mesmo vínculo. Falha (ou limite de linhas) num desses blocos devolve o bloco como null,
+//   nunca lista truncada, e não derruba o catálogo.
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
 const ANON='sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb';
@@ -19,6 +22,23 @@ const emLista=ids=>'('+ids.join(',')+')';
 const uuid=v=>typeof v==='string'&&UUID.test(v);
 // Exibição: sempre string, com teto (mesmos limites do cadastro de processo para número e objeto).
 const texto=(v,max)=>typeof v==='string'?v.slice(0,max):'';
+// Brasília é UTC-3 fixo (sem horário de verão desde 2019), mesma conta do painel.html (diaBrasilia).
+const MS_DIA=864e5,FUSO_BR=-3*36e5,DIAS_CERTIDAO=30,DIAS_PRAZO=7;
+const diaBrasilia=ms=>Math.floor((ms+FUSO_BR)/MS_DIA);
+// vencimento de documento é coluna date (AAAA-MM-DD). Vencido (<0), até 30 dias ou fora (null).
+function situacaoCertidao(vencimento,hoje){
+ if(typeof vencimento!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(vencimento))return null;
+ const dias=Math.floor(Date.parse(vencimento+'T00:00:00Z')/MS_DIA)-hoje;
+ if(!Number.isFinite(dias)||dias>DIAS_CERTIDAO)return null;
+ return {dias,situacao:dias<0?'vencido':'vencendo'};
+}
+// vencimento de prazo/agenda é timestamptz. Dias de 0 (hoje) a 7 no calendário de Brasília; fora disso, null.
+function diasDoPrazo(vencimento,hoje){
+ const ms=typeof vencimento==='string'?Date.parse(vencimento):NaN;
+ if(!Number.isFinite(ms))return null;
+ const dias=diaBrasilia(ms)-hoje;
+ return dias>=0&&dias<=DIAS_PRAZO?dias:null;
+}
 
 exports.handler=async event=>{
  // no-store: a resposta é o catálogo privado do usuário e não pode ficar em cache intermediário.
@@ -44,7 +64,7 @@ exports.handler=async event=>{
 
   const membros=(await ler(`operacao_membros?usuario_id=eq.${userId}&papel=in.${emLista(PAPEIS_ACESSO)}&select=usuario_id,organizacao_id,empresa_id,papel`))
    .filter(m=>m&&m.usuario_id===userId&&PAPEIS_ACESSO.includes(m.papel)&&uuid(m.organizacao_id));
-  const vazio={userId,empresas:[],contextos:[]};
+  const vazio={userId,empresas:[],contextos:[],certidoes:[],prazos:[]};
   const organizacoes=[...new Set(membros.map(m=>m.organizacao_id))];
   if(!organizacoes.length)return resposta(200,vazio);
 
@@ -57,8 +77,31 @@ exports.handler=async event=>{
   // Processo só entra se a empresa autorizada e a organização baterem; linha extra da fonte nunca entra.
   const contextos=processos.filter(p=>p&&uuid(p.id)&&p.status!=='arquivado'&&porId.get(p.empresa_id)?.organizacao_id===p.organizacao_id)
    .map(p=>({empresaId:p.empresa_id,processoId:p.id,numero:texto(p.numero,60),objeto:texto(p.objeto,500),status:texto(p.status,40),prazo:texto(p.data_sessao,40)}));
-  return resposta(200,{userId,empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos});
+  const hoje=diaBrasilia(Date.now());
+  const inicio=new Date(hoje*MS_DIA-FUSO_BR).toISOString(),fim=new Date((hoje+DIAS_PRAZO+1)*MS_DIA-FUSO_BR).toISOString();
+  const limiteCertidao=new Date((hoje+DIAS_CERTIDAO)*MS_DIA).toISOString().slice(0,10);
+  const bloco=async fn=>{try{return await fn();}catch{return null;}};
+  const empresaOk=(empresaId,org)=>porId.get(empresaId)?.organizacao_id===org;
+  const certidoes=await bloco(async()=>(await ler(`operacao_documentos?empresa_id=in.${emLista([...porId.keys()])}&vencimento=lte.${limiteCertidao}&select=id,empresa_id,organizacao_id,tipo,titulo,vencimento&order=vencimento`))
+   .filter(d=>d&&uuid(d.id)&&empresaOk(d.empresa_id,d.organizacao_id))
+   .flatMap(d=>{const s=situacaoCertidao(d.vencimento,hoje);return s?[{empresaId:d.empresa_id,tipo:texto(d.tipo,120),titulo:texto(d.titulo,200),vencimento:d.vencimento,...s}]:[];}));
+  const porProcesso=new Map(contextos.map(c=>[c.processoId,c]));
+  const janela=`vencimento=gte.${inicio}&vencimento=lt.${fim}&concluido_em=is.null&order=vencimento`;
+  const prazos=await bloco(async()=>{
+   const doProcesso=(await ler(`operacao_prazos_processo?organizacao_id=in.${emLista(organizacoes)}&${janela}&select=id,organizacao_id,processo_id,categoria,titulo,vencimento,concluido_em`))
+    .filter(p=>p&&uuid(p.id)&&!p.concluido_em&&porProcesso.has(p.processo_id)&&empresaOk(porProcesso.get(p.processo_id).empresaId,p.organizacao_id))
+    .map(p=>({origem:'processo',empresaId:porProcesso.get(p.processo_id).empresaId,processoId:p.processo_id,categoria:texto(p.categoria,40),titulo:texto(p.titulo,200),vencimento:p.vencimento,dias:diasDoPrazo(p.vencimento,hoje)}));
+   // Agenda sem empresa vale para a organização inteira: só aparece para quem é membro da organização toda.
+   const daAgenda=(await ler(`operacao_agenda?organizacao_id=in.${emLista(organizacoes)}&${janela}&select=id,organizacao_id,empresa_id,categoria,titulo,vencimento,concluido_em`))
+    .filter(a=>a&&uuid(a.id)&&!a.concluido_em&&(a.empresa_id===null?membros.some(m=>m.organizacao_id===a.organizacao_id&&m.empresa_id===null):empresaOk(a.empresa_id,a.organizacao_id)))
+    .map(a=>({origem:'agenda',empresaId:a.empresa_id,processoId:null,categoria:texto(a.categoria,40),titulo:texto(a.titulo,200),vencimento:a.vencimento,dias:diasDoPrazo(a.vencimento,hoje)}));
+   return [...doProcesso,...daAgenda].filter(p=>p.dias!==null).sort((a,b)=>Date.parse(a.vencimento)-Date.parse(b.vencimento));
+  });
+  return resposta(200,{userId,empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos,certidoes,prazos});
  }catch{
   return resposta(503,{erro:'Não foi possível carregar suas empresas agora. Tente de novo em instantes.'});
  }
 };
+exports.situacaoCertidao=situacaoCertidao;
+exports.diasDoPrazo=diasDoPrazo;
+exports.diaBrasilia=diaBrasilia;

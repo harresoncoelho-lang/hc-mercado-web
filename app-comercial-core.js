@@ -109,6 +109,23 @@
     return UUID.test(empresaId) && UUID.test(processoId) ? { empresaId, processoId } : null;
   }
 
+  // Textos de situação do Hoje (dias já contados pelo servidor no calendário de Brasília). Número inválido não vira texto.
+  const plural = (n) => n + (n === 1 ? ' dia' : ' dias');
+  function textoVencimentoCertidao(dias, data) {
+    if (!Number.isInteger(dias)) return '';
+    const quando = /^\d{4}-\d{2}-\d{2}$/.test(data || '') ? ' (' + data.split('-').reverse().join('/') + ')' : '';
+    if (dias < 0) return 'Vencida há ' + plural(-dias) + quando;
+    return (dias === 0 ? 'Vence hoje' : 'Vence em ' + plural(dias)) + quando;
+  }
+  function textoDiasPrazo(dias) {
+    if (!Number.isInteger(dias) || dias < 0) return '';
+    return dias === 0 ? 'Hoje' : dias === 1 ? 'Amanhã' : 'Em ' + plural(dias);
+  }
+  // Aba real de operacao.html (data-aba="documentos"); ?empresa= escolhe a empresa se ela estiver no acesso do usuário.
+  function linkDocumentos(empresaId) {
+    return typeof empresaId === 'string' && UUID.test(empresaId) ? 'operacao.html?aba=documentos&empresa=' + encodeURIComponent(empresaId) : null;
+  }
+
   // Cadastro de processo: validação de campos no navegador (o servidor valida de novo e é a fonte final).
   const LIMITES_PROCESSO = { objetoMin: 3, objetoMax: 500, numeroMax: 60, orgaoMax: 200, modalidadeMax: 60 };
   // eslint-disable-next-line no-control-regex -- o objetivo é justamente recusar caracteres de controle.
@@ -134,6 +151,6 @@
     return h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-8' + h.slice(17, 20) + '-' + h.slice(20, 32);
   }
 
-  const api = { CHAVE_EMPRESA, CHAVE_PREFERENCIA_ANTIGA, CHAVE_TEMA, CHAVE_TEMA_ANTIGA, lerTema, lerLinkDireto, MSG_LOGIN, MSG_SEM_CONTEXTO, MSG_SESSAO_ENCERRADA, autorizarContextos, contextosDoCatalogo, escolherContexto, lerPreferencia, gravarPreferencia, validarProcessoNovo, novaTentativaId, LIMITES_PROCESSO };
+  const api = { CHAVE_EMPRESA, CHAVE_PREFERENCIA_ANTIGA, CHAVE_TEMA, CHAVE_TEMA_ANTIGA, lerTema, lerLinkDireto, MSG_LOGIN, MSG_SEM_CONTEXTO, MSG_SESSAO_ENCERRADA, autorizarContextos, contextosDoCatalogo, escolherContexto, lerPreferencia, gravarPreferencia, validarProcessoNovo, novaTentativaId, LIMITES_PROCESSO, textoVencimentoCertidao, textoDiasPrazo, linkDocumentos };
   global.LicitaPlenaComercialCore = api;
 })(globalThis);
