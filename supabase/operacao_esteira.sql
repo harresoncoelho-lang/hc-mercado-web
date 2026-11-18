@@ -67,6 +67,8 @@ declare
  n int := 0;
  v_venc timestamptz;
  cat record;
+ v_primeira boolean;
+ v_interesse boolean;
 begin
  -- (a) Premissas padrão só quando as 5 do processo estão vazias; digitada à mão nunca é sobrescrita.
  if new.frete is null and new.tributos_percentual is null and new.garantia_percentual is null
@@ -109,14 +111,30 @@ begin
   end loop;
  end if;
 
- -- (c) Tarefas do robô e o edital na fila com a maior prioridade.
+ -- (c) Tarefas do robô e o edital na fila. Primeira entrada = o processo ainda não tinha tarefas
+ -- (INSERT ou primeira vez no Funil); troca de status depois disso não sobe prioridade de novo.
+ -- Serializa a mesma organização para a contagem do teto não furar com inserções paralelas.
+ perform pg_advisory_xact_lock(hashtext('esteira:' || new.organizacao_id::text));
+ v_primeira := not exists (select 1 from public.operacao_esteira_tarefas t where t.processo_id = new.id);
  insert into public.operacao_esteira_tarefas (organizacao_id, empresa_id, processo_id, etapa, criado_por)
- select new.organizacao_id, new.empresa_id, new.id, e, coalesce(new.criado_por, auth.uid())
+ select new.organizacao_id, new.empresa_id, new.id, e, coalesce(auth.uid(), new.criado_por)
    from unnest(array['itens', 'exigencias', 'cruzamento']) e
  on conflict do nothing;
- insert into public.fila_dossies (numero_controle_pncp, origem) values (new.origem_externa_id, 'interesse')
- on conflict (numero_controle_pncp) do update set origem = 'interesse'
-  where public.fila_dossies.origem <> 'interesse';
+ -- 'interesse' (lê todos os anexos, passa à frente na IA) só para edital que o robô coletou e com teto
+ -- de 20 processos novos por organização em 24 h; fora disso entra como 'clique', sem rebaixar quem já está.
+ v_interesse := v_primeira and (select count(distinct t.processo_id) from public.operacao_esteira_tarefas t
+   where t.organizacao_id = new.organizacao_id and t.criado_em > now() - interval '1 day') <= 20;
+ if v_interesse and to_regclass('public.oportunidades_abertas') is not null then
+  v_interesse := exists (select 1 from public.oportunidades_abertas o where o.numero_controle_pncp = new.origem_externa_id);
+ end if;
+ if v_interesse then
+  insert into public.fila_dossies (numero_controle_pncp, origem) values (new.origem_externa_id, 'interesse')
+  on conflict (numero_controle_pncp) do update set origem = 'interesse'
+   where public.fila_dossies.origem <> 'interesse';
+ else
+  insert into public.fila_dossies (numero_controle_pncp, origem) values (new.origem_externa_id, 'clique')
+  on conflict (numero_controle_pncp) do nothing;
+ end if;
  return null;
 end $$;
 revoke all on function public.iniciar_esteira_processo() from public, anon, authenticated, service_role;
@@ -126,6 +144,18 @@ drop trigger if exists iniciar_esteira_processo on public.operacao_processos;
 create trigger iniciar_esteira_processo after insert or update of status on public.operacao_processos
   for each row when (new.origem_externa_id ~ '^\d{14}-1-\d+/\d{4}$' and new.status not in ('arquivado', 'perdido', 'contratado'))
   execute function public.iniciar_esteira_processo();
+
+-- Autor do processo vem do JWT: o cliente não forja criado_por (o robô com service_role mantém o informado).
+create or replace function public.carimbar_criador_processo()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+ new.criado_por := coalesce(auth.uid(), new.criado_por);
+ return new;
+end $$;
+revoke all on function public.carimbar_criador_processo() from public, anon, authenticated, service_role;
+drop trigger if exists carimbar_criador_processo on public.operacao_processos;
+create trigger carimbar_criador_processo before insert on public.operacao_processos
+  for each row execute function public.carimbar_criador_processo();
 
 notify pgrst, 'reload schema';
 commit;

@@ -10,9 +10,10 @@ const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
 const {createHash}=require('node:crypto');
 const {falhar,validarConfirmacao}=require('./_empresa_identificacao');
 const {carregarContextoIdentificacao}=require('./_empresa_identificacao_contexto');
-const {uuid,preparar,docx,pendente}=require('./_kit_documentos');
+const {uuid,preparar,docx,pendente,textoFinal}=require('./_kit_documentos');
 const {validarRascunho,documentoPublico,persistencia}=require('./_kit_documentos_persistencia');
-const {LOTE_MAX,MARCADOR,gerarLote,lerLogo}=require('./_kit_declaracoes');
+const {LOTE_MAX,MARCADOR,gerarLote,lerLogo,lerCpf}=require('./_kit_declaracoes');
+const SEM_CPF='Preencha o CPF do representante no Perfil da empresa antes de exportar.';
 async function carregarEscopo(event,userId,body){
  const c=await carregarContextoIdentificacao(event,userId,body.empresaId);const {empresa,rest}=c;
  if(empresa.id!==body.empresaId||!uuid(empresa.organizacao_id))falhar('Empresa indisponível.',404);
@@ -51,13 +52,17 @@ async function exportarDeclaracoes({c,store,ctx,body,pendencias}){
  const todas=(await store.listar()).filter(d=>d.tipo==='declaracao');
  if(ids&&ids.some(id=>!todas.some(d=>d.id===id)))falhar('Documento indisponível.',404);
  const alvo=ids?todas.filter(d=>ids.includes(d.id)):todas;if(alvo.length>LOTE_MAX)falhar(`Selecione até ${LOTE_MAX} declarações.`,400);
- const paginas=[],incluidas=[],ignoradas=[];
+ const paginas=[],incluidas=[],ignoradas=[];let cpf;
  for(const d of alvo){
   let r=null;
   if(d.revisado_por===ctx.userId&&d.revisao_versao===d.versao){try{r=prepararPeca(ctx,{tipo:d.tipo,...d.dados},d);}catch(e){if(e.status!==422)throw e;}}
   if(!r||d.revisao_hash!==r.revisaoHash)ignoradas.push({documentoId:d.id,motivo:'nao_revisada'});
   else if(r.previa.texto.includes(MARCADOR))ignoradas.push({documentoId:d.id,motivo:'campos_pendentes'});
-  else{paginas.push(r.previa.texto);incluidas.push(d.id);}
+  else{
+   // CPF lido uma vez, só se alguma peça revisada pede; sem CPF no perfil a peça fica de fora.
+   if(r.textoComCpf&&cpf===undefined)cpf=await lerCpf(c,ctx.empresa);
+   const final=textoFinal(r,cpf);if(final===null)ignoradas.push({documentoId:d.id,motivo:'campos_pendentes'});else{paginas.push(final);incluidas.push(d.id);}
+  }
  }
  if(!paginas.length){const e=new Error('Nenhuma declaração revisada para exportar. Prepare e confirme a revisão antes.');e.status=422;e.ignoradas=ignoradas;throw e;}
  const logo=await lerLogo(c,ctx.empresa);
@@ -156,8 +161,9 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
  if(typeof body.revisaoHash!=='string'||body.revisaoHash!==resultado.revisaoHash)falhar('Dados alterados. Prepare e confira uma nova prévia.',409);
  if(body.acao==='confirmarRevisao')return responder(200,{documento:documentoPublico(await store.gravar({...body,tipo:documento.tipo},documento.dados,resultado))});
  if(documento&&(documento.revisado_por!==auth.userId||documento.revisao_versao!==documento.versao||documento.revisao_hash!==resultado.revisaoHash))falhar('Prepare e confirme sua revisão desta peça antes de exportar.',409);
+ const final=textoFinal(resultado,resultado.textoComCpf?await lerCpf(c,empresa):null);if(final===null)falhar(SEM_CPF,409);
  const logo=await lerLogo(c,empresa);
- return responder(200,{arquivoBase64:docx(resultado,{formato:documento?.formato===2?2:1,logo}).toString('base64'),nome:`${payload.tipo}-${processo.id}.docx`,mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',logoAplicada:Boolean(logo)});
+ return responder(200,{arquivoBase64:docx({...resultado,previa:{...resultado.previa,texto:final}},{formato:documento?.formato===2?2:1,logo}).toString('base64'),nome:`${payload.tipo}-${processo.id}.docx`,mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',logoAplicada:Boolean(logo)});
  }catch(e){return responder(...erroKit(e,body));}
 };
 }

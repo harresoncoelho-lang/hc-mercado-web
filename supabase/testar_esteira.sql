@@ -91,9 +91,10 @@ end $$;
 set local role service_role;
 delete from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000021';
 do $$ begin
- -- Fila: 1 pedido por edital, prioridade 'interesse' (inclusive o que veio do boletim); origem fora da lista é recusada.
+ -- Fila: 1 pedido por edital; 'interesse' (inclusive o que veio do boletim) só para edital coletado em oportunidades_abertas;
+ -- o 000002 não foi coletado e entra como 'clique'. Origem fora da lista é recusada.
  if (select string_agg(numero_controle_pncp||'='||origem,',' order by numero_controle_pncp) from public.fila_dossies where numero_controle_pncp like '11222333000181-1-%')
-  is distinct from '11222333000181-1-000001/2026=interesse,11222333000181-1-000002/2026=interesse,11222333000181-1-000005/2026=interesse'
+  is distinct from '11222333000181-1-000001/2026=interesse,11222333000181-1-000002/2026=clique,11222333000181-1-000005/2026=interesse'
   then raise exception 'Fila: %',(select string_agg(numero_controle_pncp||'='||origem,',') from public.fila_dossies);end if;
  begin insert into public.fila_dossies(numero_controle_pncp,origem) values('qa-x','outra'); raise exception 'Origem inválida aceita';
  exception when check_violation then null; end;
@@ -130,8 +131,44 @@ end $$;
 set local role service_role;
 do $$ begin
  if (select count(*) from public.fila_dossies where numero_controle_pncp like '11222333000181-1-%')<>4
-  or (select count(*) from public.fila_dossies where origem<>'interesse' and numero_controle_pncp like '11222333000181-1-%')<>0
+  or (select string_agg(numero_controle_pncp,',' order by numero_controle_pncp) from public.fila_dossies where origem='interesse' and numero_controle_pncp like '11222333000181-1-%')
+     is distinct from '11222333000181-1-000001/2026,11222333000181-1-000005/2026'
   then raise exception 'Fila duplicou ou perdeu prioridade';end if;
+end $$;
+
+-- M1: troca de status depois da primeira entrada não sobe prioridade (a fila volta a 'clique' e fica).
+update public.fila_dossies set origem='clique' where numero_controle_pncp='11222333000181-1-000001/2026';
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000001',true);
+update public.operacao_processos set status='preparacao' where id='f7000000-0000-4000-8000-000000000021';
+update public.operacao_processos set status='triagem' where id='f7000000-0000-4000-8000-000000000021';
+-- ID do PNCP inventado (não coletado): entra como 'clique'.
+insert into public.operacao_processos(organizacao_id,empresa_id,objeto,origem_externa_id,status) values
+ ('f7000000-0000-4000-8000-00000000000a','f7000000-0000-4000-8000-00000000001a','QA inventado','99999999000199-1-1/2026','triagem');
+-- B2: operador forja criado_por=gestor; o processo e as tarefas ficam com quem tem o JWT.
+select set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000002',true);
+insert into public.operacao_processos(id,organizacao_id,empresa_id,objeto,origem_externa_id,status,criado_por) values
+ ('f7000000-0000-4000-8000-000000000026','f7000000-0000-4000-8000-00000000000a','f7000000-0000-4000-8000-00000000001b','QA forjado','22333444000181-1-000001/2026','triagem','f7000000-0000-4000-8000-000000000001');
+-- M1: 50 processos novos numa organização, todos com edital coletado: no máximo 20 'interesse' no dia.
+reset role;
+insert into public.operacao_organizacoes(id,nome,owner_id) values ('f7000000-0000-4000-8000-00000000000c','QA esteira teto','f7000000-0000-4000-8000-000000000002');
+insert into public.operacao_empresas(id,organizacao_id,razao_social,cnpj) values ('f7000000-0000-4000-8000-00000000001c','f7000000-0000-4000-8000-00000000000c','QA teto','33444555000181');
+insert into public.oportunidades_abertas(chave,numero_controle_pncp,uf,dado)
+ select 'qa-teto-'||g,'33444555000181-1-'||lpad(g::text,6,'0')||'/2026','AM','{}' from generate_series(1,50) g;
+insert into public.operacao_processos(organizacao_id,empresa_id,objeto,origem_externa_id,status)
+ select 'f7000000-0000-4000-8000-00000000000c','f7000000-0000-4000-8000-00000000001c','QA teto '||g,'33444555000181-1-'||lpad(g::text,6,'0')||'/2026','triagem' from generate_series(1,50) g;
+do $$ declare s text; begin
+ if (select origem from public.fila_dossies where numero_controle_pncp='11222333000181-1-000001/2026')<>'clique'
+  then raise exception 'Troca de status subiu a prioridade de novo';end if;
+ if (select origem from public.fila_dossies where numero_controle_pncp='99999999000199-1-1/2026') is distinct from 'clique'
+  then raise exception 'ID inventado virou interesse';end if;
+ select string_agg(distinct coalesce(criado_por::text,'nulo'),',') into s from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000026';
+ if s is distinct from 'f7000000-0000-4000-8000-000000000002'
+  or (select criado_por from public.operacao_processos where id='f7000000-0000-4000-8000-000000000026')<>'f7000000-0000-4000-8000-000000000002'
+  then raise exception 'criado_por forjado: processo/tarefas = %',s;end if;
+ if (select count(*) from public.fila_dossies where numero_controle_pncp like '33444555000181-1-%' and origem='interesse')<>20
+  or (select count(*) from public.fila_dossies where numero_controle_pncp like '33444555000181-1-%' and origem='clique')<>30
+  then raise exception 'Teto diário de interesse: % interesse',(select count(*) from public.fila_dossies where numero_controle_pncp like '33444555000181-1-%' and origem='interesse');end if;
 end $$;
 
 set local role anon;

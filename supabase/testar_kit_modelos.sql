@@ -37,4 +37,33 @@ begin
   and not has_function_privilege('anon','public.gravar_kit_declaracao_modelo(uuid,uuid,uuid,uuid,uuid,jsonb,text)','EXECUTE')
   and has_function_privilege('service_role','public.gravar_kit_declaracao_modelo(uuid,uuid,uuid,uuid,uuid,jsonb,text)','EXECUTE'), 'EXECUTE só service_role';
 end $$;
+
+-- LGPD (A1): o kit é legível pelo papel leitura, então rascunho e revisão guardam só o marcador do CPF
+-- (é o que _kit_declaracoes.js grava); o CPF fica no perfil, que o papel leitura não lê.
+insert into auth.users(id,email) values('00000000-0000-4000-8000-000000000199','leitura-kit@example.invalid');
+insert into public.clientes(id,nome,email,status) values('00000000-0000-4000-8000-000000000199','Leitura fictícia','leitura-kit@example.invalid','aprovado');
+insert into public.operacao_membros(organizacao_id,usuario_id,papel) values('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000199','leitura');
+insert into public.operacao_perfil_empresa(empresa_id,organizacao_id,cpf_representante) values('00000000-0000-4000-8000-000000000011','00000000-0000-4000-8000-000000000001','52998224725')
+ on conflict (empresa_id) do update set cpf_representante=excluded.cpf_representante;
+do $$
+declare
+ org uuid:='00000000-0000-4000-8000-000000000001'; emp uuid:='00000000-0000-4000-8000-000000000011';
+ proc uuid:='00000000-0000-4000-8000-000000000021'; gestor uuid:='00000000-0000-4000-8000-000000000101';
+ doc uuid:='00000000-0000-4000-8000-000000000904';
+ dados jsonb:='{"declaracao":{"titulo":"Declaração fictícia","texto":"Eu, CPF {{cpf_representante}}, declaro.","fonte":"Biblioteca"}}';
+begin
+ perform public.gravar_kit_declaracao_modelo(doc,emp,proc,org,gestor,dados,'TRAB_MENOR');
+ perform public.gravar_kit_documento(doc,emp,proc,org,gestor,1,'declaracao','confirmarRevisao',dados,repeat('c',64),
+  '{"texto":"Eu, CPF [CPF do representante], declaro.","fontes":["f"]}'::jsonb);
+end $$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000199',true);
+do $$
+declare t text;
+begin
+ select dados::text||coalesce(revisao_previa::text,'') into t from public.operacao_kit_documentos where id='00000000-0000-4000-8000-000000000904';
+ assert t is not null, 'papel leitura deveria ler a peça do kit';
+ assert t not like '%52998224725%' and t not like '%529.982.247-25%' and t like '%{{cpf_representante}}%', 'papel leitura leu CPF no kit';
+ assert not exists(select 1 from public.operacao_perfil_empresa), 'papel leitura leu o perfil (CPF)';
+end $$;
 rollback;

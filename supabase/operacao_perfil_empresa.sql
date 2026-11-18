@@ -94,6 +94,29 @@ drop trigger if exists limitar_premissas_empresa on public.operacao_premissas_em
 create trigger limitar_premissas_empresa before insert or update on public.operacao_premissas_empresa
   for each row execute function public.limitar_premissas_empresa();
 
+-- O Padrão (*|*) alimenta a esteira: usuário (JWT) não apaga, só edita. Apagar a empresa ainda leva
+-- tudo em cascata (a empresa já não existe quando a cascata chega aqui); service_role sem JWT passa.
+create or replace function public.proteger_premissa_padrao()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+ if old.segmento = '*' and old.uf = '*' and auth.uid() is not null
+    and exists (select 1 from public.operacao_empresas e where e.id = old.empresa_id) then
+  raise exception 'A premissa Padrão não pode ser removida; edite os valores' using errcode = 'P0001';
+ end if;
+ return old;
+end $$;
+revoke all on function public.proteger_premissa_padrao() from public, anon, authenticated, service_role;
+drop trigger if exists proteger_premissa_padrao on public.operacao_premissas_empresa;
+create trigger proteger_premissa_padrao before delete on public.operacao_premissas_empresa
+  for each row execute function public.proteger_premissa_padrao();
+
+-- Caminho da logo igual à regra da Function (tipoCaminhoLogo): <org>/<empresa>/perfil/logo-<hash>.(png|jpg|jpeg),
+-- com o hash do nome igual a logo_hash. Barra '..', outra pasta ou outro nome.
+alter table public.operacao_perfil_empresa drop constraint if exists operacao_perfil_empresa_logo_caminho_check;
+alter table public.operacao_perfil_empresa add constraint operacao_perfil_empresa_logo_caminho_check
+  check (logo_caminho is null or logo_caminho ~ ('^' || organizacao_id::text || '/' || empresa_id::text
+    || '/perfil/logo-' || logo_hash || '\.(png|jpe?g)$'));
+
 -- Escopo não muda depois de criado (mesma regra de documentos e processos).
 drop trigger if exists preservar_escopo_operacao on public.operacao_perfil_empresa;
 create trigger preservar_escopo_operacao before update on public.operacao_perfil_empresa

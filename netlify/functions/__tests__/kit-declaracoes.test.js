@@ -4,7 +4,7 @@ const {createHash}=require('node:crypto');
 const AdmZip=require('adm-zip');
 const {handler}=require('../kit-documentos');
 const {montarDocx}=require('../gerar-checklist');
-const {preencherVariaveis,variaveis,idDeterministico}=require('../_kit_declaracoes');
+const {preencherVariaveis,variaveis,idDeterministico,escaparChaves}=require('../_kit_declaracoes');
 const ids={empresa:'11111111-1111-1111-1111-111111111111',processo:'22222222-2222-2222-2222-222222222222',item:'33333333-3333-3333-3333-333333333333',org:'44444444-4444-4444-4444-444444444444',doc:'55555555-5555-5555-5555-555555555555'};
 const CPF='52998224725';
 // PNG mínimo: assinatura + IHDR 300x100 (só o cabeçalho é lido).
@@ -61,12 +61,15 @@ const zipDe=b64=>new AdmZip(Buffer.from(b64,'base64'));
 // Prepara e confirma a revisão de uma peça já salva.
 async function revisar(f,documentoId){const p=await f.run({acao:'preparar',documentoId,versaoEsperada:1});assert.equal(p.statusCode,200,JSON.stringify(p.json));return f.run({acao:'confirmarRevisao',documentoId,versaoEsperada:1,revisado:true,revisaoHash:p.json.revisaoHash});}
 
-test('variáveis do perfil preenchem o modelo; sem valor vira [PREENCHER: campo] e nunca some',()=>{
+test('variáveis do perfil preenchem o modelo; sem valor vira [PREENCHER: campo]; CPF fica marcador',()=>{
  const vars=variaveis({empresa:{razao_social:'Empresa {{cnpj}} QA',cnpj:'11222333000181'},processo:{numero:'1/2026',orgao:null},identificacao:{endereco:'Rua 1',representante:'Ana',cargo:'Sócia'},perfilEmpresa:{porte:'epp',cpf_representante:CPF,telefone:'(92) 3333-4444'},objeto:''});
  const t=preencherVariaveis('{{razao_social}}|{{cnpj}}|{{ cpf_representante }}|{{porte}}|{{orgao}}|{{objeto}}|{{cidade}}|{{data}}|{{email}}|{{telefone}}|{{desconhecida}}',vars);
- assert.equal(t,'Empresa cnpj QA|11.222.333/0001-81|529.982.247-25|empresa de pequeno porte (EPP)|[PREENCHER: órgão]|[PREENCHER: objeto]|[PREENCHER: cidade]|[PREENCHER: data]|[PREENCHER: e-mail]|(92) 3333-4444|{{desconhecida}}');
+ assert.equal(t,'Empresa cnpj QA|11.222.333/0001-81|{{cpf_representante}}|empresa de pequeno porte (EPP)|[PREENCHER: órgão]|[PREENCHER: objeto]|[PREENCHER: cidade]|[PREENCHER: data]|[PREENCHER: e-mail]|(92) 3333-4444|{{desconhecida}}');
  assert.match(preencherVariaveis('{{porte}}',variaveis({empresa:{},processo:{},perfilEmpresa:{porte:'demais'}})),/^\[PREENCHER: porte\]$/);
  assert.match(preencherVariaveis('{{cnpj}}',variaveis({empresa:{cnpj:'123'},processo:{}})),/PREENCHER: CNPJ/);
+ // Texto do edital não puxa variável: chaves duplas viram "{ {" / "} }".
+ assert.equal(escaparChaves('a {{cpf_representante}} b {{{x}}}'),'a { {cpf_representante} } b { { {x} } }');
+ assert.doesNotMatch(escaparChaves('{{{{a}}}}'),/\{\{|\}\}/);
 });
 
 test('lote grava rascunhos com modelo, é idempotente por processo+modelo e CPF não vaza para logs nem resposta',async t=>{
@@ -77,11 +80,11 @@ test('lote grava rascunhos com modelo, é idempotente por processo+modelo e CPF 
  assert.deepEqual(r.json.criados.map(d=>d.modeloCodigo),['HAB_ART63_I','ME_EPP_ENQUADRAMENTO','edital']);
  assert.ok(r.json.criados.every(d=>d.dados===undefined&&d.revisadoPor===null));
  const art63=f.state.kit[0].dados.declaracao;
- assert.match(art63.texto,/^Empresa QA, inscrita no CNPJ sob o nº 11\.222\.333\/0001-81, com sede em Rua QA, 1, neste ato representada por Ana, Sócia, inscrito\(a\) no CPF sob o nº 529\.982\.247-25, para fins de participação no processo licitatório nº 90001\/2026, promovido por Órgão QA, cujo objeto é Material de expediente/);
- assert.match(art63.texto,/\[PREENCHER: cidade\], \[PREENCHER: data\]/);assert.doesNotMatch(art63.texto,/\{\{|\b____\b/);
+ assert.match(art63.texto,/^Empresa QA, inscrita no CNPJ sob o nº 11\.222\.333\/0001-81, com sede em Rua QA, 1, neste ato representada por Ana, Sócia, inscrito\(a\) no CPF sob o nº \{\{cpf_representante\}\}, para fins de participação no processo licitatório nº 90001\/2026, promovido por Órgão QA, cujo objeto é Material de expediente/);
+ assert.match(art63.texto,/\[PREENCHER: cidade\], \[PREENCHER: data\]/);assert.doesNotMatch(art63.texto.replace('{{cpf_representante}}',''),/\{\{|\b____\b/);
  assert.match(f.state.kit[1].dados.declaracao.texto,/condição de microempresa \(ME\)/);
  assert.equal(f.state.kit[2].dados.declaracao.texto,'DECLARAÇÃO I\nDeclaramos para o edital.');
- assert.ok(f.state.selectsPerfil[0].includes('cpf_representante'));
+ assert.ok(!f.state.selectsPerfil.some(s=>s.includes('cpf')),'lote não lê CPF');
  // Reenvio (mesmo ou outro usuário): nada novo é gravado.
  const again=await f.run(pedido);assert.equal(again.statusCode,200);assert.equal(again.json.criados.length,0);assert.equal(again.json.existentes.length,3);assert.equal(f.state.kit.length,3);
  f.state.userId='outro';f.state.membro.usuario_id='outro';
@@ -90,14 +93,14 @@ test('lote grava rascunhos com modelo, é idempotente por processo+modelo e CPF 
  f.state.kit=f.state.kit.filter(d=>d.modelo_codigo!=='TRAB_MENOR');
  f.state.kit.push({id:idDeterministico(ids.processo,'TRAB_MENOR'),tipo:'declaracao',dados:{},versao:2,criado_por:'usuario',empresa_id:'x',processo_id:'x',organizacao_id:'x'});
  const corrida=await f.run(lote([{modeloCodigo:'TRAB_MENOR'}]));assert.equal(corrida.statusCode,200);assert.equal(corrida.json.existentes.length,1);
- const tudo=JSON.stringify([r.json,again.json,corrida.json])+logs.join('\n');
- assert.ok(!tudo.includes(CPF)&&!tudo.includes('529.982.247-25'),'CPF fora da resposta e dos logs');
+ const tudo=JSON.stringify([r.json,again.json,corrida.json,f.state.kit])+logs.join('\n');
+ assert.ok(!tudo.includes(CPF)&&!tudo.includes('529.982.247-25'),'CPF fora do rascunho, da resposta e dos logs');
 });
 
-test('CPF só é lido quando o modelo pede; limite de 30, duplicata e campos forjados são recusados sem gravar',async t=>{
+test('lote nunca lê CPF e texto do edital não puxa variável; limite de 30, duplicata e campos forjados são recusados sem gravar',async t=>{
  const f=fixture(t);
- const sem=await f.run(lote([{modeloCodigo:'edital',titulo:'Modelo do edital',texto:'Declaro que {{razao_social}} atende.'}]));
- assert.equal(sem.statusCode,200);assert.ok(!f.state.selectsPerfil[0].includes('cpf'));assert.equal(f.state.kit[0].dados.declaracao.texto,'Declaro que Empresa QA atende.');
+ const sem=await f.run(lote([{modeloCodigo:'edital',titulo:'Modelo do edital',texto:'Declaro que {{razao_social}}, CPF {{cpf_representante}}, atende.'}]));
+ assert.equal(sem.statusCode,200);assert.ok(!f.state.selectsPerfil[0].includes('cpf'));assert.equal(f.state.kit[0].dados.declaracao.texto,'Declaro que { {razao_social} }, CPF { {cpf_representante} }, atende.');
  const trinta=Array.from({length:30},(_,n)=>({modeloCodigo:'livre',titulo:`D${n}`,texto:`Texto ${n}`}));
  assert.equal((await f.run(lote(trinta))).json.criados.length,30);
  f.state.kit=[];
@@ -105,8 +108,8 @@ test('CPF só é lido quando o modelo pede; limite de 30, duplicata e campos for
   assert.equal((await f.run(pedido)).statusCode,400);
  assert.equal(f.state.kit.length,0);
  f.state.semSql=true;assert.equal((await f.run(lote([{modeloCodigo:'HAB_ART63_I'}]))).statusCode,503);
- // Sem a tabela do perfil, o lote sai com marcadores em vez de falhar.
- delete f.state.semSql;f.state.semPerfil=true;assert.equal((await f.run(lote([{modeloCodigo:'TRAB_MENOR'}]))).statusCode,200);assert.match(f.state.kit[0].dados.declaracao.texto,/\[PREENCHER: CPF do representante\]/);
+ // Sem a tabela do perfil, o lote sai com marcadores em vez de falhar; o CPF segue como marcador.
+ delete f.state.semSql;f.state.semPerfil=true;assert.equal((await f.run(lote([{modeloCodigo:'TRAB_MENOR'}]))).statusCode,200);assert.match(f.state.kit[0].dados.declaracao.texto,/\{\{cpf_representante\}\}/);
 });
 
 test('marcador [PREENCHER] aparece na prévia mas bloqueia revisão',async t=>{
@@ -124,7 +127,7 @@ test('exportação em um DOCX só leva as declarações revisadas por quem expor
  const x=await f.run({acao:'exportarDeclaracoes'});assert.equal(x.statusCode,200,x.body);
  assert.deepEqual(x.json.incluidas,[a,c]);assert.deepEqual(x.json.ignoradas,[{documentoId:b,motivo:'nao_revisada'}]);assert.equal(x.json.logoAplicada,true);
  const zip=zipDe(x.json.arquivoBase64),doc=zip.readAsText('word/document.xml');
- assert.match(doc,/Declaro A por Empresa QA\./);assert.match(doc,/Declaro C\./);assert.doesNotMatch(doc,/NAO_REVISADA_B/);
+ assert.match(doc,/Declaro A por \{ \{razao_social\} \}\./);assert.match(doc,/Declaro C\./);assert.doesNotMatch(doc,/NAO_REVISADA_B/);
  assert.equal((doc.match(/w:type="page"/g)||[]).length,1);
  assert.ok(zip.getEntry('word/media/logo.png').getData().equals(PNG));
  // Seleção explícita: a não revisada continua fora; revisão de outro usuário não vale para quem exporta.
@@ -138,6 +141,27 @@ test('exportação em um DOCX só leva as declarações revisadas por quem expor
  assert.equal((await f.run({acao:'exportarDeclaracoes',documentoIds:[a]})).statusCode,200);
  f.state.perfil.dados_confirmados.representante='Bia';const mudou=await f.run({acao:'exportarDeclaracoes',documentoIds:[a]});
  assert.equal(mudou.statusCode,422);assert.deepEqual(mudou.json.ignoradas,[{documentoId:a,motivo:'nao_revisada'}]);
+});
+
+test('CPF: rascunho, prévia e revisão guardam só o marcador; a exportação leva o CPF lido na hora',async t=>{
+ const f=fixture(t);
+ const s=await f.run({acao:'salvar',documentoId:ids.doc,versaoEsperada:0,tipo:'declaracao',declaracao:{titulo:'Declaração QA',texto:'Eu, {{representante}}, CPF {{cpf_representante}}, declaro.'}});assert.equal(s.statusCode,200,s.body);
+ const p=await f.run({acao:'preparar',documentoId:ids.doc,versaoEsperada:1});assert.equal(p.statusCode,200,p.body);
+ assert.match(p.json.previa.texto,/Eu, Ana, CPF \[CPF do representante\], declaro\./);
+ const c=await f.run({acao:'confirmarRevisao',documentoId:ids.doc,versaoEsperada:1,revisado:true,revisaoHash:p.json.revisaoHash});assert.equal(c.statusCode,200,c.body);
+ const semCpf=x=>!JSON.stringify(x).includes(CPF)&&!JSON.stringify(x).includes('529.982.247-25');
+ assert.ok(semCpf(f.state.kit)&&semCpf(p.json)&&semCpf(c.json),'rascunho, revisao_previa e respostas sem CPF');
+ assert.ok(!f.state.selectsPerfil.some(x=>x.includes('cpf')),'CPF não lido antes da exportação');
+ const um=await f.run({acao:'exportar',documentoId:ids.doc,versaoEsperada:1,revisado:true,revisaoHash:p.json.revisaoHash});assert.equal(um.statusCode,200,um.body);
+ assert.match(zipDe(um.json.arquivoBase64).readAsText('word/document.xml'),/Eu, Ana, CPF 529\.982\.247-25, declaro\./);
+ const lote=await f.run({acao:'exportarDeclaracoes'});assert.equal(lote.statusCode,200,lote.body);assert.deepEqual(lote.json.incluidas,[ids.doc]);
+ assert.match(zipDe(lote.json.arquivoBase64).readAsText('word/document.xml'),/CPF 529\.982\.247-25/);
+ assert.ok(f.state.selectsPerfil.includes('cpf_representante'));assert.ok(semCpf(f.state.kit),'exportar não grava o CPF');
+ // CPF apagado no Perfil: some das exportações seguintes, sem nova revisão.
+ f.state.perfilEmpresa.cpf_representante=null;
+ const sem=await f.run({acao:'exportar',documentoId:ids.doc,versaoEsperada:1,revisado:true,revisaoHash:p.json.revisaoHash});
+ assert.equal(sem.statusCode,409);assert.match(sem.json.erro,/CPF do representante no Perfil/);
+ const loteSem=await f.run({acao:'exportarDeclaracoes'});assert.equal(loteSem.statusCode,422);assert.deepEqual(loteSem.json.ignoradas,[{documentoId:ids.doc,motivo:'campos_pendentes'}]);
 });
 
 test('logo inválida ou com hash divergente: documento sai sem logo, como antes',async t=>{
@@ -170,6 +194,8 @@ test('proposta em tabela só para peça nova (formato 2); peça antiga continua 
  const exportar=async()=>{const p=await f.run({acao:'preparar',documentoId:ids.doc,versaoEsperada:1});await f.run({acao:'confirmarRevisao',documentoId:ids.doc,versaoEsperada:1,revisado:true,revisaoHash:p.json.revisaoHash});const x=await f.run({acao:'exportar',documentoId:ids.doc,versaoEsperada:1,revisado:true,revisaoHash:p.json.revisaoHash});assert.equal(x.statusCode,200,x.body);return {doc:zipDe(x.json.arquivoBase64).readAsText('word/document.xml'),previa:p.json.previa.texto,hash:p.json.revisaoHash};};
  const antigo=await exportar();
  assert.doesNotMatch(antigo.doc,/<w:tblHeader\/>|Marca \/ modelo/);assert.match(antigo.doc,/Unitário ofertado: R\$ 1,25/);
+ // Formato 1 fixo: "Item <id>: <descrição>" com espaço (regressão B4).
+ assert.match(antigo.previa,/\nItem 1: Caneta\nQuantidade: 2,000 \| Unidade informada pelo usuário: un\nMarca: não informada \| Modelo: não informado\nUnitário ofertado: R\$ 1,25 \| Total: R\$ 2,50\n/);
  f.state.kit[0].formato=2;f.state.kit[0].revisao_hash=null;
  const novo=await exportar();
  assert.match(novo.doc,/<w:tblHeader\/>/);assert.match(novo.doc,/Marca \/ modelo/);assert.match(novo.doc,/>Caneta</);assert.match(novo.doc,/>2,50</);assert.match(novo.doc,/Total da proposta: R\$ 2,50/);

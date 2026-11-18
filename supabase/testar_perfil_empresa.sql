@@ -49,6 +49,17 @@ begin
  exception when check_violation then null; end;
  begin update public.operacao_perfil_empresa set logo_hash=null where empresa_id=ea; raise exception 'Logo sem hash aceita';
  exception when check_violation then null; end;
+ -- Mesma regra da Function: só <org>/<empresa>/perfil/logo-<logo_hash>.(png|jpg|jpeg).
+ begin update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/../../'||o||'/'||eb||'/perfil/logo-'||h||'.png' where empresa_id=ea; raise exception 'Logo com .. aceita';
+ exception when check_violation then null; end;
+ begin update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||repeat('b',64)||'.png' where empresa_id=ea; raise exception 'Logo com hash do nome divergente aceita';
+ exception when check_violation then null; end;
+ begin update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/x.png' where empresa_id=ea; raise exception 'Logo com nome livre aceita';
+ exception when check_violation then null; end;
+ begin update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.gif' where empresa_id=ea; raise exception 'Logo .gif aceita';
+ exception when check_violation then null; end;
+ update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.jpeg' where empresa_id=ea;
+ update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.png' where empresa_id=ea returning * into r;
  begin update public.operacao_perfil_empresa set cpf_representante='123.456.789-01' where empresa_id=ea; raise exception 'CPF com máscara aceito';
  exception when check_violation then null; end;
  begin update public.operacao_perfil_empresa set banco='[]' where empresa_id=ea; raise exception 'Banco não-objeto aceito';
@@ -97,6 +108,12 @@ begin
  exception when raise_exception then if sqlerrm not like 'Limite de 50%' then raise; end if; end;
  select count(*) into n from public.operacao_premissas_empresa where empresa_id=ea;
  if n<>50 then raise exception 'Esperava 50 premissas, achei %',n;end if;
+ -- O Padrão (*|*) não sai por JWT, nem para o gestor; as demais saem.
+ begin delete from public.operacao_premissas_empresa where empresa_id=ea and segmento='*' and uf='*'; raise exception 'Padrão apagado pelo usuário';
+ exception when raise_exception then if sqlerrm not like 'A premissa Padrão%' then raise; end if; end;
+ delete from public.operacao_premissas_empresa where empresa_id=ea and segmento='seg1'; get diagnostics n=row_count;
+ if n<>1 then raise exception 'Premissa comum não foi apagada';end if;
+ insert into public.operacao_premissas_empresa(organizacao_id,empresa_id,segmento) values(o,ea,'seg1');
 
 end $$;
 
@@ -112,6 +129,18 @@ begin
  if (select cpf_representante from public.operacao_perfil_empresa where empresa_id=ea) is distinct from '12345678901' then raise exception 'Operador da empresa não lê o perfil';end if;
  perform set_config('request.jwt.claim.sub','f5000000-0000-4000-8000-000000000001',true);
  if (select banco->>'agencia' from public.operacao_perfil_empresa where empresa_id=ea) is distinct from '0001' then raise exception 'Gestor não lê o perfil';end if;
+end $$;
+
+-- Cascata continua: apagar a empresa A2 (com JWT presente) leva o Padrão dela junto.
+reset role;
+do $$
+declare eb uuid:='f5000000-0000-4000-8000-00000000001b';
+begin
+ perform set_config('request.jwt.claim.sub','f5000000-0000-4000-8000-000000000001',true);
+ delete from public.operacao_membros where empresa_id=eb;
+ delete from public.operacao_empresas where id=eb;
+ if exists(select 1 from public.operacao_premissas_empresa where empresa_id=eb) then raise exception 'Cascata não levou o Padrão';end if;
+ perform set_config('request.jwt.claim.sub','',true);
 end $$;
 
 -- anon não lê nada.

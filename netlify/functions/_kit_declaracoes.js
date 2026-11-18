@@ -1,6 +1,6 @@
 // Declarações do kit (esteira E11): variáveis do perfil, lote idempotente e logo do cabeçalho.
-// LGPD: o CPF do representante só é lido quando algum modelo pede {{cpf_representante}} e nunca vai a log,
-// mensagem de erro ou resposta (o lote devolve só metadados das peças).
+// LGPD: o CPF do representante nunca é gravado no rascunho (o papel leitura lê operacao_kit_documentos):
+// o texto guarda o marcador {{cpf_representante}} e só a exportação (gestor/operador) troca pelo CPF lido na hora.
 const {createHash}=require('node:crypto');
 const {falhar,tipoCaminhoLogo,validarLogo,lerAte,LOGO}=require('./_empresa_identificacao');
 const {obterModelo}=require('../../declaracoes-modelos.js');
@@ -17,17 +17,19 @@ const cnpj=c=>{const d=String(c||'').replace(/\D/g,'');return d.length===14?`${d
 // Chaves removidas do valor: um valor com "{{x}}" não pode virar variável no preparar.
 // eslint-disable-next-line no-control-regex -- limpa controle de texto livre
 const limpar=v=>v===null||v===undefined?'':String(v).replace(/[\u0000-\u001f\u007f{}]+/g,' ').replace(/\s+/g,' ').trim();
-const MARCA_CPF=/\{\{\s*cpf_representante\s*\}\}/;
+const MARCA_CPF='{{cpf_representante}}';
+// Texto vindo do edital ou digitado no lote não pode puxar variável (ex.: "{{cpf_representante}}" plantado no edital).
+const escaparChaves=t=>t.replace(/\{(?=\{)/g,'{ ').replace(/\}(?=\})/g,'} ');
 
 function variaveis({empresa,processo,identificacao,perfilEmpresa,objeto}){
  const p=perfilEmpresa||{},d=identificacao||{};
  // cidade e data ficam para o usuário: a data de geração não é a de assinatura.
  return {razao_social:empresa.razao_social,cnpj:cnpj(empresa.cnpj),endereco:d.endereco,representante:d.representante,cargo:d.cargo,
-  cpf_representante:cpf(p.cpf_representante),numero_edital:processo.numero,orgao:processo.orgao,objeto,porte:PORTES[p.porte],
+  numero_edital:processo.numero,orgao:processo.orgao,objeto,porte:PORTES[p.porte],
   nome_fantasia:p.nome_fantasia,telefone:p.telefone,email:p.email,inscricao_estadual:p.inscricao_estadual,inscricao_municipal:p.inscricao_municipal};
 }
 function preencherVariaveis(texto,vars){
- return texto.replace(/\{\{\s*([a-z_]+)\s*\}\}/g,(todo,nome)=>{if(!Object.hasOwn(ROTULOS,nome))return todo;return limpar(vars[nome])||`[PREENCHER: ${ROTULOS[nome]}]`;});
+ return texto.replace(/\{\{\s*([a-z_]+)\s*\}\}/g,(todo,nome)=>{if(!Object.hasOwn(ROTULOS,nome))return todo;if(nome==='cpf_representante')return MARCA_CPF;return limpar(vars[nome])||`[PREENCHER: ${ROTULOS[nome]}]`;});
 }
 // UUID determinístico por processo + modelo (+ texto para edital/livre): a mesma intenção cai sempre na mesma peça.
 function idDeterministico(processoId,modeloCodigo,textoOriginal){
@@ -45,7 +47,7 @@ function validarLote(body){
    return {modeloCodigo:modelo.codigo,titulo:modelo.titulo,texto:modelo.texto,fonte:`Modelo da biblioteca LicitaPlena ${modelo.codigo} v${modelo.versao} (${modelo.baseLegal}). Revisão jurídica ${modelo.revisaoJuridica}: confira antes de usar.`};}
   if(!['edital','livre'].includes(p.modeloCodigo)||Object.keys(p).some(k=>!['modeloCodigo','titulo','texto','fonte'].includes(k))
    ||typeof p.titulo!=='string'||!p.titulo.trim()||typeof p.texto!=='string'||!p.texto.trim()||(p.fonte!==undefined&&typeof p.fonte!=='string'))falhar('Declaração do lote inválida.',400);
-  return {modeloCodigo:p.modeloCodigo,titulo:p.titulo,texto:p.texto,fonte:p.fonte||(p.modeloCodigo==='edital'?'Modelo do próprio edital (texto literal); confira a referência.':'Texto informado pelo usuário; referência não informada.')};
+  return {modeloCodigo:p.modeloCodigo,titulo:p.titulo,texto:escaparChaves(p.texto),fonte:p.fonte||(p.modeloCodigo==='edital'?'Modelo do próprio edital (texto literal); confira a referência.':'Texto informado pelo usuário; referência não informada.')};
  });
 }
 // Leitura opcional: tabela ou linha ausente não impede o lote; o campo vira marcador.
@@ -56,7 +58,7 @@ async function gerarLote({c,empresa,processo,perfil,store,body}){
  const chaves=pedidos.map(p=>idDeterministico(processo.id,p.modeloCodigo,p.texto));
  if(new Set(chaves).size!==chaves.length)falhar('Declaração repetida no lote.',400);
  const filtro=`empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}`;
- const perfilEmpresa=await opcional(c.rest(`operacao_perfil_empresa?${filtro}&select=nome_fantasia,telefone,email,inscricao_estadual,inscricao_municipal,porte${pedidos.some(p=>MARCA_CPF.test(p.texto))?',cpf_representante':''}`));
+ const perfilEmpresa=await opcional(c.rest(`operacao_perfil_empresa?${filtro}&select=nome_fantasia,telefone,email,inscricao_estadual,inscricao_municipal,porte`));
  // objeto lido à parte: o select fixo do processo entra no revisaoHash e não muda.
  const objeto=(await opcional(c.rest(`operacao_processos?id=eq.${processo.id}&${filtro}&select=objeto`)))?.objeto;
  const vars=variaveis({empresa,processo,identificacao:perfil&&!perfil.invalidado_em?perfil.dados_confirmados:null,perfilEmpresa,objeto});
@@ -78,6 +80,8 @@ async function gerarLote({c,empresa,processo,perfil,store,body}){
  return {criados,existentes};
 }
 
+// CPF lido só na exportação, com o token de quem exporta (RLS do perfil: só gestor/operador).
+async function lerCpf(c,empresa){return cpf((await opcional(c.rest(`operacao_perfil_empresa?empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=cpf_representante`)))?.cpf_representante);}
 // Logo do perfil para o cabeçalho, lida com o token do usuário (RLS + policy atual do bucket).
 // Qualquer falha devolve null e o documento sai sem logo, como antes; quem exporta informa logoAplicada.
 async function lerLogo(c,empresa){
@@ -89,4 +93,4 @@ async function lerLogo(c,empresa){
   return {bytes,...validarLogo(bytes,tipo)};
  }catch{return null;}
 }
-module.exports={LOTE_MAX,MARCADOR,ROTULOS,variaveis,preencherVariaveis,idDeterministico,validarLote,gerarLote,lerLogo};
+module.exports={LOTE_MAX,MARCADOR,ROTULOS,variaveis,preencherVariaveis,idDeterministico,validarLote,gerarLote,lerLogo,lerCpf,escaparChaves};
