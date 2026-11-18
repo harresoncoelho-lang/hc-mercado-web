@@ -10,8 +10,10 @@ concurrency:
 
 on:
   schedule:
-    # Reserva a cada 10 min, fora dos minutos redondos; o GitHub ainda pode atrasar cron.
-    - cron: "9,19,29,39,49,59 * * * *"
+    # De hora em hora das 7h às 21h de Brasília (UTC-3). Era a cada 10 min quando o repositório
+    # era público; privado, cada rodada (npm ci + docker build) consome a cota de minutos do Actions.
+    # Editais de boletim continuam saindo logo após a coleta pelo gatilho workflow_run abaixo.
+    - cron: "9 0,10-23 * * *"
   # Preparar logo após a chegada dos dados, sem depender do cron nem do primeiro clique.
   workflow_run:
     workflows: ["Atualizar dados do PNCP", "Recuperar UFs pendentes do PNCP"]
