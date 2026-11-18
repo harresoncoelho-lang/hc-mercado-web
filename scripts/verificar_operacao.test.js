@@ -100,7 +100,7 @@ test("agenda mantém compromissos vencidos visíveis", async () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "operacao.html"), "utf8");
   const inicio = html.indexOf("  async function carregarAgenda(");
   const fim = html.indexOf("  async function enviarArquivo(", inicio);
-  const alvo = { innerHTML: "" };
+  const alvo = { innerHTML: "", querySelectorAll: () => [] };
   const registros = [
     { titulo: "Sessão pendente", categoria: "sessao", vencimento: "2020-01-01T10:00:00Z" },
     { titulo: "Prazo futuro", categoria: "proposta", vencimento: "2099-01-01T10:00:00Z" },
@@ -110,7 +110,7 @@ test("agenda mantém compromissos vencidos visíveis", async () => {
     order() { return this; }, async limit() { return { data: registros, error: null }; },
   };
   const contexto = {
-    estado: { empresaId: "empresa" }, sb: { from: () => query }, $: () => alvo,
+    estado: { empresaId: "empresa", empresas: [] }, sb: { from: () => query }, $: () => alvo,
     esc: valor => String(valor),
   };
   vm.runInNewContext(`${html.slice(inicio, fim)}\nthis.carregarAgenda = carregarAgenda;`, contexto);

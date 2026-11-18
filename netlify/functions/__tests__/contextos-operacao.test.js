@@ -222,10 +222,10 @@ test("certidões e prazos: só da organização do usuário, na janela e em orde
     { empresaId: EMP_A, tipo: "CND Federal", titulo: "", vencimento: "2026-11-10", dias: -8, situacao: "vencido" },
     { empresaId: EMP_A2, tipo: "FGTS", titulo: "CRF", vencimento: "2026-12-01", dias: 13, situacao: "vencendo" },
   ]);
-  assert.deepEqual(corpo.prazos.map((p) => [p.origem, p.titulo, p.dias, p.processoId]), [
-    ["agenda", "Renovar alvará", 1, null],
-    ["processo", "Prazo de propostas", 2, PROC_A],
-    ["agenda", "Entrega A2", 4, null],
+  assert.deepEqual(corpo.prazos.map((p) => [p.id, p.origem, p.titulo, p.dias, p.processoId]), [
+    [DOC(20), "agenda", "Renovar alvará", 1, null],
+    [DOC(10), "processo", "Prazo de propostas", 2, PROC_A],
+    [DOC(21), "agenda", "Entrega A2", 4, null],
   ]);
   assert.equal(JSON.stringify(corpo).includes("Segredo B"), false);
 }));
@@ -272,4 +272,13 @@ test("textos de certidão e prazo são string com tamanho limitado", () => comRe
   assert.equal(corpo.certidoes[0].titulo, "");
   assert.equal(corpo.prazos[0].titulo.length, 200);
   assert.equal(corpo.prazos[0].categoria, "");
+}));
+
+test("prazo ou compromisso com id que não é uuid fica fora (o id vira UID do .ics no Hoje)", () => comRelogio(async () => {
+  const b = bancoComAlertas();
+  b.operacao_prazos_processo[0].id = "1; DROP";
+  b.operacao_agenda[0].id = 42;
+  instalarFetch(b);
+  const corpo = JSON.parse((await handler(evento())).body);
+  assert.deepEqual(corpo.prazos.map((p) => p.id), [DOC(21)]);
 }));

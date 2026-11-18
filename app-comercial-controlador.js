@@ -253,9 +253,14 @@
       const processos = new Map(autorizados.map((a) => [a.processoId, a.processoRotulo]));
       if (prazos !== undefined) filhos.push(blocoAlerta('hoje-prazos-titulo', 'Próximos prazos', prazos, 'Nenhum prazo nos próximos 7 dias.', (p) => {
         const quando = typeof p.vencimento === 'string' ? formatarPrazo(p.vencimento) : '';
-        return linhaAlerta(p.dias <= 1 ? 'atencao' : 'em-dia', CORE.textoDiasPrazo(p.dias),
+        const li = linhaAlerta(p.dias <= 1 ? 'atencao' : 'em-dia', CORE.textoDiasPrazo(p.dias),
           txt(p.titulo, 200) || 'Prazo',
           [nomes.get(p.empresaId) || (p.empresaId ? 'Empresa' : 'Toda a organização'), processos.get(p.processoId), quando].filter(Boolean).join(' · '));
+        // id real (uuid validado no servidor): o mesmo prazo baixado aqui e em processos.html tem o mesmo UID.
+        const agenda = global.AgendaIcs?.montarBotao(doc, { id: p.id, titulo: txt(p.titulo, 200) || 'Prazo', inicio: p.vencimento,
+          processo: processos.get(p.processoId), empresa: nomes.get(p.empresaId), empresaId: p.empresaId, processoId: p.processoId });
+        if (agenda) li.append(agenda);
+        return li;
       }));
       alvo.replaceChildren(...filhos);
     }

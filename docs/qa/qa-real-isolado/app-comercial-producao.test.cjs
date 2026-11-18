@@ -7,8 +7,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const raiz = path.resolve(__dirname, '..', '..', '..');
-function carregar() {
+// eventos: quando é lista, carrega o agenda-ics.js real e guarda cada evento que o Hoje passa ao botão.
+function carregar({ eventos = null } = {}) {
   const contexto = { globalThis: {} };
+  if (eventos) {
+    vm.runInNewContext(fs.readFileSync(path.join(raiz, 'agenda-ics.js'), 'utf8'), contexto);
+    const A = contexto.globalThis.AgendaIcs, real = A.montarBotao;
+    A.montarBotao = (doc, ev) => { const r = real(doc, ev); eventos.push({ ev, ics: A.gerarIcs(ev), botao: !!r }); return r; };
+  }
   vm.runInNewContext(fs.readFileSync(path.join(raiz, 'app-comercial-core.js'), 'utf8'), contexto);
   vm.runInNewContext(fs.readFileSync(path.join(raiz, 'app-comercial-controlador.js'), 'utf8'), contexto);
   return contexto.globalThis.LicitaPlenaComercialControlador;
@@ -17,7 +23,7 @@ function carregar() {
 function criarDom() {
   const mapa = new Map();
   const no = (id) => ({ id, hidden: false, disabled: false, value: '', textContent: '', dataset: {}, filhos: [],
-    replaceChildren(...n) { this.filhos = n; }, append(...n) { this.filhos.push(...n); }, setAttribute() {}, focus() {}, scrollIntoView() {} });
+    replaceChildren(...n) { this.filhos = n; }, append(...n) { this.filhos.push(...n); }, setAttribute() {}, addEventListener() {}, focus() {}, scrollIntoView() {} });
   return { getElementById: (id) => { if (!mapa.has(id)) mapa.set(id, no(id)); return mapa.get(id); }, createElement: () => no('') };
 }
 
@@ -175,7 +181,7 @@ test('Hoje mostra certidões vencidas/vencendo e próximos prazos, com situaçã
   const { cliente } = criarCliente();
   const catalogo = { userId: 'u1', empresas: [{ empresaId: EMP, razaoSocial: 'Empresa A' }], contextos: [{ empresaId: EMP, processoId: 'pa', numero: '1' }],
     certidoes: [{ empresaId: EMP, tipo: '<b>CND</b>', titulo: '', vencimento: '2026-11-10', dias: -8, situacao: 'vencido' }, { empresaId: EMP, tipo: 'FGTS', titulo: 'CRF', vencimento: '2026-12-01', dias: 13, situacao: 'vencendo' }],
-    prazos: [{ origem: 'processo', empresaId: EMP, processoId: 'pa', categoria: 'proposta', titulo: 'Prazo de propostas', vencimento: '2026-11-19T13:00:00+00:00', dias: 1 }] };
+    prazos: [{ id: 'bbbbbbbb-0000-4000-8000-000000000010', origem: 'processo', empresaId: EMP, processoId: 'pa', categoria: 'proposta', titulo: 'Prazo de propostas', vencimento: '2026-11-19T13:00:00+00:00', dias: 1 }] };
   const fetch = async (url, op) => (url === '/api/contextos-operacao' && op.headers.Authorization === 'Bearer TOKEN-1' ? resposta(200, catalogo) : resposta(404, {}));
   const ctrl = C.criarControlador({ doc: dom, fetch, storage: null, autenticacao: C.criarAutenticacaoSupabase({ cliente, fetch }), kit: { montar: () => ({ fechar() {} }) }, identificacao: { montar: () => ({ abrir() {}, limpar() {} }) } });
   await ctrl.entrar('operador@example.invalid', 'x');
@@ -189,6 +195,31 @@ test('Hoje mostra certidões vencidas/vencendo e próximos prazos, com situaçã
   assert.ok(t.includes('Empresa A · Vence em 13 dias (01/12/2026)'));
   assert.ok(t.includes('Amanhã') && t.includes('Prazo de propostas'));
   assert.deepEqual(links(alvo), ['operacao.html?aba=documentos&empresa=' + EMP, 'operacao.html?aba=documentos&empresa=' + EMP]);
+});
+
+test('Hoje: "Adicionar à agenda" só em prazo que não venceu, com o id real no UID do Google/ics', async () => {
+  const dom = criarDom();
+  const eventos = [];
+  const C = carregar({ eventos });
+  const { cliente } = criarCliente();
+  const ID = 'bbbbbbbb-0000-4000-8000-000000000011';
+  const catalogo = { userId: 'u1', empresas: [{ empresaId: EMP, razaoSocial: 'Empresa A' }], contextos: [{ empresaId: EMP, processoId: 'pa', numero: '1' }], certidoes: [],
+    prazos: [
+      { id: 'bbbbbbbb-0000-4000-8000-000000000012', origem: 'agenda', empresaId: EMP, processoId: null, categoria: 'outro', titulo: 'Já passou', vencimento: '2000-01-01T13:00:00+00:00', dias: 0 },
+      { id: ID, origem: 'processo', empresaId: EMP, processoId: 'pa', categoria: 'proposta', titulo: 'Proposta futura', vencimento: '2099-01-01T13:00:00+00:00', dias: 3 },
+    ] };
+  const fetch = async (url, op) => (url === '/api/contextos-operacao' && op.headers.Authorization === 'Bearer TOKEN-1' ? resposta(200, catalogo) : resposta(404, {}));
+  const ctrl = C.criarControlador({ doc: dom, fetch, storage: null, autenticacao: C.criarAutenticacaoSupabase({ cliente, fetch }), kit: { montar: () => ({ fechar() {} }) }, identificacao: { montar: () => ({ abrir() {}, limpar() {} }) } });
+  await ctrl.entrar('operador@example.invalid', 'x');
+  const alvo = dom.getElementById('hoje-alertas');
+  const t = textos(alvo);
+  assert.ok(t.includes('Já passou'), 'o vencido continua na lista');
+  assert.equal(t.filter((x) => x === 'Adicionar à agenda').length, 1, 'só o futuro ganha o botão');
+  const google = links(alvo).find((h) => h.startsWith('https://calendar.google.com/'));
+  assert.ok(google.includes('text=Proposta%20futura'));
+  // O id real vira o UID: igual ao do mesmo prazo baixado em processos.html.
+  assert.deepEqual(eventos.map((e) => [e.ev.id, e.botao]), [['bbbbbbbb-0000-4000-8000-000000000012', false], [ID, true]]);
+  assert.ok(eventos[1].ics.includes('\r\nUID:' + ID + '@licitaplena.com.br\r\n'));
 });
 
 test('bloco que o servidor não leu (null) avisa; catálogo sem os blocos (QA) esconde o topo', async () => {

@@ -1,0 +1,12 @@
+/* "Adicionar à agenda" (agenda-ics.js) nas três páginas do CRM. Só tokens do DS; alvo de toque de 44px. */
+.agenda-add{grid-column:2;margin-top:var(--space-4);font:var(--text-body)}
+.agenda-add summary{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--space-12);border:1px solid var(--border-default);border-radius:var(--radius-control);color:var(--action-text);font-weight:600;cursor:pointer;list-style:none;width:max-content;max-width:100%}
+.agenda-add summary::-webkit-details-marker{display:none}
+.agenda-add summary::before{content:"+";margin-right:var(--space-8);font-weight:700}
+.agenda-add[open] summary::before{content:"\2212"}
+.agenda-add summary:hover{border-color:var(--action-strong)}
+.agenda-add-opcoes{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.agenda-add-opcoes button,.agenda-add-opcoes a{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--space-12);border:1px solid var(--action-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--action-text);font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.agenda-add-opcoes button:hover,.agenda-add-opcoes a:hover{background:var(--action-tint)}
+.agenda-add summary:focus-visible,.agenda-add-opcoes button:focus-visible,.agenda-add-opcoes a:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.evento .agenda-add{margin-top:var(--space-8)}

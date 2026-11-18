@@ -90,11 +90,11 @@ exports.handler=async event=>{
   const prazos=await bloco(async()=>{
    const doProcesso=(await ler(`operacao_prazos_processo?organizacao_id=in.${emLista(organizacoes)}&${janela}&select=id,organizacao_id,processo_id,categoria,titulo,vencimento,concluido_em`))
     .filter(p=>p&&uuid(p.id)&&!p.concluido_em&&porProcesso.has(p.processo_id)&&empresaOk(porProcesso.get(p.processo_id).empresaId,p.organizacao_id))
-    .map(p=>({origem:'processo',empresaId:porProcesso.get(p.processo_id).empresaId,processoId:p.processo_id,categoria:texto(p.categoria,40),titulo:texto(p.titulo,200),vencimento:p.vencimento,dias:diasDoPrazo(p.vencimento,hoje)}));
+    .map(p=>({id:p.id,origem:'processo',empresaId:porProcesso.get(p.processo_id).empresaId,processoId:p.processo_id,categoria:texto(p.categoria,40),titulo:texto(p.titulo,200),vencimento:p.vencimento,dias:diasDoPrazo(p.vencimento,hoje)}));
    // Agenda sem empresa vale para a organização inteira: só aparece para quem é membro da organização toda.
    const daAgenda=(await ler(`operacao_agenda?organizacao_id=in.${emLista(organizacoes)}&${janela}&select=id,organizacao_id,empresa_id,categoria,titulo,vencimento,concluido_em`))
     .filter(a=>a&&uuid(a.id)&&!a.concluido_em&&(a.empresa_id===null?membros.some(m=>m.organizacao_id===a.organizacao_id&&m.empresa_id===null):empresaOk(a.empresa_id,a.organizacao_id)))
-    .map(a=>({origem:'agenda',empresaId:a.empresa_id,processoId:null,categoria:texto(a.categoria,40),titulo:texto(a.titulo,200),vencimento:a.vencimento,dias:diasDoPrazo(a.vencimento,hoje)}));
+    .map(a=>({id:a.id,origem:'agenda',empresaId:a.empresa_id,processoId:null,categoria:texto(a.categoria,40),titulo:texto(a.titulo,200),vencimento:a.vencimento,dias:diasDoPrazo(a.vencimento,hoje)}));
    return [...doProcesso,...daAgenda].filter(p=>p.dias!==null).sort((a,b)=>Date.parse(a.vencimento)-Date.parse(b.vencimento));
   });
   return resposta(200,{userId,empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos,certidoes,prazos});
