@@ -1,7 +1,8 @@
 <!doctype html>
 <!-- Sistema CRM do LicitaPlena em produção (/sistema). Mesma marcação de docs/qa/app-comercial.html, sem o selo
      de homologação; data-modo="producao" faz o app-comercial.js usar Supabase Auth em vez das rotas /qa/*.
-     O login fica nesta página (e quem já entrou pelo login.html chega com a sessão Supabase do mesmo site). -->
+     Sem login próprio: sem sessão Supabase, app-comercial.js manda para /login?voltar=/sistema, e o login.html
+     devolve para cá depois de entrar (mesma sessão Supabase do site). -->
 <html lang="pt-BR" data-theme="light" data-modo="producao">
 <head>
 <meta charset="utf-8">
@@ -31,15 +32,6 @@
   </div>
 </header>
 <main class="app-principal">
-  <section id="login" class="app-cartao" aria-labelledby="login-titulo">
-    <h1 id="login-titulo" class="app-titulo">Entrar</h1>
-    <form id="app-login" method="post" action="">
-      <label>E-mail <input name="email" type="email" required autocomplete="username"></label>
-      <label>Senha <input name="password" type="password" required autocomplete="current-password"></label>
-      <button id="login-entrar" class="app-primario" type="submit">Entrar</button>
-    </form>
-    <p class="app-apoio">Ainda não tem conta? <a href="cadastro.html">Cadastre-se</a>.</p>
-  </section>
   <section id="hoje" hidden aria-labelledby="hoje-titulo">
     <h1 id="hoje-titulo" class="app-titulo" tabindex="-1">Hoje</h1>
     <p id="hoje-estado" class="app-apoio" role="status" aria-live="polite"></p>

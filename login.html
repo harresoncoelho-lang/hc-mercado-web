@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,90 +8,85 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds-tokens.css">
+<script>
+  // Tema antes de pintar (sem piscar): mesma chave e mesmo padrão claro do sistema (app-comercial.js).
+  (function () { var t = null; try { t = localStorage.getItem("licitaplena.tema"); } catch (e) { t = null; } document.documentElement.dataset.theme = t === "dark" ? "dark" : "light"; })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
-  :root {
-    --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a;
-    --fundo: #0a121c; --cartao: #141f2e; --borda: #223144;
-    --texto: #eef3f8; --texto-fraco: #90a2b8; --verde: #34c17c; --vermelho: #e8617a;
-    --raio: 12px;
-  }
+  /* Design System "Direção A, azul original": cores, raios e tipografia vêm de ds-tokens.css. */
   * { box-sizing: border-box; }
   body {
-    font-family: "Inter", Arial, Helvetica, sans-serif;
-    background: radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%), var(--fundo);
-    background-attachment: fixed;
-    color: var(--texto);
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
+    margin: 0; min-height: 100vh; padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font: var(--text-body); color: var(--text-primary); background: var(--surface-page);
   }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
   .caixa {
-    width: 100%;
-    max-width: 400px;
-    background: var(--cartao);
-    border: 1px solid var(--borda);
-    border-radius: var(--raio);
-    padding: 32px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    width: 100%; max-width: 400px; padding: 24px;
+    background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card);
   }
-  .logo-topo { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-  .logo-topo img { width: 40px; height: 40px; }
-  .logo-topo span { font-weight: 700; font-size: 18px; }
-  h1 { font-size: 20px; margin: 0 0 6px; }
-  p.sub { color: var(--texto-fraco); font-size: 14px; margin: 0 0 24px; }
-  label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
+  .topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; line-height: 24px; color: var(--text-primary); text-decoration: none; }
+  /* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (regra do DS). */
+  .placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+  .placa img { width: 24px; height: 24px; display: block; }
+  h1 { font: var(--text-section); margin: 0 0 4px; }
+  p.sub { color: var(--text-secondary); margin: 0 0 24px; }
+  label { display: block; font: var(--text-label); margin-bottom: 4px; }
   input {
-    width: 100%; padding: 11px 12px; margin-bottom: 16px;
-    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
-    color: var(--texto); font-size: 14px; font-family: inherit;
+    width: 100%; height: 40px; padding: 0 12px; margin-bottom: 16px;
+    background: var(--surface-default); color: var(--text-primary);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-control);
   }
-  input:focus { outline: none; border-color: var(--azul); }
-  .campo-senha-wrap { position: relative; }
-  .campo-senha-wrap input { padding-right: 42px; }
-  .btn-mostrar-senha {
-    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-    margin-top: -8px; background: none; border: none; cursor: pointer;
-    color: var(--texto-fraco); padding: 4px; line-height: 1;
+  .campo-senha-wrap { display: flex; gap: 8px; margin-bottom: 16px; }
+  .campo-senha-wrap input { flex: 1; min-width: 0; margin-bottom: 0; }
+  .btn {
+    height: 40px; padding: 0 16px; border-radius: var(--radius-control); border: 1px solid transparent;
+    font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .btn-mostrar-senha:hover { color: var(--texto); }
-  .btn-mostrar-senha svg { display: block; width: 18px; height: 18px; }
-  button.entrar {
-    width: 100%; padding: 12px; background: var(--laranja); color: #1a1005;
-    border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer;
-  }
-  button.entrar:hover { filter: brightness(1.08); }
-  button.entrar:disabled { opacity: 0.6; cursor: default; }
-  .aviso { margin-top: 16px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
-  .aviso.erro { background: rgba(232,97,122,0.12); border: 1px solid var(--vermelho); color: #ffb3c1; }
-  .aviso.ok { background: rgba(52,193,124,0.12); border: 1px solid var(--verde); color: #a6f0c6; }
-  .rodape-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--texto-fraco); }
-  .rodape-link a { color: var(--azul); text-decoration: none; }
-  .rodape-link a:hover { text-decoration: underline; }
-  .rodape-legal { text-align: center; margin-top: 18px; font-size: 12px; color: var(--texto-fraco); }
-  .rodape-legal a { color: var(--texto-fraco); text-decoration: underline; margin: 0 6px; }
-  .rodape-legal a:hover { color: var(--azul); }
+  .btn-sec { background: var(--surface-default); color: var(--text-primary); border-color: var(--border-strong); }
+  .btn-sec:hover { background: var(--surface-sunken); }
+  .btn-ter { background: transparent; color: var(--action-text); height: 32px; padding: 0 8px; font-size: 12px; }
+  .btn-ter:hover { background: var(--action-tint); }
+  button.entrar { width: 100%; background: var(--action-strong); color: var(--action-on); }
+  button.entrar:hover { background: var(--action-strong-hover); }
+  button.entrar:disabled { background: var(--surface-sunken); color: var(--text-disabled); border-color: var(--border-default); cursor: not-allowed; }
+  .captcha-rotulo { font: var(--text-label); color: var(--text-secondary); margin: 0 0 8px; }
+  .h-captcha { margin-bottom: 16px; min-height: 78px; max-width: 100%; overflow-x: auto; }
+  /* Aviso: cor + texto + sinal (estado nunca só por cor). */
+  .aviso { margin-top: 16px; padding: 12px 16px; border-radius: var(--radius-card); border: 1px solid; display: none; gap: 8px; }
+  .aviso::before { font-weight: 700; flex: none; }
+  .aviso.erro { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+  .aviso.erro::before { content: "!"; }
+  .aviso.ok { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+  .aviso.ok::before { content: "✓"; }
+  .rodape-link { text-align: center; margin-top: 24px; color: var(--text-secondary); }
+  a { color: var(--action-text); }
+  .rodape-legal { text-align: center; margin-top: 16px; font: var(--text-label); color: var(--text-secondary); }
+  .rodape-legal a { color: var(--text-secondary); margin: 0 6px; }
+  .rodape-legal a:hover { color: var(--action-text); }
 
-  /* Tablet (768px), celular grande (414px) e pequeno (375px) */
+  /* Celular (375–480px): cartão encosta no topo e perde a borda lateral larga. */
   @media (max-width: 480px) {
-    body { padding: 10px; align-items: flex-start; }
-    .caixa { padding: 22px 18px; margin-top: 24px; }
+    body { padding: 12px; align-items: flex-start; }
+    .caixa { padding: 20px 16px; margin-top: 12px; }
   }
 </style>
 </head>
 <body>
-  <div class="caixa">
-    <div class="logo-topo">
-      <img src="logo-icone-branco.svg" alt="LicitaPlena">
-      <span>LicitaPlena</span>
+  <main class="caixa">
+    <div class="topo">
+      <a href="index.html" class="marca"><span class="placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a>
+      <button type="button" class="btn btn-ter" id="tema">Tema escuro</button>
     </div>
-    <h1>Acessar conta</h1>
-    <p class="sub">Entre com o e-mail e senha do seu cadastro.</p>
+    <h1>Entrar</h1>
+    <p class="sub">Entre com o e-mail e a senha do seu cadastro.</p>
 
     <form id="form-login">
       <label for="email">E-mail</label>
@@ -99,17 +94,17 @@
       <label for="senha">Senha</label>
       <div class="campo-senha-wrap">
         <input type="password" id="senha" required autocomplete="current-password">
-        <button type="button" class="btn-mostrar-senha" data-alvo="senha" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
+        <button type="button" class="btn btn-sec btn-mostrar-senha" data-alvo="senha" aria-controls="senha" aria-pressed="false">Mostrar senha</button>
       </div>
 
-      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-bottom:16px;"></div>
+      <p class="captcha-rotulo">Verificação de segurança</p>
+      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E"></div>
+      <script>document.querySelector(".h-captcha").dataset.theme = document.documentElement.dataset.theme;</script>
 
-      <button type="submit" class="entrar" id="btn-entrar">Entrar</button>
+      <button type="submit" class="btn entrar" id="btn-entrar">Entrar</button>
     </form>
 
-    <div class="aviso" id="aviso"></div>
+    <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
     <div class="rodape-link">
       Ainda não tem conta? <a href="cadastro.html">Cadastre-se</a>
@@ -117,16 +112,45 @@
     <div class="rodape-legal">
       <a href="termos-de-uso.html">Termos de uso</a>·<a href="politica-privacidade.html">Privacidade</a>·<a href="politica-cookies.html">Cookies</a>
     </div>
-  </div>
+  </main>
 
 <script>
+  // Alternar tema: grava na mesma chave que o sistema lê.
+  (function () {
+    const b = document.getElementById("tema");
+    const pintar = () => { b.textContent = document.documentElement.dataset.theme === "dark" ? "Tema claro" : "Tema escuro"; };
+    pintar();
+    b.addEventListener("click", () => {
+      const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem("licitaplena.tema", t); } catch (e) { /* preferência opcional */ }
+      pintar();
+    });
+  })();
+</script>
+<script>
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ?voltar= só aceita caminho deste site ("/sistema"); "//outro.site", "/\outro" ou URL completa caem no painel,
+  // para o login nunca virar redirecionador aberto.
+  function destinoSeguro(voltar) {
+    if (typeof voltar !== "string" || !/^\/(?![\/\\])/.test(voltar)) return "painel.html";
+    try {
+      const u = new URL(voltar, window.location.origin);
+      return u.origin === window.location.origin ? u.pathname + u.search + u.hash : "painel.html";
+    } catch (e) { return "painel.html"; }
+  }
+  const parametros = new URLSearchParams(window.location.search);
+  const destino = destinoSeguro(parametros.get("voltar"));
 
   // Ícone de olho: alterna type="password" <-> type="text" no campo alvo.
   document.querySelectorAll(".btn-mostrar-senha").forEach((btn) => {
     btn.addEventListener("click", () => {
       const alvo = document.getElementById(btn.dataset.alvo);
       alvo.type = alvo.type === "password" ? "text" : "password";
+      const visivel = alvo.type === "text";
+      btn.textContent = visivel ? "Ocultar senha" : "Mostrar senha";
+      btn.setAttribute("aria-pressed", String(visivel));
     });
   });
 
@@ -134,8 +158,18 @@
     const el = document.getElementById("aviso");
     el.textContent = texto;
     el.className = "aviso " + tipo;
-    el.style.display = "block";
+    el.style.display = "flex";
   }
+
+  // Motivo vindo do sistema (/sistema): só códigos conhecidos, com texto daqui; nada da URL vai para a tela.
+  const AVISOS_SISTEMA = {
+    analise: ["Seu cadastro ainda está em análise. Você recebe um aviso assim que for aprovado.", "erro"],
+    expirada: ["Sua sessão expirou. Entre novamente.", "erro"],
+    saiu: ["Sessão encerrada.", "ok"],
+  };
+  const codigoAviso = parametros.get("aviso");
+  const avisoSistema = codigoAviso && Object.prototype.hasOwnProperty.call(AVISOS_SISTEMA, codigoAviso) ? AVISOS_SISTEMA[codigoAviso] : null;
+  if (avisoSistema) mostrarAviso(avisoSistema[0], avisoSistema[1]);
 
   document.getElementById("form-login").addEventListener("submit", async (ev) => {
     ev.preventDefault();
@@ -183,7 +217,7 @@
     }
 
     mostrarAviso("Login realizado! Redirecionando...", "ok");
-    window.location.href = "painel.html";
+    window.location.href = destino;
   });
 </script>
 </body>

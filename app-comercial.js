@@ -1,3 +1,4 @@
+/* global document, Element, SUPABASE_URL, SUPABASE_ANON_KEY -- script de navegador; as duas constantes vêm de supabase-config.js */
 (function () {
   'use strict';
   // Ligação com o DOM real. A lógica fica em app-comercial-controlador.js (testada com doubles).
@@ -8,6 +9,7 @@
   // sistema.html marca data-modo="producao" e carrega supabase-js + supabase-config.js. Sem a marca (página
   // do harness QA), o controlador usa as rotas /qa/*. SUPABASE_URL é `const` global, não propriedade de window.
   let autenticacao = null;
+  let pedirLogin = null;
   if (doc.documentElement.dataset.modo === 'producao') {
     let cliente = null;
     try {
@@ -16,9 +18,17 @@
       }
     } catch { cliente = null; }
     autenticacao = C.criarAutenticacaoSupabase({ cliente, fetch: (...args) => globalThis.fetch(...args) });
+    // Sem login próprio em produção: volta ao login.html, que traz de volta para cá. O motivo vai como código
+    // fixo (o login.html só mostra textos dele), nunca como texto livre na URL.
+    const CODIGOS = { [C.MSG.naoAprovado]: 'analise', [C.MSG.sessaoExpirada]: 'expirada', [C.MSG.usuarioMudou]: 'expirada', [globalThis.LicitaPlenaComercialCore.MSG_SESSAO_ENCERRADA]: 'saiu' };
+    pedirLogin = (mensagem) => {
+      const codigo = CODIGOS[mensagem];
+      globalThis.location.replace('/login?voltar=/sistema' + (codigo ? '&aviso=' + codigo : ''));
+    };
   }
   const ctrl = C.criarControlador({
     autenticacao,
+    pedirLogin,
     doc,
     fetch: (...args) => globalThis.fetch(...args),
     storage,
@@ -32,7 +42,8 @@
   try { if (storage?.getItem('licitaplena.tema') === 'dark') tema = 'dark'; } catch { /* preferência opcional */ }
   doc.documentElement.dataset.theme = tema;
 
-  doc.getElementById('app-login').addEventListener('submit', (ev) => {
+  // O formulário só existe na página do harness QA; sistema.html não tem login próprio.
+  doc.getElementById('app-login')?.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const f = ev.currentTarget;
     const email = f.elements.email.value;
