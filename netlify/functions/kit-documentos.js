@@ -12,6 +12,7 @@ const {falhar,validarConfirmacao}=require('./_empresa_identificacao');
 const {carregarContextoIdentificacao}=require('./_empresa_identificacao_contexto');
 const {uuid,preparar,docx,pendente}=require('./_kit_documentos');
 const {validarRascunho,documentoPublico,persistencia}=require('./_kit_documentos_persistencia');
+const {LOTE_MAX,MARCADOR,gerarLote,lerLogo}=require('./_kit_declaracoes');
 async function carregarEscopo(event,userId,body){
  const c=await carregarContextoIdentificacao(event,userId,body.empresaId);const {empresa,rest}=c;
  if(empresa.id!==body.empresaId||!uuid(empresa.organizacao_id))falhar('Empresa indisponível.',404);
@@ -42,9 +43,29 @@ function prepararPeca(ctx,payload,documento){
  if(documento)resultado.revisaoHash=createHash('sha256').update(JSON.stringify({documentoId:documento.id,versao:documento.versao,revisaoHashLegado:resultado.revisaoHash})).digest('hex');
  return resultado;
 }
+// Um DOCX só com as declarações revisadas por quem exporta e ainda vigentes; não revisada nunca sai, só é listada.
+async function exportarDeclaracoes({c,store,ctx,body,pendencias}){
+ if(pendencias.length)pendente(pendencias.join(' '));
+ const ids=body.documentoIds;
+ if(ids!==undefined&&(!Array.isArray(ids)||!ids.length||ids.length>LOTE_MAX||ids.some(id=>!uuid(id))||new Set(ids).size!==ids.length))falhar(`Selecione de 1 a ${LOTE_MAX} declarações.`,400);
+ const todas=(await store.listar()).filter(d=>d.tipo==='declaracao');
+ if(ids&&ids.some(id=>!todas.some(d=>d.id===id)))falhar('Documento indisponível.',404);
+ const alvo=ids?todas.filter(d=>ids.includes(d.id)):todas;if(alvo.length>LOTE_MAX)falhar(`Selecione até ${LOTE_MAX} declarações.`,400);
+ const paginas=[],incluidas=[],ignoradas=[];
+ for(const d of alvo){
+  let r=null;
+  if(d.revisado_por===ctx.userId&&d.revisao_versao===d.versao){try{r=prepararPeca(ctx,{tipo:d.tipo,...d.dados},d);}catch(e){if(e.status!==422)throw e;}}
+  if(!r||d.revisao_hash!==r.revisaoHash)ignoradas.push({documentoId:d.id,motivo:'nao_revisada'});
+  else if(r.previa.texto.includes(MARCADOR))ignoradas.push({documentoId:d.id,motivo:'campos_pendentes'});
+  else{paginas.push(r.previa.texto);incluidas.push(d.id);}
+ }
+ if(!paginas.length){const e=new Error('Nenhuma declaração revisada para exportar. Prepare e confirme a revisão antes.');e.status=422;e.ignoradas=ignoradas;throw e;}
+ const logo=await lerLogo(c,ctx.empresa);
+ return {arquivoBase64:docx({previa:{texto:paginas.join('\n\n')},titulo:'Declarações'},{logo,paginas}).toString('base64'),nome:`declaracoes-${ctx.processo.id}.docx`,mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',incluidas,ignoradas,logoAplicada:Boolean(logo)};
+}
 function erroKit(e,body){
  if(e.status===422&&body?.acao==='exportar'&&(body.documentoId||body.revisado===true&&/^[a-f0-9]{64}$/.test(body.revisaoHash||'')))return [409,{erro:'Dados alterados ou indisponíveis. Prepare e confira uma nova prévia.',...(e.pendencias?{pendencias:e.pendencias}:{})}];
- return [e.status||503,{erro:e.status?e.message:'Serviço temporariamente indisponível.',...(e.pendencias?{pendencias:e.pendencias}:{})}];
+ return [e.status||503,{erro:e.status?e.message:'Serviço temporariamente indisponível.',...(e.pendencias?{pendencias:e.pendencias}:{}),...(e.ignoradas?{ignoradas:e.ignoradas}:{})}];
 }
 function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}={}){
  return async event=>{
@@ -69,8 +90,9 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
    const cancelada=await ponteLeitura({event,body});return responder(cancelada.status||200,cancelada);
   }
  }
- if(body?.tipo!=='proposta'&&body?.acao!=='importarPlanilha'&&event.body.length>50000)falhar('Solicitação inválida.');
- if(!body||!uuid(body.empresaId)||!uuid(body.processoId)||!['consultar','listarItens','listar','abrir','salvar','preparar','confirmarRevisao','exportar','prepararOperacao','iniciarLeitura','registrarLeitura','consultarLeituras','confirmarCorrespondencias',...Object.keys(ACOES_ITENS)].includes(body.acao))falhar('Solicitação inválida.');
+ // Lote com textos de edital passa de 50 KB; o envelope geral (LIMITES.envelopeBytes) continua valendo.
+ if(body?.tipo!=='proposta'&&!['importarPlanilha','gerarDeclaracoesLote'].includes(body?.acao)&&event.body.length>50000)falhar('Solicitação inválida.');
+ if(!body||!uuid(body.empresaId)||!uuid(body.processoId)||!['consultar','listarItens','listar','abrir','salvar','preparar','confirmarRevisao','exportar','prepararOperacao','iniciarLeitura','registrarLeitura','consultarLeituras','confirmarCorrespondencias','gerarDeclaracoesLote','exportarDeclaracoes',...Object.keys(ACOES_ITENS)].includes(body.acao))falhar('Solicitação inválida.');
  if(body.acao==='prepararOperacao'&&(Object.keys(body).some(k=>!['acao','empresaId','processoId','documentoId','versaoEsperada'].includes(k))||!uuid(body.documentoId)))falhar('Seletores operacionais inválidos.',400);
  const {c,empresa,processo}=await carregarEscopo(event,auth.userId,body);
  const store=persistencia(c,empresa,processo,auth.userId);
@@ -81,6 +103,8 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
  const dados=validarRascunho(body,itens);
  return responder(200,{documento:documentoPublico(await store.gravar(body,dados))});
  }
+ if(body.acao==='gerarDeclaracoesLote'){const {perfil}=await identificacaoKit(c);return responder(200,await gerarLote({c,empresa,processo,perfil,store,body}));}
+ if(body.acao==='exportarDeclaracoes'){const {perfil,pendencias}=await identificacaoKit(c);return responder(200,await exportarDeclaracoes({c,store,body,pendencias,ctx:{userId:auth.userId,empresa,processo,perfil,itens:[]}}));}
  let documento;
  if(body.documentoId!==undefined||['abrir','confirmarRevisao'].includes(body.acao)){
  documento=await store.abrir(body);
@@ -126,11 +150,14 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
  return responder(operacao.valido?200:409,operacao);
  }
  if(body.acao==='preparar')return responder(200,{previa:resultado.previa,revisaoHash:resultado.revisaoHash});
+ // Marcador [PREENCHER: campo] aparece na prévia, mas bloqueia revisão e exportação.
+ if(resultado.previa.texto.includes(MARCADOR))pendente('Preencha os campos marcados [PREENCHER] antes de revisar ou exportar.');
  if(body.revisado!==true)pendente('Confirme a revisão dos dados e do conteúdo para este edital.');
  if(typeof body.revisaoHash!=='string'||body.revisaoHash!==resultado.revisaoHash)falhar('Dados alterados. Prepare e confira uma nova prévia.',409);
  if(body.acao==='confirmarRevisao')return responder(200,{documento:documentoPublico(await store.gravar({...body,tipo:documento.tipo},documento.dados,resultado))});
  if(documento&&(documento.revisado_por!==auth.userId||documento.revisao_versao!==documento.versao||documento.revisao_hash!==resultado.revisaoHash))falhar('Prepare e confirme sua revisão desta peça antes de exportar.',409);
- return responder(200,{arquivoBase64:docx(resultado).toString('base64'),nome:`${payload.tipo}-${processo.id}.docx`,mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+ const logo=await lerLogo(c,empresa);
+ return responder(200,{arquivoBase64:docx(resultado,{formato:documento?.formato===2?2:1,logo}).toString('base64'),nome:`${payload.tipo}-${processo.id}.docx`,mime:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',logoAplicada:Boolean(logo)});
  }catch(e){return responder(...erroKit(e,body));}
 };
 }

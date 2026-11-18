@@ -10,9 +10,9 @@ const ler = nome => fs.readFileSync(path.join(SUP, nome), 'utf8');
 const APLICAR = fs.readFileSync(path.join(__dirname, '01-aplicar.sql'), 'utf8');
 const VERIFICAR = fs.readFileSync(path.join(__dirname, '02-verificar.sql'), 'utf8');
 const NOVOS = ['operacao_itens_proposta.sql', 'operacao_funil_etapas.sql', 'operacao_portal_cliente.sql',
-  'operacao_perfil_empresa.sql', 'operacao_exigencias.sql', 'operacao_esteira.sql'];
+  'operacao_perfil_empresa.sql', 'operacao_exigencias.sql', 'operacao_esteira.sql', 'operacao_kit_modelos.sql'];
 const TESTES = ['testar_itens_proposta.sql', 'testar_funil_etapas.sql', 'testar_portal_cliente.sql',
-  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql'];
+  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql', 'testar_kit_modelos.sql'];
 
 function carregarPGlite() {
   const candidatos = [process.env.PGLITE_MODULE_PATH, '@electric-sql/pglite',
@@ -95,6 +95,9 @@ function carregarPGlite() {
     const contar = async () => (await db.query(`select (select count(*) from operacao_documentos)::int d,(select count(*) from operacao_processos)::int p,
       (select count(*) from operacao_itens_resultado)::int i,(select count(*) from operacao_membros)::int m`)).rows[0];
     const dadosAntes = await contar();
+    // Peça do kit criada antes de operacao_kit_modelos.sql: tem de continuar no formato 1 (proposta antiga).
+    await db.query(`insert into operacao_kit_documentos(id,organizacao_id,empresa_id,processo_id,tipo,dados,criado_por,atualizado_por,atualizado_em)
+      values($1,$2,$3,$4,'proposta','{"proposta":{}}',$5,$5,'2020-01-01')`, [id(901), org, emp, id(21), gestor]);
 
     for (const rodada of [1, 2]) {
       for (const f of NOVOS) await db.exec(ler(f));
@@ -102,6 +105,9 @@ function carregarPGlite() {
         const r = (await db.query(`select unidade,codigo_catalogo,marca,valor_unitario_proposta::text v,atualizado_em=timestamptz '2020-01-01' intacto from operacao_itens_resultado where id=$1`, [id(42)])).rows[0];
         assert.deepEqual(r, { unidade: 'PCT', codigo_catalogo: '222', marca: 'Marca antiga', v: '9.99', intacto: true }, 'preenchimento inicial');
         log.push('preenchimento de itens existentes: observação mais recente (PCT/222); marca, oferta e atualizado_em intactos');
+        const k = (await db.query(`select formato,modelo_codigo,atualizado_em=timestamptz '2020-01-01' intacto from operacao_kit_documentos where id=$1`, [id(901)])).rows[0];
+        assert.deepEqual(k, { formato: 1, modelo_codigo: null, intacto: true }, 'peça antiga do kit');
+        log.push('peça do kit anterior: formato 1, sem modelo, atualizado_em intacto');
       }
       for (const t of TESTES) await rodarTeste(t);
       log.push(`rodada ${rodada}: ${NOVOS.join(' + ')} aplicados; ${TESTES.join(' e ')} ok; 02 → ${await verificar02()}`);

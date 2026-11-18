@@ -96,4 +96,11 @@ function validarLogo(bytes,tipoEsperado){
  if(!img.largura||!img.altura||img.largura>LOGO.px||img.altura>LOGO.px)falhar('A logo deve ter no máximo 2000 px de largura e de altura.',422,'logo');
  return img;
 }
-module.exports={LIMITES,LOGO,falhar,caminhoPermitido,validarArquivo,validarConfirmacao,cpfValido,mascararCpf,validarPerfilEmpresa,validarPremissas,tipoCaminhoLogo,dimensoesImagem,validarLogo};
+// Leitura limitada do Storage: para no primeiro byte acima do teto (logo do perfil).
+async function lerAte(r,max){
+ if(Number(r.headers.get('content-length'))>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');
+ const reader=r.body.getReader();let total=0;const chunks=[];
+ try{for(;;){const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');chunks.push(Buffer.from(value));}}finally{await reader.cancel();}
+ return Buffer.concat(chunks);
+}
+module.exports={lerAte,LIMITES,LOGO,falhar,caminhoPermitido,validarArquivo,validarConfirmacao,cpfValido,mascararCpf,validarPerfilEmpresa,validarPremissas,tipoCaminhoLogo,dimensoesImagem,validarLogo};

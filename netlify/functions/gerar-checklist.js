@@ -109,15 +109,47 @@ function conteudoDocumento(edital, resumo) {
   return `${cabecalho}${paragrafo("Resumo do Edital", {negrito:true,tamanho:36,antes:240})}${paragrafo(`${rotuloNumero}: ${numero}`)}${destaque}${paragrafo(coberturaDocumento(resumo), {cor:"637085",tamanho:18})}${secoes}${paragrafo("Resumo elaborado pelo LicitaPlena com base nos documentos disponíveis. Confira as referências e pendências indicadas.", {tamanho:16,cor:"637085"})}`;
 }
 
-function montarDocx(edital, resumo, minuta = null, titulo = "Checklist de Licitação") {
+// Proposta formato 2: uma linha por item, colunas fixas (soma 9120 = largura útil já usada nas tabelas acima).
+const COLUNAS_PROPOSTA = [["Item", 700], ["Descrição", 3220], ["Qtd.", 800], ["Unid.", 700], ["Marca / modelo", 1500], ["Unitário (R$)", 1100], ["Total (R$)", 1100]];
+function tabelaProposta(linhas) {
+  const borda = '<w:tblBorders><w:top w:val="single" w:sz="4" w:color="DCE5EF"/><w:left w:val="single" w:sz="4" w:color="DCE5EF"/><w:bottom w:val="single" w:sz="4" w:color="DCE5EF"/><w:right w:val="single" w:sz="4" w:color="DCE5EF"/><w:insideH w:val="single" w:sz="4" w:color="DCE5EF"/><w:insideV w:val="single" w:sz="4" w:color="DCE5EF"/></w:tblBorders>';
+  const celula = (valor, largura, negrito) => `<w:tc><w:tcPr><w:tcW w:w="${largura}" w:type="dxa"/>${negrito ? '<w:shd w:val="clear" w:fill="EEF3F8"/>' : ""}</w:tcPr>${paragrafo(valor, { negrito, tamanho: 17, antes: 40, depois: 40 })}</w:tc>`;
+  const linha = (valores, negrito) => `<w:tr>${negrito ? '<w:trPr><w:tblHeader/></w:trPr>' : ""}${valores.map((v, i) => celula(v, COLUNAS_PROPOSTA[i][1], negrito)).join("")}</w:tr>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="9120" w:type="dxa"/>${borda}</w:tblPr><w:tblGrid>${COLUNAS_PROPOSTA.map(([, w]) => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${linha(COLUNAS_PROPOSTA.map(([n]) => n), true)}${linhas.map((l) => linha(l, false)).join("")}</w:tbl>`;
+}
+
+function corpoMinuta(minuta, { tabela, paginas } = {}) {
+  const p = (t) => paragrafo(t, { preservarLinhas: minuta.preservarLinhas === true });
+  if (Array.isArray(paginas)) return paginas.map(p).join('<w:p><w:r><w:br w:type="page"/></w:r></w:p>');
+  if (tabela) return p(tabela.antes) + tabelaProposta(tabela.linhas) + p(tabela.depois);
+  return p(minuta.texto);
+}
+
+// Logo no cabeçalho, escalada para caber em 4 x 1,5 cm (EMU) sem distorcer.
+function cabecalhoLogo(logo) {
+  const escala = Math.min(1440000 / logo.largura, 540000 / logo.altura);
+  const cx = Math.max(1, Math.round(logo.largura * escala)), cy = Math.max(1, Math.round(logo.altura * escala));
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:p><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="1" name="Logo"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="1" name="logo"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rIdLogo"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p></w:hdr>`;
+}
+
+// extras (só kit): logo {bytes,tipo,largura,altura} já validada; tabela da proposta formato 2; paginas = uma declaração por página.
+// Sem extras, o pacote sai byte a byte igual ao anterior (fora as datas).
+function montarDocx(edital, resumo, minuta = null, titulo = "Checklist de Licitação", extras = {}) {
   const zip = new AdmZip();
-  zip.addFile("[Content_Types].xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`));
+  const logo = extras.logo || null;
+  const ext = logo?.tipo === "image/png" ? "png" : "jpeg";
+  zip.addFile("[Content_Types].xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${logo ? `<Default Extension="${ext}" ContentType="image/${ext}"/><Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>` : ""}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`));
   zip.addFile("_rels/.rels", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`));
-  zip.addFile("word/_rels/document.xml.rels", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`));
+  zip.addFile("word/_rels/document.xml.rels", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>${logo ? '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>' : ""}</Relationships>`));
+  if (logo) {
+    zip.addFile("word/header1.xml", Buffer.from(cabecalhoLogo(logo)));
+    zip.addFile("word/_rels/header1.xml.rels", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdLogo" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/logo.${ext}"/></Relationships>`));
+    zip.addFile(`word/media/logo.${ext}`, logo.bytes);
+  }
   zip.addFile("word/styles.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>`));
   zip.addFile("docProps/core.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/"><dc:title>${xml(titulo)}</dc:title><dc:creator>LicitaPlena</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`));
   zip.addFile("docProps/app.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>LicitaPlena</Application></Properties>`));
-  zip.addFile("word/document.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${minuta ? paragrafo(minuta.texto, {preservarLinhas: minuta.preservarLinhas === true}) : conteudoDocumento(edital, resumo)}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="900" w:right="900" w:bottom="900" w:left="900"/><w:defaultTabStop w:val="720"/></w:sectPr></w:body></w:document>`));
+  zip.addFile("word/document.xml", Buffer.from(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"${logo ? ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"' : ""}><w:body>${minuta ? corpoMinuta(minuta, extras) : conteudoDocumento(edital, resumo)}<w:sectPr>${logo ? '<w:headerReference w:type="default" r:id="rId2"/>' : ""}<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="900" w:right="900" w:bottom="900" w:left="900"/><w:defaultTabStop w:val="720"/></w:sectPr></w:body></w:document>`));
   return zip.toBuffer();
 }
 

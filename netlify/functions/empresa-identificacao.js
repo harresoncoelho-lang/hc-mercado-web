@@ -1,5 +1,5 @@
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
-const {falhar,LIMITES,LOGO,validarArquivo,validarConfirmacao,mascararCpf,validarPerfilEmpresa,validarPremissas,tipoCaminhoLogo,validarLogo}=require('./_empresa_identificacao');
+const {falhar,LIMITES,LOGO,validarArquivo,validarConfirmacao,mascararCpf,validarPerfilEmpresa,validarPremissas,tipoCaminhoLogo,validarLogo,lerAte}=require('./_empresa_identificacao');
 const {createHash,randomUUID}=require('node:crypto');
 const {carregarContextoIdentificacao}=require('./_empresa_identificacao_contexto');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
@@ -17,12 +17,6 @@ async function papelNaEmpresa({rest,empresa,userId}){
 const perfilPublicoEmpresa=(p,mostrarCpf)=>p?{...p,cpf_representante:mostrarCpf?p.cpf_representante:mascararCpf(p.cpf_representante)}:null;
 const upsert=(c,tabela,conflito,linhas)=>comTabelaPerfil(c.request(`/rest/v1/${tabela}?on_conflict=${conflito}`,{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(linhas)}).then(r=>r.json()));
 const caminhoStorage=caminho=>caminho.split('/').map(encodeURIComponent).join('/');
-async function lerAte(r,max){
- if(Number(r.headers.get('content-length'))>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');
- const reader=r.body.getReader();let total=0;const chunks=[];
- try{for(;;){const {done,value}=await reader.read();if(done)break;total+=value.length;if(total>max)falhar('A logo deve ter no máximo 512 KB.',422,'logo');chunks.push(Buffer.from(value));}}finally{await reader.cancel();}
- return Buffer.concat(chunks);
-}
 async function urlLogo(c,perfil){
  if(!perfil?.logo_caminho||!tipoCaminhoLogo(perfil.logo_caminho,c.empresa.organizacao_id,c.empresa.id,perfil.logo_hash))return null;
  // Logo apagada no Storage não impede ler o perfil.

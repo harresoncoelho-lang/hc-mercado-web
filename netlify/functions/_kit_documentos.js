@@ -32,19 +32,21 @@ function proposta(ctx,body,fontes){
  titulo='Proposta de materiais';const p=body.proposta||{};const ids=p.itemIds;
  if(!Array.isArray(ids)||ids.length<1||ids.length>LIMITES.itens||ids.some(id=>!uuid(id))||new Set(ids).size!==ids.length)pendente('Selecione de 1 a 1000 itens sem duplicatas; o tamanho total também é limitado.');
  campos={validade:texto(p.validade,'validade'),prazoEntrega:texto(p.prazoEntrega,'prazo de entrega'),pagamento:texto(p.pagamento,'pagamento'),unidades:{}};
- validarBudget(p); const indice=new Map(ctx.itens.map(i=>[i.id,i])); let total=0n;const linhas=[];
+ validarBudget(p); const indice=new Map(ctx.itens.map(i=>[i.id,i])); let total=0n;const linhas=[],tabela=[];
  for(const id of [...ids].sort()){
  const i=indice.get(id);if(!i)falhar('Item indisponível.',404);if(i.tipo!=='item')pendente('Lote agregado requer detalhamento em itens individuais.');
  const unidade=texto(p.unidades?.[id],'unidade informada por item',40);campos.unidades[id]=unidade;
  texto(i.descricao,'descrição do item',10000);texto(i.identificador,'identificador do item',180);
  for(const c of ['marca','modelo'])if(i[c]!=null&&i[c]!=='')texto(i[c],c,500);
  const subtotal=totalItem(i.quantidade,i.valor_unitario_proposta);total+=subtotal;if(total>999999999999999n)pendente('Total excede o limite.');itens.push(i);
- linhas.push(`Item ${i.identificador}: ${i.descricao}\nQuantidade: ${i.quantidade.replace('.',',')} | Unidade informada pelo usuário: ${unidade}\nMarca: ${i.marca||'não informada'} | Modelo: ${i.modelo||'não informado'}\nUnitário ofertado: R$ ${dinheiro(decimal(i.valor_unitario_proposta,2))} | Total: R$ ${dinheiro(subtotal)}`);
+ tabela.push([i.identificador,i.descricao,i.quantidade.replace('.',','),unidade,`${i.marca||'não informada'} / ${i.modelo||'não informado'}`,dinheiro(decimal(i.valor_unitario_proposta,2)),dinheiro(subtotal)]);
+ linhas.push(`Item ${i.identificador}:${i.descricao}\nQuantidade: ${i.quantidade.replace('.',',')} | Unidade informada pelo usuário: ${unidade}\nMarca: ${i.marca||'não informada'} | Modelo: ${i.modelo||'não informado'}\nUnitário ofertado: R$ ${dinheiro(decimal(i.valor_unitario_proposta,2))} | Total: R$ ${dinheiro(subtotal)}`);
  }
- conteudo=`${linhas.join('\n\n')}\n\nTotal da proposta: R$ ${dinheiro(total)}\nValidade: ${campos.validade}\nPrazo de entrega: ${campos.prazoEntrega}\nPagamento: ${campos.pagamento}`;
+ const rodape=`Total da proposta: R$ ${dinheiro(total)}\nValidade: ${campos.validade}\nPrazo de entrega: ${campos.prazoEntrega}\nPagamento: ${campos.pagamento}`;
+ conteudo=`${linhas.join('\n\n')}\n\n${rodape}`;
  fontes.push('Descrição, quantidade e preço ofertado: itens persistidos do processo. Unidade e condições informadas pelo usuário.');
 
- return {titulo,conteudo,campos,itens};
+ return {titulo,conteudo,campos,itens,tabela,rodape};
 }
 function preparar(ctx,body){
  const {empresa,processo,perfil}=ctx;
@@ -54,15 +56,17 @@ function preparar(ctx,body){
  texto(empresa.razao_social,'razão social');if(!/^\d{14}$/.test(String(empresa.cnpj||'').replace(/\D/g,'')))pendente('Confira o CNPJ no cadastro.');
  texto(processo.numero,'número do edital');texto(processo.orgao,'órgão');
  const identidade=`${empresa.razao_social}\nCNPJ: ${empresa.cnpj}\nEndereço: ${dados.endereco}\nRepresentante: ${dados.representante}\nCargo: ${dados.cargo}\nEdital: ${processo.numero}\nÓrgão: ${processo.orgao}`;
- let titulo,conteudo,campos,itens=[];const fontes=['Identificação empresarial confirmada; confira os dados e o edital.'];
+ let titulo,conteudo,campos,itens=[],tabela,rodape;const fontes=['Identificação empresarial confirmada; confira os dados e o edital.'];
  if(!['declaracao','proposta'].includes(body.tipo))pendente('Selecione o tipo de documento.');
- ({titulo,conteudo,campos,itens}=body.tipo==='declaracao'?declaracao(empresa,processo,dados,body,fontes):proposta(ctx,body,fontes));
+ ({titulo,conteudo,campos,itens,tabela,rodape}=body.tipo==='declaracao'?declaracao(empresa,processo,dados,body,fontes):proposta(ctx,body,fontes));
  const previa={texto:`${titulo}\n\n${identidade}\n\n${conteudo}`,fontes};
  texto(previa.texto,'conteúdo final',1000000);
  if(body.tipo==='proposta'&&Buffer.byteLength(previa.texto,'utf8')>LIMITES.previaBytes)pendente('Prévia excede o tamanho suportado. Reduza a seleção sem perder o rascunho.');
  const revisaoHash=createHash('sha256').update(JSON.stringify(canonico({userId:ctx.userId,empresa,processo,perfil,itens,campos,tipo:body.tipo,previa}))).digest('hex');
- return {previa,revisaoHash,titulo};
+ // tabela: o mesmo conteúdo da prévia (que entra no hash), só arrumado em linhas para a proposta formato 2.
+ return {previa,revisaoHash,titulo,...(tabela?{tabela:{antes:`${titulo}\n\n${identidade}`,linhas:tabela,depois:rodape}}:{})};
 }
-function docx(resultado){return montarDocx({}, {}, {texto:resultado.previa.texto,preservarLinhas:true},resultado.titulo);}
+// Tabela só quando a peça persistida nasceu no formato 2; sem logo nem formato, o DOCX sai como antes.
+function docx(resultado,{formato=1,logo=null,paginas}={}){return montarDocx({}, {}, {texto:resultado.previa.texto,preservarLinhas:true},resultado.titulo,{logo,tabela:formato===2?resultado.tabela:null,paginas});}
 module.exports={uuid,decimal,totalItem,preparar,docx,pendente};
 

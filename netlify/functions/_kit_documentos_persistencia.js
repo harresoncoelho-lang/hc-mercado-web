@@ -28,7 +28,9 @@ function validarRascunho(body,itens){
  const proposta={itemIds,unidades,validade:texto(p.validade,500),prazoEntrega:texto(p.prazoEntrega,500),pagamento:texto(p.pagamento,500)}; validarBudget(proposta); return {proposta};
 }
 function documentoPublico(d,incluirDados=true){
- const meta={id:d.id,tipo:d.tipo,titulo:d.tipo==='declaracao'?(d.dados.declaracao.titulo||'Declaração'):'Proposta de materiais',versao:d.versao,empresaId:d.empresa_id,processoId:d.processo_id,organizacaoId:d.organizacao_id,criadoPor:d.criado_por,criadoEm:d.criado_em,atualizadoPor:d.atualizado_por,atualizadoEm:d.atualizado_em,revisadoPor:d.revisado_por||null,revisadoEm:d.revisado_em||null};
+ const meta={id:d.id,tipo:d.tipo,titulo:d.tipo==='declaracao'?(d.dados.declaracao.titulo||'Declaração'):'Proposta de materiais',versao:d.versao,empresaId:d.empresa_id,processoId:d.processo_id,organizacaoId:d.organizacao_id,criadoPor:d.criado_por,criadoEm:d.criado_em,atualizadoPor:d.atualizado_por,atualizadoEm:d.atualizado_em,revisadoPor:d.revisado_por||null,revisadoEm:d.revisado_em||null,
+ // Banco sem operacao_kit_modelos.sql: sem as colunas, toda peça é 'livre' e formato 1 (o de hoje).
+ modeloCodigo:d.tipo==='declaracao'?(d.modelo_codigo||'livre'):null,formato:d.formato===2?2:1};
  if(!incluirDados)return meta;
  return {...meta,dados:d.dados,revisao:d.revisao_hash?{hash:d.revisao_hash,previa:d.revisao_previa,versao:d.revisao_versao,revisadoPor:d.revisado_por,revisadoEm:d.revisado_em}:null};
 }
@@ -41,18 +43,20 @@ function persistencia(c,empresa,processo,userId){
  return d;
  };
  const exigirVersao=(d,body)=>{referencia(body);if(d.versao!==body.versaoEsperada)falhar('Documento alterado em outra aba. Reabra antes de continuar.',409);};
- const gravar=async(body,dados,resultado)=>{
+ const rpc=async(nome,p)=>{
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!key)falhar('Persistência de documentos indisponível neste ambiente.',503);
- const p={p_documento:body.documentoId,p_empresa:empresa.id,p_processo:processo.id,p_organizacao:empresa.organizacao_id,p_usuario:userId,p_versao:body.versaoEsperada,p_tipo:body.tipo,p_acao:body.acao,p_dados:dados,p_hash:resultado?.revisaoHash||null,p_previa:resultado?.previa||null};
  // O helper REST compartilhado converte conflitos em 503; a RPC preserva o CAS aqui.
  const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),10000);
  try{
- const r=await fetch(URL+'/rest/v1/rpc/gravar_kit_documento',{method:'POST',signal:controller.signal,headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(p)});
+ const r=await fetch(URL+'/rest/v1/rpc/'+nome,{method:'POST',signal:controller.signal,headers:{apikey:key,Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(p)});
  if(!r.ok){const status=[400,403,404,409].includes(r.status)?r.status:503;falhar(status===409?'Documento alterado em outra aba. Reabra antes de continuar.':status===403?'Acesso não autorizado.':status===404?'Documento ou processo indisponível.':'Não foi possível salvar o documento.',status);}
  const data=await r.json();return Array.isArray(data)?data[0]:data;
  }finally{clearTimeout(timer);}
  };
- return {listar,abrir,exigirVersao,gravar};
+ const gravar=(body,dados,resultado)=>rpc('gravar_kit_documento',{p_documento:body.documentoId,p_empresa:empresa.id,p_processo:processo.id,p_organizacao:empresa.organizacao_id,p_usuario:userId,p_versao:body.versaoEsperada,p_tipo:body.tipo,p_acao:body.acao,p_dados:dados,p_hash:resultado?.revisaoHash||null,p_previa:resultado?.previa||null});
+ // Rascunho novo de declaração com o código do modelo (operacao_kit_modelos.sql): chama gravar_kit_documento e grava modelo_codigo na mesma transação.
+ const gravarModelo=(documentoId,dados,modeloCodigo)=>rpc('gravar_kit_declaracao_modelo',{p_documento:documentoId,p_empresa:empresa.id,p_processo:processo.id,p_organizacao:empresa.organizacao_id,p_usuario:userId,p_dados:dados,p_modelo:modeloCodigo});
+ return {listar,abrir,exigirVersao,gravar,gravarModelo};
 }
 module.exports={validarRascunho,documentoPublico,persistencia};
 
