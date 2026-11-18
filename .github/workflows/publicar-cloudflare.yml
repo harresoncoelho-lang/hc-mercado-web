@@ -1,0 +1,39 @@
+name: Publicar site na Cloudflare Pages
+
+# O repositório foi transferido para licitaplenasite-ai em 17/11/2026. A Cloudflare não religa
+# a integração Git de um projeto Pages depois de transferência de dono, então a publicação
+# automática do projeto "licitaplena" foi desligada no painel e quem publica agora é este
+# workflow (Direct Upload via Wrangler). Assim o projeto, os segredos de produção e os domínios
+# licitaplena.com.br/www continuam os mesmos.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: publicar-cloudflare
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run build:cloudflare
+      # Roda na raiz: o Wrangler lê wrangler.toml (nodejs_compat) e compila functions/ junto.
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          # ID da conta licitaplena.site@gmail.com na Cloudflare; não é segredo.
+          accountId: 1675b206e5b9ff87a96f8e2fefe5e0d4
+          command: pages deploy publico --project-name=licitaplena --branch=main --commit-dirty=true
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
