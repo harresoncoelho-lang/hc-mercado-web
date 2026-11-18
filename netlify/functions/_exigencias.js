@@ -157,6 +157,33 @@ function classificar(exigencia) {
   return REGRAS_CATEGORIA.find(([, re]) => re.test(texto))?.[0] || POR_CATEGORIA_IA[exigencia?.categoriaIA] || POR_CAMPO[campo] || "execucao";
 }
 
+// Exigência → operacao_documentos.tipo (nomes fixos do select de operacao.html). A view
+// operacao_exigencias_situacao cruza por esse nome; tipo errado mostraria "vigente" falso,
+// então na dúvida devolve null e a exigência fica em "conferir".
+const TIPOS_DOCUMENTO = [
+  ["CNDT", /\bcndt\b|debitos trabalhistas|justica do trabalho|regularidade trabalhista/],
+  ["FGTS", /\bfgts\b|\bcrf\b|fundo de garantia/],
+  ["Certidão Federal", /receita federal|tributos federais|debitos federais|divida ativa da uniao|fazenda (?:publica )?(?:nacional|federal)|\bpgfn\b|certidao conjunta|(?:certidao|cnd|regularidade)[^.;]{0,40}\bfederal\b/],
+  ["Certidão Estadual", /tributos estaduais|debitos estaduais|fazenda (?:publica )?estadual|(?:certidao|cnd|regularidade)[^.;]{0,40}\bestadual\b/],
+  ["Certidão Municipal", /tributos municipais|debitos municipais|fazenda (?:publica )?municipal|(?:certidao|cnd|regularidade)[^.;]{0,40}\bmunicipal\b/],
+  ["Balanço patrimonial", /balanco patrimonial/],
+  ["Contrato social", /contrato social|ato constitutivo|estatuto social/],
+  ["Atestado de capacidade técnica", /atestados? de capacidade tecnica|atestados?[^.;]{0,80}(?:aptidao|qualificacao tecnica|capacidade tecnica)|(?:aptidao|capacidade tecnica)[^.;]{0,80}atestado/],
+];
+// Sem tipo fixo correspondente (falência é tipo personalizado) ou não é documento da empresa.
+const SEM_TIPO = /declara|falencia|recuperacao judicial|concordata|visita|vistoria|dispensad/;
+const CATEGORIAS_SEM_TIPO = new Set(["declaracao", "proposta", "amostra", "visita", "garantia", "credenciamento"]);
+
+function tipoDocumentoDaExigencia(texto, categoria) {
+  if (CATEGORIAS_SEM_TIPO.has(categoria)) return null;
+  // Órgãos com "federal/estadual" no nome não indicam a esfera da certidão.
+  const t = simples(texto).replace(/caixa economica federal|lei federal|governo federal|justica (?:federal|estadual)|distrito federal/g, " ");
+  if (!t || SEM_TIPO.test(t)) return null;
+  const tipos = TIPOS_DOCUMENTO.filter(([, re]) => re.test(t)).map(([tipo]) => tipo);
+  // Mais de um tipo numa frase ("Fazenda Federal, Estadual e Municipal"): não dá para cruzar um só.
+  return tipos.length === 1 ? tipos[0] : null;
+}
+
 // Lista padrão da Lei 14.133: declarações do art. 63, certidões, balanço, atos constitutivos e atestado.
 const PADRAO_14133 = [
   /declara.*(?:menor|trabalho (?:noturno|infantil|forcado|degradante)|xxxiii|reserva de cargos|deficiencia|reabilitado|requisitos de habilitacao|veracidade|direitos trabalhistas|microempresa|pequeno porte|fato impeditivo|elaboracao independente|integralidade dos custos)/,
@@ -347,4 +374,4 @@ function validarSegundaPassada(resposta, textoFonte) {
 }
 
 module.exports = { codigoEstavel, juntarExigencias, classificar, marcarIncomuns, coberturaPorDocumento, estadoDaEtapa,
-  blocosParaSegundaPassada, validarSegundaPassada, separarPorDocumento };
+  blocosParaSegundaPassada, validarSegundaPassada, separarPorDocumento, tipoDocumentoDaExigencia };

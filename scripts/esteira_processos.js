@@ -161,11 +161,15 @@ async function etapaExigencias(tarefa, { rest, agora, segundaPassadaLigada, cham
   const cobertura = ex.coberturaPorDocumento({ documentos: dossie.estrutura?.coberturaLeitura, exigencias: marcadas, textoPorDocumento });
   const etapa = ex.estadoDaEtapa(cobertura);
   const geradoEm = iso(agora());
-  const linhas = marcadas.map((e) => linhaExigencia(tarefa, e, geradoEm)).filter((l) => l.texto);
+  const atuais = await json(rest, `operacao_exigencias_processo?processo_id=eq.${q(tarefa.processo_id)}&select=codigo,origem,tipo_documento`);
+  // Sem coluna de origem do tipo: o já gravado (por quem for) vence; o mapeamento só preenche vazio.
+  // PostgREST exige as mesmas chaves em todas as linhas do lote, então tipo_documento vai sempre.
+  const tipoAtual = new Map(atuais.map((l) => [l.codigo, l.tipo_documento]));
+  const linhas = marcadas.map((e) => linhaExigencia(tarefa, e, geradoEm)).filter((l) => l.texto)
+    .map((l) => ({ ...l, tipo_documento: tipoAtual.get(l.codigo) || ex.tipoDocumentoDaExigencia(l.texto, l.categoria) }));
   // Exigência que não consta mais na leitura nova não é apagada (pode ter resposta); só fica listada.
   const novos = new Set(linhas.map((l) => l.codigo));
-  const removidas = (await json(rest, `operacao_exigencias_processo?processo_id=eq.${q(tarefa.processo_id)}&origem=neq.manual&select=codigo`))
-    .map((l) => l.codigo).filter((c) => !novos.has(c));
+  const removidas = atuais.filter((l) => l.origem !== "manual").map((l) => l.codigo).filter((c) => !novos.has(c));
   // Idempotente: upsert por (processo_id, codigo) sem a coluna resposta, que é do usuário.
   if (linhas.length) {
     await rest("operacao_exigencias_processo?on_conflict=processo_id,codigo", {

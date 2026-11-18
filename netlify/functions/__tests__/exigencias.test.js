@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { juntarExigencias, classificar, marcarIncomuns, coberturaPorDocumento, estadoDaEtapa,
-  blocosParaSegundaPassada, validarSegundaPassada, separarPorDocumento } = require("../_exigencias");
+  blocosParaSegundaPassada, validarSegundaPassada, separarPorDocumento, tipoDocumentoDaExigencia } = require("../_exigencias");
 
 const pasta = path.join(__dirname, "fixtures", "exigencias");
 const dossies = require("./fixtures/exigencias/dossies.json");
@@ -215,4 +215,49 @@ test("código da IA é estável: depende só do texto normalizado, não da ordem
   const [a] = ids(["Declaração de visita técnica facultativa"]);
   assert.ok(ids(["Amostra do produto em 3 dias", "Declaração de visita técnica facultativa"]).includes(a));
   assert.equal(ids(["Amostra do produto em 3 dias", "Amostra do produto em 3 dias"]).length, 1);
+});
+
+test("tipoDocumentoDaExigencia: casa cada certidão com o tipo fixo da Central de documentos", () => {
+  const casos = [
+    ["Certidão Conjunta Negativa de Débitos relativos aos Tributos Federais e à Dívida Ativa da União", "fiscal", "Certidão Federal"],
+    ["Prova de regularidade perante a Fazenda Nacional (Receita Federal e PGFN)", "fiscal", "Certidão Federal"],
+    ["Certificado de Regularidade do FGTS (CRF) emitido pela Caixa Econômica Federal", "fiscal", "FGTS"],
+    ["Prova de regularidade relativa ao Fundo de Garantia por Tempo de Serviço", "fiscal", "FGTS"],
+    ["Certidão Negativa de Débitos Trabalhistas (CNDT)", "fiscal", "CNDT"],
+    ["Prova de inexistência de débitos inadimplidos perante a Justiça do Trabalho", "fiscal", "CNDT"],
+    ["Prova de regularidade com a Fazenda Estadual do domicílio da licitante", "fiscal", "Certidão Estadual"],
+    ["Certidão negativa de débitos estaduais", "fiscal", "Certidão Estadual"],
+    ["Prova de regularidade com a Fazenda Municipal da sede", "fiscal", "Certidão Municipal"],
+    ["Certidão Negativa de Tributos Municipais", "fiscal", "Certidão Municipal"],
+    ["Balanço patrimonial e demonstrações contábeis do último exercício social", "economica", "Balanço patrimonial"],
+    ["Ato constitutivo, estatuto ou contrato social em vigor", "juridica", "Contrato social"],
+    ["Atestado de capacidade técnica emitido por pessoa jurídica de direito público ou privado", "tecnica", "Atestado de capacidade técnica"],
+    ["Comprovação de aptidão por meio de atestados fornecidos por pessoas jurídicas", "tecnica", "Atestado de capacidade técnica"],
+  ];
+  for (const [texto, categoria, esperado] of casos) assert.equal(tipoDocumentoDaExigencia(texto, categoria), esperado, texto);
+});
+
+test("tipoDocumentoDaExigencia: na dúvida devolve null (falsos positivos)", () => {
+  const casos = [
+    // Declaração não é certidão, mesmo citando trabalho/menor/direitos trabalhistas.
+    ["Declaração de que não emprega menor de dezoito anos em trabalho noturno, perigoso ou insalubre", "declaracao"],
+    ["Declaração de que não emprega menor de dezoito anos em trabalho noturno", "fiscal"],
+    ["Declaração de cumprimento dos direitos trabalhistas previstos na Constituição", "declaracao"],
+    ["Declaração de regularidade fiscal federal", "fiscal"],
+    // Falência não tem tipo fixo na Central de documentos (vira tipo personalizado).
+    ["Certidão negativa de falência e recuperação judicial expedida pelo distribuidor da sede", "economica"],
+    // Mais de uma esfera numa só exigência: não dá para cruzar um único documento.
+    ["Prova de regularidade para com a Fazenda Federal, Estadual e Municipal", "fiscal"],
+    ["Prova de regularidade fiscal e trabalhista", "fiscal"],
+    // "Federal/estadual" no nome do órgão ou da lei não indica a certidão.
+    ["Nos termos da Lei Federal nº 14.133/2021, a proposta deverá ser assinada", "proposta"],
+    ["Inscrição no cadastro de contribuintes estadual ou municipal", "fiscal"],
+    ["Atestado de visita técnica emitido pelo órgão", "tecnica"],
+    ["Garantia de proposta de 1% do valor estimado", "garantia"],
+    ["Fica dispensada a apresentação do balanço patrimonial para ME/EPP", "economica"],
+    ["Registro no CREA da empresa e do responsável técnico", "tecnica"],
+    ["", "fiscal"],
+    [null, undefined],
+  ];
+  for (const [texto, categoria] of casos) assert.equal(tipoDocumentoDaExigencia(texto, categoria), null, String(texto));
 });

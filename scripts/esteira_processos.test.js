@@ -47,7 +47,8 @@ function supabaseFalso({ tarefas = [], origens = [], dossie = null, falharProces
     }
     if (tabela === "dossies_editais") return resposta(db.dossie ? [{ status: "pronto", versao: 1, dossie: db.dossie }] : []);
     if (tabela === "operacao_exigencias_processo" && metodo === "GET") {
-      return resposta(db.exigencias.filter((e) => e.processo_id === filtro(params, "processo_id") && e.origem !== "manual").map(({ codigo }) => ({ codigo })));
+      return resposta(db.exigencias.filter((e) => e.processo_id === filtro(params, "processo_id"))
+        .map(({ codigo, origem, tipo_documento = null }) => ({ codigo, origem, tipo_documento })));
     }
     if (tabela === "operacao_exigencias_processo") {
       for (const linha of JSON.parse(opcoes.body)) {
@@ -224,6 +225,29 @@ test("exigências: código da IA é estável entre dossiês e a que sumiu fica e
   // CNDT some da leitura: não é apagada, só listada.
   assert.deepEqual(await rodarCom([amostra]), [codigoCndt]);
   assert.ok(db.exigencias.some((e) => e.codigo === codigoCndt));
+});
+
+test("exigências: preenche tipo_documento pelo mapeamento, sem sobrescrever o já definido", async () => {
+  const db = supabaseFalso({ tarefas: [tarefa("exigencias")], dossie: DOSSIE });
+  await rodar({ rest: db.rest, agora: relogio });
+  const cndt = db.exigencias.find((e) => /CNDT/.test(e.texto));
+  const menor = db.exigencias.find((e) => e.categoria === "declaracao");
+  assert.equal(cndt.tipo_documento, "CNDT");
+  assert.equal(menor.tipo_documento, null);
+  // Todas as linhas do lote levam a chave (PostgREST recusa lote com chaves diferentes).
+  assert.ok(db.exigencias.every((e) => "tipo_documento" in e));
+  cndt.tipo_documento = "Trabalhista (definido à mão)";
+  Object.assign(db.tarefas[0], { estado: "pendente", proximo_em: new Date(T - 1).toISOString() });
+  await rodar({ rest: db.rest, agora: relogio });
+  assert.equal(cndt.tipo_documento, "Trabalhista (definido à mão)");
+  assert.equal(menor.tipo_documento, null);
+});
+
+test("exigências: linha manual não entra em removidas", async () => {
+  const db = supabaseFalso({ tarefas: [tarefa("exigencias")], dossie: DOSSIE });
+  db.exigencias.push({ processo_id: PROC, codigo: "M-1", origem: "manual", texto: "x" });
+  await rodar({ rest: db.rest, agora: relogio });
+  assert.deepEqual(db.tarefas[0].detalhe.removidas, []);
 });
 
 test("exigências: anexo não lido deixa a etapa aguardando leitura com reagendamento", async () => {
