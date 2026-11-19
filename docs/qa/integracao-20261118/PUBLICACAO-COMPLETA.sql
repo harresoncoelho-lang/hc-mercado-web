@@ -1,5 +1,5 @@
 -- LicitaPlena — PUBLICAÇÃO COMPLETA DO BANCO (gerado em 20/11/2026 a partir dos arquivos do repositório)
--- Ordem: 01-aplicar.sql + 19 arquivos novos. Todos idempotentes: se algo parar no meio, corrija e rode o arquivo inteiro de novo.
+-- Ordem: 01-aplicar.sql + 22 arquivos novos. Todos idempotentes: se algo parar no meio, corrija e rode o arquivo inteiro de novo.
 -- Ensaio: docs/qa/integracao-20261118/testar-dezembro.cjs (2 rodadas, 02-verificar 81/81). Depois de rodar, confira com 02-verificar.sql.
 -- ANTES: backup do banco (Supabase → Database → Backups).
 
@@ -3234,5 +3234,385 @@ create policy sinapi_precos_select_aprovado on public.sinapi_precos
   for select to authenticated using (public.cliente_aprovado());
 -- Sem policy de escrita: só service_role (bypassrls) grava.
 
+commit;
+
+
+-- ========== analise_cnpj_v2.sql ==========
+-- Análise por CNPJ, parte 2 (tela "Analisar concorrente"): dados cadastrais da Receita e contratos por fornecedor.
+-- Idempotente, transação única; rodar DEPOIS de analise_cnpj.sql (e de historico_licitacoes.sql, que cria
+-- cliente_aprovado()). Não apaga dados.
+--   empresas_cadastro               cache da base aberta de CNPJ da Receita (BrasilAPI; minhareceita.org de reserva):
+--      situação, porte, natureza, abertura, capital social, CNAE principal/secundários e sócios. Sócio guarda SÓ
+--      nome como publicado, qualificação e data de entrada: CPF nunca entra (a Receita já mascara; o CHECK barra).
+--   historico_contratos_fornecedor  contratos publicados no PNCP por fornecedor (busca PNCP com o filtro de
+--      fornecedor), com a UF da UNIDADE contratante (a sub-rogada, se houver), não a da sede do órgão: um contrato
+--      da UFAM em Manaus conta AM mesmo com o órgão federal. Contrato federal ganha empenhado, liquidado, pago e
+--      faturado (notas fiscais/faturas) pelo Contratos.gov.br, preenchidos pelo robô (scripts/analise_cnpj.js).
+--   historico_cnpj_consultas.contratos_*  estado da leitura de contratos na fila do robô.
+-- Dado público: qualquer cliente aprovado lê (cliente_aprovado()); só service_role (função e robô) escreve.
+begin;
+do $$ begin
+ if to_regclass('public.historico_cnpj_consultas') is null or to_regprocedure('public.cliente_aprovado()') is null then
+  raise exception 'Aplique antes historico_licitacoes.sql e analise_cnpj.sql';
+ end if;
+end $$;
+
+create table if not exists public.empresas_cadastro (
+  cnpj text primary key check (cnpj ~ '^\d{14}$'),
+  razao_social text check (length(razao_social) <= 300),
+  nome_fantasia text check (length(nome_fantasia) <= 300),
+  situacao text check (length(situacao) <= 60),
+  data_situacao date,
+  motivo_situacao text check (length(motivo_situacao) <= 200),
+  situacao_especial text check (length(situacao_especial) <= 200),
+  porte text check (length(porte) <= 60),
+  natureza_juridica text check (length(natureza_juridica) <= 200),
+  data_abertura date,
+  capital_social numeric(18,2),
+  opcao_simples boolean,
+  opcao_mei boolean,
+  cnae_principal jsonb check (cnae_principal is null or jsonb_typeof(cnae_principal) = 'object'),
+  cnaes_secundarios jsonb not null default '[]'::jsonb check (jsonb_typeof(cnaes_secundarios) = 'array' and octet_length(cnaes_secundarios::text) <= 60000),
+  socios jsonb not null default '[]'::jsonb check (jsonb_typeof(socios) = 'array' and octet_length(socios::text) <= 60000),
+  municipio text check (length(municipio) <= 120),
+  uf text check (uf ~ '^[A-Z]{2}$'),
+  fonte text not null check (fonte in ('brasilapi', 'minhareceita')),
+  consultado_em timestamptz not null default now()
+);
+-- LGPD: nenhum CPF (nem em nome de MEI, nem em sócio). Mesma regex de _cpf.js, mais o pedaço mascarado que a Receita
+-- põe no nome do MEI ("FULANA ***75059***", ver CPF_MASCARADO em _analise_cnpj.js). Limpeza única antes do CHECK.
+update public.empresas_cadastro set razao_social = nullif(btrim(regexp_replace(regexp_replace(razao_social, '\*+[0-9.-]*[0-9][0-9.-]*\*+', ' ', 'g'), '\s+', ' ', 'g')), '')
+ where razao_social ~ '\*+[0-9.-]*[0-9][0-9.-]*\*+';
+update public.empresas_cadastro set nome_fantasia = nullif(btrim(regexp_replace(regexp_replace(nome_fantasia, '\*+[0-9.-]*[0-9][0-9.-]*\*+', ' ', 'g'), '\s+', ' ', 'g')), '')
+ where nome_fantasia ~ '\*+[0-9.-]*[0-9][0-9.-]*\*+';
+alter table public.empresas_cadastro drop constraint if exists empresas_cadastro_sem_cpf;
+alter table public.empresas_cadastro add constraint empresas_cadastro_sem_cpf check (
+  coalesce(razao_social, '') !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y'
+  and coalesce(nome_fantasia, '') !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y'
+  and socios::text !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y'
+  and socios::text !~* 'cpf'
+  and coalesce(razao_social, '') || coalesce(nome_fantasia, '') || socios::text !~ '\*[0-9.-]*[0-9][0-9.-]*\*');
+create index if not exists empresas_cadastro_consultado_idx on public.empresas_cadastro (consultado_em);
+
+create table if not exists public.historico_contratos_fornecedor (
+  numero_controle_pncp text primary key check (numero_controle_pncp ~ '^\d{14}-2-\d+/\d{4}$'),
+  fornecedor_ni text not null check (fornecedor_ni ~ '^\d{14}$'),
+  fornecedor_nome text check (length(fornecedor_nome) <= 300),
+  orgao_cnpj text check (orgao_cnpj ~ '^\d{14}$'),
+  orgao_nome text check (length(orgao_nome) <= 300),
+  unidade_codigo text check (length(unidade_codigo) <= 20),
+  unidade_nome text check (length(unidade_nome) <= 300),
+  municipio text check (length(municipio) <= 120),
+  uf text check (uf ~ '^[A-Z]{2}$'),
+  esfera text check (esfera in ('F', 'E', 'M', 'D', 'N')),
+  tipo text check (length(tipo) <= 80),
+  numero text check (length(numero) <= 60),
+  ano integer,
+  objeto text check (length(objeto) <= 1000),
+  data_assinatura date,
+  vigencia_inicio date,
+  vigencia_fim date,
+  valor_global numeric(18,2),
+  valor_empenhado numeric(18,2),
+  valor_liquidado numeric(18,2),
+  valor_pago numeric(18,2),
+  valor_faturado numeric(18,2),
+  contratos_gov_id bigint,
+  gov_consultado_em timestamptz,
+  link_pncp text check (link_pncp ~ '^https://pncp\.gov\.br/'),
+  atualizado_em timestamptz not null default now()
+);
+create index if not exists historico_contratos_fornecedor_ni_idx on public.historico_contratos_fornecedor (fornecedor_ni, data_assinatura desc);
+create index if not exists historico_contratos_fornecedor_gov_idx on public.historico_contratos_fornecedor (fornecedor_ni, gov_consultado_em nulls first) where esfera = 'F';
+
+do $$ declare t text; begin
+ foreach t in array array['empresas_cadastro', 'historico_contratos_fornecedor'] loop
+  execute format('alter table public.%I enable row level security', t);
+  execute format('revoke all on public.%I from public, anon, authenticated', t);
+  execute format('grant select on public.%I to authenticated', t);
+  execute format('grant all on public.%I to service_role', t);
+  execute format('drop policy if exists %I on public.%I', t || '_leitura', t);
+  execute format('create policy %I on public.%I for select to authenticated using (public.cliente_aprovado())', t || '_leitura', t);
+ end loop;
+end $$;
+
+-- Fila: contratos lidos (todas as páginas do PNCP) e quantos o PNCP lista. Sem contratos_lidos_em o robô lê.
+alter table public.historico_cnpj_consultas add column if not exists contratos_total integer;
+alter table public.historico_cnpj_consultas add column if not exists contratos_lidos_em timestamptz;
+
+-- Prazo de guarda do cache cadastral: o que não é consultado há mais de p_dias (mínimo 31, acima da validade de 30
+-- dias) sai. Os contratos são dado público de compras e ficam (como as tabelas historico_*).
+create or replace function public.empresas_cadastro_limpar(p_dias integer default 180)
+returns integer language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  delete from public.empresas_cadastro where consultado_em < now() - make_interval(days => greatest(coalesce(p_dias, 180), 31));
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.empresas_cadastro_limpar(integer) from public, anon, authenticated;
+grant execute on function public.empresas_cadastro_limpar(integer) to service_role;
+
+notify pgrst, 'reload schema';
+commit;
+
+
+-- ========== extensao_diagnosticos.sql ==========
+-- ============================================================================
+-- LicitaPlena — diagnósticos enviados pela extensão ("Enviar diagnóstico", extensao-leitura/diagnostico.mjs).
+--
+-- Rode no Supabase: SQL Editor -> New query -> Run. Idempotente.
+-- Quando um fluxo da extensão não reconhece a página do portal, o usuário pode mandar só a ESTRUTURA da página
+-- (tags, classes, ids, data-test, rótulos de campo) para a equipe ajustar os seletores. Sem valores digitados,
+-- sem texto corrido, sem CPF (netlify/functions/extensao-diagnostico.js filtra antes; o CHECK abaixo é a 2ª trava).
+--   Leitura e escrita: só service_role (a equipe lê pelo SQL Editor). Nenhuma policy para authenticated/anon.
+--   Retenção: 90 dias (apague com o delete do fim do arquivo quando quiser limpar).
+-- ============================================================================
+begin;
+set local lock_timeout = '5s';
+
+create table if not exists public.extensao_diagnosticos (
+  id bigint generated always as identity primary key,
+  enviado_por uuid references auth.users(id) on delete set null,
+  enviado_em timestamptz not null default now(),
+  fluxo text not null check (fluxo in ('gravar', 'preencher', 'acompanhar')),
+  motivo text check (char_length(motivo) <= 40),
+  versao_extensao text check (versao_extensao ~ '^[0-9]{1,3}(\.[0-9]{1,3}){0,3}$'),
+  host text not null check (host in ('cnetmobile.estaleiro.serpro.gov.br', 'comprasnet.gov.br', 'www.comprasnet.gov.br')),
+  caminho text not null check (char_length(caminho) <= 300),
+  estrutura jsonb not null check (jsonb_typeof(estrutura) = 'object' and pg_column_size(estrutura) <= 1500000),
+  -- Mesma forma de CPF de _cpf.js: nada parecido com CPF entra, nem dentro do JSON.
+  check (estrutura::text !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y')
+);
+create index if not exists extensao_diagnosticos_enviado_em on public.extensao_diagnosticos (enviado_em desc);
+
+alter table public.extensao_diagnosticos enable row level security;
+revoke all on public.extensao_diagnosticos from anon, authenticated;
+
+commit;
+
+-- Limpeza manual (retenção de 90 dias):
+-- delete from public.extensao_diagnosticos where enviado_em < now() - interval '90 days';
+
+
+-- ========== seguranca_aprovacao_20261119.sql ==========
+-- Segurança do status do cadastro (teste de ataque local de 19/11/2026: A1, A2, M1, M3, M4, M5 e B1).
+-- Idempotente: seguro rodar mais de uma vez no SQL Editor do Supabase. Não apaga dados.
+-- Rodar DEPOIS de todos os outros .sql (acesso_empresa_convites, seguranca_operacao, pregoes_gravados,
+-- operacao_perfil_empresa, painel_*...): este arquivo redefine funções e policies que eles criam. Se um deles
+-- for rodado de novo, rode este outra vez em seguida.
+-- Teste: supabase/testar_seguranca_aprovacao.sql.
+begin;
+
+-- Mesmo corpo de historico_licitacoes.sql / prospeccao.sql / sinapi.sql (redefinido para este arquivo não depender da ordem).
+create or replace function public.cliente_aprovado() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.clientes c where c.id = (select auth.uid()) and c.status = 'aprovado')
+$$;
+revoke all on function public.cliente_aprovado() from public, anon;
+grant execute on function public.cliente_aprovado() to authenticated, service_role;
+
+-- Quem aprova cadastros: owner administrativo ou, em produção, admin_tem_permissao('aprovar_cadastros') com MFA
+-- (a mesma regra da policy admin_atualiza_qualquer_registro de clientes, que não tem .sql no repositório).
+create or replace function public.pode_aprovar_cadastros() returns boolean
+language plpgsql stable security definer set search_path = public as $$
+declare v boolean := false;
+begin
+  if auth.uid() is null then return false; end if;
+  if public.eh_owner_admin_operacao(auth.uid()) then return true; end if;
+  if to_regprocedure('public.admin_tem_permissao(text)') is not null then
+    execute $q$select public.admin_tem_permissao('aprovar_cadastros') and coalesce(auth.jwt() ->> 'aal', '') = 'aal2'$q$ into v;
+  end if;
+  return coalesce(v, false);
+end $$;
+revoke all on function public.pode_aprovar_cadastros() from public, anon;
+grant execute on function public.pode_aprovar_cadastros() to authenticated, service_role;
+
+-- A1/B1: pelo PostgREST (papel authenticated) a pessoa só muda o PERFIL do próprio cadastro. status, plano,
+-- aprovado_em, aprovado_por e observacoes_admin só mudam por quem aprova cadastros ou por função security definer
+-- (aceitar_convite_empresa_operacao, criar_cliente_no_cadastro), que roda como dono e por isso tem current_user
+-- diferente de authenticated. Antes havia exceção para quem tinha operacao_membros.empresa_id: o operador
+-- suspenso se reaprovava. GRANT por coluna não serve aqui: o admin.html aprova pelo mesmo papel authenticated.
+create or replace function public.proteger_status_cliente_operacao()
+returns trigger language plpgsql security invoker set search_path = public as $$
+begin
+  if current_user not in ('authenticated', 'anon') then return new; end if;
+  if auth.uid() is distinct from new.id or public.pode_aprovar_cadastros() then return new; end if;
+  if tg_op = 'INSERT' then
+    if coalesce(new.status, 'pendente') <> 'pendente' or new.plano is not null or new.aprovado_em is not null
+      or new.aprovado_por is not null or new.observacoes_admin is not null then
+      raise exception 'A aprovação do cadastro depende do administrador' using errcode = '42501';
+    end if;
+  elsif (new.status, new.plano, new.aprovado_em, new.aprovado_por, new.observacoes_admin)
+    is distinct from (old.status, old.plano, old.aprovado_em, old.aprovado_por, old.observacoes_admin) then
+    raise exception 'A aprovação do cadastro depende do administrador' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+drop trigger if exists proteger_status_cliente_operacao on public.clientes;
+create trigger proteger_status_cliente_operacao before insert or update on public.clientes
+  for each row execute function public.proteger_status_cliente_operacao();
+
+-- A2: toda a RLS e o Storage do CRM passam por estas funções; agora exigem cadastro aprovado.
+-- Corpos iguais aos de acesso_empresa_convites.sql e seguranca_operacao.sql + "and public.cliente_aprovado()".
+-- pode_acessar_processo_operacao, acesso_arquivo_operacao, pode_escrever_processo_operacao e
+-- escrita_arquivo_operacao chamam estas e herdam a checagem.
+create or replace function public.eh_membro_operacao(p_organizacao_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.cliente_aprovado() and exists (select 1 from public.operacao_membros m
+    where m.organizacao_id = p_organizacao_id and m.usuario_id = auth.uid()
+      and m.empresa_id is null);
+$$;
+create or replace function public.tem_vinculo_operacao(p_organizacao_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.cliente_aprovado() and exists (select 1 from public.operacao_membros m
+    where m.organizacao_id = p_organizacao_id and m.usuario_id = auth.uid());
+$$;
+create or replace function public.pode_acessar_empresa_operacao(p_org uuid, p_empresa uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.cliente_aprovado() and exists (select 1 from public.operacao_empresas e
+    join public.operacao_membros m on m.organizacao_id = e.organizacao_id
+    where e.id = p_empresa and e.organizacao_id = p_org and m.usuario_id = auth.uid()
+      and (m.empresa_id is null or m.empresa_id = e.id));
+$$;
+create or replace function public.pode_escrever_org_operacao(p_org uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+ select public.cliente_aprovado() and exists(select 1 from public.operacao_membros m where m.organizacao_id=p_org
+  and m.usuario_id=auth.uid() and m.empresa_id is null and m.papel in ('gestor','operador'));
+$$;
+create or replace function public.pode_escrever_empresa_operacao(p_org uuid,p_empresa uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+ select public.cliente_aprovado() and exists(select 1 from public.operacao_empresas e join public.operacao_membros m on m.organizacao_id=e.organizacao_id
+  where e.id=p_empresa and e.organizacao_id=p_org and m.usuario_id=auth.uid()
+  and m.papel in ('gestor','operador') and (m.empresa_id is null or m.empresa_id=e.id));
+$$;
+revoke all on function public.eh_membro_operacao(uuid), public.tem_vinculo_operacao(uuid),
+  public.pode_acessar_empresa_operacao(uuid,uuid), public.pode_escrever_org_operacao(uuid),
+  public.pode_escrever_empresa_operacao(uuid,uuid) from public, anon;
+grant execute on function public.eh_membro_operacao(uuid), public.tem_vinculo_operacao(uuid),
+  public.pode_acessar_empresa_operacao(uuid,uuid), public.pode_escrever_org_operacao(uuid),
+  public.pode_escrever_empresa_operacao(uuid,uuid) to authenticated;
+
+-- O gate do servidor (identificacao_empresa_habilitada, seguranca_operacao.sql) fixa o md5 do corpo destas funções:
+-- mesmo texto de lá, só com os hashes dos dois corpos novos acima. Sem isso a identificação da empresa fecharia (503).
+create or replace function public.identificacao_empresa_habilitada()
+returns boolean language sql stable security definer set search_path = public as $$
+ with esperado(tabela,nome,comando,qual,checagem) as (values
+ ('operacao_empresas','operacao_empresas_leitura','SELECT','pode_acessar_empresa_operacao(organizacao_id, id)',null),
+ ('operacao_empresas','operacao_empresas_escrita','ALL','pode_escrever_org_operacao(organizacao_id)','pode_escrever_org_operacao(organizacao_id)'),
+ ('operacao_documentos','operacao_documentos_da_empresa','SELECT','pode_acessar_empresa_operacao(organizacao_id, empresa_id)',null),
+ ('operacao_documentos','operacao_documentos_da_empresa_escrita','ALL','pode_escrever_empresa_operacao(organizacao_id, empresa_id)','(pode_escrever_empresa_operacao(organizacao_id, empresa_id) AND arquivo_no_escopo_operacao(arquivo_caminho, organizacao_id, empresa_id))'),
+ ('objects','operacao_arquivos_leitura','SELECT','((bucket_id = ''operacao-documentos''::text) AND acesso_arquivo_operacao(name))',null),
+ ('objects','operacao_arquivos_envio','INSERT',null,'((bucket_id = ''operacao-documentos''::text) AND escrita_arquivo_operacao(name))'),
+ ('objects','operacao_arquivos_atualizacao','UPDATE','((bucket_id = ''operacao-documentos''::text) AND escrita_arquivo_operacao(name))','((bucket_id = ''operacao-documentos''::text) AND escrita_arquivo_operacao(name))'),
+ ('objects','operacao_arquivos_exclusao','DELETE','((bucket_id = ''operacao-documentos''::text) AND escrita_arquivo_operacao(name))',null)
+ ), atual as (select * from pg_policies where (schemaname='public' and tablename in ('operacao_documentos','operacao_empresas')) or (schemaname='storage' and tablename='objects'))
+ select auth.uid() is not null
+ and exists(select 1 from storage.buckets where id='operacao-documentos' and public=false)
+ and exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='storage' and c.relname='objects' and c.relrowsecurity)
+ and (select count(*)=3 from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('operacao_empresas','operacao_documentos','operacao_identificacao_empresa') and c.relrowsecurity)
+ and not exists(select 1 from esperado e full join atual a on a.tablename=e.tabela and a.policyname=e.nome
+  where e.nome is null or a.policyname is null or a.cmd<>e.comando or a.permissive<>'PERMISSIVE'
+   or a.qual is distinct from e.qual or a.with_check is distinct from e.checagem
+   or a.roles is distinct from case when e.nome in ('operacao_empresas_leitura','operacao_arquivos_leitura') then array['public']::name[] else array['authenticated']::name[] end)
+ and not exists(select 1 from (values
+ ('pode_escrever_org_operacao','2fd046964d53ddcf911e544620be10f5'),
+ ('pode_escrever_empresa_operacao','af9e82d298241750c0fd69fa06799ad3'),
+ ('pode_escrever_processo_operacao','7de47c8d343558a2dc2180ad2a4daffc'),
+ ('arquivo_no_escopo_operacao','c727f040598b92b257a5322118447d6f'),
+ ('escrita_arquivo_operacao','d95ab917f9d1faf6270e16d85dda42fd')
+ ) as f(nome,hash) where not exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname=f.nome and md5(replace(p.prosrc,chr(13),''))=f.hash));
+$$;
+revoke all on function public.identificacao_empresa_habilitada() from public,anon;
+grant execute on function public.identificacao_empresa_habilitada() to authenticated;
+
+-- M1: bases pagas só para cadastro aprovado. A busca pública da landing (busca-publica, convenios-publico) lê com
+-- a chave de serviço e não depende destas policies. Cada policy de SELECT existente (os nomes de produção podem
+-- diferir dos do repositório) passa a ser "to authenticated" e ganha "cliente_aprovado() and (<condição antiga>)".
+-- dados_robo: o admin.html lê config_admin; quem aprova cadastros continua lendo mesmo sem linha em clientes.
+do $$
+declare t text; p record; cond text;
+begin
+  foreach t in array array['pregoes_gravados', 'pregoes_gravados_propostas', 'pregoes_gravados_mensagens',
+    'oportunidades_abertas', 'dossies_editais', 'sancoes_empresas', 'contratos', 'mercado_atas',
+    'comprasgov_resultados', 'dados_robo', 'empresas_cadastro', 'historico_contratos_fornecedor', 'extensao_diagnosticos'] loop
+    continue when to_regclass('public.' || t) is null;
+    cond := case when t = 'dados_robo' then '(public.cliente_aprovado() or public.pode_aprovar_cadastros())'
+      else 'public.cliente_aprovado()' end;
+    for p in select policyname, qual from pg_policies
+      where schemaname = 'public' and tablename = t and cmd = 'SELECT' and permissive = 'PERMISSIVE' loop
+      continue when p.qual like '%cliente_aprovado()%';
+      execute format('alter policy %I on public.%I to authenticated using (%s and (%s))', p.policyname, t, cond, p.qual);
+    end loop;
+  end loop;
+end $$;
+-- RPCs do painel: as dashboard_* são invoker (a RLS de contratos acima já zera para o pendente);
+-- resumo_inteligencia_mercado também é invoker, mas estava executável por anon.
+do $$
+declare f regprocedure;
+begin
+  for f in select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and (p.proname = 'resumo_inteligencia_mercado' or p.proname like 'dashboard\_%') loop
+    execute format('revoke execute on function %s from public, anon', f);
+    execute format('grant execute on function %s to authenticated, service_role', f);
+  end loop;
+end $$;
+
+-- M3: CPF do representante fora do alcance do navegador. authenticated lê todas as colunas do perfil menos
+-- cpf_representante; grava a coluna normalmente (INSERT/UPDATE intactos). O servidor (empresa-identificacao.js,
+-- kit-documentos.js) confere o papel com o token do usuário e lê o CPF com a chave de serviço: mascarado para o
+-- operador, completo para o gestor que pede e para a exportação das declarações.
+do $$
+declare cols text;
+begin
+  if to_regclass('public.operacao_perfil_empresa') is null then return; end if;
+  select string_agg(quote_ident(column_name), ', ' order by ordinal_position) into cols
+    from information_schema.columns
+    where table_schema = 'public' and table_name = 'operacao_perfil_empresa' and column_name <> 'cpf_representante';
+  revoke select on public.operacao_perfil_empresa from authenticated;
+  revoke select (cpf_representante) on public.operacao_perfil_empresa from authenticated;
+  execute format('grant select (%s) on public.operacao_perfil_empresa to authenticated', cols);
+end $$;
+
+-- M4: tipo e tamanho no bucket privado (vale também para o upload direto do navegador). Tipos que as telas enviam:
+-- documentos e anexos (PDF, Word, Excel, imagem), logo e foto do catálogo (PNG/JPEG). 15 MiB por arquivo.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+    where table_schema = 'storage' and table_name = 'buckets' and column_name = 'allowed_mime_types') then
+    update storage.buckets set file_size_limit = 15728640, allowed_mime_types = array[
+      'application/pdf', 'image/png', 'image/jpeg', 'image/webp',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.oasis.opendocument.text', 'application/vnd.oasis.opendocument.spreadsheet']
+    where id = 'operacao-documentos';
+  end if;
+end $$;
+
+-- M5: teto diário por IP dos proxies públicos (pncp-*, comprasgov-*), que o painel chama sem token.
+-- chave = HMAC-SHA256 do IP feito no servidor (nunca o IP puro). Guarda só ontem e hoje (minimização, LGPD).
+create table if not exists public.uso_ip_diario (
+  chave text not null check (chave ~ '^[0-9a-f]{64}$'),
+  funcao text not null check (length(funcao) between 1 and 60),
+  dia date not null default current_date,
+  contagem integer not null default 0,
+  primary key (chave, funcao, dia)
+);
+alter table public.uso_ip_diario enable row level security;
+revoke all on public.uso_ip_diario from public, anon, authenticated;
+create or replace function public.incrementar_uso_ip(p_chave text, p_funcao text)
+returns integer language plpgsql security definer set search_path = public as $$
+declare n integer;
+begin
+  insert into public.uso_ip_diario (chave, funcao, dia, contagem) values (p_chave, p_funcao, current_date, 1)
+  on conflict (chave, funcao, dia) do update set contagem = public.uso_ip_diario.contagem + 1
+  returning contagem into n;
+  if random() < 0.01 then delete from public.uso_ip_diario where dia < current_date - 1; end if;
+  return n;
+end $$;
+revoke all on function public.incrementar_uso_ip(text, text) from public, anon, authenticated;
+grant execute on function public.incrementar_uso_ip(text, text) to service_role;
+
+notify pgrst, 'reload schema';
 commit;
 
