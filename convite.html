@@ -6,7 +6,9 @@
   <title>Convite de acesso — LicitaPlena</title>
   <link rel="icon" type="image/png" href="favicon.png?v=3">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
+  <script src="senha-captcha-ui.js"></script>
   <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <link rel="stylesheet" href="senha-olho.css">
   <script src="supabase-config.js"></script>
   <style>
     :root{font-family:Inter,Arial,sans-serif;color:#17263a;background:#f3f7fc}*{box-sizing:border-box}
@@ -28,15 +30,20 @@
   <div class="abas"><button type="button" id="aba-criar" class="ativo">Criar minha conta</button><button type="button" id="aba-entrar">Já tenho conta</button></div>
   <form id="form-convite">
     <label for="email">E-mail convidado</label><input id="email" type="email" required autocomplete="email">
-    <label for="senha">Senha</label><input id="senha" type="password" required minlength="8" autocomplete="new-password">
+    <label for="senha">Senha</label><div class="campo-senha-wrap"><input id="senha" type="password" required minlength="8" autocomplete="new-password"><button type="button" class="btn-mostrar-senha" data-alvo="senha" aria-controls="senha" aria-pressed="false" aria-label="Mostrar senha" title="Mostrar senha">
+          <svg class="olho-aberto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+        </button></div>
     <div id="consentimento" class="consentimento" style="margin-top:15px;"><input id="aceite" type="checkbox" required><span>Li e aceito os <a href="termos-de-uso.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="politica-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span></div>
     <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-top:18px;"></div>
+    <script>SenhaCaptchaUi.aplicarChaveHCaptcha(document, location.hostname);</script>
     <button id="enviar" type="submit">Criar conta e ativar acesso</button>
   </form>
   <p><a href="login.html">Voltar ao login</a></p>
 </main>
 <script>
 (() => {
+  SenhaCaptchaUi.ligarOlhosDaSenha(document);
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const token = new URL(location.href).searchParams.get("token") || "";
   const $ = id => document.getElementById(id);

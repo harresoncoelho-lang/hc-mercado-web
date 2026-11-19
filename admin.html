@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
+<script src="senha-captcha-ui.js"></script>
 <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   :root {
@@ -150,6 +151,10 @@
   }
   .btn-mostrar-senha:hover { color: var(--texto); }
   .btn-mostrar-senha svg { display: block; width: 18px; height: 18px; }
+  .btn-mostrar-senha { min-width: 40px; min-height: 40px; right: 2px; }
+  .btn-mostrar-senha:focus-visible { outline: 2px solid var(--laranja); outline-offset: -2px; }
+  .btn-mostrar-senha .olho-fechado, .btn-mostrar-senha.senha-visivel .olho-aberto { display: none; }
+  .btn-mostrar-senha.senha-visivel .olho-fechado { display: block; }
   .mfa-qrcode { background: #fff; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
   .mfa-qrcode svg { display: block; width: 100%; height: auto; }
   .mfa-secreto { font-size: 12px; color: var(--texto-fraco); margin: 0 0 16px; word-break: break-all; }
@@ -190,11 +195,13 @@
       <label>Senha</label>
       <div class="campo-senha-wrap">
         <input type="password" id="admin-senha" required>
-        <button type="button" class="btn-mostrar-senha" data-alvo="admin-senha" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <button type="button" class="btn-mostrar-senha" data-alvo="admin-senha" aria-controls="admin-senha" aria-pressed="false" aria-label="Mostrar senha" title="Mostrar senha">
+          <svg class="olho-aberto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
         </button>
       </div>
       <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-bottom:16px;"></div>
+      <script>SenhaCaptchaUi.aplicarChaveHCaptcha(document, location.hostname);</script>
       <button type="submit">Entrar</button>
     </form>
     <div class="erro" id="erro-login-admin"></div>
@@ -334,12 +341,7 @@
   let filtroAtual = "pendente";
   let todosClientes = [];
 
-  document.querySelectorAll(".btn-mostrar-senha").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const alvo = document.getElementById(btn.dataset.alvo);
-      alvo.type = alvo.type === "password" ? "text" : "password";
-    });
-  });
+  SenhaCaptchaUi.ligarOlhosDaSenha(document);
 
   function badgeStatus(status) {
     const nomes = { pendente: "Pendente", aprovado: "Aprovado", rejeitado: "Rejeitado" };

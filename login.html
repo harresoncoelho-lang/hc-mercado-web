@@ -9,12 +9,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ds-tokens.css">
+<link rel="stylesheet" href="senha-olho.css">
 <script>
   // Tema antes de pintar (sem piscar): mesma chave e mesmo padrão claro do sistema (app-comercial.js).
   (function () { var t = null; try { t = localStorage.getItem("licitaplena_tema"); if (t === null) { var v = localStorage.getItem("licitaplena.tema"); if (v !== null) { t = v === "dark" ? "escuro" : "claro"; localStorage.setItem("licitaplena_tema", t); localStorage.removeItem("licitaplena.tema"); } } } catch (e) { t = null; } document.documentElement.dataset.theme = t === "escuro" ? "dark" : "light"; })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
+<script src="senha-captcha-ui.js"></script>
 <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   /* Design System "Direção A, azul original": cores, raios e tipografia vêm de ds-tokens.css. */
@@ -43,8 +45,8 @@
     background: var(--surface-default); color: var(--text-primary);
     border: 1px solid var(--border-strong); border-radius: var(--radius-control);
   }
-  .campo-senha-wrap { display: flex; gap: 8px; margin-bottom: 16px; }
-  .campo-senha-wrap input { flex: 1; min-width: 0; margin-bottom: 0; }
+  .campo-senha-wrap { margin-bottom: 16px; }
+  .campo-senha-wrap input { margin-bottom: 0; }
   .btn {
     height: 40px; padding: 0 16px; border-radius: var(--radius-control); border: 1px solid transparent;
     font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap;
@@ -94,12 +96,15 @@
       <label for="senha">Senha</label>
       <div class="campo-senha-wrap">
         <input type="password" id="senha" required autocomplete="current-password">
-        <button type="button" class="btn btn-sec btn-mostrar-senha" data-alvo="senha" aria-controls="senha" aria-pressed="false">Mostrar senha</button>
+        <button type="button" class="btn-mostrar-senha" data-alvo="senha" aria-controls="senha" aria-pressed="false" aria-label="Mostrar senha" title="Mostrar senha">
+          <svg class="olho-aberto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+        </button>
       </div>
 
       <p class="captcha-rotulo">Verificação de segurança</p>
       <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E"></div>
-      <script>document.querySelector(".h-captcha").dataset.theme = document.documentElement.dataset.theme;</script>
+      <script>document.querySelector(".h-captcha").dataset.theme = document.documentElement.dataset.theme; SenhaCaptchaUi.aplicarChaveHCaptcha(document, location.hostname);</script>
 
       <button type="submit" class="btn entrar" id="btn-entrar">Entrar</button>
     </form>
@@ -143,16 +148,7 @@
   const parametros = new URLSearchParams(window.location.search);
   const destino = destinoSeguro(parametros.get("voltar"));
 
-  // Ícone de olho: alterna type="password" <-> type="text" no campo alvo.
-  document.querySelectorAll(".btn-mostrar-senha").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const alvo = document.getElementById(btn.dataset.alvo);
-      alvo.type = alvo.type === "password" ? "text" : "password";
-      const visivel = alvo.type === "text";
-      btn.textContent = visivel ? "Ocultar senha" : "Mostrar senha";
-      btn.setAttribute("aria-pressed", String(visivel));
-    });
-  });
+  SenhaCaptchaUi.ligarOlhosDaSenha(document); // ícone de olho da senha
 
   function mostrarAviso(texto, tipo) {
     const el = document.getElementById("aviso");
