@@ -280,6 +280,8 @@ async function fonteDadosAbertos(b, c) {
         descricao: it.descricaodetalhada || it.descricaoResumida, quantidade: it.quantidade, unidade: it.unidadeMedida, valor_estimado: it.valorUnitarioEstimado,
         situacao: it.situacaoCompraItemNome, temResultado: it.temResultado === true })).filter((it) => it.n),
       resultados, parcial: Number(itensDa?.paginasRestantes) > 0 || Number(res?.paginasRestantes) > 0,
+      // Fora de c: a coluna uf de historico_compras só existe com analise_cnpj.sql (a licitação anterior não a grava).
+      uf: /^[A-Z]{2}$/.test(String(cab.unidadeOrgaoUfSigla || "")) ? cab.unidadeOrgaoUfSigla : null,
     };
   } catch (e) {
     if (e instanceof SemOrcamento) throw e;
@@ -436,7 +438,7 @@ async function coletar({ uasg, alvos, palavrasBusca = "", excluir = [], desdeAno
 
 // PostgREST exige as mesmas chaves em todas as linhas do lote: cada fonte manda só as suas colunas,
 // então o upsert vai por grupo de colunas (assim a marca gravada não vira null quando chega o PNCP).
-async function upsertPorColunas(rest, tabela, conflito, linhas) {
+async function upsertPorColunas(rest, tabela, conflito, linhas, resolucao = "merge-duplicates") {
   const grupos = new Map();
   for (const l of linhas) {
     const chave = Object.keys(l).sort().join(",");
@@ -445,7 +447,7 @@ async function upsertPorColunas(rest, tabela, conflito, linhas) {
   }
   for (const lote of grupos.values()) {
     for (let i = 0; i < lote.length; i += 500) {
-      await rest(`${tabela}?on_conflict=${conflito}`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      await rest(`${tabela}?on_conflict=${conflito}`, { method: "POST", headers: { Prefer: `resolution=${resolucao},return=minimal` },
         body: JSON.stringify(lote.slice(i, i + 500)) });
     }
   }
@@ -459,4 +461,5 @@ async function gravar(rest, { compras, itens, participacoes }) {
 }
 
 module.exports = { UA, coletar, catalogoDaCompra, gravar, upsertPorColunas, casar, melhorCasamento, palavras, normalizarMarca, chaveMarca, fornecedor, lerLinhaCsv, criarFiltroPropostas,
-  mesesDePropostas, decifrarIdCompra, linkCompraGov, idDaLinhaPesquisa, compraDaBusca, SemOrcamento, MAX_PROPOSTAS_ITEM };
+  mesesDePropostas, decifrarIdCompra, linkCompraGov, idDaLinhaPesquisa, compraDaBusca, SemOrcamento, MAX_PROPOSTAS_ITEM,
+  criarBuscador, fonteDadosAbertos, fontePncp, participacaoDoResultado, PORTES };

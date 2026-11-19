@@ -51,6 +51,7 @@ import * as pregaoGravado from "../../netlify/functions/pregao-gravado.js";
 // Prospecção (Inteligência de Mercado): logado, lê prospeccao_itens com a sessão do usuário (1 subrequisição).
 import * as m26 from "../../netlify/functions/prospeccao.js";
 // Análise por CNPJ (Analisar concorrente): logado, cota diária, ~27 subrequisições; o pesado fica na fila do robô.
+import * as analiseCnpj from "../../netlify/functions/analise-cnpj.js";
 
 const ROTAS = {
   "vinculo-compra-portal": vinculoCompraPortal,
@@ -65,6 +66,7 @@ const ROTAS = {
   "sancoes-cnpj": m25,
   "pregao-gravado": pregaoGravado,
   prospeccao: m26,
+  "analise-cnpj": analiseCnpj,
   "decisao-oportunidade": m17,
   "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,

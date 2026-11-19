@@ -18,7 +18,8 @@
 //   cruzamento  é a view operacao_exigencias_situacao (calculada na leitura): só marca feito.
 //   historico   licitação anterior do mesmo órgão e produto (scripts/historico_licitacoes.js): grava nas
 //               tabelas historico_* e deixa o casamento item a item no detalhe. No fim da rodada, com tempo
-//               sobrando, completa as consultas avulsas pendentes (participantes pelo arquivo de propostas).
+//               sobrando, completa as consultas avulsas pendentes (participantes pelo arquivo de propostas)
+//               e a fila da análise por CNPJ (scripts/analise_cnpj.js).
 // Regra fixa: nunca grava em operacao_processos (atualizado_em é controle de concorrência do kit).
 const { restFetch } = require("./supabase_dados");
 const { buscarFonteItem, listarNumerosItens } = require("../netlify/functions/_pncp_item_fonte");
@@ -26,6 +27,7 @@ const { referencia } = require("../netlify/functions/importar-item-pncp");
 const ex = require("../netlify/functions/_exigencias");
 const { detectarModeloDoEdital, escolherModelo } = require("../declaracoes-modelos.js");
 const historico = require("./historico_licitacoes");
+const analiseCnpj = require("./analise_cnpj");
 
 const LOTE = Math.max(1, Number(process.env.LOTE_ESTEIRA || 5));
 const LIMITE_MS = Math.max(1, Number(process.env.LIMITE_MINUTOS_ESTEIRA || 10)) * 60000;
@@ -303,6 +305,10 @@ async function rodar({ rest = restFetch, fetchPncp = (...a) => fetch(...a), espe
   // Consulta avulsa só com tempo sobrando: a tarefa do processo vem primeiro. Falha aqui não derruba a rodada.
   if (completarConsultas && agora() < prazoFinal) {
     try { contagem.consultasAvulsas = await historico.completarConsultas({ rest, fetchPncp }); } catch (erro) { console.warn(`[esteira] consultas avulsas: ${erroCurto(erro)}`); }
+  }
+  // Análise por CNPJ (fila da tela "Analisar concorrente"): retomável mês a mês, para no prazo da rodada.
+  if (completarConsultas && agora() < prazoFinal) {
+    try { contagem.analisesCnpj = await analiseCnpj.completarAnalises({ rest, fetchPncp, agora, prazoFinal }); } catch (erro) { console.warn(`[esteira] análise por CNPJ: ${erroCurto(erro)}`); }
   }
   console.log(`[esteira] ${candidatas.length} candidata(s): ${JSON.stringify(contagem)}`);
   return contagem;
