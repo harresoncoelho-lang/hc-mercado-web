@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Extensão de leitura — LicitaPlena</title>
+  <link rel="icon" type="image/png" href="favicon.png?v=3">
+  <link rel="stylesheet" href="ds-tokens.css">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--surface-page,#f6f8fc);color:var(--text-primary,#172033);font:16px/1.55 Inter,Arial,sans-serif;padding:24px 16px}
+    main{max-width:720px;margin:0 auto;background:var(--surface-default,#fff);border:1px solid var(--border-default,#e3e8f0);border-radius:12px;padding:24px}
+    h1{font-size:1.5rem;margin:0 0 8px}h2{font-size:1.1rem;margin:24px 0 8px}p{margin:0 0 12px}
+    p.apoio{color:var(--text-secondary,#58657a)}
+    ol{padding-left:22px}li{margin-bottom:8px}
+    code{background:var(--surface-sunken,#f1f4fa);padding:1px 6px;border-radius:4px;overflow-wrap:anywhere}
+    a{color:var(--action-text,#2255e0)}a:focus-visible{outline:2px solid var(--focus-ring,#3772f8);outline-offset:2px}
+    .aviso{background:var(--attention-bg,#fff4e0);border:1px solid var(--attention-border,#f0cf95);color:var(--attention-text,#8a4b00);border-radius:8px;padding:10px 12px}
+    .info{background:var(--info-bg,#eaf1fe);border:1px solid var(--info-border,#b9ccf5);color:var(--info-text,#1f4fb8);border-radius:8px;padding:10px 12px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Extensão de leitura do LicitaPlena</h1>
+  <p class="apoio">Para trazer ao LicitaPlena participantes, marcas e motivos de recusa dos pregões anteriores, a leitura é feita no seu navegador, por você.</p>
+  <p class="aviso"><strong>Versão de desenvolvedor.</strong> A versão da Chrome Web Store vem depois. Por enquanto a extensão é instalada manualmente, como abaixo.</p>
+
+  <h2>Instalar em modo desenvolvedor</h2>
+  <ol>
+    <li>Peça à equipe do LicitaPlena a pasta <code>extensao-leitura</code> e deixe-a descompactada no seu computador.</li>
+    <li>No Chrome, abra <code>chrome://extensions</code> e ligue <strong>Modo do desenvolvedor</strong> (canto superior direito).</li>
+    <li>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta <code>extensao-leitura</code>.</li>
+    <li>Clique no ícone de quebra-cabeça do Chrome e fixe a extensão <em>LicitaPlena</em>.</li>
+  </ol>
+
+  <h2>Usar em um pregão anterior</h2>
+  <ol>
+    <li>No LicitaPlena, no cartão <strong>Licitação anterior</strong>, clique no botão para abrir a página do pregão no governo.</li>
+    <li>Resolva o captcha na página do governo. Você mesmo resolve; o LicitaPlena nunca faz isso por você.</li>
+    <li>Clique no ícone da extensão e em <strong>Ler esta página e gravar</strong>. O Chrome pede, uma vez, autorização para falar com o LicitaPlena: aceite.</li>
+    <li>Volte ao LicitaPlena (aberto e logado em outra aba) e clique <strong>Atualizar</strong>.</li>
+  </ol>
+
+  <p class="info">A extensão só lê o que a página já mostrou. Ela não clica, não navega, não envia propostas nem lances e não resolve captcha. Se algo não estiver aberto na tela, ela lista o que você precisa abrir.</p>
+  <p><a href="index.html">Voltar ao LicitaPlena</a></p>
+</main>
+</body>
+</html>

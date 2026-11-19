@@ -233,6 +233,66 @@
     a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
     return a;
   }
+  // ---------- "Ver tudo do pregão (você resolve o captcha)" ----------
+  // Só abre a página oficial em outra aba: o captcha é do usuário, nada é resolvido nem lido por aqui.
+  // Quem lê e grava é a extensão no navegador dele (extensao-leitura/, docs/pregao-gravado.md).
+  const COMPRASGOV_ACOMPANHAR = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras/acompanhamento-compra';
+  const COMPRASNET_ATA = 'https://www.comprasnet.gov.br/livre/pregao/AtaEletronico.asp';
+  // Formato do mapa do ComprasNet antigo: co_no_uasg=&uasg=&numprp=<número><ano>&codigoModalidade=5&Seq=1 (sem zeros no número).
+  function urlsVerTudo(compra) {
+    const m = /^(\d{6})(\d{2})(\d{5})(\d{4})$/.exec(String((compra && compra.id_compra) || ''));
+    if (!m) return null;
+    const antigo = compra.fonte === 'comprasnet-antigo' || compra.plataforma === 'ComprasNet (antigo)'
+      || (m[2] === '05' && m[3][0] !== '9' && Number(m[4]) <= 2023);
+    if (antigo) {
+      const q = new globalThis.URLSearchParams({ co_no_uasg: m[1], uasg: m[1], numprp: `${Number(m[3])}${m[4]}`, codigoModalidade: '5', Seq: '1' });
+      return { tipo: 'comprasnet-antigo', rotulo: 'Abrir a ata completa no ComprasNet', url: `${COMPRASNET_ATA}?${q}` };
+    }
+    return { tipo: 'comprasgov', rotulo: 'Abrir "Acompanhar contratação" no Compras.gov', url: `${COMPRASGOV_ACOMPANHAR}?compra=${m[0]}` };
+  }
+  const PASSOS_VER_TUDO = [
+    { icone: 'captcha', texto: 'Resolva o captcha na página do governo.' },
+    { icone: 'extensao', texto: 'Clique no botão da extensão LicitaPlena: "Ler esta página e gravar".' },
+    { icone: 'atualizar', texto: 'Volte aqui e clique "Atualizar": participantes, marcas e motivos aparecem para todos os clientes.' },
+  ];
+  const ICONES = {
+    captcha: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3zm-1 13l-3-3 1.4-1.4L11 12.2l3.6-3.6L16 10l-5 5z',
+    extensao: 'M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.7 2.7 0 0 1 0 5.4H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.7 2.7 0 0 1 5.4 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5z',
+    atualizar: 'M17.65 6.35A8 8 0 1 0 19.73 14h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z',
+  };
+  function icone(nome) {
+    if (!document.createElementNS) return el('span'); // DOM de teste sem SVG
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '22'); svg.setAttribute('height', '22'); svg.setAttribute('aria-hidden', 'true');
+    const p = document.createElementNS(ns, 'path');
+    p.setAttribute('d', ICONES[nome]); p.setAttribute('fill', 'currentColor');
+    svg.append(p);
+    return svg;
+  }
+  function blocoVerTudo(compra, atualizar) {
+    const alvo = urlsVerTudo(compra);
+    if (!alvo) return null;
+    const det = el('div', 'la-vertudo');
+    det.append(el('h4', 'la-vertudo-titulo', 'Ver tudo do pregão (você resolve o captcha)'));
+    const acoes = el('p', 'la-links');
+    const abrir = link(alvo.url, alvo.rotulo); abrir.className = 'la-link la-botao la-primario';
+    acoes.append(abrir);
+    if (atualizar) {
+      const b = el('button', 'la-botao', 'Atualizar'); b.type = 'button';
+      b.addEventListener('click', async () => { b.disabled = true; b.textContent = 'Atualizando…'; try { await atualizar(); } finally { b.disabled = false; b.textContent = 'Atualizar'; } });
+      acoes.append(b);
+    }
+    det.append(acoes);
+    const ol = el('ol', 'la-passos');
+    for (const p of PASSOS_VER_TUDO) { const li = el('li'); li.append(icone(p.icone), el('span', null, p.texto)); ol.append(li); }
+    det.append(ol);
+    const ext = el('p', 'la-fonte');
+    const como = el('a', 'la-link', 'Como instalar a extensão'); como.href = 'extensao.html'; como.target = '_blank'; como.rel = 'noopener';
+    ext.append('Ainda não tem a extensão? ', como, '. O LicitaPlena não resolve captcha por você.');
+    det.append(ext);
+    return det;
+  }
   const pct = (v) => (v === null ? '' : ` (${v > 0 ? '+' : ''}${String(v).replace('.', ',')}%)`);
   function fornecedorTexto(p) {
     return [p.fornecedor_nome || 'Fornecedor', cnpjFormatado(p.fornecedor_ni), p.porte, p.uf].filter(Boolean).join(' · ');
@@ -327,7 +387,7 @@
     return box;
   }
 
-  function desenhar(alvo, visao, { comEdital = false, rodape = '', extras = null } = {}) {
+  function desenhar(alvo, visao, { comEdital = false, rodape = '', extras = null, atualizar = null } = {}) {
     const raiz = el('div', 'la');
     if (!visao.compras.length) {
       raiz.append(el('p', 'la-apoio', 'Nenhuma contratação anterior deste órgão com este produto foi encontrada nos últimos anos.'));
@@ -373,6 +433,8 @@
       cab.append(links);
       art.append(cab);
       if (compra.objeto) art.append(el('p', 'la-objeto', String(compra.objeto).slice(0, 300)));
+      const vertudo = blocoVerTudo(compra, atualizar);
+      if (vertudo) art.append(vertudo);
       const gravada = extras && extras.gravado && extras.gravado.pregoes.get(compra.id_compra);
       if (gravada) {
         const aviso = el('p', 'la-aviso', 'Pregão gravado por usuário do LicitaPlena: situação e motivos de recusa, desclassificação e inabilitação aparecem por participante. ');
@@ -441,7 +503,7 @@
       const visao = montarVisao({ compras: c.data, itens: i.data, participacoes: p.data, casamentos: d.casamentos || [], alvos: d.alvos || [] });
       const extras = await carregarExtras(visao, { cliente, sancoes: sancoes || sancoesEmLote(cliente) });
       if (!vivo) return;
-      desenhar(corpo, visao, { comEdital: true, extras, rodape: d.gerado_em ? `Montado em ${data(d.gerado_em)}.` : '' });
+      desenhar(corpo, visao, { comEdital: true, extras, atualizar: carregar, rodape: d.gerado_em ? `Montado em ${data(d.gerado_em)}.` : '' });
     }
     carregar().catch(() => { if (vivo) alvo.replaceChildren(); });
     return { fechar() { vivo = false; } };
@@ -494,12 +556,13 @@
         (r.situacao === 'parcial' ? '. Os demais participantes (arquivo semanal de propostas) entram na próxima rodada do robô.' : '.');
       const visao = montarVisao(r);
       const extras = await carregarExtras(visao, { cliente, sancoes: sancoes || (cliente ? sancoesEmLote(cliente) : null) });
-      desenhar(resultado, visao, { rodape: (r.avisos || []).join(' '), extras });
+      const redesenhar = async (ex) => desenhar(resultado, visao, { rodape: (r.avisos || []).join(' '), extras: ex, atualizar: async () => redesenhar(await carregarExtras(visao, { cliente, sancoes: sancoes || (cliente ? sancoesEmLote(cliente) : null) })) });
+      await redesenhar(extras);
     });
     return { fechar() { alvo.replaceChildren(); } };
   }
 
-  const api = { montarVisao, vencedorDe, variacao, chaveMarca, montar, montarPesquisa, desenhar, linkOficial, indexarGravado, participantesDoItem, cnpjsDaVisao,
+  const api = { montarVisao, vencedorDe, variacao, chaveMarca, montar, montarPesquisa, desenhar, linkOficial, urlsVerTudo, PASSOS_VER_TUDO, indexarGravado, participantesDoItem, cnpjsDaVisao,
     textoSelo, seloGravado, sancoesEmLote, lerGravados, carregarExtras };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.LicitaLicitacaoAnterior = api;

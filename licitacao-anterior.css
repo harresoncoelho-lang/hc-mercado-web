@@ -51,3 +51,11 @@
 .la .sancao-selo-titulo { margin: 0; font-weight: 600; }
 .la .sancao-selo ul { margin: 0; padding-left: 16px; }
 .la .sancao-selo-mais { margin: 0; }
+/* "Ver tudo do pregão": abre a página oficial, o usuário resolve o captcha, a extensão grava. */
+.la-vertudo { border: 1px solid var(--info-border, #b9ccf5); background: var(--info-bg, #eaf1fe); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+.la-vertudo-titulo { margin: 0; font-size: .95rem; }
+.la-vertudo .la-links { align-items: center; }
+.la-vertudo a.la-botao { text-decoration: none; display: inline-block; }
+.la-passos { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .88rem; }
+.la-passos li { display: flex; gap: 8px; align-items: flex-start; }
+.la-passos svg { flex: none; color: var(--info-text, #1f4fb8); }

@@ -156,3 +156,10 @@ test('popup: só lê e grava (sem clicar/navegar) e lista o que falta abrir; man
     assert.match(el.gravarStatus.textContent, /Gravado no LicitaPlena \(3 propostas, 4 mensagens novas\)/);
   } finally { delete globalThis.document; delete globalThis.chrome; }
 });
+
+test('URL da ata montada pelo LicitaPlena (www, https, uasg+numprp+codigoModalidade) é lida como a ata completa', () => {
+  const url = 'https://www.comprasnet.gov.br/livre/pregao/AtaEletronico.asp?co_no_uasg=158142&uasg=158142&numprp=232022&codigoModalidade=5&Seq=1';
+  const r = ler(url, fixture('comprasnet-ata-sintetica.html'));
+  assert.equal(r.status, 'ok');
+  assert.equal(r.compra, '15814205000232022');
+});

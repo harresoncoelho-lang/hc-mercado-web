@@ -59,3 +59,20 @@ test("link na tela: só https em host oficial; o resto não vira href", () => {
   assert.equal(linkOficial("https://www.comprasnet.gov.br/x"), "https://www.comprasnet.gov.br/x");
   for (const ruim of ["javascript:alert(1)", "http://pncp.gov.br/x", "https://pncp.gov.br.evil.com/", "data:text/html,x", "", undefined]) assert.equal(linkOficial(ruim), null, String(ruim));
 });
+
+test("ver tudo: ata completa do ComprasNet antigo e Acompanhar contratação do Compras.gov, links oficiais e passos", () => {
+  const { urlsVerTudo, PASSOS_VER_TUDO, linkOficial } = require("./licitacao-anterior-ui.js");
+  const antigo = urlsVerTudo({ id_compra: "15814205000232022", plataforma: "ComprasNet (antigo)" });
+  assert.equal(antigo.tipo, "comprasnet-antigo");
+  assert.equal(antigo.url, "https://www.comprasnet.gov.br/livre/pregao/AtaEletronico.asp?co_no_uasg=158142&uasg=158142&numprp=232022&codigoModalidade=5&Seq=1");
+  assert.ok(linkOficial(antigo.url));
+  const novo = urlsVerTudo({ id_compra: "19302805900082025", plataforma: "Compras.gov.br" });
+  assert.equal(novo.tipo, "comprasgov");
+  assert.equal(novo.url, "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras/acompanhamento-compra?compra=19302805900082025");
+  assert.ok(linkOficial(novo.url));
+  assert.equal(urlsVerTudo({ id_compra: "abc" }), null);
+  assert.equal(urlsVerTudo({ id_compra: "15814205000232022" }).tipo, "comprasnet-antigo"); // sem plataforma: modalidade 05, número comum, ano <= 2023
+  assert.equal(PASSOS_VER_TUDO.length, 3);
+  assert.match(PASSOS_VER_TUDO[1].texto, /Ler esta página e gravar/);
+  assert.match(PASSOS_VER_TUDO[2].texto, /Atualizar/);
+});

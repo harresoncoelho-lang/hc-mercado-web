@@ -101,6 +101,8 @@ Privacidade: CPF nunca é gravado. Participante sem CNPJ vira `pf:<n>` com nome 
 
 Permissões: além de `activeTab` + `scripting`, o manifesto declara `optional_host_permissions` só para o LicitaPlena de produção (enviar). O Chrome pede a autorização no primeiro clique; nada é concedido na instalação. `http://127.0.0.1/*` (site do ambiente de teste) entra só no pacote gerado por `scripts/empacotar-extensao-leitura-qa.mjs`.
 
+O cartão "Licitação anterior" tem o bloco "Ver tudo do pregão (você resolve o captcha)": abre a página oficial (ata `AtaEletronico.asp?co_no_uasg=&uasg=&numprp=&codigoModalidade=5&Seq=1` ou "Acompanhar contratação"), mostra os 3 passos e o botão Atualizar. O passo a passo de instalação está publicado em `extensao.html`.
+
 ### Carregar em modo desenvolvedor (não publicado)
 
 1. Chrome → `chrome://extensions` → ligue **Modo do desenvolvedor**.
