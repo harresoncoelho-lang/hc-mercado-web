@@ -33,6 +33,9 @@
   const modulo = (nome, arquivo) => global[nome] || (typeof module !== 'undefined' && module.exports ? require(arquivo) : null);
   const P = () => modulo('LicitaPrecificacao', './precificacao-item.js');
   const planilha = () => modulo('LicitaPlanilhaItens', './planilha-itens.js');
+  const abc = () => modulo('LicitaCurvaABC', './curva-abc.js');
+  // Preço escolhido em sinapi.html ("Usar este preço"): mesma chave lá e aqui.
+  const CHAVE_SINAPI = 'licitaplena_sinapi_preco';
 
   // Número do item no edital, mesmo limite do handler (inteiro de 1 a 2147483647, o int do PNCP). Inválido: null.
   function numeroItemImportacao(textoDigitado) {
@@ -173,6 +176,19 @@
       lucroTotal: qtd === null ? null : p.formatarReais(centavosDe4((lucro * qtd) / 1000n)),
     };
   }
+  // Linha opcional "CBS/IBS da Reforma" sobre o preço-alvo. Desligada (padrão): texto vazio e nada muda no preço,
+  // que segue usando a alíquota de Tributos (%). CBS/IBS são por fora: a linha informa, não entra no alvo/limite.
+  function linhaReforma(alvoCentavos, opcao) {
+    if (!opcao?.ligado) return '';
+    const RT = modulo('LicitaReformaTributaria', './reforma-tributaria.js');
+    if (!RT) return '';
+    if (alvoCentavos === undefined) return 'CBS/IBS da Reforma: informe custo e margem para ter o preço-alvo.';
+    const r = RT.calcularCbsIbs({ valorCentavos: alvoCentavos, ano: opcao.ano, reducao: opcao.reducao, regime: opcao.regime });
+    if (!r.ok) return r.erro;
+    if (!r.aplica) return `CBS/IBS da Reforma (${r.ano}): ${r.aviso}`;
+    const f = P().formatarReais, pc = P().formatarPercentual;
+    return `CBS/IBS da Reforma (${r.ano}${r.reducao ? `, redução de ${r.reducao}%` : ''}) sobre o preço-alvo, por fora: CBS ${f(r.cbs)} (${pc(r.aliquotaCbs)}) + IBS ${f(r.ibs)} (${pc(r.aliquotaIbs)}) = ${f(r.total)}.${r.aviso ? ` ${r.aviso}` : ''}`;
+  }
   // "Usar limite como preço mínimo": mesmo corpo do salvarPrecoItem; o servidor recusa mínimo acima do valor unitário.
   function corpoUsarLimite(item, calc) {
     if (!calc || calc.limite === undefined) return { ok: false, erro: calc?.erroLimite || 'Informe o custo unitário e a margem mínima para calcular o limite.' };
@@ -242,6 +258,17 @@
     const erros = v.linhas.length ? [] : ['A planilha não tem linhas de itens.'];
     return { erros, linhas, resumo: v.resumo, alteracoes, podeAplicar: v.resumo.erro === 0 && alteracoes > 0 && !erros.length };
   }
+  // Valor guardado por sinapi.html → { preco: "302.08", rotulo } ou null. Dado do navegador: valida tudo antes de usar.
+  function precoSinapi(texto) {
+    let p = null;
+    try { p = JSON.parse(texto || 'null'); } catch { return null; }
+    if (!p || typeof p !== 'object' || typeof p.preco !== 'string' || decimalPositivo(p.preco, 2) === null || !/^[0-9]{1,10}$/.test(String(p.codigo || ''))) return null;
+    const uf = /^[A-Z]{2}$/.test(p.uf || '') ? ` ${p.uf}` : '';
+    const mes = /^\d{4}-\d{2}/.test(p.referencia || '') ? ` ${p.referencia.slice(5, 7)}/${p.referencia.slice(0, 4)}` : '';
+    const tipo = p.tipo === 'composicao' ? 'composição' : 'insumo';
+    return { preco: p.preco, rotulo: `Preço SINAPI copiado: ${tipo} ${p.codigo}${uf}${mes}${p.desonerado === true ? ' desonerado' : ''}, R$ ${p.preco.replace('.', ',')}.` };
+  }
+
   // Banco sem operacao_itens_proposta.sql (precoDisponivel false): só "Baixar planilha" com os campos que existem.
   const recursosPreco = (precoDisponivel) => ({ premissas: precoDisponivel === true, precos: precoDisponivel === true, importarPlanilha: precoDisponivel === true, baixarPlanilha: true });
 
@@ -256,6 +283,9 @@
     let precoDisponivel = null, premissas = null, previa = null, numeroProcesso = '', filaPremissas = Promise.resolve(), filaRef = Promise.resolve();
     const nos = new Map(), lances = new Map(), refEstado = new Map(), refTentada = new Set();
     let catalogoProdutos = [];
+    // Opção CBS/IBS só na tela (não grava): começa desligada, ano corrente dentro da transição.
+    const ANOS_REFORMA = modulo('LicitaReformaTributaria', './reforma-tributaria.js')?.ANOS || [];
+    const reforma = { ligado: false, ano: Math.min(Math.max(new Date().getFullYear(), ANOS_REFORMA[0] || 0), ANOS_REFORMA[ANOS_REFORMA.length - 1] || 0), regime: 'real', reducao: 0 };
     const CU = global.CatalogoUsar, MC = global.MercadoComprasGov;
     alvo.innerHTML = `<h2 id="itens-titulo" tabindex="-1">Itens do processo</h2>
       <p data-item-estado role="status" aria-live="polite"></p>
@@ -263,6 +293,20 @@
         <h3 id="itens-premissas-titulo">Premissas do processo</h3>
         <p class="itens-apoio">Valem para todos os itens. Cada campo salva ao sair dele.</p>
         <div class="itens-premissas-campos" data-premissas-campos></div>
+        <fieldset class="itens-reforma" data-reforma>
+          <legend><label><input type="checkbox" data-reforma-ligado> Calcular CBS/IBS da Reforma Tributária</label></legend>
+          <p class="itens-apoio">Opcional. O preço continua usando Tributos (%). Ligado, cada item mostra CBS e IBS sobre o preço-alvo. Alíquotas de 2027 em diante são provisórias até o Senado definir.</p>
+          <div class="itens-premissas-campos" data-reforma-campos hidden>
+            <div class="itens-campo"><label for="itens-reforma-ano">Ano</label><select id="itens-reforma-ano" data-reforma-campo="ano"></select></div>
+            <div class="itens-campo"><label for="itens-reforma-regime">Regime tributário</label><select id="itens-reforma-regime" data-reforma-campo="regime">
+              <option value="real">Lucro real</option><option value="presumido">Lucro presumido</option><option value="simples">Simples Nacional</option><option value="mei">MEI</option></select></div>
+            <div class="itens-campo"><label for="itens-reforma-reducao">Redução de alíquota</label><select id="itens-reforma-reducao" data-reforma-campo="reducao">
+              <option value="0">Sem redução</option><option value="30">30% (profissões regulamentadas)</option><option value="60">60% (saúde, educação, alimentos e outros do anexo)</option></select></div>
+            <div class="itens-campo"><label for="itens-reforma-uf">UF (para conferir)</label><input id="itens-reforma-uf" data-reforma-campo="uf" maxlength="2" autocomplete="off" placeholder="Ex.: AM"></div>
+          </div>
+          <div class="itens-acoes" data-reforma-conferir-caixa hidden><button type="button" data-reforma-conferir>Conferir na calculadora oficial</button></div>
+          <p class="itens-apoio" data-reforma-estado role="status" aria-live="polite"></p>
+        </fieldset>
       </section>
       <form data-item-form novalidate>
         <label>Identificador do item <input name="identificador" maxlength="180" autocomplete="off"></label>
@@ -273,6 +317,7 @@
         <label>Valor unitário (R$) <input name="valorUnitario" inputmode="decimal" autocomplete="off" placeholder="Ex.: 1.10"></label>
         <p data-item-total></p>
         <p data-item-erros role="alert"></p>
+        <div class="itens-acoes" data-sinapi hidden><span class="itens-apoio" data-sinapi-texto></span><button type="button" data-sinapi-usar>Usar no valor unitário</button></div>
         <div class="itens-acoes"><button type="submit" class="app-primario" data-item-salvar>Salvar item</button><button type="button" data-item-cancelar hidden>Cancelar edição</button></div>
       </form>
       <div class="itens-acoes"><button type="button" data-item-atualizar>Atualizar itens</button><button type="button" data-item-importar-abrir aria-expanded="false" aria-controls="itens-importar">Importar itens do edital (PNCP)</button>
@@ -293,7 +338,13 @@
         <div class="itens-acoes"><button type="submit" class="app-primario" data-item-importar-enviar>Importar este item</button></div>
       </form>
       <div data-item-lista></div>
-      <button type="button" data-item-mais hidden>Carregar mais itens</button>`;
+      <button type="button" data-item-mais hidden>Carregar mais itens</button>
+      <section data-curva class="itens-curva" aria-labelledby="itens-curva-titulo" hidden>
+        <h3 id="itens-curva-titulo">Curva ABC</h3>
+        <p class="itens-apoio">Itens do maior para o menor valor total (quantidade × valor unitário). A: até 80% do valor acumulado; B: até 95%; C: o resto. Concentre a negociação e a conferência de preço nos itens A.</p>
+        <p class="itens-apoio" data-curva-resumo></p>
+        <div class="tabela-rolagem" tabindex="0" role="region" aria-label="Curva ABC dos itens"><table><thead><tr><th scope="col">Classe</th><th scope="col">Item</th><th scope="col">Total</th><th scope="col">Participação</th><th scope="col">Acumulado</th></tr></thead><tbody data-curva-linhas></tbody></table></div>
+      </section>`;
     const el = (s) => alvo.querySelector(s);
     const doc = alvo.ownerDocument || global.document;
     // Elemento com texto sempre por textContent/nó de texto: dado do banco nunca vira HTML.
@@ -372,13 +423,45 @@
       });
     }
 
+    // ---------- CBS/IBS da Reforma (opcional, só na tela) ----------
+    function montarReforma() {
+      const caixa = el('[data-reforma]');
+      if (!ANOS_REFORMA.length) { caixa.hidden = true; return; }
+      const ano = el('[data-reforma-campo="ano"]');
+      ano.replaceChildren(...ANOS_REFORMA.map((a) => h('option', { value: a, texto: a === 2026 ? '2026 (teste)' : `${a} (provisória)` })));
+      ano.value = String(reforma.ano);
+      caixa.addEventListener('change', (ev) => {
+        const alvoEv = ev.target;
+        if (alvoEv.dataset.reformaLigado !== undefined) reforma.ligado = alvoEv.checked;
+        else if (alvoEv.dataset.reformaCampo === 'ano' || alvoEv.dataset.reformaCampo === 'reducao') reforma[alvoEv.dataset.reformaCampo] = Number(alvoEv.value);
+        else if (alvoEv.dataset.reformaCampo === 'regime') reforma.regime = alvoEv.value;
+        else return;
+        el('[data-reforma-campos]').hidden = !reforma.ligado;
+        el('[data-reforma-conferir-caixa]').hidden = !reforma.ligado;
+        marcar(el('[data-reforma-estado]'), '', '');
+        atualizarPrecos();
+      });
+      el('[data-reforma-conferir]').addEventListener('click', async (ev) => {
+        const botao = ev.currentTarget, estadoR = el('[data-reforma-estado]');
+        const uf = el('[data-reforma-campo="uf"]').value.trim().toUpperCase() || 'DF';
+        const falha = 'Não foi possível conferir agora na calculadora oficial. O cálculo local continua valendo.';
+        botao.disabled = true; marcar(estadoR, 'Conferindo na calculadora oficial…', 'carregando');
+        try {
+          const r = await requisitar(`/api/conferir-cbs-ibs?${new URLSearchParams({ ano: String(reforma.ano), uf })}`, { method: 'GET', credentials: 'same-origin' });
+          const j = await r.json().catch(() => null);
+          if (!vivo) return;
+          marcar(estadoR, (r.ok ? j?.texto : j?.erro) || falha, r.ok && j?.confere !== false ? 'ok' : 'erro');
+        } catch { if (vivo) marcar(estadoR, falha, 'erro'); } finally { botao.disabled = false; }
+      });
+    }
+
     // ---------- lista ----------
     function blocoPreco(i) {
       const id = (s) => `itens-${s}-${i.id}`;
       const n = {
         custo: h('input', { id: id('custo'), 'data-custo': i.id, inputmode: 'decimal', autocomplete: 'off', placeholder: 'Ex.: 51,20', 'aria-describedby': id('custo-estado') }),
         custoEstado: h('span', { id: id('custo-estado'), classe: 'itens-campo-estado', 'aria-live': 'polite' }),
-        alvo: h('dd'), limite: h('dd'), minimo: h('dd'), aviso: h('p', { classe: 'itens-apoio' }),
+        alvo: h('dd'), limite: h('dd'), minimo: h('dd'), aviso: h('p', { classe: 'itens-apoio' }), reforma: h('p', { classe: 'itens-apoio', 'data-reforma-item': i.id }),
         referencia: h('div', { classe: 'itens-referencia' }),
         lance: h('input', { id: id('lance'), 'data-lance': i.id, inputmode: 'decimal', autocomplete: 'off', placeholder: 'Ex.: 70,50', 'aria-describedby': id('simulacao') }),
         simulacao: h('div', { id: id('simulacao'), classe: 'itens-simulacao', 'aria-live': 'polite' }),
@@ -396,7 +479,7 @@
           h('div', {}, h('dt', { texto: 'Preço-alvo' }), n.alvo),
           h('div', {}, h('dt', { texto: 'Preço-limite' }), n.limite),
           h('div', {}, h('dt', { texto: 'Preço mínimo gravado' }), n.minimo)),
-        n.aviso, n.referencia,
+        n.aviso, n.reforma, n.referencia,
         h('div', { classe: 'itens-campo' }, h('label', { for: id('lance'), texto: 'Simular lance (R$)' }), n.lance), n.simulacao,
         h('div', { classe: 'itens-acoes' }, n.usar, n.usarEstado),
         fontesDoItem(i, n));
@@ -464,12 +547,38 @@
       const lista = el('[data-item-lista]');
       lista.replaceChildren(itens.length ? h('ul', {}, ...itens.map(cartaoItem)) : h('p', { texto: 'Nenhum item cadastrado neste processo.' }));
       el('[data-item-mais]').hidden = !maisItens;
+      renderCurva();
       const r = recursosPreco(precoDisponivel);
       el('[data-premissas]').hidden = !r.premissas;
       el('[data-planilha-importar]').hidden = !r.importarPlanilha;
       if (!r.importarPlanilha) { previa = null; el('[data-planilha-previa]').hidden = true; }
       atualizarPrecos();
       if (r.precos) for (const i of itens) if (!i.precoReferencia && !refTentada.has(i.id) && i.codigoCatalogo && unidadeCompras(i.unidade)) { refTentada.add(i.id); filaRef = filaRef.then(() => buscarReferencia(i)); }
+    }
+    // shortcut: a curva usa só os itens carregados na tela; com "Carregar mais itens" visível, ela avisa que está parcial.
+    function renderCurva() {
+      if (!abc()) return; // página sem curva-abc.js: o bloco fica oculto, a lista segue igual
+      const moeda = (v) => (P()?.formatarReais ? P().formatarReais(v) : reais(v)); // com milhar quando precificacao-item.js está carregado
+      const c = abc().curvaABC(itens), r = c.resumo;
+      el('[data-curva]').hidden = c.linhas.length === 0;
+      const pctDe = (v) => abc().pct(c.total ? (v * 10000n + c.total / 2n) / c.total : 0n);
+      el('[data-curva-resumo]').textContent = [`Total: ${moeda(c.total)}.`,
+        ...['A', 'B', 'C'].map((k) => `${k}: ${r[k].itens} ${r[k].itens === 1 ? 'item' : 'itens'} (${pctDe(r[k].total)}).`),
+        c.semValor.length ? `${c.semValor.length} sem valor unitário ficaram fora.` : '', maisItens ? 'Parcial: carregue todos os itens para ver a curva completa.' : ''].filter(Boolean).join(' ');
+      el('[data-curva-linhas]').replaceChildren(...c.linhas.map((l) => {
+        const barra = h('span', { classe: 'curva-barra', 'aria-hidden': 'true' }, h('span', {}));
+        barra.firstChild.style.width = `${Number(l.participacao) / 100}%`;
+        return h('tr', { 'data-classe': l.classe }, h('td', {}, h('span', { classe: 'selo-classe', texto: l.classe })),
+          h('td', { texto: `${l.item.identificador} · ${String(l.item.descricao || '').slice(0, 60)}` }),
+          h('td', { texto: moeda(l.total) }), h('td', {}, h('span', { texto: abc().pct(l.participacao) }), barra), h('td', { texto: abc().pct(l.acumulado) }));
+      }));
+    }
+    function mostrarSinapi() {
+      let p = null;
+      try { p = precoSinapi(global.localStorage?.getItem(CHAVE_SINAPI)); } catch { p = null; }
+      el('[data-sinapi]').hidden = !p;
+      el('[data-sinapi-texto]').textContent = p ? p.rotulo : '';
+      return p;
     }
     function atualizarPrecos() {
       if (!nos.size) return;
@@ -483,6 +592,7 @@
         const avisos = c?.semCusto ? [c.aviso] : [c?.erroAlvo, c?.erroLimite, c?.aviso, c?.freteUnidade > 0n ? `Inclui frete rateado de ${P().formatarReais(c.freteUnidade)} por unidade.` : ''];
         n.aviso.textContent = avisos.filter(Boolean).join(' ');
         n.usar.disabled = c?.limite === undefined;
+        n.reforma.textContent = linhaReforma(c?.alvo, reforma);
         renderReferencia(i, c);
         renderSimulacao(i, c);
       }
@@ -695,7 +805,7 @@
       if (!i || ocupado) return;
       edicao = id; tentativa = null;
       for (const n of ['identificador', 'descricao', 'marca', 'modelo', 'quantidade', 'valorUnitario']) form.elements[n].value = i[n] ?? '';
-      el('[data-item-cancelar]').hidden = false; atualizarTotal(); estado(MSG.editando, 'vazio');
+      el('[data-item-cancelar]').hidden = false; mostrarSinapi(); atualizarTotal(); estado(MSG.editando, 'vazio');
       el('#itens-titulo')?.focus?.();
     }
     // Importação PNCP: mesmo endpoint e regra de processos.html; o servidor confere empresa, processo e vínculo.
@@ -729,6 +839,7 @@
     form.addEventListener('submit', salvar);
     form.addEventListener('input', atualizarTotal);
     el('[data-item-cancelar]').addEventListener('click', cancelarEdicao);
+    el('[data-sinapi-usar]').addEventListener('click', () => { const p = mostrarSinapi(); if (p) { form.elements.valorUnitario.value = p.preco; atualizarTotal(); } });
     el('[data-item-atualizar]').addEventListener('click', () => { void carregar({ reiniciar: true }); });
     el('[data-item-mais]').addEventListener('click', () => { void carregar({ reiniciar: false }); });
     el('[data-item-importar-abrir]').addEventListener('click', (ev) => {
@@ -761,6 +872,8 @@
       if (d.lance && itemDe(d.lance)) { lances.set(d.lance, ev.target.value); renderSimulacao(itemDe(d.lance), calcularPrecos(itens, premissas).get(d.lance)); }
     });
     montarPremissas();
+    mostrarSinapi();
+    montarReforma();
     atualizarTotal();
     void carregar({ reiniciar: true });
     // Catálogo da empresa: uma leitura por processo; falha só deixa a lista de sugestões vazia.
@@ -773,7 +886,7 @@
   }
 
   const api = { montar, validarItemCampos, abaixoDoMinimo, totalCentavos, reais, linhaQuantidade, decimalPositivo, numeroItemImportacao, respostaImportacao, MSG,
-    premissaDoCampo, premissaParaCampo, calcularPrecos, simularLance, corpoUsarLimite, unidadeCompras, referenciaDeResposta, decodificarPlanilha, previaPlanilha, recursosPreco };
+    premissaDoCampo, premissaParaCampo, precoSinapi, calcularPrecos, simularLance, linhaReforma, corpoUsarLimite, unidadeCompras, referenciaDeResposta, decodificarPlanilha, previaPlanilha, recursosPreco };
   global.LicitaItensProcesso = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);
