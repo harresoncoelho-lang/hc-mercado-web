@@ -34,6 +34,9 @@ const semAcento = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, ""
 const numero = (v) => (v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
 const inteiro = (v) => (Number.isSafeInteger(Number(v)) && String(v).trim() !== "" ? Number(v) : null);
 const digitos = (v) => String(v ?? "").replace(/\D/g, "");
+// Código da unidade no PNCP de outras plataformas pode vir com 9+ dígitos ("000000001"); a coluna uasg aceita 1 a 8.
+// Zeros à esquerda saem só nesse caso (UASG do Compras.gov tem 6 e fica como está); maior que isso fica sem uasg.
+const codigoUnidade = (v) => { const d = digitos(v); const u = d.length > 8 ? d.replace(/^0+(?=\d)/, "") : d; return /^\d{1,8}$/.test(u) ? u : null; };
 
 // Palavras que descrevem o produto. Rótulos de atributo do CATMAT ("apresentação:", "tipo:") e medidas
 // não contam: estão em quase todo item e fariam "café" casar com "açúcar".
@@ -229,7 +232,7 @@ function compraDaBusca(i) {
   const id = idDoLink(i.link_sistema_origem) || i.numero_controle_pncp;
   return {
     id_compra: id, numero_controle_pncp: texto(i.numero_controle_pncp, 60), orgao_cnpj: m[1], orgao_nome: texto(i.orgao_nome, 300),
-    uasg: digitos(i.unidade_codigo) || null, unidade_nome: texto(i.unidade_nome, 300), ano: Number(m[2]), numero: texto(i.numero || i.title, 40),
+    uasg: codigoUnidade(i.unidade_codigo), unidade_nome: texto(i.unidade_nome, 300), ano: Number(m[2]), numero: texto(i.numero || i.title, 40),
     modalidade: texto(i.modalidade_licitacao_nome, 80), plataforma: texto(i.usuario_nome, 80) || (idDoLink(i.link_sistema_origem) ? "Compras.gov.br" : null),
     situacao: texto(i.situacao_nome, 80), objeto: texto(i.description, 1000), data_publicacao: texto(i.data_publicacao_pncp, 10),
     link_origem: linkOficial(i.link_sistema_origem) || linkCompraGov(id), link_pncp: `${PNCP}/app/editais/${m[1]}/${m[2]}/${m[3]}`,
@@ -273,7 +276,7 @@ async function fonteDadosAbertos(b, c) {
     const res = await b.json(`${DADOS_ABERTOS}/3.1_consultarResultadoItensContratacoes_PNCP_14133_Id?${q}`);
     Object.assign(c, {
       numero_controle_pncp: texto(cab.numeroControlePNCP, 60), orgao_cnpj: digitos(cab.orgaoEntidadeCnpj) || null, orgao_nome: texto(cab.orgaoEntidadeRazaoSocial, 300),
-      uasg: digitos(cab.unidadeOrgaoCodigoUnidade) || c.uasg, unidade_nome: texto(cab.unidadeOrgaoNomeUnidade, 300), ano: inteiro(cab.anoCompraPncp) || c.ano,
+      uasg: codigoUnidade(cab.unidadeOrgaoCodigoUnidade) || c.uasg, unidade_nome: texto(cab.unidadeOrgaoNomeUnidade, 300), ano: inteiro(cab.anoCompraPncp) || c.ano,
       numero: `${cab.numeroCompra}/${cab.anoCompraPncp}`, modalidade: texto(cab.modalidadeNome, 80), plataforma: "Compras.gov.br",
       situacao: texto(cab.situacaoCompraNomePncp, 80), objeto: texto(cab.objetoCompra, 1000), data_publicacao: texto(cab.dataPublicacaoPncp, 10),
       link_origem: linkCompraGov(c.id_compra),

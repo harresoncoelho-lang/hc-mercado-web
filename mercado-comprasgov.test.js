@@ -114,3 +114,10 @@ test('resumoMarcas: vitórias, mediana na unidade dominante, faixa, últimos ór
   assert.equal(p.preco_referencia, '0.81');
   assert.match(p.referencia_fonte, /mediana de 3 compra\(s\) por UN, marca BIC/);
 });
+
+test('mensagemBusca: zero compras com consulta que falhou pede para tentar de novo, não "nenhuma compra"', () => {
+  assert.match(M.mensagemBusca(0, 0, 1), /não respondeu agora/);
+  assert.match(M.mensagemBusca(0, 0, 0), /^Nenhuma compra para este termo/);
+  assert.equal(M.mensagemBusca(5, 3, 0), '5 compra(s) encontradas, 3 com marca declarada.');
+  assert.match(M.mensagemBusca(5, 3, 2), /resultado parcial/);
+});

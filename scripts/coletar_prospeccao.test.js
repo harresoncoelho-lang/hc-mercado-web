@@ -34,6 +34,15 @@ test("linhaContrato: link oficial, busca sem acento, fornecedor PF não é grava
   assert.equal(pf.fornecedor_nome, null);
 });
 
+// E2E 19/11/2026: contrato com pessoa física trazia só o CPF no objeto ("016.471.242-98") e ele ia para o banco.
+test("linhaContrato/linhaAta: CPF no objeto sai mascarado, também do texto de busca (LGPD)", () => {
+  for (const f of [P.linhaContrato, P.linhaAta]) {
+    const l = f({ ...contrato, description: "Locação de imóvel de 016.471.242-98 e 93793162249" }, EM);
+    assert.doesNotMatch(JSON.stringify(l), /016\.471\.242-98|93793162249/);
+    assert.match(l.objeto, /Locação de imóvel de \*\*\*\.\*\*\*\.\*\*\*-\*\*/);
+  }
+});
+
 test("linhaItemAta: saldo = homologado ao fornecedor - empenhado, nunca negativo", () => {
   const ata = P.linhaAta({ numero_controle_pncp: "04378626000197-1-000121/2025-000001", item_url: "/atas/04378626000197/2025/121/1", uf: "AM", orgao_cnpj: "04378626000197", description: "Mobiliário", permite_adesao: true, data_fim_vigencia: "2026-12-29" }, EM);
   const item = { numeroControlePncpAta: ata.id.slice(4), numeroItem: "00005", codigoItem: 391199, descricaoItem: "ARMÁRIO ESTANTE", quantidadeHomologadaVencedor: 3, quantidadeEmpenhada: 1, valorUnitario: 742, maximoAdesao: 6, niFornecedor: "48619375000160", nomeRazaoSocialFornecedor: "D DE C NOBRE AZEVEDO", dataVigenciaFinal: "2026-12-29" };

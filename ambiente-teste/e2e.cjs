@@ -15,7 +15,9 @@ fs.mkdirSync(PRINTS, { recursive: true });
 
 // REST com service_role LOCAL, só para conferir o que a tela gravou.
 async function banco(caminho) {
-  const r = await fetch(chaves.API_URL + '/rest/v1/' + caminho, { headers: { apikey: chaves.SERVICE_ROLE_KEY, Authorization: 'Bearer ' + chaves.SERVICE_ROLE_KEY } });
+  const pedir = () => fetch(chaves.API_URL + '/rest/v1/' + caminho, { headers: { apikey: chaves.SERVICE_ROLE_KEY, Authorization: 'Bearer ' + chaves.SERVICE_ROLE_KEY } });
+  // Conexão reaproveitada que o Kong local fecha logo depois de um robô longo dá "fetch failed": 1 nova tentativa.
+  const r = await pedir().catch(() => new Promise(ok => setTimeout(ok, 1000)).then(pedir));
   if (!r.ok) throw new Error(`banco ${caminho}: ${r.status} ${await r.text()}`);
   return r.json();
 }
@@ -33,14 +35,17 @@ function robo(script, env = {}) {
 
 const resultados = [];
 let n = 0;
+const INICIO = new Date().toISOString();
 async function passo(nome, pagina, fn) {
   n += 1;
   const id = String(n).padStart(2, '0');
   const r = { n: id, nome, ok: false, notas: [] };
+  const t0 = Date.now();
   try { const nota = await fn(); if (nota) r.notas.push(String(nota)); r.ok = true; } catch (e) { r.notas.push('ERRO: ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')); }
+  r.segundos = Math.round((Date.now() - t0) / 100) / 10;
   if (pagina) { r.print = `${id}-${nome.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 50)}.png`; await pagina.screenshot({ path: path.join(PRINTS, r.print), fullPage: true }).catch(() => { r.print = null; }); }
   resultados.push(r);
-  console.log(`${r.ok ? '✔' : '✘'} ${id} ${nome} ${r.notas.join(' ; ')}`);
+  console.log(`${r.ok ? '✔' : '✘'} ${id} ${nome} (${r.segundos}s) ${r.notas.join(' ; ')}`);
   return r.ok;
 }
 function exigir(cond, msg) { if (!cond) throw new Error(msg); }
@@ -395,7 +400,11 @@ async function main() {
     return `9 tabelas + Storage + telas: nada da org A (logo no Storage: HTTP ${st.status})`;
   });
 
-  fs.writeFileSync(path.join(PRINTS, 'resultado.json'), JSON.stringify({ quando: new Date().toISOString(), resultados, errosPagina: p.erros }, null, 2));
+  // Funções novas (dados da empresa unificado, catálogo, PDF único, licitação anterior, análise por CNPJ,
+  // prospecção, sanções, pregão gravado e segurança delas): ambiente-teste/e2e-novos.cjs.
+  await require('./e2e-novos.cjs').passosNovos({ navegador, p, contexto, urlProcesso });
+
+  fs.writeFileSync(path.join(PRINTS, 'resultado.json'), JSON.stringify({ quando: new Date().toISOString(), inicio: INICIO, fim: new Date().toISOString(), resultados, errosPagina: p.erros }, null, 2));
   await navegador.close();
 }
 if (require.main === module) main().catch(e => { console.error('E2E FALHOU:', e); process.exit(1); });

@@ -51,9 +51,11 @@ const catmat = (v) => (/^\d{1,12}$/.test(String(v ?? "").trim()) ? String(v).tri
 // Texto de busca: minúsculo e sem acento, para o ILIKE da function casar "cafe" com "CAFÉ". O nome do fornecedor
 // fica fora: "papel" casava "X PAPELARIA LTDA" em ata de cadeira (visto no E2E de 19/11/2026).
 const normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-const busca = (...partes) => normalizar(partes.filter(Boolean).join(" ")).slice(0, 2000);
+const busca = (...partes) => normalizar(semCpf(partes.filter(Boolean).join(" "), " ")).slice(0, 2000);
 // Razão social de MEI traz o CPF do titular ("FULANA DE TAL 97048143215"): o CPF sai, o resto é público.
 const nomeFornecedor = (v) => txt(semCpf(v, " "), 300);
+// Objeto/descrição também: contrato com pessoa física vem com o CPF no objeto ("016.471.242-98", visto no E2E de 19/11/2026).
+const livre = (v, max) => txt(semCpf(v), max);
 
 // AAAA-MM-DD de Brasília (UTC-3 fixo), deslocado em dias.
 function hojeBrasilia(agora = Date.now(), deslocamento = 0) {
@@ -68,7 +70,7 @@ function linhaContrato(doc, coletadoEm) {
     id: `contrato:${doc.numero_controle_pncp}`, tipo: "contrato", fonte: "pncp", plataforma: txt(doc.usuario_nome, 120),
     uf: doc.uf, orgao_cnpj: cnpjOuNulo(doc.orgao_cnpj), orgao_nome: txt(doc.orgao_nome, 300),
     unidade_codigo: txt(doc.unidade_codigo, 30), unidade_nome: txt(doc.unidade_nome, 300), municipio: txt(doc.municipio_nome, 120),
-    objeto: txt(doc.description, 1000), descricao: null, catmat: null,
+    objeto: livre(doc.description, 1000), descricao: null, catmat: null,
     quantidade: null, valor_unitario: null, valor_total: numero(doc.valor_global),
     data_inicio: dia(doc.data_inicio_vigencia), data_ref: dia(doc.data_fim_vigencia),
     // LGPD: fornecedor pessoa física (CPF) não é gravado.
@@ -89,7 +91,7 @@ function linhaAta(doc, coletadoEm) {
     id: `ata:${doc.numero_controle_pncp}`, tipo: "ata", fonte: "pncp", plataforma: txt(doc.usuario_nome, 120),
     uf: doc.uf, orgao_cnpj: cnpjOuNulo(doc.orgao_cnpj), orgao_nome: txt(doc.orgao_nome, 300),
     unidade_codigo: txt(doc.unidade_codigo, 30), unidade_nome: txt(doc.unidade_nome, 300), municipio: txt(doc.municipio_nome, 120),
-    objeto: txt(doc.description, 1000), descricao: null, catmat: null,
+    objeto: livre(doc.description, 1000), descricao: null, catmat: null,
     quantidade: null, valor_unitario: null, valor_total: numero(doc.valor_global),
     data_inicio: dia(doc.data_inicio_vigencia), data_ref: dia(doc.data_fim_vigencia),
     fornecedor_cnpj: null, fornecedor_nome: null, saldo: null, maximo_adesao: null, permite_adesao: doc.permite_adesao === true,
@@ -104,7 +106,7 @@ function linhaItemAta(item, ata, coletadoEm) {
   const forn = cnpjOuNulo(item.niFornecedor);
   return {
     ...ata, id: `ata:${item.numeroControlePncpAta}#${item.numeroItem}#${forn || item.classificacaoFornecedor || ""}`, fonte: "comprasgov_arp",
-    descricao: txt(item.descricaoItem, 600), catmat: catmat(item.codigoItem),
+    descricao: livre(item.descricaoItem, 600), catmat: catmat(item.codigoItem),
     quantidade: qtd, valor_unitario: numero(item.valorUnitario), valor_total: numero(item.valorTotal),
     data_inicio: dia(item.dataVigenciaInicial) || ata.data_inicio, data_ref: dia(item.dataVigenciaFinal) || ata.data_ref,
     fornecedor_cnpj: forn, fornecedor_nome: forn ? nomeFornecedor(item.nomeRazaoSocialFornecedor) : null,
@@ -119,7 +121,7 @@ function linhaIrp(doc, item, coletadoEm) {
     id: `irp:${doc.numero_controle_pncp}#${item.numeroItem}`, tipo: "irp", fonte: "pncp", plataforma: txt(doc.usuario_nome, 120),
     uf: doc.uf, orgao_cnpj: cnpjOuNulo(doc.orgao_cnpj), orgao_nome: txt(doc.orgao_nome, 300),
     unidade_codigo: txt(doc.unidade_codigo, 30), unidade_nome: txt(doc.unidade_nome, 300), municipio: txt(doc.municipio_nome, 120),
-    objeto: txt(doc.description, 1000), descricao: txt(item.descricao, 600), catmat: catmat(item.catalogoCodigoItem),
+    objeto: livre(doc.description, 1000), descricao: livre(item.descricao, 600), catmat: catmat(item.catalogoCodigoItem),
     quantidade: numero(item.quantidade), valor_unitario: numero(item.valorUnitarioEstimado), valor_total: numero(item.valorTotal),
     data_inicio: dia(doc.data_publicacao_pncp), data_ref: dia(doc.prazo_manifestacao_interesse || doc.data_fim_vigencia),
     fornecedor_cnpj: null, fornecedor_nome: null, saldo: null, maximo_adesao: null, permite_adesao: doc.permite_adesao ?? null,
@@ -132,7 +134,7 @@ function linhaPcaPncp(item, org, uf, coletadoEm) {
     id: `pca:${item.cnpj}-${item.anoPca}-${item.sequencialPca}#${item.numeroItem}`, tipo: "pca", fonte: "pncp", plataforma: null,
     uf, orgao_cnpj: cnpjOuNulo(item.cnpj), orgao_nome: txt(org.nome, 300),
     unidade_codigo: txt(item.codigoUnidade, 30), unidade_nome: txt(item.nomeUnidade, 300), municipio: null,
-    objeto: txt(item.grupoContratacaoNome, 1000), descricao: txt(item.descricao || item.pdmDescricao || item.classificacaoSuperiorNome, 600),
+    objeto: livre(item.grupoContratacaoNome, 1000), descricao: livre(item.descricao || item.pdmDescricao || item.classificacaoSuperiorNome, 600),
     catmat: catmat(item.codigoItem), quantidade: numero(item.quantidade), valor_unitario: numero(item.valorUnitario), valor_total: numero(item.valorTotal),
     data_inicio: null, data_ref: dia(item.dataDesejada),
     fornecedor_cnpj: null, fornecedor_nome: null, saldo: null, maximo_adesao: null, permite_adesao: null,
@@ -148,8 +150,8 @@ function linhaPgc(item, org, uf, coletadoEm) {
     id: `pca:pgc:${chave}`, tipo: "pca", fonte: "pgc", plataforma: "Compras.gov.br (PGC)",
     uf, orgao_cnpj: cnpjOuNulo(item.orgao), orgao_nome: txt(org.nome, 300),
     unidade_codigo: txt(item.codigoUasg, 30), unidade_nome: txt(item.nomeUasg, 300), municipio: null,
-    objeto: txt(item.descricaoObjetoDfd || item.tituloProjetoCompra, 1000),
-    descricao: txt(item.descricaoItemCatalogo || item.nomePdmMaterial || item.nomeClasseServico, 600),
+    objeto: livre(item.descricaoObjetoDfd || item.tituloProjetoCompra, 1000),
+    descricao: livre(item.descricaoItemCatalogo || item.nomePdmMaterial || item.nomeClasseServico, 600),
     catmat: catmat(item.codigoItemCatalogo), quantidade: numero(item.quantidadeItem), valor_unitario: numero(item.valorUnitarioItem), valor_total: numero(item.valorTotalItem),
     data_inicio: dia(item.dataInicioProcessoCompra), data_ref: dia(item.dataPrevistaFormalizacaoDemanda),
     fornecedor_cnpj: null, fornecedor_nome: null, saldo: null, maximo_adesao: null, permite_adesao: null,

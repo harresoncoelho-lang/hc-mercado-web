@@ -99,6 +99,12 @@
     };
   }
 
+  // Zero compras com consulta que falhou não é "nenhuma compra": a fonte não respondeu (visto no E2E de 19/11/2026).
+  function mensagemBusca(total, comMarca, falhas) {
+    if (total) return `${total} compra(s) encontradas, ${comMarca} com marca declarada.${falhas ? ' Parte da fonte não respondeu: resultado parcial.' : ''}`;
+    return falhas ? 'A fonte pública não respondeu agora. Tente de novo em instantes.' : 'Nenhuma compra para este termo. Tente um nome mais curto (ex.: "detergente").';
+  }
+
   // alvo: elemento vazio. aoUsar(item, resumo) recebe o resultado escolhido e o resumo do filtro atual.
   function montar({ alvo, doc = global.document, requisitar = (...a) => global.fetch(...a), termo = '', rotuloUsar = 'Usar', aoUsar }) {
     const estado = { itens: [], atributos: [], cartoes: [], filtro: { produto: '', unidade: '', marca: '' }, buscando: false };
@@ -210,9 +216,7 @@
         estado.filtro = { produto: String(ordem ?? primeiro?.[0] ?? ''), unidade: '', marca: '' };
         estado.filtro.unidade = unidadePrincipal(estado.filtro.produto);
         const comMarca = estado.itens.filter((i) => i.marca).length;
-        status.textContent = estado.itens.length
-          ? `${estado.itens.length} compra(s) encontradas, ${comMarca} com marca declarada.${j.consultasComFalha ? ' Parte da fonte não respondeu: resultado parcial.' : ''}`
-          : 'Nenhuma compra para este termo. Tente um nome mais curto (ex.: "detergente").';
+        status.textContent = mensagemBusca(estado.itens.length, comMarca, j.consultasComFalha);
         desenhar();
       } catch (e) {
         status.textContent = e.message || 'Não foi possível buscar agora.';
@@ -243,7 +247,7 @@
     return { buscar, campo, estado };
   }
 
-  const api = { termoDoItem, resumoPrecos, marcasDe, filtrar, porEspecificacao, foraDaCurva, resumoMarcas, SEM_MARCA, produtoParaCatalogo, brl, montar };
+  const api = { termoDoItem, mensagemBusca, resumoPrecos, marcasDe, filtrar, porEspecificacao, foraDaCurva, resumoMarcas, SEM_MARCA, produtoParaCatalogo, brl, montar };
   global.MercadoComprasGov = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

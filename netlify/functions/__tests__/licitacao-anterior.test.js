@@ -53,6 +53,16 @@ test("link de origem: só https e host oficial; outro host cai no link do Compra
   assert.equal(L.compraDaBusca({ ...base, link_sistema_origem: "https://golpe.com/x" }).link_origem, null);
 });
 
+// Teste real 19/11: unidade "000000001" (Licitações-E BB) estourava o check uasg ~ '^\d{1,8}$' e a análise por CNPJ dava 502.
+test("uasg da busca do PNCP: cabe na coluna (1 a 8 dígitos); UASG de 6 dígitos fica igual", () => {
+  const base = { item_url: "/compras/12345678000195/2025/7", numero_controle_pncp: "x" };
+  assert.equal(L.compraDaBusca({ ...base, unidade_codigo: "000000001" }).uasg, "1");
+  assert.equal(L.compraDaBusca({ ...base, unidade_codigo: "093028" }).uasg, "093028");
+  assert.equal(L.compraDaBusca({ ...base, unidade_codigo: "277" }).uasg, "277");
+  assert.equal(L.compraDaBusca({ ...base, unidade_codigo: "1234567890" }).uasg, null);
+  assert.equal(L.compraDaBusca({ ...base, unidade_codigo: "" }).uasg, null);
+});
+
 const U = "22222222-2222-4222-8222-222222222222";
 async function comFetchHandler(status, limiteUso, fn) {
   const anterior = global.fetch, chaveAnterior = process.env.SUPABASE_SERVICE_ROLE_KEY, chamadas = [];
