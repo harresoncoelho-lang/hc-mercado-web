@@ -30,3 +30,7 @@ node --test motor-lances/motor.test.mjs
 ```
 
 Testes cobrem precisão extrema, piso, liderança, conteúdo da política, expiração, pausa/revogação, fonte/contexto, antiguidade/futuro, concorrência de chamadas na mesma instância, resolução incerta/divergente, replay e isolamento de entradas/estado. Fixtures não homologam portal ou robô operacional. A integração com execução real exige ainda exclusividade distribuída, fonte autenticada, evidência de aplicação e regras oficiais verificadas.
+
+## Onde mora e quem usa
+
+O código está em `motor-lances.js` (raiz, script clássico com `module.exports`) para o navegador carregar com `<script src>` em `sistema.html`; `motor-lances/motor.mjs` só reexporta. `robo-lances.js` usa o cérebro no simulador da tela "Robô de lances" (modo assistido, contexto fictício `mode: 'simulado'`) e acrescenta as regras de tempo (20 s entre lances próprios, 3 s após o melhor de outro) e de valor (diferença mínima do edital, lance igual ao melhor recusado), que o cérebro não conhece.

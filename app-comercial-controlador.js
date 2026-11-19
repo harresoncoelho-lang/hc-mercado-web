@@ -105,7 +105,7 @@
 
   // pedirLogin(mensagem): produção não tem formulário próprio; quando a casca cai no login, quem chama redireciona
   // para o login.html. Sem ele (QA), o formulário da própria página continua sendo usado.
-  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, portal = globalThis.LicitaPortalCliente || null, esteira = null, anterior = null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
+  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, portal = globalThis.LicitaPortalCliente || null, esteira = null, anterior = null, robo = null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
     const auth = autenticacao || autenticacaoQA(fetch);
     const el = (id) => doc.getElementById(id);
     let epoca = 0;
@@ -119,6 +119,7 @@
     let portalComp = null;
     let esteiraComp = null;
     let anteriorComp = null;
+    let roboComp = null;
     let tela = 'carregando';
     // 'hoje' lista empresas/processos autorizados; 'processo' mostra identificação e kit do contexto atual.
     let visao = 'hoje';
@@ -178,6 +179,8 @@
       if (el('checklist-esteira')) el('checklist-esteira').hidden = !processo;
       // Licitação anterior: mesma regra do checklist (vazio, o CSS esconde).
       if (el('licitacao-anterior')) el('licitacao-anterior').hidden = !processo;
+      // Robô de lances: mesma regra (só com processo).
+      if (el('robo-lances')) el('robo-lances').hidden = !processo;
       el('empresa-bloco').hidden = !(processo || preparar);
       el('processo-bloco').hidden = !processo || processosDe(atual?.empresaId).length === 0;
       el('hoje').hidden = !hoje;
@@ -374,6 +377,9 @@
       try { anteriorComp?.fechar(); } catch { /* módulo já desmontado */ }
       anteriorComp = null;
       el('licitacao-anterior')?.replaceChildren();
+      try { roboComp?.fechar(); } catch { /* módulo já desmontado */ }
+      roboComp = null;
+      el('robo-lances')?.replaceChildren();
       componente = null;
       ident = null;
       identDe = null;
@@ -547,6 +553,7 @@
         aoSalvar: () => { if (epoca === epocaKit && componente !== null && componente === kitDoItem.atual) kitDoItem.atual?.atualizarItens?.(); } });
       if (esteira && el('checklist-esteira')) esteiraComp = esteira.montar({ alvo: el('checklist-esteira'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: requisitarAutenticado });
       if (anterior && el('licitacao-anterior')) anteriorComp = anterior.montar({ alvo: el('licitacao-anterior'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId } });
+      if (robo && el('robo-lances')) roboComp = robo.montar({ alvo: el('robo-lances'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: requisitarAutenticado });
       // Portal do cliente: compara a resposta do cliente com os itens que o consultar já trouxe.
       // shortcut: só a primeira página de itens do consultar; item de outra página aparece sem a checagem de "valores mudaram".
       if (portal && el('portal-cliente')) portalComp = portal.montar({ alvo: el('portal-cliente'), requisitar: requisitarAutenticado, confirmar: confirmar || undefined,

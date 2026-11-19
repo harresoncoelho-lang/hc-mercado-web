@@ -44,6 +44,8 @@
     esteira: cliente && globalThis.LicitaChecklistEsteira ? { montar: (o) => globalThis.LicitaChecklistEsteira.montar({ ...o, cliente }) } : null,
     // Licitação anterior do processo: mesma sessão (RLS) do checklist.
     anterior: cliente && globalThis.LicitaLicitacaoAnterior ? { montar: (o) => globalThis.LicitaLicitacaoAnterior.montar({ ...o, cliente }) } : null,
+    // Robô de lances (modo assistido): configuração e registro no localStorage deste navegador.
+    robo: globalThis.LicitaRoboLancesUI ? { montar: (o) => globalThis.LicitaRoboLancesUI.montar({ ...o, storage }) } : null,
     confirmar: (mensagem) => globalThis.confirm(mensagem),
     busca: globalThis.location.search,
   });
