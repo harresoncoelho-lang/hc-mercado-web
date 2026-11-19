@@ -36,7 +36,10 @@
     storage,
     kit: globalThis.LicitaKitDocumentos,
     identificacao: globalThis.OperacaoIdentificacao,
-    itens: globalThis.LicitaItensProcesso,
+    // Com cliente supabase: "Usar do catálogo" lê o catálogo da empresa (RLS do usuário) uma vez por processo.
+    itens: globalThis.LicitaItensProcesso && cliente && globalThis.CatalogoUsar
+      ? { ...globalThis.LicitaItensProcesso, montar: (o) => globalThis.LicitaItensProcesso.montar({ ...o, carregarCatalogo: (empresaId) => globalThis.CatalogoUsar.listarAtivos(cliente, empresaId) }) }
+      : globalThis.LicitaItensProcesso,
     // Sem cliente supabase (harness QA): sem checklist.
     esteira: cliente && globalThis.LicitaChecklistEsteira ? { montar: (o) => globalThis.LicitaChecklistEsteira.montar({ ...o, cliente }) } : null,
     confirmar: (mensagem) => globalThis.confirm(mensagem),

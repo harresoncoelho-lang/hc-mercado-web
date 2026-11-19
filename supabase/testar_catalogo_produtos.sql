@@ -69,6 +69,19 @@ begin
  begin update public.operacao_catalogo_produtos set empresa_id=e2 where id=pid; raise exception 'Escopo transferido';
  exception when raise_exception then if sqlerrm not like 'Escopo não pode%' then raise; end if; end;
 
+ -- Preço de referência do mercado: separado do custo, sempre com fonte e data.
+ update public.operacao_catalogo_produtos set preco_referencia=1.10,referencia_fonte='Compras.gov (Pesquisa de Preços): mediana de 12 compra(s) por UN',referencia_em='2026-11-18' where id=pid;
+ if (select custo_unitario from public.operacao_catalogo_produtos where id=pid)<>1.25 then raise exception 'Referência mexeu no custo'; end if;
+ begin update public.operacao_catalogo_produtos set referencia_fonte=null where id=pid; raise exception 'Referência sem fonte aceita';
+ exception when check_violation then null; end;
+ begin update public.operacao_catalogo_produtos set referencia_em=null where id=pid; raise exception 'Referência sem data aceita';
+ exception when check_violation then null; end;
+ begin update public.operacao_catalogo_produtos set preco_referencia=0 where id=pid; raise exception 'Referência zero aceita';
+ exception when check_violation then null; end;
+ begin update public.operacao_catalogo_produtos set referencia_fonte=repeat('x',301) where id=pid; raise exception 'Fonte longa aceita';
+ exception when check_violation then null; end;
+ update public.operacao_catalogo_produtos set preco_referencia=null,referencia_fonte=null,referencia_em=null where id=pid;
+
  -- Papel leitura: lê, não grava.
  perform set_config('request.jwt.claim.sub',la::text,true);
  select count(*) into n from public.operacao_catalogo_produtos where empresa_id=ea;

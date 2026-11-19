@@ -106,6 +106,15 @@
     dados.ativo = ativo !== 'nao';
     return { erros, dados };
   }
+  // Preço de referência vindo do "Buscar no mercado": só grava com fonte e data (o SQL exige os três juntos).
+  function validarReferencia(r) {
+    if (!r || r.preco_referencia === null || r.preco_referencia === undefined) return null;
+    const preco = lerCusto(String(r.preco_referencia));
+    const fonte = String(r.referencia_fonte ?? '').trim();
+    const em = String(r.referencia_em ?? '');
+    if (!preco || centavos(preco) <= 0 || !fonte || fonte.length > 300 || CONTROLE.test(fonte) || /[\r\n]/.test(fonte) || !/^\d{4}-\d{2}-\d{2}$/.test(em)) return null;
+    return { preco_referencia: preco, referencia_fonte: fonte, referencia_em: em };
+  }
   const igual = (c, a, b) => (c === 'custo_unitario' ? centavos(a) === centavos(b) : (a ?? null) === (b ?? null));
   // Chave: id (exportado pelo sistema) > código interno > produto novo. Célula vazia não altera (igual à planilha de itens).
   function validarLinhas(linhas, atuais) {
@@ -190,10 +199,11 @@
 
   // sb = cliente Supabase da página. abrir({ orgId, empresaId }) recarrega para a empresa ativa.
   function montar({ alvo, sb, doc = global.document }) {
-    const estado = { orgId: null, empresaId: null, produtos: [], busca: '', editando: null, foto: null, importacao: null };
+    const estado = { orgId: null, empresaId: null, produtos: [], busca: '', editando: null, foto: null, importacao: null, referencia: null, mercado: null };
     const $ = (s) => alvo.querySelector(s);
     alvo.innerHTML = `<div class="card-topo"><div><h2>Catálogo de produtos</h2><p>Cadastre uma vez custo, marca, modelo e fornecedor. No preço por item do processo, "Usar do catálogo" preenche esses campos.</p></div>
-      <div class="pdf-acoes"><button class="btn" data-acao="exportar">Baixar planilha</button><label class="btn">Importar planilha<input type="file" accept=".csv,text/csv" data-acao="importar" hidden></label><button class="btn primario" data-acao="novo">+ Produto</button></div></div>
+      <div class="pdf-acoes"><button class="btn" data-acao="exportar">Baixar planilha</button><label class="btn">Importar planilha<input type="file" accept=".csv,text/csv" data-acao="importar" hidden></label><button class="btn" data-acao="mercado" aria-expanded="false">Buscar no mercado (Compras.gov)</button><button class="btn primario" data-acao="novo">+ Produto</button></div></div>
+      <section class="catalogo-mercado card" hidden aria-label="Buscar no mercado"><h2>Buscar no mercado (Compras.gov)</h2><p class="nota">Produtos que órgãos públicos já compraram, com a marca declarada e o preço pago. "Adicionar ao catálogo" preenche nome, marca, modelo, unidade e o preço de referência; o custo continua sendo o do seu fornecedor.</p><div class="catalogo-mercado-busca"></div></section>
       <input type="search" class="catalogo-busca" placeholder="Buscar por nome, marca, modelo ou código" aria-label="Buscar no catálogo" style="width:100%;margin:6px 0 10px">
       <div class="catalogo-importacao" aria-live="polite"></div><form class="catalogo-form card" hidden></form>
       <p class="nota catalogo-status" aria-live="polite"></p><div class="tabela-wrap"><table class="tabela"><thead><tr><th>Produto</th><th>Marca / modelo</th><th>Unidade</th><th>Custo</th><th>Fornecedor</th><th>Situação</th><th></th></tr></thead><tbody class="catalogo-lista"></tbody></table></div>`;
@@ -207,7 +217,7 @@
       const lista = filtrados();
       $('.catalogo-lista').innerHTML = lista.length ? lista.map((p) => `<tr><td><strong>${esc(p.nome)}</strong>${p.codigo_interno ? `<br><span class="nota">Cód. ${esc(p.codigo_interno)}</span>` : ''}${p.foto_caminho ? '<br><span class="nota">Com foto</span>' : ''}</td>
         <td>${esc([p.marca, p.modelo].filter(Boolean).join(' / ') || '—')}${p.fabricante ? `<br><span class="nota">${esc(p.fabricante)}</span>` : ''}</td><td>${esc(p.unidade || '—')}</td>
-        <td>${p.custo_unitario === null || p.custo_unitario === undefined ? '<span class="tag pendente">Sem custo</span>' : esc(brl(centavos(p.custo_unitario)))}</td>
+        <td>${p.custo_unitario === null || p.custo_unitario === undefined ? '<span class="tag pendente">Sem custo</span>' : esc(brl(centavos(p.custo_unitario)))}${p.preco_referencia ? `<br><span class="nota" title="${esc(p.referencia_fonte)}">Ref. mercado ${esc(brl(centavos(p.preco_referencia)))}</span>` : ''}</td>
         <td>${esc(p.fornecedor_nome || '—')}${p.fornecedor_contato ? `<br><span class="nota">${esc(p.fornecedor_contato)}</span>` : ''}</td>
         <td><span class="tag ${p.ativo === false ? 'pendente' : 'valido'}">${p.ativo === false ? 'Inativo' : 'Ativo'}</span></td><td><button class="btn" data-editar="${esc(p.id)}">Editar</button></td></tr>`).join('')
         : `<tr><td colspan="7" class="vazio">${estado.produtos.length ? 'Nenhum produto encontrado nesta busca.' : 'Nenhum produto no catálogo. Use "+ Produto" ou importe uma planilha.'}</td></tr>`;
@@ -220,11 +230,14 @@
       estado.produtos = data || [];
       desenharLista();
     }
+    // p sem id = rascunho (ex.: vindo do "Buscar no mercado"): formulário de produto novo já preenchido.
     function abrirForm(p) {
-      estado.editando = p || null; estado.foto = null;
+      estado.editando = p?.id ? p : null; estado.foto = null;
+      estado.referencia = p && !p.id ? validarReferencia(p) : null;
+      const ref = estado.referencia || (p?.preco_referencia ? p : null);
       const f = $('.catalogo-form');
       f.hidden = false;
-      f.innerHTML = `<h2>${p ? 'Editar produto' : 'Novo produto'}</h2><div class="form-grade">${CAMPOS_FORM.map(([c, rot, cls]) => `<div class="${cls || ''}"><label for="cat-${c}">${rot}</label>${c === 'descricao'
+      f.innerHTML = `<h2>${p?.id ? 'Editar produto' : 'Novo produto'}</h2>${ref ? `<p class="nota catalogo-referencia">Preço de referência do mercado: <strong>${esc(brl(centavos(ref.preco_referencia)))}</strong> · ${esc(ref.referencia_fonte)} · ${esc(String(ref.referencia_em || '').split('-').reverse().join('/'))}. Não é o seu custo: informe abaixo quanto o seu fornecedor cobra.</p>` : ''}<div class="form-grade">${CAMPOS_FORM.map(([c, rot, cls]) => `<div class="${cls || ''}"><label for="cat-${c}">${rot}</label>${c === 'descricao'
         ? `<textarea id="cat-${c}" name="${c}" rows="2" maxlength="${LIMITES[c]}">${esc(p?.[c])}</textarea>`
         : `<input id="cat-${c}" name="${c}" ${c === 'custo_unitario' ? 'inputmode="decimal" placeholder="0,00"' : `maxlength="${LIMITES[c]}"`} ${c === 'nome' ? 'required' : ''} value="${esc(c === 'custo_unitario' ? virgula(p?.[c]) : p?.[c])}">`}</div>`).join('')}
         <div class="inteiro"><label for="cat-foto">Foto (opcional)</label><input id="cat-foto" type="file" accept="image/png,image/jpeg"><img class="catalogo-foto" alt="Foto do produto" hidden style="max-width:160px;max-height:160px;margin-top:6px"><p class="nota">Fica no armazenamento privado da empresa. Fotos grandes são reduzidas no seu navegador.</p></div>
@@ -258,7 +271,8 @@
     }
     async function salvarForm(ev) {
       ev.preventDefault();
-      const f = ev.currentTarget, erro = f.querySelector('.catalogo-form-erro'), botao = f.querySelector('button.primario');
+      // O ouvinte fica no alvo (delegação): o formulário é ev.target, não ev.currentTarget (que é o div e quebrava o FormData).
+      const f = ev.target, erro = f.querySelector('.catalogo-form-erro'), botao = f.querySelector('button.primario');
       const campos = Object.fromEntries(new FormData(f));
       campos.ativo = f.querySelector('[name="ativo"]').checked ? 'sim' : 'nao';
       const { erros, dados } = validarProduto(campos);
@@ -273,6 +287,7 @@
           if (error && !/exist|duplicate/i.test(error.message || '')) throw error;
           Object.assign(dados, { foto_caminho: caminho, foto_hash: hash });
         }
+        if (!estado.editando && estado.referencia) Object.assign(dados, estado.referencia);
         const q = estado.editando
           ? sb.from('operacao_catalogo_produtos').update(dados).eq('id', estado.editando.id)
           : sb.from('operacao_catalogo_produtos').insert({ organizacao_id: estado.orgId, empresa_id: estado.empresaId, ...dados });
@@ -284,9 +299,20 @@
         botao.disabled = false;
         return;
       }
-      f.hidden = true; estado.editando = null;
+      f.hidden = true; estado.editando = null; estado.referencia = null;
       await carregar();
       status('Produto salvo.');
+    }
+    function alternarMercado(botao) {
+      const caixa = $('.catalogo-mercado');
+      caixa.hidden = !caixa.hidden;
+      botao.setAttribute('aria-expanded', String(!caixa.hidden));
+      if (caixa.hidden) return;
+      if (!estado.mercado && global.MercadoComprasGov) {
+        estado.mercado = global.MercadoComprasGov.montar({ alvo: $('.catalogo-mercado-busca'), doc, rotuloUsar: 'Adicionar ao catálogo',
+          aoUsar: (item, resumo) => { abrirForm(global.MercadoComprasGov.produtoParaCatalogo(item, resumo)); $('.catalogo-form').scrollIntoView?.({ block: 'start' }); } });
+      }
+      estado.mercado?.campo.focus();
     }
     function exportar() {
       const a = doc.createElement('a');
@@ -319,7 +345,8 @@
       const acao = e.target.closest('[data-acao]')?.dataset.acao, editar = e.target.closest('[data-editar]')?.dataset.editar;
       if (editar) abrirForm(estado.produtos.find((p) => p.id === editar));
       else if (acao === 'novo') abrirForm(null);
-      else if (acao === 'cancelar') { $('.catalogo-form').hidden = true; estado.editando = null; }
+      else if (acao === 'mercado') alternarMercado(e.target.closest('[data-acao]'));
+      else if (acao === 'cancelar') { $('.catalogo-form').hidden = true; estado.editando = null; estado.referencia = null; }
       else if (acao === 'exportar') exportar();
       else if (acao === 'fechar-importacao') { $('.catalogo-importacao').innerHTML = ''; estado.importacao = null; }
       else if (acao === 'confirmar-importacao') confirmarImportacao(e.target);
@@ -334,7 +361,8 @@
         } catch (x) { estado.foto = null; erro.textContent = x.message; e.target.value = ''; }
       }
     });
-    alvo.addEventListener('submit', salvarForm);
+    // Só o formulário do produto: a busca do mercado tem o próprio submit dentro do mesmo alvo.
+    alvo.addEventListener('submit', (ev) => { if (ev.target.classList?.contains('catalogo-form')) salvarForm(ev); });
     $('.catalogo-busca').addEventListener('input', (e) => { estado.busca = e.target.value; desenharLista(); });
 
     return {
@@ -368,7 +396,7 @@
       <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Processo</th><th>Vendido</th><th>Custo</th><th>Lucro</th><th>Margem</th></tr></thead><tbody>${processos.map((p) => `<tr><td>${esc(p.rotulo)}${ROT[p.situacao] ? `<br>${ROT[p.situacao]}` : ''}</td><td>${brl(p.vendido)}</td><td>${brl(p.custo)}</td><td>${brl(p.lucro)}</td><td>${p.margem === null ? '—' : `${String(p.margem).replace('.', ',')}%`}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
-  const api = { COLUNAS, MAX_LINHAS, FOTO, normalizar, sugerirProdutos, camposParaItem, gerarCsv, lerCsv, validarProduto, validarLinhas, validarFoto, caminhoFoto, resumoCustosVendas, montar, carregarResumo, desenharResumo };
+  const api = { COLUNAS, MAX_LINHAS, FOTO, normalizar, sugerirProdutos, camposParaItem, gerarCsv, lerCsv, validarProduto, validarReferencia, validarLinhas, validarFoto, caminhoFoto, resumoCustosVendas, montar, carregarResumo, desenharResumo };
   global.CatalogoProdutos = api;
   if (nodeJs) module.exports = api;
 })(globalThis);

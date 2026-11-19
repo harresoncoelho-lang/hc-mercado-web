@@ -241,11 +241,15 @@
   const PREMISSAS = [['tributos', 'Tributos (%)', 'Ex.: 8,5'], ['garantia', 'Garantia (%)', 'Ex.: 1'], ['margem', 'Margem desejada (%)', 'Ex.: 22'], ['margemMinima', 'Margem mínima (%)', 'Ex.: 8'], ['frete', 'Frete total (R$)', 'Ex.: 1500,00']];
   const ESTADO_LINHA = { novo: 'Novo', alterado: 'Alterado', sem_mudanca: 'Sem mudança', erro: 'Erro' };
 
-  function montar({ alvo, contexto, requisitar = global.fetch.bind(global), aoSalvar = null }) {
+  // carregarCatalogo(empresaId) -> produtos ativos do catálogo (CatalogoUsar.listarAtivos), chamado uma vez por processo.
+  // buscarMercado: fetch da busca pública "Buscar no mercado" (sem sessão; padrão fetch global).
+  function montar({ alvo, contexto, requisitar = global.fetch.bind(global), aoSalvar = null, carregarCatalogo = null, buscarMercado = null }) {
     if (!alvo || !contexto || !UUID.test(contexto.empresaId || '') || !UUID.test(contexto.processoId || '')) throw new Error('Contexto de itens inválido');
     let vivo = true, ocupado = false, edicao = null, tentativa = null, itens = [], cursor = null, maisItens = false, geracao = 0;
     let precoDisponivel = null, premissas = null, previa = null, numeroProcesso = '', filaPremissas = Promise.resolve(), filaRef = Promise.resolve();
     const nos = new Map(), lances = new Map(), refEstado = new Map(), refTentada = new Set();
+    let catalogoProdutos = [];
+    const CU = global.CatalogoUsar, MC = global.MercadoComprasGov;
     alvo.innerHTML = `<h2 id="itens-titulo" tabindex="-1">Itens do processo</h2>
       <p data-item-estado role="status" aria-live="polite"></p>
       <section data-premissas class="itens-premissas" aria-labelledby="itens-premissas-titulo" hidden>
@@ -373,6 +377,8 @@
         simulacao: h('div', { id: id('simulacao'), classe: 'itens-simulacao', 'aria-live': 'polite' }),
         usar: h('button', { type: 'button', 'data-usar-limite': i.id, texto: 'Usar limite como preço mínimo' }),
         usarEstado: h('span', { classe: 'itens-campo-estado', 'aria-live': 'polite' }),
+        fonteEstado: h('p', { classe: 'itens-apoio', role: 'status', 'aria-live': 'polite' }),
+        mercado: h('div', { classe: 'itens-mercado', hidden: true }),
       };
       n.custo.value = virgula(i.custoUnitario);
       n.lance.value = lances.get(i.id) || '';
@@ -385,7 +391,48 @@
           h('div', {}, h('dt', { texto: 'Preço mínimo gravado' }), n.minimo)),
         n.aviso, n.referencia,
         h('div', { classe: 'itens-campo' }, h('label', { for: id('lance'), texto: 'Simular lance (R$)' }), n.lance), n.simulacao,
-        h('div', { classe: 'itens-acoes' }, n.usar, n.usarEstado));
+        h('div', { classe: 'itens-acoes' }, n.usar, n.usarEstado),
+        fontesDoItem(i, n));
+    }
+    // "Usar do catálogo" (custo, marca, modelo do catálogo da empresa) e "Buscar no mercado" (marcas e preços já licitados).
+    function fontesDoItem(i, n) {
+      const caixa = h('div', { classe: 'itens-fontes' });
+      if (CU && carregarCatalogo) caixa.append(CU.montarBotao({ doc, descricao: () => i.descricao, catalogo: () => catalogoProdutos, aoEscolher: (campos) => usarDoCatalogo(i, campos) }));
+      if (MC) {
+        const b = h('button', { type: 'button', 'aria-expanded': 'false', texto: 'Buscar no mercado' });
+        b.addEventListener('click', () => {
+          n.mercado.hidden = !n.mercado.hidden; b.setAttribute('aria-expanded', String(!n.mercado.hidden));
+          if (n.mercado.hidden || n.mercado.childElementCount) return;
+          const m = MC.montar({ alvo: n.mercado, doc, termo: MC.termoDoItem(i.descricao), rotuloUsar: 'Usar esta marca/modelo', ...(buscarMercado ? { requisitar: buscarMercado } : {}),
+            aoUsar: (item, resumo) => preencherMarca(i, item, `Do mercado (mediana ${MC.brl(resumo?.mediana)} em ${resumo?.quantidade || 0} compra(s); referência, não é o seu custo).`) });
+          void m.buscar(m.campo.value);
+        });
+        caixa.append(b);
+      }
+      return caixa.childElementCount ? h('div', {}, caixa, n.fonteEstado, n.mercado) : null;
+    }
+    // Marca e modelo entram pelo formulário do item (mesmo caminho de "Editar" + "Salvar item"): a pessoa confere antes de gravar.
+    // Fabricante não tem campo no formulário; vai pela planilha de itens (coluna fabricante).
+    function preencherMarca(i, origem, prefixo) {
+      const n = nos.get(i.id);
+      const mudaMarca = (origem.marca && origem.marca !== i.marca) || (origem.modelo && origem.modelo !== i.modelo);
+      const partes = [prefixo];
+      if (mudaMarca) {
+        if (ocupado || (edicao && edicao !== i.id)) { marcar(n?.fonteEstado, 'Termine ou cancele a edição aberta antes de usar outra marca.', 'erro'); return; }
+        editar(i.id);
+        if (origem.marca) form.elements.marca.value = String(origem.marca).slice(0, 500);
+        if (origem.modelo) form.elements.modelo.value = String(origem.modelo).slice(0, 500);
+        partes.push(`Marca ${origem.marca || i.marca || '—'}${origem.modelo ? ` / modelo ${origem.modelo}` : ''} no formulário do item, no topo: confira e clique em Salvar item.`);
+      }
+      if (origem.fabricante && origem.fabricante !== i.fabricante) partes.push(`Fabricante ${origem.fabricante}: grave pela planilha de itens (coluna fabricante).`);
+      marcar(n?.fonteEstado, partes.filter(Boolean).join(' '), 'ok');
+      if (mudaMarca) el('#itens-titulo')?.focus?.();
+    }
+    function usarDoCatalogo(i, campos) {
+      const n = nos.get(i.id); if (!n) return;
+      // Custo grava direto (salvarPrecoItem: não toca atualizado_em nem a revisão da proposta).
+      if (campos.custoUnitario) { n.custo.value = virgula(campos.custoUnitario); void salvarCusto(i); }
+      preencherMarca(i, campos, campos.custoUnitario ? `Custo do catálogo: R$ ${virgula(campos.custoUnitario)}.` : 'O produto do catálogo não tem custo informado.');
     }
     function cartaoItem(i) {
       const t = totalCentavos(i.quantidade, i.valorUnitario);
@@ -698,6 +745,8 @@
     montarPremissas();
     atualizarTotal();
     void carregar({ reiniciar: true });
+    // Catálogo da empresa: uma leitura por processo; falha só deixa a lista de sugestões vazia.
+    if (carregarCatalogo) Promise.resolve().then(() => carregarCatalogo(contexto.empresaId)).then((l) => { if (vivo) catalogoProdutos = Array.isArray(l) ? l : []; }, () => { catalogoProdutos = []; });
 
     return {
       fechar() { vivo = false; geracao += 1; alvo.replaceChildren(); },

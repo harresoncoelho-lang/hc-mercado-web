@@ -40,6 +40,17 @@ create table if not exists public.operacao_catalogo_produtos (
   foreign key (empresa_id, organizacao_id)
     references public.operacao_empresas(id, organizacao_id) on delete cascade
 );
+-- Preço de referência do mercado (o que órgãos pagaram, ex.: mediana da Pesquisa de Preços do Compras.gov).
+-- NÃO é custo: custo_unitario continua sendo o que o fornecedor cobra do usuário. Fonte e data andam juntas com o preço.
+alter table public.operacao_catalogo_produtos add column if not exists preco_referencia numeric(15,2) check (preco_referencia is null or preco_referencia > 0);
+alter table public.operacao_catalogo_produtos add column if not exists referencia_fonte text check (referencia_fonte is null or length(btrim(referencia_fonte)) between 1 and 300);
+alter table public.operacao_catalogo_produtos add column if not exists referencia_em date;
+do $$ begin
+ if not exists (select 1 from pg_constraint where conname = 'operacao_catalogo_produtos_referencia_completa') then
+  alter table public.operacao_catalogo_produtos add constraint operacao_catalogo_produtos_referencia_completa
+   check ((preco_referencia is null) = (referencia_fonte is null) and (preco_referencia is null) = (referencia_em is null));
+ end if;
+end $$;
 -- Código interno é a chave da planilha quando o id não vem: um por empresa.
 create unique index if not exists operacao_catalogo_produtos_codigo_idx
   on public.operacao_catalogo_produtos (empresa_id, codigo_interno) where codigo_interno is not null;
