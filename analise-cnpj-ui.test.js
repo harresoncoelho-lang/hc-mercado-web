@@ -66,3 +66,15 @@ test("motivos gravados: selo 'não verificado' até 2 leituras de organizações
   assert.deepEqual(m.lista.map((x) => [x.verificado, x.leituras]), [[false, 1], [true, 2]]);
   assert.equal(m.naoVerificados, 2);
 });
+
+test("camadas do CNPJ: automático, gravado (verificado) e pregões com recusa que ainda faltam abrir", () => {
+  const r = U.resumir([...linhas, { ...base, id_compra: "ZZ1", numero_item: 1, classificacao: 2, situacao_proposta: "2", valor_lance: 9, link_origem: "https://x.gov.br/p" }]);
+  const sem = U.camadasCnpj(r, [], []);
+  assert.equal(sem.compras, 3);
+  assert.equal(sem.gravadas, 0);
+  assert.deepEqual(sem.faltam.map((c) => c.id_compra).sort(), ["78882005900332025", "ZZ1"], "recusa e fracassado como 1º, sem gravação");
+  const com = U.camadasCnpj(r, [{ id_compra: "ZZ1", leituras_concordantes: 2 }], [{ id_compra: "78882005900332025", leituras_concordantes: 1 }]);
+  assert.equal(com.gravadas, 2);
+  assert.equal(com.verificadas, 1);
+  assert.equal(com.faltam.length, 0);
+});

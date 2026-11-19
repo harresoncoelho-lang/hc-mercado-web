@@ -74,5 +74,5 @@ test("ver tudo: ata completa do ComprasNet antigo e Acompanhar contratação do 
   assert.equal(urlsVerTudo({ id_compra: "15814205000232022" }).tipo, "comprasnet-antigo"); // sem plataforma: modalidade 05, número comum, ano <= 2023
   assert.equal(PASSOS_VER_TUDO.length, 3);
   assert.match(PASSOS_VER_TUDO[1].texto, /Ler esta página e gravar/);
-  assert.match(PASSOS_VER_TUDO[2].texto, /Atualizar/);
+  assert.match(PASSOS_VER_TUDO[2].texto, /atualiza sozinho/);
 });

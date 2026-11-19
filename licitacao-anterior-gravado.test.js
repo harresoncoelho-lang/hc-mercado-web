@@ -37,7 +37,7 @@ test("com gravação: situação e motivo literal por participante, com selo 'li
   assert.match(t, /Recusa em 07\/01\/2026: marca diferente do edital/, "motivo literal, sem o 'Recusada. Motivo:' do texto bruto");
   assert.match(t, /lido por usuário, não verificado · lido em 19\/11\/2026/);
   assert.doesNotMatch(t, /exige captcha\)\. Dica/, "com gravação some a dica de gravar");
-  assert.match(t, /Pregão gravado por usuário do LicitaPlena/);
+  assert.match(t, /Gravado por clientes do LicitaPlena/);
   const [det] = raiz.procurar((n) => n.className === "la-participantes");
   assert.equal(det.open, true, "com motivo a lista de participantes já vem aberta");
 });
@@ -58,7 +58,7 @@ test("fonte sem HTTPS: selo quando a leitura veio de página http do ComprasNet 
 
 test("sem gravação: mantém 'abra o pregão (exige captcha)' com link oficial e a dica 'grave com a extensão'", () => {
   const raiz = desenhar({ gravado: U.indexarGravado({}), sancoes: null });
-  assert.match(raiz.textContent, /Motivos de desclassificação: abra o pregão \(exige captcha\)\. Dica: grave com a extensão/);
+  assert.match(raiz.textContent, /Motivos de desclassificação: abra o pregão \(exige captcha\) e grave com a extensão/);
   const [a] = raiz.procurar((n) => n.tag === "a" && n.textContent === "abra o pregão");
   assert.ok(a.href.startsWith("https://cnetmobile.estaleiro.serpro.gov.br/"));
   // Mesma coisa sem nenhum extras (cartão sem cliente supabase).
@@ -140,4 +140,68 @@ test("análise por CNPJ: CNPJs dos vencedores das linhas mostradas, únicos e s�
   const itens = [{ vencedor_ni: VENCEDOR }, { vencedor_ni: VENCEDOR }, { vencedor_ni: null }, { vencedor_ni: "123" }, { vencedor_ni: RECUSADA }];
   assert.deepEqual(A.cnpjsDosVencedores(itens), [VENCEDOR, RECUSADA]);
   assert.equal(A.cnpjsDosVencedores(Array.from({ length: 300 }, (_, i) => ({ vencedor_ni: String(10000000000000 + i) }))).length, 100, "só as 100 linhas que a tabela mostra");
+});
+
+// ---------- camadas, completude e atualização ao voltar da página do governo ----------
+const estadoDe = (idx) => Object.fromEntries(U.completudeDoPregao(compra, visao().compras[0].itens, idx).map((x) => [x.rotulo, x.estado]));
+
+test("completude: sem gravação, só motivos de recusa falta; vencedor, preço, marca e participantes estão", () => {
+  const e = estadoDe(U.indexarGravado({}));
+  assert.equal(e["Vencedor"], "ok");
+  assert.equal(e["Preços"], "ok");
+  assert.equal(e["Marcas"], "ok");
+  assert.equal(e["Todos os participantes"], "ok", "3 participantes vieram do arquivo de propostas");
+  assert.equal(e["Motivos de recusa"], "falta");
+});
+
+test("completude: com o item lido na gravação, motivos de recusa fica ok", () => {
+  const e = estadoDe(U.indexarGravado({ pregoes: [pregao()], propostas: [prop()], mensagens: [msg()] }));
+  assert.equal(e["Motivos de recusa"], "ok");
+});
+
+test("camadas: automático (fonte), gravado (verificado ou não) e o que falta ver", () => {
+  const itens = visao().compras[0].itens;
+  const sem = U.camadasDoPregao({ ...compra, fonte: "comprasnet-antigo", link_pncp: "https://pncp.gov.br/x" }, itens, U.indexarGravado({}));
+  assert.deepEqual(sem.automatico, ["ComprasNet antigo", "PNCP", "Dados abertos"]);
+  assert.equal(sem.gravado, null);
+  assert.equal(sem.faltam, 1);
+  const com = U.camadasDoPregao(compra, itens, U.indexarGravado({ pregoes: [pregao({ leituras_concordantes: 2 })] }));
+  assert.equal(com.gravado.verificado, true);
+  assert.equal(com.faltam, 0);
+  assert.deepEqual(com.automatico, ["Dados abertos"]);
+});
+
+test("desenho: selos por camada, completude com símbolos e botão 'Ver tudo' só enquanto falta algo", () => {
+  const sem = desenhar({ gravado: U.indexarGravado({}), sancoes: null }).textContent;
+  assert.match(sem, /Falta ver \(precisa do captcha\): 1 item/);
+  assert.match(sem, /Motivos de recusa ✖ — abra o pregão/);
+  assert.match(sem, /Vencedor ✔/);
+  assert.match(sem, /Ver tudo do pregão/);
+  const com = desenhar({ gravado: U.indexarGravado({ pregoes: [pregao()], propostas: [prop()], mensagens: [msg()] }), sancoes: null }).textContent;
+  assert.match(com, /Tudo visto/);
+  assert.match(com, /Gravado por clientes · não verificado · 1 de 1 itens/);
+  assert.doesNotMatch(com, /Ver tudo do pregão/);
+});
+
+test("assinatura: muda com gravação nova e fica igual sem novidade", () => {
+  const a = U.assinaturaGravado(U.indexarGravado({ pregoes: [pregao()] }));
+  assert.equal(a, U.assinaturaGravado(U.indexarGravado({ pregoes: [pregao()] })));
+  assert.notEqual(a, U.assinaturaGravado(U.indexarGravado({ pregoes: [pregao()], mensagens: [msg()] })));
+  assert.notEqual(a, U.assinaturaGravado(U.indexarGravado({ pregoes: [pregao({ leituras_concordantes: 2 })] })));
+});
+
+test("recarregarSeMudou: redesenha só quando a gravação mudou; o aviso aparece no desenho", async () => {
+  let gravado = { pregoes: [], propostas: [], mensagens: [] };
+  const consulta = (t) => { const r = { data: gravado[t], error: null }; const q = { in: () => q, order: () => q, limit: () => q, then: (f) => f(r) }; return q; };
+  const cliente = { from: (t) => ({ select: () => consulta(t.replace("pregoes_gravados_", "").replace("pregoes_gravados", "pregoes")) }) };
+  const estado = { visao: visao(), assinatura: U.assinaturaGravado(U.indexarGravado(gravado)) };
+  let desenhos = 0;
+  const redesenhar = async () => { desenhos++; };
+  assert.equal(await U.recarregarSeMudou(estado, { cliente, sancoes: null }, redesenhar), false);
+  gravado = { pregoes: [pregao()], propostas: [], mensagens: [] };
+  assert.equal(await U.recarregarSeMudou(estado, { cliente, sancoes: null }, redesenhar), true);
+  assert.equal(await U.recarregarSeMudou(estado, { cliente, sancoes: null }, redesenhar), false, "segunda checagem sem novidade");
+  assert.equal(desenhos, 1);
+  const raiz = new No("div"); U.desenhar(raiz, visao(), { atualizado: true });
+  assert.match(raiz.textContent, /Atualizado com o que você gravou/);
 });

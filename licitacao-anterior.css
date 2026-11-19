@@ -59,3 +59,21 @@
 .la-passos { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .88rem; }
 .la-passos li { display: flex; gap: 8px; align-items: flex-start; }
 .la-passos svg { flex: none; color: var(--info-text, #1f4fb8); }
+/* Camadas e completude por pregão: o que já está aqui e de onde veio (texto além da cor e dos símbolos). */
+.la-camadas { display: grid; gap: 6px; min-width: 0; }
+.la-camadas .la-completude { margin: 0; font-size: .85rem; line-height: 1.7; }
+.la-camada { display: inline-block; font-size: .8rem; font-weight: 600; border: 1px solid var(--borda, #d9dee7); border-radius: 999px; padding: 2px 10px; margin: 0 6px 4px 0; max-width: 100%; overflow-wrap: anywhere; }
+.la-camadas > .la-camada { justify-self: start; }
+.la-cam-auto { color: var(--info-text, #1f4fb8); border-color: var(--info-border, #b9ccf5); background: var(--info-bg, #eaf1fe); }
+.la-cam-verificado, .la-cam-ok { color: var(--ok, #2e7d32); border-color: var(--ok, #2e7d32); }
+.la-cam-gravado { color: var(--aviso-texto, #8a5a00); border-color: var(--aviso-texto, #8a5a00); }
+.la-cam-falta { color: var(--erro, #c0392b); border-color: var(--erro, #c0392b); }
+.la-comp { white-space: nowrap; font-weight: 600; }
+.la-comp-ok { color: var(--ok, #2e7d32); }
+.la-comp-parcial { color: var(--aviso-texto, #8a5a00); }
+.la-comp-falta { color: var(--erro, #c0392b); }
+.la-comp-dica { color: var(--texto-suave, var(--texto-secundario, #5b6472)); }
+/* Aviso discreto quando a tela se atualiza sozinha ao voltar da página do governo. */
+.la-atualizado { font-size: .82rem; color: var(--ok, #2e7d32); animation: la-some 8s forwards; }
+@keyframes la-some { 0%, 75% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .la-atualizado { animation: none; } }

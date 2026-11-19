@@ -212,6 +212,62 @@
     return { gravado, sancoes: selos };
   }
 
+  // ---------- camadas e completude por pregão (puro, testado em node) ----------
+  const ROTULOS_COMPLETUDE = ['Vencedor', 'Preços', 'Marcas', 'Todos os participantes', 'Motivos de recusa'];
+  const estadoDe = (n, total) => (!total ? 'na' : n >= total ? 'ok' : n ? 'parcial' : 'falta');
+  // De onde veio cada pedaço do pregão: automático (PNCP, dados abertos, ComprasNet antigo sem captcha), gravado
+  // (extensão, verificado ou não) e o que ainda falta ver (só a página do governo, com captcha, mostra).
+  function camadasDoPregao(compra, itens, idx) {
+    const pg = (idx && idx.pregoes.get(compra.id_compra)) || null;
+    const lidos = itens.filter((v) => participantesDoItem(v, idx, compra.id_compra).itemLido).length;
+    const automatico = [compra.fonte === 'comprasnet-antigo' && 'ComprasNet antigo', linkOficial(compra.link_pncp) && 'PNCP', 'Dados abertos'].filter(Boolean);
+    return { automatico, gravado: pg ? { ...seloGravado(pg, pg.fonte_sem_https), itensLidos: lidos, itensTotal: itens.length } : null, faltam: itens.length - lidos };
+  }
+  // "Vencedor ✔ · Preços ✔ · Marcas ✔ · Todos os participantes ✔ · Motivos de recusa ✖": calculado do que existe aqui.
+  function completudeDoPregao(compra, itens, idx) {
+    const uteis = itens.filter((v) => !v.ruim);
+    const partes = itens.map((v) => participantesDoItem(v, idx, compra.id_compra));
+    const quantos = (lista, f) => lista.filter(f).length;
+    const estados = [
+      estadoDe(quantos(uteis, (v) => v.vencedor), uteis.length),
+      estadoDe(quantos(uteis, (v) => v.homologado != null), uteis.length),
+      estadoDe(quantos(uteis, (v) => v.vencedor && v.marca), uteis.length),
+      estadoDe(quantos(partes, (p) => p.itemLido || p.lista.length >= 2), itens.length),
+      estadoDe(quantos(partes, (p) => p.itemLido), itens.length),
+    ];
+    return ROTULOS_COMPLETUDE.map((rotulo, i) => ({ rotulo, estado: estados[i] })).filter((x) => x.estado !== 'na');
+  }
+  // Mudou o que foi gravado desde a última leitura? (conta, leituras concordantes e a gravação mais recente)
+  function assinaturaGravado(idx) {
+    if (!idx) return '';
+    const todos = [...idx.pregoes.values(), ...[...idx.propostas.values()].flat(), ...[...idx.mensagens.values()].flat()];
+    const itensLidos = [...idx.pregoes.values()].reduce((n, p) => n + Object.values(p.itens || {}).filter((i) => i && i.propostas_lidas_em).length, 0);
+    return [todos.length, itensLidos, todos.reduce((n, x) => n + leituras(x), 0), todos.map((x) => String(x.atualizado_em || x.gravado_em || '')).sort().pop() || ''].join('|');
+  }
+  // Quando a janela volta ao foco (o usuário voltou da página do governo): confere só as gravações e, se mudaram,
+  // redesenha sozinho. shortcut: redesenhar fecha os <details> que o usuário abriu; trocar por patch só se incomodar.
+  function aoVoltar(verificar) {
+    if (typeof global.addEventListener !== 'function') return () => {};
+    let ocupado = false, ultimo = 0;
+    const rodar = async () => {
+      if (ocupado || (document && document.hidden) || Date.now() - ultimo < 3000) return;
+      ocupado = true; ultimo = Date.now();
+      try { await verificar(); } catch { /* sem rede agora: fica como está */ } finally { ocupado = false; }
+    };
+    global.addEventListener('focus', rodar);
+    if (document && document.addEventListener) document.addEventListener('visibilitychange', rodar);
+    return () => { global.removeEventListener('focus', rodar); if (document && document.removeEventListener) document.removeEventListener('visibilitychange', rodar); };
+  }
+  async function recarregarSeMudou(estado, { cliente, sancoes }, redesenhar) {
+    if (!estado.visao) return false;
+    const leve = await carregarExtras(estado.visao, { cliente, sancoes: null });
+    const nova = assinaturaGravado(leve.gravado);
+    if (nova === estado.assinatura) return false;
+    estado.assinatura = nova;
+    await redesenhar(sancoes ? await carregarExtras(estado.visao, { cliente, sancoes }) : leve);
+    return true;
+  }
+
   // ---------- desenho ----------
   function el(tag, classe, texto) {
     const n = document.createElement(tag);
@@ -253,7 +309,7 @@
   const PASSOS_VER_TUDO = [
     { icone: 'captcha', texto: 'Resolva o captcha na página do governo.' },
     { icone: 'extensao', texto: 'Clique no botão da extensão LicitaPlena: "Ler esta página e gravar".' },
-    { icone: 'atualizar', texto: 'Volte aqui e clique "Atualizar": participantes, marcas e motivos aparecem para todos os clientes.' },
+    { icone: 'atualizar', texto: 'Volte aqui: este painel atualiza sozinho e mostra tudo junto (vale para todos os clientes).' },
   ];
   const ICONES = {
     captcha: 'M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3zm-1 13l-3-3 1.4-1.4L11 12.2l3.6-3.6L16 10l-5 5z',
@@ -292,6 +348,20 @@
     ext.append('Ainda não tem a extensão? ', como, '. O LicitaPlena não resolve captcha por você.');
     det.append(ext);
     return det;
+  }
+  const SIMBOLO = { ok: '✔', parcial: '◐', falta: '✖' };
+  function selosDoPregao(compra, itens, idx) {
+    const c = camadasDoPregao(compra, itens, idx), comp = completudeDoPregao(compra, itens, idx);
+    const caixa = el('div', 'la-camadas');
+    const selo = (classe, texto) => caixa.append(el('span', 'la-camada ' + classe, texto));
+    selo('la-cam-auto', `Automático: ${c.automatico.join(' · ')}`);
+    if (c.gravado) selo(c.gravado.verificado ? 'la-cam-verificado' : 'la-cam-gravado', `Gravado por clientes · ${c.gravado.verificado ? 'verificado' : 'não verificado'} · ${c.gravado.itensLidos} de ${c.gravado.itensTotal} itens`);
+    selo(c.faltam ? 'la-cam-falta' : 'la-cam-ok', c.faltam ? `Falta ver (precisa do captcha): ${c.faltam} item(ns)` : 'Tudo visto');
+    const lista = el('p', 'la-completude');
+    comp.forEach((x, i) => lista.append(el('span', 'la-comp la-comp-' + x.estado, `${x.rotulo} ${SIMBOLO[x.estado]}`), i < comp.length - 1 ? ' · ' : ''));
+    if (comp.some((x) => x.estado !== 'ok' && /participantes|Motivos/.test(x.rotulo))) lista.append(el('span', 'la-comp-dica', ' — abra o pregão'));
+    caixa.append(lista);
+    return { caixa, faltam: c.faltam };
   }
   const pct = (v) => (v === null ? '' : ` (${v > 0 ? '+' : ''}${String(v).replace('.', ',')}%)`);
   function fornecedorTexto(p) {
@@ -387,8 +457,9 @@
     return box;
   }
 
-  function desenhar(alvo, visao, { comEdital = false, rodape = '', extras = null, atualizar = null } = {}) {
+  function desenhar(alvo, visao, { comEdital = false, rodape = '', extras = null, atualizar = null, atualizado = false } = {}) {
     const raiz = el('div', 'la');
+    if (atualizado) { const a = el('p', 'la-atualizado', 'Atualizado com o que você gravou'); a.setAttribute('role', 'status'); raiz.append(a); }
     if (!visao.compras.length) {
       raiz.append(el('p', 'la-apoio', 'Nenhuma contratação anterior deste órgão com este produto foi encontrada nos últimos anos.'));
       alvo.replaceChildren(raiz);
@@ -433,17 +504,19 @@
       cab.append(links);
       art.append(cab);
       if (compra.objeto) art.append(el('p', 'la-objeto', String(compra.objeto).slice(0, 300)));
-      const vertudo = blocoVerTudo(compra, atualizar);
+      const selos = selosDoPregao(compra, itens, extras && extras.gravado);
+      art.append(selos.caixa);
+      const vertudo = selos.faltam ? blocoVerTudo(compra, atualizar) : null;
       if (vertudo) art.append(vertudo);
       const gravada = extras && extras.gravado && extras.gravado.pregoes.get(compra.id_compra);
       if (gravada) {
-        const aviso = el('p', 'la-aviso', 'Pregão gravado por usuário do LicitaPlena: situação e motivos de recusa, desclassificação e inabilitação aparecem por participante. ');
+        const aviso = el('p', 'la-aviso', 'Gravado por clientes do LicitaPlena: os motivos aparecem em cada participante. ');
         aviso.append(seloLeitura(seloGravado(gravada, gravada.fonte_sem_https)));
         art.append(aviso);
       } else {
         const aviso = el('p', 'la-aviso', 'Motivos de desclassificação: ');
         if (origem) aviso.append(link(origem, 'abra o pregão'), ' (exige captcha)'); else aviso.append('abra o pregão (exige captcha)');
-        aviso.append('. Dica: grave com a extensão do LicitaPlena (modo "Gravar pregão") e o motivo passa a aparecer aqui.');
+        aviso.append(' e grave com a extensão do LicitaPlena: o motivo passa a aparecer aqui.');
         art.append(aviso);
       }
       if (compra.fonte === 'comprasnet-antigo') {
@@ -503,10 +576,15 @@
       const visao = montarVisao({ compras: c.data, itens: i.data, participacoes: p.data, casamentos: d.casamentos || [], alvos: d.alvos || [] });
       const extras = await carregarExtras(visao, { cliente, sancoes: sancoes || sancoesEmLote(cliente) });
       if (!vivo) return;
-      desenhar(corpo, visao, { comEdital: true, extras, atualizar: carregar, rodape: d.gerado_em ? `Montado em ${data(d.gerado_em)}.` : '' });
+      estado.visao = visao; estado.assinatura = assinaturaGravado(extras.gravado);
+      const rodape = d.gerado_em ? `Montado em ${data(d.gerado_em)}.` : '';
+      estado.redesenhar = async (ex, atualizado) => { if (vivo) desenhar(corpo, visao, { comEdital: true, extras: ex, atualizar: carregar, rodape, atualizado }); };
+      await estado.redesenhar(extras, false);
     }
+    const estado = { visao: null, assinatura: '', redesenhar: null };
     carregar().catch(() => { if (vivo) alvo.replaceChildren(); });
-    return { fechar() { vivo = false; } };
+    const parar = aoVoltar(() => vivo && recarregarSeMudou(estado, { cliente, sancoes: sancoes || sancoesEmLote(cliente) }, (ex) => estado.redesenhar(ex, true)));
+    return { fechar() { vivo = false; parar(); } };
   }
 
   // ---------- tela avulsa ----------
@@ -556,14 +634,18 @@
         (r.situacao === 'parcial' ? '. Os demais participantes (arquivo semanal de propostas) entram na próxima rodada do robô.' : '.');
       const visao = montarVisao(r);
       const extras = await carregarExtras(visao, { cliente, sancoes: sancoes || (cliente ? sancoesEmLote(cliente) : null) });
-      const redesenhar = async (ex) => desenhar(resultado, visao, { rodape: (r.avisos || []).join(' '), extras: ex, atualizar: async () => redesenhar(await carregarExtras(visao, { cliente, sancoes: sancoes || (cliente ? sancoesEmLote(cliente) : null) })) });
-      await redesenhar(extras);
+      const sanc = sancoes || (cliente ? sancoesEmLote(cliente) : null);
+      const redesenhar = async (ex, atualizado) => desenhar(resultado, visao, { rodape: (r.avisos || []).join(' '), extras: ex, atualizado, atualizar: async () => redesenhar(await carregarExtras(visao, { cliente, sancoes: sanc })) });
+      lido.visao = visao; lido.assinatura = assinaturaGravado(extras.gravado); lido.redesenhar = redesenhar;
+      await redesenhar(extras, false);
     });
-    return { fechar() { alvo.replaceChildren(); } };
+    const lido = { visao: null, assinatura: '', redesenhar: null };
+    const parar = aoVoltar(() => cliente && recarregarSeMudou(lido, { cliente, sancoes: sancoes || sancoesEmLote(cliente) }, (ex) => lido.redesenhar(ex, true)));
+    return { fechar() { parar(); alvo.replaceChildren(); } };
   }
 
   const api = { montarVisao, vencedorDe, variacao, chaveMarca, montar, montarPesquisa, desenhar, linkOficial, urlsVerTudo, PASSOS_VER_TUDO, indexarGravado, participantesDoItem, cnpjsDaVisao,
-    textoSelo, seloGravado, sancoesEmLote, lerGravados, carregarExtras };
+    textoSelo, seloGravado, sancoesEmLote, lerGravados, carregarExtras, camadasDoPregao, completudeDoPregao, assinaturaGravado, recarregarSeMudou };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.LicitaLicitacaoAnterior = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

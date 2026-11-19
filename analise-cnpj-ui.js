@@ -144,6 +144,42 @@
     return caixa;
   }
 
+  // Camadas do que o painel já tem das disputas deste CNPJ (puro): tudo o que vem do PNCP e dos dados abertos já
+  // está aqui (automático); o motivo de recusa só vem do pregão gravado (extensão); o resto exige captcha.
+  function camadasCnpj(r, mensagens, propostas) {
+    const gravadas = new Map(); // id_compra -> true se verificado (2+ organizações concordando)
+    for (const x of [...(Array.isArray(mensagens) ? mensagens : []), ...(Array.isArray(propostas) ? propostas : [])]) {
+      gravadas.set(x.id_compra, (gravadas.get(x.id_compra) || false) || leituras(x) >= 2);
+    }
+    const compras = new Map();
+    for (const p of [...r.itensVencidos, ...r.itensNaoVencidos]) {
+      const c = compras.get(p.id_compra) || { id_compra: p.id_compra, orgao: p.orgao_nome || p.unidade_nome || (p.uasg && `UASG ${p.uasg}`) || '', link: p.link_origem || null, recusas: 0 };
+      if (p._recusada || p._fracassado1) c.recusas++;
+      compras.set(p.id_compra, c);
+    }
+    const lista = [...compras.values()];
+    const faltam = lista.filter((c) => c.recusas && !gravadas.has(c.id_compra)).sort((a, b) => b.recusas - a.recusas);
+    const nGravadas = lista.filter((c) => gravadas.has(c.id_compra)).length;
+    return { compras: lista.length, gravadas: nGravadas, verificadas: lista.filter((c) => gravadas.get(c.id_compra)).length, faltam, comRecusa: lista.filter((c) => c.recusas).length };
+  }
+  // Mudou o que foi gravado? (para atualizar sozinho quando o usuário volta da página do governo)
+  const assinaturaGravado = (mensagens, propostas) => [...(mensagens || []), ...(propostas || [])].reduce((n, x) => n + leituras(x), 0) + '|' + (mensagens || []).length + '|' + (propostas || []).length;
+
+  function blocoCamadas(doc, c) {
+    const caixa = el(doc, 'div', { class: 'acn-camadas la-camadas' }, el(doc, 'h3', { texto: 'O que já está aqui, e de onde veio' }));
+    const selo = (classe, texto) => caixa.append(el(doc, 'span', { class: 'la-camada ' + classe, texto }));
+    selo('la-cam-auto', `Automático: ${c.compras} contratação(ões) (PNCP e dados abertos)`);
+    selo(c.gravadas ? (c.verificadas ? 'la-cam-verificado' : 'la-cam-gravado') : 'la-cam-falta', c.gravadas ? `Gravado por clientes: ${c.gravadas} pregão(ões)${c.verificadas ? ` · ${c.verificadas} verificado(s)` : ' · não verificado'}` : 'Gravado por clientes: nenhum ainda');
+    selo(c.faltam.length ? 'la-cam-falta' : 'la-cam-ok', c.faltam.length ? `Falta ver (precisa do captcha): ${c.faltam.length} pregão(ões)` : 'Tudo visto');
+    const feitos = c.comRecusa - c.faltam.length;
+    caixa.append(el(doc, 'p', { class: 'la-completude', texto: `Vencedores e preços ✔ · Motivos de recusa ${c.comRecusa ? (c.faltam.length ? (feitos ? '◐' : '✖') : '✔') : '✔'}${c.comRecusa ? ` (${feitos} de ${c.comRecusa} pregões com recusa)` : ''}${c.faltam.length ? ' — abra o pregão' : ''}` }));
+    if (c.faltam.length) {
+      caixa.append(el(doc, 'details', {}, el(doc, 'summary', { texto: 'Pregões para abrir e gravar (você resolve o captcha, a extensão grava)' }),
+        el(doc, 'ul', { class: 'ficha-lista' }, c.faltam.slice(0, 10).map((f) => el(doc, 'li', {}, `${f.orgao || 'Contratação ' + f.id_compra} · ${f.recusas} recusa(s) `, link(doc, f.link, 'Abrir o pregão') || '')))));
+    }
+    return caixa;
+  }
+
   function tabelaGrupo(doc, titulo, grupos) {
     if (!grupos.length) return null;
     return el(doc, 'details', { class: 'acn-grupo' }, el(doc, 'summary', { texto: `${titulo} (${grupos.length})` }), rolavel(doc, el(doc, 'table', {},
@@ -231,13 +267,16 @@
       linhas.push(...(data || []));
       if (!data || data.length < 1000) break;
     }
+    return { linhas, ...(await lerGravados(sb, cnpj)) };
+  }
+  async function lerGravados(sb, cnpj) {
     // Tabelas da extensão ausentes (banco sem pregoes_gravados.sql): sem motivos gravados, o resto segue.
     const [msg, prop] = await Promise.all([
       sb.from('pregoes_gravados_mensagens').select('id_compra,numero_item,data_hora,texto,tipo,motivo,leituras_concordantes,pregoes_gravados(url,orgao,itens)')
         .eq('fornecedor_chave', cnpj).in('tipo', ['recusa', 'desclassificacao', 'inabilitacao']).order('data_hora', { ascending: false }).limit(500),
       sb.from('pregoes_gravados_propostas').select('id_compra,numero_item,situacao,leituras_concordantes').eq('cnpj', cnpj).limit(5000),
     ]);
-    return { linhas, mensagens: msg.error ? [] : msg.data, propostas: prop.error ? [] : prop.data };
+    return { mensagens: msg.error ? [] : msg.data, propostas: prop.error ? [] : prop.data };
   }
 
   // alvo: container; requisitar(corpo) -> /api/analise-cnpj; sancoes() -> /api/sancoes-cnpj (ou {erro}).
@@ -258,9 +297,27 @@
     if (vencedores.length) {
       try { const lote = await sancoesLote(vencedores); if (lote && lote.resultados) selos = { resultados: lote.resultados, hoje: lote.hoje || hoje, LicitaSancoes }; } catch { selos = null; }
     }
-    alvo.replaceChildren(cabecalho(doc, cnpj, ficha), blocoColeta(doc, coleta, () => montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, sancoesLote, hoje, LicitaSancoes })) || '',
+    const desenhar = (mot, atualizado) => alvo.replaceChildren(cabecalho(doc, cnpj, ficha), blocoColeta(doc, coleta, () => montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, sancoesLote, hoje, LicitaSancoes })) || '',
+      atualizado ? el(doc, 'p', { class: 'la-atualizado', role: 'status', texto: 'Atualizado com o que você gravou' }) : '',
+      blocoCamadas(doc, camadasCnpj(r, mot.mensagens, mot.propostas)),
       blocoAlertas(doc, r, mot, sanc, hoje, LicitaSancoes), blocoParticipacoes(doc, r, selos), blocoMotivos(doc, r, mot),
       el(doc, 'p', { class: 'dica-clique', texto: 'Fontes: PNCP (resultados por fornecedor), dados abertos do Compras.gov, arquivo semanal de propostas (repositorio.dados.gov.br, só itens homologados), CEIS/CNEP da CGU e pregões gravados pela extensão. Outras plataformas (Licitanet, BLL, BNC…) entram só pelo resultado publicado no PNCP: as disputas perdidas nelas não são públicas.' }));
+    desenhar(Object.assign(mot, { mensagens: dados.mensagens, propostas: dados.propostas }), false);
+    // Voltou da página do governo (foco da janela) e há gravação nova: atualiza sozinho, sem clicar.
+    if (alvo.__acnVoltar && global.removeEventListener) global.removeEventListener('focus', alvo.__acnVoltar);
+    if (global.addEventListener) {
+      let assin = assinaturaGravado(dados.mensagens, dados.propostas), ocupado = false;
+      alvo.__acnVoltar = async () => {
+        if (ocupado || !alvo.isConnected) return;
+        ocupado = true;
+        try {
+          const novo = await lerGravados(sb, cnpj);
+          const a = assinaturaGravado(novo.mensagens, novo.propostas);
+          if (a !== assin) { assin = a; desenhar(Object.assign(motivosGravados(novo.mensagens, novo.propostas), novo), true); }
+        } catch { /* sem rede agora: fica como está */ } finally { ocupado = false; }
+      };
+      global.addEventListener('focus', alvo.__acnVoltar);
+    }
     return r;
   }
 
@@ -274,7 +331,7 @@
     })));
   }
 
-  const api = { resumir, motivosGravados, venceu, posicao, precoFinal, montar, montarEscolha, cnpjsDosVencedores };
+  const api = { resumir, motivosGravados, venceu, posicao, precoFinal, montar, montarEscolha, cnpjsDosVencedores, camadasCnpj };
   global.LicitaAnaliseCnpj = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);
