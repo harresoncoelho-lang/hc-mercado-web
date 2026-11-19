@@ -6005,7 +6005,7 @@
       if (ufConsulta) p.set("ufs", ufConsulta);
       if (termo) p.set("q", termo);
       p.set("pagina", String(pagina));
-      return `/api/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search/?${p.toString()}`)}`;
+      return `/api/pncp-proxy?url=${encodeURIComponent(`https://pncp.gov.br/api/search?${p.toString()}`)}`;
     }
 
     function processarPagina(dados) {

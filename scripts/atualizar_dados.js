@@ -352,7 +352,7 @@ async function coletarContratosComplementarPorUf(registrosExistentes, anteriores
         tipos_documento: "contrato", status: "todos", ufs: uf,
         ordenacao: "-data", tam_pagina: "50", pagina: String(pagina),
       });
-      return fetchComRetentativa(`https://pncp.gov.br/api/search/?${params}`, 2, 15000, `contratos ${uf}`);
+      return fetchComRetentativa(`https://pncp.gov.br/api/search?${params}`, 2, 15000, `contratos ${uf}`);
     };
     const assinatura = (dados) => JSON.stringify([dados.total, dados.items.map((r) => r.numero_controle_pncp)]);
     const primeira = await buscarPagina(1);
