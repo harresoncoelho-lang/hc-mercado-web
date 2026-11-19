@@ -267,3 +267,22 @@ test("tipoDocumentoDaExigencia: na dúvida devolve null (falsos positivos)", () 
   ];
   for (const [texto, categoria] of casos) assert.equal(tipoDocumentoDaExigencia(texto, categoria), null, String(texto));
 });
+
+test("B7: padrão da 14.133 e regra de sessão não são incomuns; pedido fora da lista continua", () => {
+  const comuns = [
+    "Certidão negativa de débitos relativos aos tributos federais e à dívida ativa da União (CND)",
+    "Certificado de regularidade do FGTS", "Certidão negativa de débitos trabalhistas (CNDT)",
+    "Contrato social ou ato constitutivo em vigor", "Balanço patrimonial e demonstrações contábeis do último exercício",
+    "Atestado de capacidade técnica compatível com o objeto",
+    "não emprega menor de 18 anos em trabalho noturno, perigoso ou insalubre",
+    "O fornecedor enquadrado como microempresa ou empresa de pequeno porte deverá declarar, em campo próprio do sistema, que cumpre os requisitos",
+    "No cadastramento da proposta inicial, o licitante declarará, em campo próprio do sistema, que:",
+    "Iniciada a etapa competitiva, os licitantes deverão encaminhar lances exclusivamente por meio de sistema eletrônico",
+    "Na presente licitação, a fase de habilitação sucederá as fases de apresentação de propostas e lances",
+    "Os documentos exigidos para fins de habilitação poderão ser apresentados em original, por cópia ou por meio eletrônico.",
+    "Caberá a apresentação de pedido de reconsideração da aplicação da sanção de declaração de inidoneidade",
+  ];
+  for (const texto of comuns) assert.equal(marcarIncomuns([{ texto }])[0].incomum, false, texto);
+  for (const texto of ["A licitante deverá apresentar certificado ISO 9001 vigente", "Apresentar alvará sanitário expedido pela vigilância municipal"])
+    assert.match(marcarIncomuns([{ texto }])[0].motivoIncomum, /fora da lista padrão/, texto);
+});

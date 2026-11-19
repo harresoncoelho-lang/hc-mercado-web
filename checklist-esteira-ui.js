@@ -93,6 +93,24 @@
       incomuns: ativas.filter((e) => e.incomum === true).length };
   }
 
+  // Exigência de categoria "declaracao" que de fato pede uma declaração: a regra classifica por "declara" e pega
+  // também cláusula de sanção ("declaração de inidoneidade", "pedido de reconsideração"), que não se gera.
+  // Com modelo achado pelo robô (do edital ou da biblioteca) vale o modelo.
+  const ehDeclaracao = (e) => e.categoria === 'declaracao' && e.resposta !== 'nao_se_aplica' &&
+    ((typeof e.modelo_texto === 'string' && e.modelo_texto.trim()) || e.modelo_declaracao ||
+      (/declar/i.test(e.texto || '') && !/inidoneidade|reconsidera|san[cç][aã]o|penalidade/i.test(e.texto || '')));
+  // Título curto da peça: o que se declara, sem o preâmbulo da cláusula ("No cadastramento da proposta, o licitante declarará…").
+  function tituloDeclaracao(texto, pagina) {
+    const t = String(texto || '').replace(/\s+/g, ' ').trim();
+    const curto = (v) => { v = v.replace(/[\s:;,.]+$/, ''); return v.length <= 90 ? v : v.slice(0, 90).replace(/\s+\S*$/, '') + '…'; };
+    if (/^declara/i.test(t) && t.length <= 90) return curto(t);
+    const que = /declar\w*\b.*?\bque\b:?\s*(.+)$/i.exec(t);
+    if (que && que[1].replace(/[\s:;,.]+$/, '').length >= 8) return curto('Declaração de que ' + que[1]);
+    const de = /declara[cç][aã]o\s+(de\s+[^.;:]+)/i.exec(t);
+    if (de) return curto('Declaração ' + de[1]);
+    return 'Declaração exigida pelo edital' + (pagina ? ` (pág. ${pagina})` : '');
+  }
+
   // Lote para gerarDeclaracoesLote. Modelo literal do edital (modelo_texto, gravado pelo robô) > biblioteca (código
   // salvo pelo robô ou escolha pelo texto) > texto livre com marcador, para a declaração nunca sumir: sem modelo, o
   // usuário redige a partir do trecho. O mesmo modelo do edital vai uma vez só (o servidor recusa texto repetido no lote).
@@ -100,13 +118,13 @@
     const D = declaracoes();
     const pedidos = [], vistos = new Set();
     for (const e of ordenarExigencias(exigencias)) {
-      if (e.categoria !== 'declaracao' || e.resposta === 'nao_se_aplica' || pedidos.length >= LOTE_MAX) continue;
+      if (!ehDeclaracao(e) || pedidos.length >= LOTE_MAX) continue;
       if (typeof e.modelo_texto === 'string' && e.modelo_texto.trim()) {
         if (!vistos.has(e.modelo_texto)) {
           vistos.add(e.modelo_texto);
           const f = e.modelo_fonte || {};
           const local = [f.documento, f.pagina ? 'pág. ' + f.pagina : ''].filter(Boolean).join(', ');
-          pedidos.push({ modeloCodigo: 'edital', titulo: String(e.texto).slice(0, 180), texto: e.modelo_texto,
+          pedidos.push({ modeloCodigo: 'edital', titulo: tituloDeclaracao(e.texto, e.pagina), texto: e.modelo_texto,
             fonte: ('Modelo do próprio edital (texto literal)' + (local ? ': ' + local : '') + '. Confira com o original.').slice(0, 1000) });
         }
         continue;
@@ -117,7 +135,7 @@
         continue;
       }
       const fonte = [e.documento, e.pagina ? 'pág. ' + e.pagina : ''].filter(Boolean).join(', ');
-      pedidos.push({ modeloCodigo: 'livre', titulo: String(e.texto).slice(0, 180),
+      pedidos.push({ modeloCodigo: 'livre', titulo: tituloDeclaracao(e.texto, e.pagina),
         texto: `[PREENCHER: texto da declaração]\n\nO edital pede: ${String(e.texto).slice(0, 2000)}${e.trecho ? '\n\nTrecho do edital: "' + String(e.trecho).slice(0, 1200) + '"' : ''}`,
         ...(fonte ? { fonte: 'Exigência do edital: ' + fonte.slice(0, 900) } : {}) });
     }
@@ -234,7 +252,7 @@
     }
 
     function blocoDeclaracoes() {
-      const exigidas = exigencias.filter((e) => e.categoria === 'declaracao' && e.resposta !== 'nao_se_aplica').length;
+      const exigidas = exigencias.filter(ehDeclaracao).length;
       if (!declaracoesDisponiveis || (!exigidas && !docs.length)) return null;
       const c = contarDeclaracoes(docs);
       const linhas = [exigidas === 1 ? 'O edital pede 1 declaração.' : `O edital pede ${exigidas} declarações.`];
@@ -251,7 +269,7 @@
 
     function render() {
       const tEx = tarefas.get('exigencias');
-      const exigidas = exigencias.filter((e) => e.categoria === 'declaracao' && e.resposta !== 'nao_se_aplica').length;
+      const exigidas = exigencias.filter(ehDeclaracao).length;
       const faixa = h('ol', { classe: 'esteira-faixa', 'aria-label': 'Andamento da leitura do edital' },
         etapaLi('Itens', rotuloEtapa('itens', tarefas.get('itens')), 'itens'),
         etapaLi('Exigências', rotuloEtapa('exigencias', tEx), 'exigencias'),
@@ -367,7 +385,7 @@
   }
 
   const api = { montar, tentarDeNovo, rotuloEtapa, rotuloDocumentos, contarDeclaracoes, alertasLeitura, alertasCobertura, ordenarExigencias,
-    contarPendencias, loteDeclaracoes, tabelaAusente, SITUACOES, RESPOSTAS, CATEGORIAS };
+    contarPendencias, loteDeclaracoes, tituloDeclaracao, tabelaAusente, SITUACOES, RESPOSTAS, CATEGORIAS };
   global.LicitaChecklistEsteira = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

@@ -130,3 +130,22 @@ test("listar: cadastro não aprovado (suspenso com JWT válido) recebe 403 sem l
     }, { status });
   }
 });
+
+test("B9: PORTAL_ORIGEM_LINK troca a origem só se for https ou http local; o resto cai na canônica", async () => {
+  const antes = process.env.PORTAL_ORIGEM_LINK;
+  const casos = [
+    ["http://127.0.0.1:8788", "http://127.0.0.1:8788"], ["http://localhost:8788/", "http://localhost:8788"],
+    ["https://staging.licitaplena.com.br", "https://staging.licitaplena.com.br"],
+    ["http://site-malicioso.example", "https://licitaplena.com.br"], ["https://x.example/caminho", "https://licitaplena.com.br"],
+    ["https://user:senha@x.example", "https://licitaplena.com.br"], ["javascript:alert(1)", "https://licitaplena.com.br"], ["", "https://licitaplena.com.br"],
+  ];
+  try {
+    await comSupabase(async () => {
+      for (const [valor, origem] of casos) {
+        process.env.PORTAL_ORIGEM_LINK = valor;
+        const link = JSON.parse((await handler(evento(criar()))).body).link;
+        assert.ok(link.startsWith(origem + "/cliente#t="), `${valor} -> ${link}`);
+      }
+    });
+  } finally { if (antes === undefined) delete process.env.PORTAL_ORIGEM_LINK; else process.env.PORTAL_ORIGEM_LINK = antes; }
+});

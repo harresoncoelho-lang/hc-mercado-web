@@ -188,14 +188,19 @@ function tipoDocumentoDaExigencia(texto, categoria) {
 }
 
 // Lista padrão da Lei 14.133: declarações do art. 63, certidões, balanço, atos constitutivos e atestado.
+// Termos do art. 63 sem exigir "declara" antes: no edital eles vêm em alíneas soltas ("declarará que: a) não emprega
+// menor…") ou com "declarar" depois ("microempresa… deverá declarar").
 const PADRAO_14133 = [
-  /declara.*(?:menor|trabalho (?:noturno|infantil|forcado|degradante)|xxxiii|reserva de cargos|deficiencia|reabilitado|requisitos de habilitacao|veracidade|direitos trabalhistas|microempresa|pequeno porte|fato impeditivo|elaboracao independente|integralidade dos custos)/,
+  /menor de (?:18|dezoito|16|dezesseis)|trabalho (?:noturno|infantil|forcado|degradante)|xxxiii|reserva de cargos|deficiencia|reabilitado|requisitos de habilitacao|veracidade|direitos trabalhistas|microempresa|pequeno porte|cooperativa|fato impeditivo|elaboracao independente|integralidade dos custos|ciente e concorda|\bsicaf\b|campo proprio do sistema/,
   /fgts|cndt|debitos (?:trabalhistas|estaduais|municipais|federais)|receita federal|divida ativa da uniao|tributos federais|fazenda (?:estadual|municipal)|regularidade fiscal|cnpj|inscricao (?:estadual|municipal)/,
   /balanco patrimonial|demonstracoes contabeis|falencia|recuperacao judicial|liquidez (?:geral|corrente)|solvencia geral/,
   /contrato social|ato constitutivo|estatuto|registro comercial|empresario individual|junta comercial/,
   /atestado|capacidade tecnica/,
   /proposta (?:de precos|comercial|ajustada|readequada)|validade da proposta|planilha de (?:custos|precos)|credenciamento|procuracao/,
 ];
+// Verbo de pedido (não o substantivo "apresentação das propostas"); condição, faculdade e sanção não são exigência.
+const PEDIDO = /apresentar|apresente|apresentem|apresentara|comprovar|comprove|declarar|declaracao de que|certidao|certificado|licenca|alvara|registro (?:no|na|em|junto)|laudo|atestado|anexar/;
+const FACULDADE = /\bpoder(?:a|ao)\b|facultad|\bcaso\b|na hipotese|quando permitid|reconsideracao|recurso|sancao|penalidade/;
 const UFS = { AC: "acre", AL: "alagoas", AP: "amapa", AM: "amazonas", BA: "bahia", CE: "ceara", DF: "distrito federal", ES: "espirito santo",
   GO: "goias", MA: "maranhao", MT: "mato grosso", MS: "mato grosso do sul", MG: "minas gerais", PA: "para", PB: "paraiba", PR: "parana",
   PE: "pernambuco", PI: "piaui", RJ: "rio de janeiro", RN: "rio grande do norte", RS: "rio grande do sul", RO: "rondonia", RR: "roraima",
@@ -211,7 +216,8 @@ function ufsCitadas(original, t) {
 function motivosIncomuns(e, ufSede) {
   const t = simples(e.trecho && !simples(e.trecho).includes(simples(e.texto)) ? `${e.texto} ${e.trecho}` : e.trecho || e.texto);
   const motivos = [];
-  if (!PADRAO_14133.some((re) => re.test(t))) motivos.push("fora da lista padrão da Lei 14.133");
+  // "Fora da lista" só conta quando a cláusula pede algo à empresa; regra de sessão, lance ou faculdade ("poderá") não é exigência incomum.
+  if (!PADRAO_14133.some((re) => re.test(t)) && PEDIDO.test(t) && !FACULDADE.test(t)) motivos.push("fora da lista padrão da Lei 14.133");
   if (/amostra/.test(t)) motivos.push("exige amostra");
   if (/visita|vistoria/.test(t) && /obrigat/.test(t) && !/facultativ/.test(t)) motivos.push("visita técnica obrigatória");
   if (/garantia (?:de|da) (?:proposta|participacao)/.test(t)) motivos.push("garantia de proposta");

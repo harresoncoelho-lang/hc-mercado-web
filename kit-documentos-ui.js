@@ -45,6 +45,14 @@
       campos() { const itemIds = [...mapa.keys()].sort(); return { itemIds, unidades: Object.fromEntries(itemIds.map(id => [id, mapa.get(id)])) }; },
       tem(id) { return mapa.has(id); }, unidade(id) { return mapa.get(id) || ''; } };
   }
+  // Quantidade do banco vem com 3 casas ("400.000", que em pt-BR se lê quatrocentos mil): mesma regra de itens-processo-ui.js.
+  const quantidadeTexto = v => v === null || v === undefined || v === '' ? 'não informado' : String(v).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
+  // Proposta nova parte da "Proposta padrão" do perfil; campo já preenchido pelo usuário não é sobrescrito.
+  function aplicarPadraoProposta(atual, padrao) {
+    const saida = { ...atual };
+    for (const n of ['validade', 'prazoEntrega', 'pagamento']) if (!saida[n] && typeof padrao?.[n] === 'string') saida[n] = padrao[n];
+    return saida;
+  }
   function montar({ alvo, contexto, obterSessao, requisitar = global.fetch.bind(global), canalLeitura = null, aoConferirIdentificacao = null }) {
     const controle = criarControle(), escopo = { empresaId: contexto.empresaId, processoId: contexto.processoId };
     let dados = null, ocupado = false, usuario = null, documentos = [], peca, alterado = true, tentativa = null, cadastroAberto = false;
@@ -78,11 +86,11 @@
       <form novalidate><h4 tabindex="-1" data-peca>Nova declaração</h4><p class="kit-estado" data-estado></p><p data-historico></p>
       <label>Tipo de documento<select name="tipo"><option value="declaracao">Declaração com texto informado</option><option value="proposta">Proposta de materiais</option></select></label>
       <div data-declaracao>${campo('titulo', 'Título da declaração', 'maxlength="180"')}<label>Texto do modelo (até 20.000 caracteres)<textarea name="texto" maxlength="20000" rows="6"></textarea></label>${campo('fonte', 'Referência informada pelo usuário (opcional; não verificada)', 'maxlength="1000"')}<p>Variáveis permitidas: {{razao_social}}, {{cnpj}}, {{endereco}}, {{representante}}, {{cargo}}, {{numero_edital}}, {{orgao}}. Para o CPF do representante, escreva [CPF do representante]: o número só entra no arquivo exportado.</p></div>
-      <div data-proposta hidden><p>Selecione os itens (limite técnico e tamanho total serão conferidos). Quantidade, preço ofertado, marca e modelo vêm do cadastro. Informe a unidade manualmente.</p><p data-contagem-itens></p><button type="button" class="btn" data-ver-selecionados>Ver selecionados</button><div data-itens></div><button type="button" class="btn" data-itens-anterior>Itens anteriores</button><button type="button" class="btn" data-itens-proxima>Próximos itens</button><div data-itens-ausentes></div>${campo('validade', 'Validade da proposta', 'maxlength="500"')}${campo('prazoEntrega', 'Prazo de entrega', 'maxlength="500"')}${campo('pagamento', 'Condições de pagamento', 'maxlength="500"')}</div>
+      <div data-proposta hidden><p>Selecione os itens (limite técnico e tamanho total serão conferidos). Quantidade, preço ofertado, marca e modelo vêm do cadastro. A unidade vem do edital quando disponível; confira e ajuste.</p><p data-contagem-itens></p><button type="button" class="btn" data-ver-selecionados>Ver selecionados</button><div data-itens></div><button type="button" class="btn" data-itens-anterior>Itens anteriores</button><button type="button" class="btn" data-itens-proxima>Próximos itens</button><div data-itens-ausentes></div>${campo('validade', 'Validade da proposta', 'maxlength="500"')}${campo('prazoEntrega', 'Prazo de entrega', 'maxlength="500"')}${campo('pagamento', 'Condições de pagamento', 'maxlength="500"')}</div>
       <div class="kit-acoes"><button type="button" class="btn primario" data-salvar disabled>Salvar rascunho</button><button type="submit" class="btn" data-preparar disabled>Preparar prévia</button><button type="button" class="btn" data-recarregar hidden>Carregar versão do servidor</button></div></form>
       <section class="kit-previa" aria-label="Revisão da peça"><h4 tabindex="-1" data-titulo-previa>Prévia integral</h4><pre data-previa>Salve o rascunho e prepare a prévia para conferir todo o conteúdo.</pre><div data-fontes></div>
       <label class="kit-revisao"><input type="checkbox" data-revisado disabled> Conferi os dados e o conteúdo para este edital</label>
-      <div class="kit-acoes"><button type="button" class="btn primario" data-exportar disabled>Baixar DOCX</button><button type="button" class="btn" data-cancelar-previa disabled>Cancelar revisão</button><button type="button" class="btn" data-preparar-operacao hidden disabled>Preparar cadastro</button><button type="button" class="btn" data-iniciar-leitura disabled>Conferir página com extensão</button><button type="button" class="btn" data-cancelar-leitura disabled>Cancelar leitura</button></div><section aria-label="Correspondencias dos relatos"><h4>Conferir itens observados</h4><p>Relatos parciais, separados por recibo. Grupo, exigencias e completude desconhecidos. Nao autoriza cadastro.</p><button type="button" class="btn" data-carregar-relatos disabled>Carregar relatos desta revisao</button><button type="button" class="btn" data-mais-relatos disabled>Recibos anteriores</button><label>Recibo observado<select data-recibo><option value="">Selecione um recibo</option></select></label><div data-pares></div><label><input type="checkbox" data-pares-revisados> Conferi cada correspondencia selecionada</label><button type="button" class="btn" data-salvar-pares disabled>Salvar correspondencias revisadas</button><p data-pares-status role="status" aria-live="polite"></p></section><p data-canal-status>Canal de leitura indisponível: requer configuração e homologação da extensão.</p><pre data-operacao role="status" aria-live="polite" hidden></pre></section></section>`;
+      <div class="kit-acoes"><button type="button" class="btn primario" data-exportar disabled>Baixar DOCX</button><button type="button" class="btn" data-cancelar-previa disabled>Cancelar revisão</button><button type="button" class="btn" data-preparar-operacao hidden disabled>Preparar cadastro</button></div><div data-leitura hidden><div class="kit-acoes"><button type="button" class="btn" data-iniciar-leitura disabled>Conferir página com extensão</button><button type="button" class="btn" data-cancelar-leitura disabled>Cancelar leitura</button></div><section aria-label="Correspondências dos relatos"><h4>Conferir itens observados</h4><p>Relatos parciais, separados por recibo. Grupo, exigências e completude desconhecidos. Não autoriza cadastro.</p><button type="button" class="btn" data-carregar-relatos disabled>Carregar relatos desta revisão</button><button type="button" class="btn" data-mais-relatos disabled>Recibos anteriores</button><label>Recibo observado<select data-recibo><option value="">Selecione um recibo</option></select></label><div data-pares></div><label><input type="checkbox" data-pares-revisados> Conferi cada correspondência selecionada</label><button type="button" class="btn" data-salvar-pares disabled>Salvar correspondências revisadas</button><p data-pares-status role="status" aria-live="polite"></p></section><p data-canal-status>Canal de leitura indisponível: requer configuração e homologação da extensão.</p></div><pre data-operacao role="status" aria-live="polite" hidden></pre></section></section>`;
     const el = s => alvo.querySelector(s), form = el('form');
     const cadastro = alvoCadastro(escopo, aoConferirIdentificacao), linkCadastro = el('[data-cadastro]');
     linkCadastro.href = cadastro.href;
@@ -114,9 +122,11 @@
       el('[data-preparar]').disabled = ocupado || !dados || cadastroAberto || alterado || !peca?.versao || Boolean(tentativa) || Boolean(dados.pendencias?.length);
       el('[data-revisado]').disabled = ocupado || !controle.hash;
       el('[data-exportar]').disabled = ocupado || !controle.podeExportar() || itensPendentes;
+      // Extensão de leitura desligada por padrão (nenhuma tela passa canalLeitura): o bloco técnico não aparece ao usuário.
+      el('[data-leitura]').hidden = !canalDisponivel();
       el('[data-iniciar-leitura]').disabled = !canalDisponivel()||ocupado||!proposta||!controle.podeExportar()||alterado||Boolean(leituraAtiva);
       el('[data-cancelar-leitura]').disabled = !leituraAtiva;
-      el('[data-carregar-relatos]').disabled=ocupado||!proposta||!controle.podeExportar()||alterado;
+      el('[data-carregar-relatos]').disabled=!canalDisponivel()||ocupado||!proposta||!controle.podeExportar()||alterado;
       el('[data-mais-relatos]').disabled=ocupado||!cursorRelatos||!controle.podeExportar()||alterado;
       el('[data-salvar-pares]').disabled=ocupado||!reciboSelecionado||!controle.podeExportar()||alterado||!el('[data-pares-revisados]').checked;
       el('[data-preparar-operacao]').hidden = !proposta || !controle.podeExportar();
@@ -144,8 +154,8 @@
     function renderItens() {
       const ids = selecao.campos().itemIds;
       const visiveis = selecionados ? ids.slice(paginaSelecao * 100, (paginaSelecao + 1) * 100).map(id => conhecidos.get(id) || { id, tipo: 'item', identificador: id, descricao: 'Selecionado salvo; dados serão conferidos ao preparar.' }) : (dados?.itens || []);
-      el('[data-itens]').innerHTML = visiveis.map(item => `<div class="kit-item"><label><input type="checkbox" data-item value="${esc(item.id)}" ${item.tipo !== 'item' ? 'data-bloqueado="true" disabled' : ''}> ${esc(item.identificador)} — ${esc(item.descricao)}</label><p>Quantidade: ${esc(decimalTexto(item.quantidade))} · Unitário ofertado: R$ ${esc(decimalTexto(item.valorUnitario))} · Marca: ${esc(item.marca || 'não informada')} · Modelo: ${esc(item.modelo || 'não informado')}${item.tipo !== 'item' ? ' · Lote pendente de detalhamento' : ''}</p>${campo(`unidade-${esc(item.id)}`, 'Unidade manual deste item', 'maxlength="40"')}</div>`).join('') || '<p>Nenhum item cadastrado. Cadastre os itens no acompanhamento.</p>';
-      for (const input of alvo.querySelectorAll('[data-item]')) { input.checked = selecao.tem(input.value); form.elements['unidade-' + input.value].value = selecao.unidade(input.value); }
+      el('[data-itens]').innerHTML = visiveis.map(item => `<div class="kit-item"><label><input type="checkbox" data-item value="${esc(item.id)}" ${item.tipo !== 'item' ? 'data-bloqueado="true" disabled' : ''}> ${esc(item.identificador)} — ${esc(item.descricao)}</label><p>Quantidade: ${esc(quantidadeTexto(item.quantidade))}${item.unidade ? ' ' + esc(item.unidade) : ''} · Unitário ofertado: R$ ${esc(decimalTexto(item.valorUnitario))} · Marca: ${esc(item.marca || 'não informada')} · Modelo: ${esc(item.modelo || 'não informado')}${item.tipo !== 'item' ? ' · Lote pendente de detalhamento' : ''}</p>${campo(`unidade-${esc(item.id)}`, 'Unidade deste item', 'maxlength="40"')}</div>`).join('') || '<p>Nenhum item cadastrado. Cadastre os itens no acompanhamento.</p>';
+      for (const input of alvo.querySelectorAll('[data-item]')) { input.checked = selecao.tem(input.value); form.elements['unidade-' + input.value].value = selecao.tem(input.value) ? selecao.unidade(input.value) : conhecidos.get(input.value)?.unidade || ''; }
       el('[data-contagem-itens]').textContent = ids.length + ' selecionados · limite técnico: ' + (dados?.limitesProposta?.itens || 'consultar servidor') + ' · tamanho total também limitado';
       el('[data-itens-anterior]').disabled = ocupado || (selecionados ? paginaSelecao === 0 : pagina === 0);
       el('[data-itens-proxima]').disabled = ocupado || (selecionados ? (paginaSelecao + 1) * 100 >= ids.length : !maisItens);
@@ -188,12 +198,18 @@
     function nova(tipo, focar = true) {
       peca = { id: global.crypto.randomUUID(), tipo, versao: 0 }; controle.abrir({ documentoId: peca.id, versao: 0 });
       tentativa = null; alterado = true; ocupado = false; estado = 'Novo · não salvo'; preencher(peca); limparPrevia(); pendencias(dados?.pendencias || []);
+      if (tipo === 'proposta') { const p = aplicarPadraoProposta({}, dados?.propostaPadrao); for (const n of ['validade', 'prazoEntrega', 'pagamento']) form.elements[n].value = p[n] || ''; }
       el('[data-peca]').textContent = tipo === 'proposta' ? 'Nova proposta' : 'Nova declaração'; el('[data-recarregar]').hidden = true;
       aviso('Novo rascunho. Salve para preservar seu trabalho.'); atualizar(); renderLista();
       if (focar) (tipo === 'declaracao' ? form.elements.titulo : el('[data-proposta] input'))?.focus();
     }
+    // Unidade e condições sugeridas (PNCP / Proposta padrão) não contam como trabalho do usuário; a seleção de itens conta.
+    function algoPreenchido() {
+      const sugerido = e => e.name?.startsWith('unidade-') || (typeof dados?.propostaPadrao?.[e.name] === 'string' && e.value === dados.propostaPadrao[e.name]);
+      return [...form.querySelectorAll('input,textarea')].some(e => !e.disabled && (e.type === 'checkbox' ? e.checked : Boolean(e.value) && !sugerido(e)));
+    }
     function pedirTroca(acao) {
-      const preenchido = [...form.querySelectorAll('input,textarea')].some(e => !e.disabled && (e.type === 'checkbox' ? e.checked : Boolean(e.value)));
+      const preenchido = algoPreenchido();
       if (alterado && (peca.versao || tentativa || preenchido || (peca.tipo === 'proposta' && selecao.campos().itemIds.length > 0))) {
         trocaPendente = acao; el('[data-descarte]').hidden = false; el('[data-cancelar-troca]').focus(); return;
       }
@@ -332,7 +348,7 @@
       const ids=selecao.campos().itemIds;
       el('[data-pares]').innerHTML=!reciboSelecionado?'':reciboSelecionado.itens.map(item=>{
         const saved=reciboSelecionado.correspondencia?.pares.find(p=>p.portalId===item.id)?.itemId;
-        return `<label>Item observado ${esc(item.id)} � ${esc(item.descricao)}; quantidade ${esc(item.quantidadeSolicitada)} ${esc(item.unidade)}<select data-par-portal="${esc(item.id)}"><option value="">Sem correspondencia</option>${ids.map(id=>`<option value="${esc(id)}" ${saved===id?'selected':''}>${esc(conhecidos.get(id)?.descricao||id)} � ${esc(id)}</option>`).join('')}</select></label>`;
+        return `<label>Item observado ${esc(item.id)} · ${esc(item.descricao)}; quantidade ${esc(item.quantidadeSolicitada)} ${esc(item.unidade)}<select data-par-portal="${esc(item.id)}"><option value="">Sem correspondencia</option>${ids.map(id=>`<option value="${esc(id)}" ${saved===id?'selected':''}>${esc(conhecidos.get(id)?.descricao||id)} · ${esc(id)}</option>`).join('')}</select></label>`;
       }).join('');
       el('[data-pares-status]').textContent=reciboSelecionado?(reciboSelecionado.correspondencia?`Correspondencias salvas, versao ${reciboSelecionado.correspondencia.versao}. Confira antes de alterar.`:'Nenhuma correspondencia revisada neste recibo.'):'Selecione um recibo. Nenhum mapa foi agregado.';atualizar();
     }
@@ -344,7 +360,7 @@
         if(!r||!vivo(g)||rg!==geracaoRelatos)return;
         if(!Array.isArray(r.recibos)||r.recibos.length>20)throw Error('Lista de relatos invalida.');
         relatos=r.recibos;cursorRelatos=r.nextCursor||null;
-        el('[data-recibo]').innerHTML='<option value="">Selecione um recibo</option>'+relatos.map(r=>`<option value="${esc(r.id)}">${esc(r.criadoEm)} � ${esc(r.id)}</option>`).join('');
+        el('[data-recibo]').innerHTML='<option value="">Selecione um recibo</option>'+relatos.map(r=>`<option value="${esc(r.id)}">${esc(r.criadoEm)} · ${esc(r.id)}</option>`).join('');
         el('[data-pares-status]').textContent=relatos.length?'Escolha um recibo. Cada pagina observada e parcial; nao existe catalogo consolidado.':'Nenhum relato vigente nesta revisao.';
       }catch(e){if(vivo(g)&&rg===geracaoRelatos){relatos=[];cursorRelatos=null;el('[data-recibo]').innerHTML='<option value="">Selecione um recibo</option>';el('[data-pares-status]').textContent=e.message;}}
       finally{if(vivo(g)){ocupado=false;atualizar();}}
@@ -425,7 +441,7 @@
     // Leitura para a casca: mesma regra de pedirTroca (não salva nem envia nada).
     function temAlteracoesNaoSalvas() {
       if (!peca) return false;
-      const preenchido = [...form.querySelectorAll('input,textarea')].some(e => !e.disabled && (e.type === 'checkbox' ? e.checked : Boolean(e.value)));
+      const preenchido = algoPreenchido();
       return Boolean(alterado && (peca.versao || tentativa || preenchido || (peca.tipo === 'proposta' && selecao.campos().itemIds.length > 0)));
     }
     // Atualizacao de itens (ex.: apos salvar item na casca). Invalida previa/revisao/exportacao antes de consultar.
@@ -439,6 +455,6 @@
     nova('declaracao', false); void consultar();
     return { fechar() { void cancelarLeitura();controle.fechar(); alvo.replaceChildren(); }, temAlteracoesNaoSalvas, atualizarItens };
   }
-  global.LicitaKitDocumentos = { textoParaTela, textoParaSalvar, criarControle, criarSelecao, montar, mensagemFalha, alvoCadastro, textosCadastro };
+  global.LicitaKitDocumentos = { quantidadeTexto, aplicarPadraoProposta, textoParaTela, textoParaSalvar, criarControle, criarSelecao, montar, mensagemFalha, alvoCadastro, textosCadastro };
 })(globalThis);
 

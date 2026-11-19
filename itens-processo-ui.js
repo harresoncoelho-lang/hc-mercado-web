@@ -71,6 +71,9 @@
   }
   // Linha do cartão do item. Item importado do PNCP chega sem valor ofertado (antes: "R$ null") e com a
   // quantidade do banco em 3 casas ("500.000", que em pt-BR se lê quinhentos mil): mostra "500" e "não informado".
+  // Mesma ordem do servidor (_kit_proposta_itens.js ordemItem): número do item em ordem natural, depois id.
+  const COLLATOR = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
+  const ordemItem = (a, b) => COLLATOR.compare(String(a.identificador ?? ''), String(b.identificador ?? '')) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   function linhaQuantidade(i, total) {
     const q = String(i.quantidade ?? '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
     const v = i.valorUnitario === null || i.valorUnitario === undefined || i.valorUnitario === '' ? 'não informado' : `R$ ${String(i.valorUnitario).replace('.', ',')}`;
@@ -502,7 +505,8 @@
         if (!vivo || g !== geracao) return;
         if (!r.ok || !j) throw new Error(j?.erro || MSG.erroCarregar);
         if (j.empresa?.id !== contexto.empresaId || j.processo?.id !== contexto.processoId) throw new Error(MSG.divergente);
-        itens = reiniciar ? (j.itens || []) : itens.concat(j.itens || []);
+        // Cada página já vem ordenada pelo número do item; a lista acumulada é reordenada pela mesma regra do servidor.
+        itens = (reiniciar ? (j.itens || []) : itens.concat(j.itens || [])).sort(ordemItem);
         cursor = j.paginacaoItens?.nextCursor || null; maisItens = j.paginacaoItens?.hasMore === true;
         numeroProcesso = typeof j.processo?.numero === 'string' ? j.processo.numero : '';
         const primeiraVez = precoDisponivel === null;

@@ -7,7 +7,7 @@ const AdmZip = require('adm-zip');
 const { chromium } = require(process.env.PLAYWRIGHT_CORE || 'C:/Users/harre/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright-core');
 
 const AQUI = __dirname, RAIZ = path.resolve(AQUI, '..');
-const SITE = 'http://127.0.0.1:8788';
+const SITE = process.env.SITE_TESTE || 'http://127.0.0.1:8788'; // outra porta: PORTA_TESTE no servidor + SITE_TESTE aqui
 const PRINTS = process.env.PRINTS || 'C:/Users/harre/Desktop/LICITAPLENA/_historico/teste-ponta-a-ponta';
 const seed = JSON.parse(fs.readFileSync(path.join(AQUI, 'seed.local.json'), 'utf8'));
 const chaves = JSON.parse(fs.readFileSync(path.join(AQUI, 'chaves.local.json'), 'utf8'));
@@ -63,10 +63,29 @@ async function entrar(p, u) {
 
 module.exports = { banco, comoUsuario, robo, passo, exigir, novaPagina, entrar, seed, chaves, SITE, PRINTS, AdmZip, resultados };
 
+async function escolherEdital(editais) {
+  const pulados = [];
+  for (const e of editais.slice(1)) {
+    const [cnpj, , resto] = e.split('-'); const [seq, ano] = resto.split('/');
+    const base = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${Number(seq)}`;
+    try {
+      const itens = await fetch(base + '/itens?pagina=1&tamanhoPagina=50').then(r => r.json());
+      const arqs = await fetch(base + '/arquivos').then(r => r.json());
+      if (!Array.isArray(itens) || !itens.length || itens.some(i => !(i.numeroItem >= 1 && i.numeroItem <= 1000000))) { pulados.push(`${e}: numeroItem fora de 1..1000000`); continue; }
+      if (!arqs.some(a => /\.pdf$/i.test(a.titulo || ''))) { pulados.push(`${e}: sem PDF no PNCP`); continue; }
+      return { edital: e, pulados };
+    } catch (err) { pulados.push(`${e}: ${err.message}`); }
+  }
+  throw new Error('nenhum edital utilizável: ' + pulados.join('; '));
+}
+
 async function main() {
   const navegador = await chromium.launch({ channel: process.env.NAVEGADOR === 'chrome' ? 'chrome' : 'msedge', headless: process.env.VER !== '1' });
   const { usuarios: U, editais, ids } = seed;
-  const edital = editais[1];
+  // Os 15 editais vêm do PNCP ao vivo e mudam a cada seed. Usa o primeiro (fora o [0], que o seed já pôs no Funil)
+  // com PDF no PNCP (o dossiê simulado lê o texto) e numeroItem que o gravar_importacao_pncp aceita (1..1000000).
+  const { edital, pulados } = await escolherEdital(editais);
+  if (pulados.length) console.log('editais pulados: ' + pulados.join('; '));
   const p = await novaPagina(navegador);
   const contexto = {};
 
@@ -82,7 +101,9 @@ async function main() {
     await p.fill('#bol-palavras', contexto.palavra);
     await p.click('#bol-salvar');
     await p.waitForSelector(`#bol-resultado [data-id="${edital}"]`, { timeout: 30000 });
-    return `palavra-chave "${contexto.palavra}", ${await p.locator('#bol-resultado [data-id]').count()} edital(is) na lista`;
+    const faltando = p.erros.filter(e => /dashboard_|dados_robo|lembretes/.test(e));
+    exigir(!faltando.length, 'objetos do painel faltando (B8): ' + faltando.join(' | '));
+    return `palavra-chave "${contexto.palavra}", ${await p.locator('#bol-resultado [data-id]').count()} edital(is) na lista; RPCs do dashboard sem 404`;
   });
 
   await passo('marcar "Tenho interesse" no edital', p, async () => {
@@ -161,7 +182,10 @@ async function main() {
     fs.writeFileSync(path.join(PRINTS, 'dom-processo.txt'), await p.innerText('main'));
     const ck = await p.innerText('#checklist-esteira');
     exigir(/Pronto: \d+ itens/.test(ck), 'checklist sem "Pronto: N itens": ' + ck.slice(0, 300));
-    return ck.replace(/\s+/g, ' ').slice(0, 250);
+    const ordem = await p.locator('#itens-processo [data-item-lista] li .itens-cabeca strong').allInnerTexts();
+    const ordenada = [...ordem].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+    exigir(ordem.join('|') === ordenada.join('|'), 'itens fora de ordem (B4): ' + ordem.join(', '));
+    return `itens na ordem ${ordem.join(', ')}; ` + ck.replace(/\s+/g, ' ').slice(0, 200);
   });
 
   await passo('identificação da empresa (endereço, representante, cargo)', p, async () => {
@@ -258,9 +282,8 @@ async function main() {
     const d = await baixarDocx('declaracao');
     for (const t of ['Materiais Horizonte Teste LTDA', 'Rua Fictícia de Teste', 'Pessoa Representante Fictícia', '529.982.247-25'])
       exigir(d.xml.includes(t), `DOCX sem "${t}": ${d.xml.slice(0, 400)}`);
-    exigir(/12\.?345\.?678\/?0001-?95/.test(d.xml), 'DOCX sem CNPJ');
-    const obs = d.xml.includes('12.345.678/0001-95') ? '' : ' | OBS: CNPJ sai sem máscara (12345678000195) na declaração de texto informado';
-    return `${path.basename(d.destino)}: ${d.entradas.length} partes; contém razão social, CNPJ, endereço, representante e CPF${obs}`;
+    exigir(d.xml.includes('12.345.678/0001-95') && !d.xml.includes('12345678000195'), 'DOCX com CNPJ sem máscara (B1): ' + d.xml.slice(0, 400));
+    return `${path.basename(d.destino)}: ${d.entradas.length} partes; contém razão social, CNPJ 12.345.678/0001-95 (com máscara), endereço, representante e CPF`;
   });
 
   await passo('proposta: exportar DOCX com itens e valores', p, async () => {
@@ -270,15 +293,20 @@ async function main() {
     const caixa = kit.locator('[data-item]:not(:disabled)').first();
     await caixa.check();
     const form = kit.locator('form').first();
-    // Unidade, validade, prazo e pagamento não vêm preenchidos (nem do PNCP nem do perfil): o usuário digita.
-    const vazios = [];
-    for (const n of ['validade', 'prazoEntrega', 'pagamento']) if (!(await form.locator(`[name=${n}]`).inputValue())) vazios.push(n);
-    await form.locator(`[name="unidade-${await caixa.getAttribute('value')}"]`).fill('UNIDADE');
-    await form.locator('[name=validade]').fill('60 dias'); await form.locator('[name=prazoEntrega]').fill('10 dias'); await form.locator('[name=pagamento]').fill('30 dias');
-    contexto.vaziosProposta = vazios;
+    // B2: validade, prazo e pagamento vêm da "Proposta padrão" do perfil; a unidade vem do PNCP. Nada é digitado aqui.
+    const padrao = { validade: '60 dias', prazoEntrega: '10 dias', pagamento: '30 dias após o aceite' };
+    for (const [n, v] of Object.entries(padrao)) { const atual = await form.locator(`[name=${n}]`).inputValue(); exigir(atual === v, `${n} não veio do perfil (B2): "${atual}"`); }
+    const itemProposta = await caixa.getAttribute('value');
+    const [{ unidade: unidadePncp }] = await banco(`operacao_itens_resultado?id=eq.${itemProposta}&select=unidade`);
+    const unidade = await form.locator(`[name="unidade-${itemProposta}"]`).inputValue();
+    exigir(unidadePncp && unidade === unidadePncp, `unidade não veio do PNCP (B2): tela "${unidade}", banco "${unidadePncp}"`);
+    const textoKit = await kit.innerText();
+    exigir(!/\d,000\b/.test(textoKit), 'quantidade com 3 casas no formulário (B5)');
+    exigir(!/Conferir itens observados|Nao autoriza|Conferir página com extensão/.test(textoKit), 'bloco técnico da extensão visível (B6)');
     const d = await baixarDocx('proposta');
     exigir(/35,90/.test(d.xml) && /Marca Fictícia/.test(d.xml), 'DOCX da proposta sem valor 35,90/marca: ' + d.xml.slice(0, 500));
-    return `${path.basename(d.destino)} com item, marca e R$ 35,90${contexto.vaziosProposta.length ? ` | OBS: vieram vazios apesar do perfil: ${contexto.vaziosProposta.join(', ')}` : ''}`;
+    exigir(d.xml.includes('Validade: 60 dias') && d.xml.includes('30 dias após o aceite') && d.xml.includes(unidadePncp), 'DOCX sem condições do perfil/unidade: ' + d.xml.slice(-500));
+    return `${path.basename(d.destino)} com item, marca, R$ 35,90, unidade "${unidadePncp}" do PNCP e validade/prazo/pagamento do perfil, sem digitar; sem bloco da extensão; quantidade sem ",000"`;
   });
 
   await passo('checklist: gerar declarações exigidas pelo edital', p, async () => {
@@ -290,7 +318,11 @@ async function main() {
     await botao.click(); await p.waitForTimeout(3000);
     const kits = await banco(`operacao_kit_documentos?processo_id=eq.${contexto.proc.id}&select=tipo,modelo_codigo`);
     exigir(kits.some(k => k.modelo_codigo), 'nenhuma declaração por modelo gravada: ' + (await ck.innerText()).slice(0, 300));
-    return `${kits.filter(k => k.modelo_codigo).length} declaração(ões) por modelo: ${kits.map(k => k.modelo_codigo).filter(Boolean).join(', ')}`;
+    const livres = await banco(`operacao_kit_documentos?processo_id=eq.${contexto.proc.id}&modelo_codigo=in.(livre,edital)&select=dados`);
+    const titulos = livres.map(k => k.dados.declaracao.titulo);
+    exigir(titulos.every(t => t.length <= 91 && /^Declaração/.test(t)), 'título cru de cláusula (B3): ' + titulos.join(' | '));
+    exigir(!titulos.some(t => /reconsidera|san[cç][aã]o/i.test(t)), 'cláusula de sanção virou declaração (B3)');
+    return `${kits.filter(k => k.modelo_codigo).length} declaração(ões) por modelo: ${kits.map(k => k.modelo_codigo).filter(Boolean).join(', ')}; títulos livres: ${titulos.join(' | ') || 'nenhum'}`;
   });
 
   await passo('portal do cliente: gerar link', p, async () => {
@@ -300,13 +332,13 @@ async function main() {
     await p.click('[data-portal-gerar]');
     await p.waitForSelector('[data-portal-novo]:not([hidden])', { timeout: 15000 });
     contexto.link = await p.inputValue('#portal-link');
-    exigir(/\/cliente#t=/.test(contexto.link), 'link inesperado: ' + contexto.link);
+    exigir(contexto.link.startsWith(SITE + '/cliente#t='), 'link não aponta para o site local (B9): ' + contexto.link.replace(/#t=.*/, ''));
     return contexto.link.replace(/#t=.*/, '#t=…');
   });
 
   const cli = await novaPagina(navegador);
   await passo('cliente abre o link (sem login) e aprova um item', cli, async () => {
-    await cli.goto(contexto.link.replace(/^https?:\/\/[^/]+/, SITE));
+    await cli.goto(contexto.link); // B9: o link já sai com a origem local (PORTAL_ORIGEM_LINK)
     // Só o primeiro item (rádio "Aprovar"); o botão "Aprovar todos os pendentes" fica de fora.
     await cli.locator('label.cl-seg-aprovado').first().click({ timeout: 20000 });
     await cli.click('#enviar');

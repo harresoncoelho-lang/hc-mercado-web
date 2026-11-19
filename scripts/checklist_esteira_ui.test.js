@@ -126,3 +126,18 @@ test('lote de declarações: modelo do edital > biblioteca > livre; o mesmo mode
   assert.deepEqual(lote.map((p) => p.modeloCodigo), ['edital', 'TRAB_MENOR', 'livre'], 'modelo vazio cai na biblioteca; sem nada, livre');
   assert.equal(C.loteDeclaracoes([{ categoria: 'declaracao', texto: 'x', modelo_texto: 'Modelo' }])[0].fonte, 'Modelo do próprio edital (texto literal). Confira com o original.');
 });
+test('B3: título curto da declaração e cláusula de sanção fora do lote', () => {
+  const t = C.tituloDeclaracao;
+  assert.equal(t('No cadastramento da proposta inicial, o licitante declarará, em campo próprio do sistema, que:', 12), 'Declaração exigida pelo edital (pág. 12)');
+  assert.equal(t('O licitante organizado em cooperativa deverá declarar, ainda, em campo próprio do sistema eletrônico, que cumpre os requisitos estabelecidos no artigo 16 da Lei nº 14.133, de 2021'),
+    'Declaração de que cumpre os requisitos estabelecidos no artigo 16 da Lei nº 14.133, de…');
+  assert.equal(t('O licitante deverá apresentar, sob pena de desclassificação, declaração de que suas propostas econômicas compreendem a integralidade dos custos para atendimento dos direitos trabalhistas'),
+    'Declaração de que suas propostas econômicas compreendem a integralidade dos custos para…');
+  assert.equal(t('Declaração de visita ao almoxarifado municipal'), 'Declaração de visita ao almoxarifado municipal');
+  assert.ok(t('x'.repeat(500)).length <= 90);
+  const lote = C.loteDeclaracoes([
+    { codigo: 'S1', categoria: 'declaracao', texto: 'Caberá a apresentação de pedido de reconsideração da aplicação da sanção de declaração de inidoneidade para licitar' },
+    { codigo: 'S2', categoria: 'declaracao', texto: 'No cadastramento da proposta inicial, o licitante declarará, em campo próprio do sistema, que:', pagina: 12 },
+  ]);
+  assert.deepEqual(lote.map((p) => p.titulo), ['Declaração exigida pelo edital (pág. 12)']);
+});

@@ -100,6 +100,12 @@ async function gerarLote({c,empresa,processo,perfil,store,body}){
 
 // CPF lido só na exportação, com o token de quem exporta (RLS do perfil: só gestor/operador).
 async function lerCpf(c,empresa){return cpf((await opcional(c.rest(`operacao_perfil_empresa?empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=cpf_representante`)))?.cpf_representante);}
+// "Proposta padrão" do perfil (validade, prazo, pagamento) só sugere o preenchimento da proposta nova; o usuário edita antes de salvar.
+async function lerPropostaPadrao(c,empresa){
+ const p=(await opcional(c.rest(`operacao_perfil_empresa?empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=proposta_padrao`)))?.proposta_padrao;
+ const v=k=>typeof p?.[k]==='string'?p[k].slice(0,500):'';
+ return {validade:v('validade'),prazoEntrega:v('prazo_entrega'),pagamento:v('pagamento')};
+}
 // Logo do perfil para o cabeçalho, lida com o token do usuário (RLS + policy atual do bucket).
 // Qualquer falha devolve null e o documento sai sem logo, como antes; quem exporta informa logoAplicada.
 async function lerLogo(c,empresa){
@@ -111,4 +117,4 @@ async function lerLogo(c,empresa){
   return {bytes,...validarLogo(bytes,tipo)};
  }catch{return null;}
 }
-module.exports={LOTE_MAX,MARCADOR,ROTULOS,variaveis,preencherVariaveis,preencherLacunas,idDeterministico,validarLote,gerarLote,lerLogo,lerCpf,escaparChaves};
+module.exports={LOTE_MAX,MARCADOR,ROTULOS,variaveis,preencherVariaveis,preencherLacunas,idDeterministico,validarLote,gerarLote,lerLogo,lerCpf,lerPropostaPadrao,escaparChaves};

@@ -25,6 +25,8 @@ test('mensagem do WhatsApp e mailto: texto pronto, codificado, sem enviar nada',
 test('link do servidor só entra na tela se for https', () => {
   assert.equal(ui.linkSeguro(LINK), LINK);
   for (const v of ['http://x.dev/cliente#t=a', 'javascript:alert(1)', '', null, 'cliente#t=a']) assert.equal(ui.linkSeguro(v), null, String(v));
+  assert.equal(ui.linkSeguro('http://127.0.0.1:8788/cliente#t=a'), 'http://127.0.0.1:8788/cliente#t=a'); // B9: ambiente de teste local
+  assert.equal(ui.linkSeguro('http://127.0.0.1.x.dev/cliente#t=a'), null);
 });
 
 test('situação do link: revogado vence; expirado no instante exato', () => {

@@ -12,7 +12,7 @@ const {falhar,validarConfirmacao}=require('./_empresa_identificacao');
 const {carregarContextoIdentificacao}=require('./_empresa_identificacao_contexto');
 const {uuid,preparar,docx,pendente,textoFinal}=require('./_kit_documentos');
 const {validarRascunho,documentoPublico,persistencia}=require('./_kit_documentos_persistencia');
-const {LOTE_MAX,MARCADOR,gerarLote,lerLogo,lerCpf}=require('./_kit_declaracoes');
+const {LOTE_MAX,MARCADOR,gerarLote,lerLogo,lerCpf,lerPropostaPadrao}=require('./_kit_declaracoes');
 const SEM_CPF='Preencha o CPF do representante no Perfil da empresa antes de exportar.';
 async function carregarEscopo(event,userId,body){
  const c=await carregarContextoIdentificacao(event,userId,body.empresaId);const {empresa,rest}=c;
@@ -119,7 +119,7 @@ function criarHandler({carregarEvidenciaPortal=async()=>null,ponteLeitura=null}=
  if(['consultar','listarItens'].includes(body.acao)){
  const pagina=await listarPaginaItens({request:requestBruto(event),organizacaoId:empresa.organizacao_id,processoId:processo.id,afterId:body.afterId,limit:body.itensPaginados===true||body.acao==='listarItens'?100:50});
  if(body.acao==='consultar'&&body.itensPaginados!==true&&pagina.hasMore)falhar('Atualize a interface para selecionar todos os itens por página.',409);
- return responder(200,{...consulta(empresa,processo,perfil,pagina.itens,pendencias),paginacaoItens:{hasMore:pagina.hasMore,nextCursor:pagina.nextCursor},precoDisponivel:pagina.precoDisponivel,limitesProposta:LIMITES});
+ return responder(200,{...consulta(empresa,processo,perfil,pagina.itens,pendencias),...(body.acao==='consultar'?{propostaPadrao:await lerPropostaPadrao(c,empresa)}:{}),paginacaoItens:{hasMore:pagina.hasMore,nextCursor:pagina.nextCursor},precoDisponivel:pagina.precoDisponivel,limitesProposta:LIMITES});
  }
  const payload=documento?{tipo:documento.tipo,...documento.dados}:body;
  let itens=[],itensNaoVerificados=false;

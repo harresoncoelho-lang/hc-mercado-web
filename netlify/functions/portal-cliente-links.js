@@ -2,7 +2,7 @@
 // - criar: o token (256 bits, base64url) nasce aqui e só o sha256 vai para criar_link_cliente. O link
 //   volta uma única vez nesta resposta; não há como recuperá-lo depois (o banco não tem o token).
 //   Nunca registrar o token em log.
-// - O link usa sempre a origem canônica fixa (ORIGEM_LINK), nunca o Origin da requisição: um domínio antigo
+// - O link usa sempre a origem canônica fixa (ORIGEM_LINK, ou PORTAL_ORIGEM_LINK validada no teste), nunca o Origin da requisição: um domínio antigo
 //   da allowlist que mude de dono não recebe tokens.
 // - listar: lê com o token do PRÓPRIO usuário (RLS pode_acessar_processo_operacao + grant por coluna),
 //   sem chave de serviço. Nunca pede token_hash nem ip_hash (o grant de coluna recusaria de qualquer jeito).
@@ -16,6 +16,17 @@ const { cabecalhosPadrao, exigirUsuarioLogado } = require("./_auth");
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const ANON = "sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb";
 const ORIGEM_LINK = "https://licitaplena.com.br";
+// PORTAL_ORIGEM_LINK (só ambiente de teste) troca a origem do link quando é exatamente uma origem https, ou http em
+// 127.0.0.1/localhost; qualquer outro valor (caminho, usuário, http externo) é ignorado e vale a canônica.
+function origemLink() {
+  const v = process.env.PORTAL_ORIGEM_LINK;
+  if (!v) return ORIGEM_LINK;
+  try {
+    const u = new URL(v);
+    if (u.origin === v.replace(/\/$/, "") && (u.protocol === "https:" || (u.protocol === "http:" && ["127.0.0.1", "localhost"].includes(u.hostname)))) return u.origin;
+  } catch { /* valor inválido: origem canônica */ }
+  return ORIGEM_LINK;
+}
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const MAX_CORPO = 4096;
 const TIMEOUT_MS = 8000;
@@ -92,7 +103,7 @@ exports.handler = async (event) => {
         p_token_hash: createHash("sha256").update(token).digest("hex"),
         p_rotulo: b.rotulo.trim(), p_dias: b.dias, p_mostrar_minimo: b.mostrarMinimo,
       });
-      return resposta(200, { id: r?.id, link: `${ORIGEM_LINK}/cliente#t=${token}`, expiraEm: r?.expira_em });
+      return resposta(200, { id: r?.id, link: `${origemLink()}/cliente#t=${token}`, expiraEm: r?.expira_em });
     }
     if (b.acao === "revogar") {
       const r = await rpc("revogar_link_cliente", { p_usuario: auth.userId, p_link: b.linkId });

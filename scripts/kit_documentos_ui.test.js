@@ -99,3 +99,19 @@ test('rascunho: marcador do CPF aparece como [CPF do representante] e volta ao m
   // Peça legada com o CPF formatado no texto: a tela não mostra o número e salvar grava o marcador.
   assert.equal(textoParaSalvar(textoParaTela('CPF 529.982.247-25, inscrito.')), 'CPF {{cpf_representante}}, inscrito.');
 });
+test('B5: quantidade do banco com 3 casas aparece sem zeros à direita, vírgula decimal', () => {
+  const { quantidadeTexto } = carregar();
+  assert.equal(quantidadeTexto('400.000'), '400');
+  assert.equal(quantidadeTexto('2.500'), '2,5');
+  assert.equal(quantidadeTexto('0.125'), '0,125');
+  assert.equal(quantidadeTexto('1000'), '1000');
+  assert.equal(quantidadeTexto(null), 'não informado');
+});
+test('B2: proposta nova usa a "Proposta padrão" do perfil sem sobrescrever o que o usuário digitou', () => {
+  const { aplicarPadraoProposta } = carregar();
+  const padrao = { validade: '60 dias', prazoEntrega: '15 dias', pagamento: '30 dias' };
+  assert.deepEqual({ ...aplicarPadraoProposta({}, padrao) }, padrao);
+  assert.deepEqual({ ...aplicarPadraoProposta({ validade: '90 dias' }, padrao) }, { ...padrao, validade: '90 dias' });
+  assert.deepEqual({ ...aplicarPadraoProposta({}, null) }, {});
+  assert.deepEqual({ ...aplicarPadraoProposta({}, { validade: 5 }) }, {});
+});

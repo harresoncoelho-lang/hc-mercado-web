@@ -20,6 +20,10 @@ async function paginaComFallback(pagina){
  if(!r.ok)falhar('Serviço de documentos indisponível.',r.status===403?403:503);
  return {r,precoDisponivel};
 }
+// Ordem de exibição: número do item em ordem natural ("2" antes de "10"), depois id. A paginação continua por id
+// (cursor = maior id da página); só o conteúdo de cada página é reordenado.
+const COLLATOR=new Intl.Collator('pt-BR',{numeric:true,sensitivity:'base'});
+const ordemItem=(a,b)=>COLLATOR.compare(String(a.identificador??''),String(b.identificador??''))||(a.id<b.id?-1:a.id>b.id?1:0);
 async function listarPaginaItens({request,organizacaoId,processoId,afterId,limit=100}){
  if(!Number.isInteger(limit)||limit<1||limit>100||(afterId!==undefined&&!uuid(afterId)))falhar('Página inválida.',400);
  const {r,precoDisponivel}=await paginaComFallback(campos=>request('/rest/v1/'+base(organizacaoId,processoId,campos)+`&order=id.asc&limit=${limit+1}`+(afterId?`&id=gt.${afterId}`:''),{headers:{Prefer:'count=exact'}}));
@@ -27,7 +31,7 @@ async function listarPaginaItens({request,organizacaoId,processoId,afterId,limit
  const range=r.headers.get('content-range')||'',m=/^0-(\d+)\/(\d+)$/.exec(range);
  if(!/(?:^|,\s*)count=exact(?:,|$)/.test(r.headers.get('preference-applied')||'')||(!rows.length?range!=='*/0':!m||!Number.isSafeInteger(Number(m[2]))||Number(m[1])!==rows.length-1||rows.length!==Math.min(Number(m[2]),limit+1)))falhar('Não foi possível comprovar a página completa.',503);
  if(rows.some((i,n)=>(afterId&&i.id<=afterId)||(n&&i.id<=rows[n-1].id)))falhar('Ordem de itens inválida.',503);
- const hasMore=rows.length>limit,itens=rows.slice(0,limit);return {itens,hasMore,nextCursor:hasMore?itens.at(-1).id:null,precoDisponivel};
+ const hasMore=rows.length>limit,itens=rows.slice(0,limit);return {itens:[...itens].sort(ordemItem),hasMore,nextCursor:hasMore?itens.at(-1).id:null,precoDisponivel};
 }
 async function carregarItensSelecionados({rest,organizacaoId,processoId,itemIds=[]}){
  const path=base(organizacaoId,processoId);
@@ -46,4 +50,4 @@ async function verificarOrigemSelecionada({request,organizacaoId,processoId,item
  if(rows.some(r=>r.estado==='fonte_alterada'))falhar('Fonte PNCP alterada. Confira a divergência antes de preparar ou exportar.',422);
  }
 }
-module.exports={selectLista,origemPncp,colunaInexistente,listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada};
+module.exports={ordemItem,selectLista,origemPncp,colunaInexistente,listarPaginaItens,carregarItensSelecionados,verificarOrigemSelecionada};

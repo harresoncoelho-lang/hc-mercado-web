@@ -10,7 +10,7 @@
 // Editar um item muda o conteúdo da prévia: o hash de revisão do kit deixa de conferir (contrato já existente).
 const {falhar}=require('./_empresa_identificacao');
 const {uuid,decimal,totalItem}=require('./_kit_documentos');
-const {selectLista,colunaInexistente,origemPncp}=require('./_kit_proposta_itens');
+const {selectLista,colunaInexistente,origemPncp,ordemItem}=require('./_kit_proposta_itens');
 const {randomUUID}=require('node:crypto');
 const planilha=require('../../planilha-itens.js');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
@@ -200,7 +200,7 @@ async function lerItensAtuais(token,organizacaoId,processoId){
  const total=/\/(\d+)$/.exec(r.headers.get('content-range')||'');
  if(!Array.isArray(rows)||!total||Number(total[1])!==rows.length)falhar('Não foi possível conferir todos os itens do processo.',503);
  for(const l of rows)conferirLinha(l,organizacaoId,processoId);
- return rows;
+ return rows.sort(ordemItem);
 }
 function linhaGravacao(l,atual,organizacaoId,processoId,agora){
  const d=l.dados,id=atual?.id||randomUUID();

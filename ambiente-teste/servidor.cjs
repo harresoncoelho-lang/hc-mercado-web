@@ -19,6 +19,7 @@ for (const k of Object.keys(process.env)) if (/GROQ|TRANSPARENCIA|ZEPTOMAIL|GEMI
 Object.assign(process.env, {
   SUPABASE_SERVICE_ROLE_KEY: chaves.SERVICE_ROLE_KEY, IDENTIFICACAO_EMPRESA_LOCAL: '1', IMPORTACAO_PNCP_LOCAL: '1',
   PORTAL_CLIENTE_LIGADO: '1', PORTAL_IP_SALT: crypto.randomBytes(24).toString('hex'), URL: `http://127.0.0.1:${PORTA}`,
+  PORTAL_ORIGEM_LINK: `http://127.0.0.1:${PORTA}`, // link do portal aponta para este site local, não para produção
 });
 require('./redirecionar-fetch.cjs').instalar(chaves);
 

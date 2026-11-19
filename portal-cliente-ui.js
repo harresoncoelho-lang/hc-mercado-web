@@ -37,7 +37,8 @@
   }
 
   function linkSeguro(v) {
-    try { return typeof v === 'string' && new URL(v).protocol === 'https:' ? v : null; } catch { return null; }
+    // http só em 127.0.0.1/localhost: o ambiente de teste local (PORTAL_ORIGEM_LINK em portal-cliente-links.js).
+    try { const u = typeof v === 'string' ? new URL(v) : null; return u && (u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(u.hostname))) ? v : null; } catch { return null; }
   }
 
   function mensagemCliente({ contato, numero, link, expiraEm }) {

@@ -1,4 +1,5 @@
 const {LIMITES,validarBudget}=require('./_kit_proposta_limites');
+const {ordemItem}=require('./_kit_proposta_itens');
 const {createHash}=require('node:crypto');
 const {falhar}=require('./_empresa_identificacao');
 const {montarDocx}=require('./gerar-checklist');
@@ -81,6 +82,8 @@ function proposta(ctx,body,fontes){
  fontes.push('Descrição, quantidade e preço ofertado: itens persistidos do processo. Unidade e condições informadas pelo usuário.');
 
  // Extenso só no rodapé da tabela (formato 2); prévia e revisaoHash continuam sem ele.
+ // Tabela (fora do hash) pela ordem do número do item; a prévia mantém a ordem por id para não invalidar revisões.
+ tabela.sort((a,b)=>ordemItem({identificador:a[0],id:''},{identificador:b[0],id:''}));
  return {titulo,conteudo,campos,itens,tabela,rodape:rodape.replace('\n',` (${valorPorExtenso(total)})\n`)};
 }
 function preparar(ctx,body){
@@ -99,10 +102,18 @@ function preparar(ctx,body){
  if(body.tipo==='proposta'&&Buffer.byteLength(previa.texto,'utf8')>LIMITES.previaBytes)pendente('Prévia excede o tamanho suportado. Reduza a seleção sem perder o rascunho.');
  const revisaoHash=createHash('sha256').update(JSON.stringify(canonico({userId:ctx.userId,empresa,processo,perfil,itens,campos,tipo:body.tipo,previa}))).digest('hex');
  // tabela: o mesmo conteúdo da prévia (que entra no hash), só arrumado em linhas para a proposta formato 2; o total por extenso deriva do total já coberto pelo hash.
- return {previa,revisaoHash,titulo,...(comCpf?{textoComCpf:cpf=>`${titulo}\n\n${identidade}\n\n${comCpf(cpf)}`}:{}),...(tabela?{tabela:{antes:`${titulo}\n\n${identidade}`,linhas:tabela,depois:rodape}}:{})};
+ // CNPJ com máscara só no arquivo (como o extenso): prévia e revisaoHash seguem com o CNPJ cru, então peças já revisadas continuam válidas.
+ const mascararCnpj=mascaraCnpj(empresa.cnpj);
+ return {previa,revisaoHash,titulo,mascararCnpj,...(comCpf?{textoComCpf:cpf=>`${titulo}\n\n${identidade}\n\n${comCpf(cpf)}`}:{}),...(tabela?{tabela:{antes:mascararCnpj(`${titulo}\n\n${identidade}`),linhas:tabela,depois:rodape}}:{})};
+}
+// Troca o CNPJ cru da empresa (14 dígitos isolados) por 00.000.000/0000-00; CNPJ já formatado fica como está.
+function mascaraCnpj(cnpj){
+ const d=String(cnpj||'');if(!/^\d{14}$/.test(d))return t=>t;
+ const fmt=`${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`,re=new RegExp(`(?<!\\d)${d}(?!\\d)`,'g');
+ return t=>t.replace(re,fmt);
 }
 // Texto do DOCX: a prévia, ou o texto com o CPF lido na hora; null = a peça pede CPF e o perfil não tem.
-function textoFinal(resultado,cpf){if(!resultado.textoComCpf)return resultado.previa.texto;return cpf?resultado.textoComCpf(cpf):null;}
+function textoFinal(resultado,cpf){const m=resultado.mascararCnpj||(t=>t);if(!resultado.textoComCpf)return m(resultado.previa.texto);return cpf?m(resultado.textoComCpf(cpf)):null;}
 // Tabela só quando a peça persistida nasceu no formato 2; sem logo nem formato, o DOCX sai como antes.
 function docx(resultado,{formato=1,logo=null,paginas}={}){return montarDocx({}, {}, {texto:resultado.previa.texto,preservarLinhas:true},resultado.titulo,{logo,tabela:formato===2?resultado.tabela:null,paginas});}
 module.exports={valorPorExtenso,uuid,decimal,totalItem,preparar,docx,pendente,textoFinal,CPF_PREVIA};

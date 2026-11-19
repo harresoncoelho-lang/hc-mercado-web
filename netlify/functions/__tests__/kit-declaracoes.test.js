@@ -228,3 +228,10 @@ test('lote: modelo do edital ganha os dados da empresa nas lacunas; texto livre 
  assert.equal(livre.texto,'Razão Social: ______');
  assert.ok(!JSON.stringify(f.state.kit).includes('529.982.247-25'));
 });
+test('B2: lerPropostaPadrao traduz prazo_entrega e aguenta perfil ausente ou campo inválido',async()=>{
+ const {lerPropostaPadrao}=require('../_kit_declaracoes');
+ const empresa={id:'e',organizacao_id:'o'};
+ const com=await lerPropostaPadrao({rest:async url=>{assert.match(url,/select=proposta_padrao$/);return [{proposta_padrao:{validade:'60 dias',prazo_entrega:'10 dias',pagamento:7}}];}},empresa);
+ assert.deepEqual(com,{validade:'60 dias',prazoEntrega:'10 dias',pagamento:''});
+ assert.deepEqual(await lerPropostaPadrao({rest:async()=>{throw new Error('sem tabela');}},empresa),{validade:'',prazoEntrega:'',pagamento:''});
+});

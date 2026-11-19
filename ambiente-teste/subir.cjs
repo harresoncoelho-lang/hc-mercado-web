@@ -57,10 +57,8 @@ function baseProducao() {
   ...['operacao_licitacoes.sql', 'operacao_acompanhamento.sql', 'limite_cnpjs_operacao.sql', 'acesso_empresa_convites.sql',
     'operacao_checklist_edital.sql', 'operacao_kanban_sync.sql', 'operacao_itens_valores_unitarios.sql', 'operacao_itens_marca_modelo.sql', 'fila_dossies.sql'].map(ler),
   ...EXTRAS_PAINEL.map(ler),
-  // dados_robo existe em produção sem .sql no repositório (ver CLAUDE.md, "Data flow" tier 3): forma mínima.
-  `create table if not exists public.dados_robo(chave text primary key, dado jsonb, atualizado_em timestamptz default now());
-   alter table public.dados_robo enable row level security;
-   create policy dados_robo_leitura on public.dados_robo for select to authenticated using (true);`,
+  // dados_robo, lembretes e RPCs do dashboard: existem em produção; reconstruídos em painel_objetos_sem_sql.sql (B8).
+  ler('painel_objetos_sem_sql.sql'),
   FIXTURES_ENSAIO];
 }
 // Dados fictícios do ensaio (testar-dezembro.cjs): os testar_*.sql (ex.: testar_kit_modelos) contam com eles.
