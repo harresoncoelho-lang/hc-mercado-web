@@ -17,7 +17,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
 <script src="senha-captcha-ui.js"></script>
-<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   /* Design System "Direção A, azul original": cores, raios e tipografia vêm de ds-tokens.css. */
   * { box-sizing: border-box; }
@@ -59,8 +58,8 @@
   button.entrar { width: 100%; background: var(--action-strong); color: var(--action-on); }
   button.entrar:hover { background: var(--action-strong-hover); }
   button.entrar:disabled { background: var(--surface-sunken); color: var(--text-disabled); border-color: var(--border-default); cursor: not-allowed; }
-  .captcha-rotulo { font: var(--text-label); color: var(--text-secondary); margin: 0 0 8px; }
-  .h-captcha { margin-bottom: 16px; min-height: 78px; max-width: 100%; overflow-x: auto; }
+  .captcha-turnstile { max-width: 100%; }
+  .captcha-aviso { font: var(--text-label); color: var(--text-secondary); margin: 0 0 16px; }
   /* Aviso: cor + texto + sinal (estado nunca só por cor). */
   .aviso { margin-top: 16px; padding: 12px 16px; border-radius: var(--radius-card); border: 1px solid; display: none; gap: 8px; }
   .aviso::before { font-weight: 700; flex: none; }
@@ -102,9 +101,8 @@
         </button>
       </div>
 
-      <p class="captcha-rotulo">Verificação de segurança</p>
-      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E"></div>
-      <script>document.querySelector(".h-captcha").dataset.theme = document.documentElement.dataset.theme; SenhaCaptchaUi.aplicarChaveHCaptcha(document, location.hostname);</script>
+      <div class="captcha-turnstile"></div>
+      <p class="captcha-aviso" role="alert" hidden></p>
 
       <button type="submit" class="btn entrar" id="btn-entrar">Entrar</button>
     </form>
@@ -149,6 +147,7 @@
   const destino = destinoSeguro(parametros.get("voltar"));
 
   SenhaCaptchaUi.ligarOlhosDaSenha(document); // ícone de olho da senha
+  const captcha = SenhaCaptchaUi.montarTurnstile(document, window); // Turnstile; sem chave configurada fica desligado
 
   function mostrarAviso(texto, tipo) {
     const el = document.getElementById("aviso");
@@ -176,21 +175,19 @@
     const email = document.getElementById("email").value.trim();
     const senha = document.getElementById("senha").value;
 
-    // Token do hCaptcha, enviado se o widget estiver presente/resolvido — a exigência de
-    // captcha está temporariamente desativada no Supabase (Attack Protection), então não
-    // bloqueia mais o login localmente se vier vazio.
-    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
-
+    // Token do Turnstile (vazio se o captcha estiver desligado). Quem exige é o Supabase (Attack Protection);
+    // o token é de uso único, então o widget é resetado logo depois da tentativa.
+    const captchaToken = await captcha.obterToken();
     const { data, error } = await sb.auth.signInWithPassword({ email, password: senha, options: { captchaToken } });
+    captcha.resetar();
 
     if (error) {
       mostrarAviso(
-        error.message && error.message.toLowerCase().includes("captcha")
-          ? "Não foi possível confirmar que você não é um robô. Marca a caixinha do captcha e tenta de novo."
+        SenhaCaptchaUi.ehErroDeCaptcha(error)
+          ? SenhaCaptchaUi.MSG_CAPTCHA
           : "E-mail ou senha incorretos, ou sua conta ainda não foi aprovada.",
         "erro"
       );
-      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       btn.disabled = false;
       btn.textContent = "Entrar";
       return;
@@ -206,7 +203,6 @@
     if (!cliente || cliente.status !== "aprovado") {
       mostrarAviso("Seu cadastro ainda está em análise. Você recebe um aviso assim que for aprovado.", "erro");
       await sb.auth.signOut();
-      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       btn.disabled = false;
       btn.textContent = "Entrar";
       return;

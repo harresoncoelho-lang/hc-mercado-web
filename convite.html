@@ -7,7 +7,6 @@
   <link rel="icon" type="image/png" href="favicon.png?v=3">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
   <script src="senha-captcha-ui.js"></script>
-  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
   <link rel="stylesheet" href="senha-olho.css">
   <script src="supabase-config.js"></script>
   <style>
@@ -35,8 +34,8 @@
           <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
         </button></div>
     <div id="consentimento" class="consentimento" style="margin-top:15px;"><input id="aceite" type="checkbox" required><span>Li e aceito os <a href="termos-de-uso.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="politica-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span></div>
-    <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-top:18px;"></div>
-    <script>SenhaCaptchaUi.aplicarChaveHCaptcha(document, location.hostname);</script>
+    <div class="captcha-turnstile" style="margin-top:18px;"></div>
+    <p class="captcha-aviso" role="alert" hidden></p>
     <button id="enviar" type="submit">Criar conta e ativar acesso</button>
   </form>
   <p><a href="login.html">Voltar ao login</a></p>
@@ -44,6 +43,7 @@
 <script>
 (() => {
   SenhaCaptchaUi.ligarOlhosDaSenha(document);
+  const captcha = SenhaCaptchaUi.montarTurnstile(document, window); // Turnstile; sem chave configurada fica desligado
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const token = new URL(location.href).searchParams.get("token") || "";
   const $ = id => document.getElementById(id);
@@ -83,8 +83,7 @@
     const botao = $("enviar"); botao.disabled = true; aviso("Validando acesso...");
     const email = $("email").value.trim().toLowerCase();
     const password = $("senha").value;
-    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
-    if (typeof hcaptcha !== "undefined" && !captchaToken) { aviso("Conclua a verificação de segurança.", "erro"); botao.disabled = false; return; }
+    const captchaToken = await captcha.obterToken(); // vazio se desligado; quem exige é o Supabase
     try {
       const resposta = modo === "criar"
         ? await sb.auth.signUp({ email, password, options: { captchaToken, emailRedirectTo: location.href,
@@ -96,8 +95,8 @@
         return;
       }
       await aceitar();
-    } catch (erro) { aviso("Não foi possível ativar o acesso: " + erro.message, "erro"); }
-    finally { botao.disabled = false; if (typeof hcaptcha !== "undefined") hcaptcha.reset(); }
+    } catch (erro) { aviso(SenhaCaptchaUi.ehErroDeCaptcha(erro) ? SenhaCaptchaUi.MSG_CAPTCHA : "Não foi possível ativar o acesso: " + erro.message, "erro"); }
+    finally { botao.disabled = false; captcha.resetar(); }
   });
 })();
 </script>

@@ -11,7 +11,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
 <script src="senha-captcha-ui.js"></script>
-<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   :root {
     --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a;
@@ -200,8 +199,8 @@
           <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
         </button>
       </div>
-      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-bottom:16px;"></div>
-      <script>SenhaCaptchaUi.aplicarChaveHCaptcha(document, location.hostname);</script>
+      <div class="captcha-turnstile" style="margin-bottom:16px;"></div>
+      <p class="captcha-aviso" role="alert" hidden></p>
       <button type="submit">Entrar</button>
     </form>
     <div class="erro" id="erro-login-admin"></div>
@@ -342,6 +341,7 @@
   let todosClientes = [];
 
   SenhaCaptchaUi.ligarOlhosDaSenha(document);
+  const captcha = SenhaCaptchaUi.montarTurnstile(document, window); // Turnstile; sem chave configurada fica desligado
 
   function badgeStatus(status) {
     const nomes = { pendente: "Pendente", aprovado: "Aprovado", rejeitado: "Rejeitado" };
@@ -736,20 +736,18 @@
     const senha = document.getElementById("admin-senha").value;
     const erroEl = document.getElementById("erro-login-admin");
 
-    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
-
+    const captchaToken = await captcha.obterToken(); // vazio se desligado; quem exige é o Supabase
     const { error } = await sb.auth.signInWithPassword({ email, password: senha, options: { captchaToken } });
+    captcha.resetar(); // token de uso único
     if (error) {
-      erroEl.textContent = "E-mail ou senha incorretos.";
+      erroEl.textContent = SenhaCaptchaUi.ehErroDeCaptcha(error) ? SenhaCaptchaUi.MSG_CAPTCHA : "E-mail ou senha incorretos.";
       erroEl.style.display = "block";
-      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       return;
     }
     const ehAdmin = await verificarSessaoAdmin();
     if (!ehAdmin) {
       erroEl.textContent = "Essa conta não tem acesso ao painel administrativo.";
       erroEl.style.display = "block";
-      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       await sb.auth.signOut();
       return;
     }

@@ -17,7 +17,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
 <script src="senha-captcha-ui.js"></script>
-<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 <style>
   /* Design System "Direção A, azul original": cores, raios e tipografia vêm de ds-tokens.css. */
   * { box-sizing: border-box; }
@@ -118,8 +117,8 @@
     font: var(--text-body); color: var(--text-secondary);
   }
   .campo-termos input { margin-top: 3px; }
-  .captcha-rotulo { font: var(--text-label); color: var(--text-secondary); margin: 0 0 8px; }
-  .h-captcha { margin-bottom: 16px; min-height: 78px; max-width: 100%; overflow-x: auto; }
+  .captcha-turnstile { max-width: 100%; }
+  .captcha-aviso { font: var(--text-label); color: var(--text-secondary); margin: 0 0 16px; }
   button.criar {
     width: 100%; height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: var(--radius-control);
     background: var(--action-strong); color: var(--action-on); font-weight: 500; font-size: 14px; cursor: pointer;
@@ -312,9 +311,8 @@
         <span>Li e concordo com os <a href="termos-de-uso.html" target="_blank">Termos de uso</a> e a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> da LicitaPlena.</span>
       </label>
 
-      <p class="captcha-rotulo">Verificação de segurança</p>
-      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E"></div>
-      <script>document.querySelector(".h-captcha").dataset.theme = document.documentElement.dataset.theme; SenhaCaptchaUi.aplicarChaveHCaptcha(document, location.hostname);</script>
+      <div class="captcha-turnstile"></div>
+      <p class="captcha-aviso" role="alert" hidden></p>
 
       <button type="submit" class="criar" id="btn-criar">Criar cadastro</button>
     </form>
@@ -379,6 +377,7 @@
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   SenhaCaptchaUi.ligarOlhosDaSenha(document); // ícone de olho da senha
+  const captcha = SenhaCaptchaUi.montarTurnstile(document, window); // Turnstile; sem chave configurada fica desligado
 
   function mostrarAviso(texto, tipo) {
     const el = document.getElementById("aviso");
@@ -566,14 +565,8 @@
       return;
     }
 
-    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
-    if (typeof hcaptcha !== "undefined" && !captchaToken) {
-      mostrarAviso("Confirme que você não é um robô antes de continuar.", "erro");
-      btn.disabled = false;
-      btn.textContent = "Criar cadastro";
-      return;
-    }
-
+    // Token do Turnstile (vazio se desligado); quem exige é o Supabase. Uso único: reseta após a tentativa.
+    const captchaToken = await captcha.obterToken();
     const { error } = await sb.auth.signUp({
       email,
       password: senha,
@@ -586,15 +579,16 @@
         },
       },
     });
+    captcha.resetar();
 
     if (error) {
       mostrarAviso(
         error.message.includes("already registered") || error.message.includes("already been registered")
           ? "Esse e-mail já tem cadastro. Tente entrar na sua conta."
+          : SenhaCaptchaUi.ehErroDeCaptcha(error) ? SenhaCaptchaUi.MSG_CAPTCHA
           : "Não foi possível criar o cadastro: " + error.message,
         "erro"
       );
-      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       btn.disabled = false;
       btn.textContent = "Criar cadastro";
       return;
