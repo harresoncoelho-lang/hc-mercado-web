@@ -22,6 +22,16 @@
     <p id="gravarStatus" role="status" aria-live="polite">Nada gravado ainda.</p>
     <p>Grava só o que você abriu na página. Não clica, não navega, não envia propostas nem lances e não resolve captcha.</p>
   </section>
+  <section aria-labelledby="preencherTitulo">
+    <h2 id="preencherTitulo">Preencher proposta</h2>
+    <p>Na página "Cadastrar propostas" do Compras.gov (logado, termo e declarações aceitos por você), preenche quantidade, valor, marca e modelo dos itens da página com o lote do LicitaPlena ou uma planilha CSV.</p>
+    <button id="preencherBuscar" type="button">Buscar lote no LicitaPlena</button>
+    <label for="preencherCsv">ou planilha CSV (padrão do LicitaPlena)</label><input id="preencherCsv" type="file" accept=".csv,text/csv">
+    <button id="preencherAgora" type="button">Preencher esta página</button>
+    <p id="preencherStatus" role="status" aria-live="polite">Nada preenchido ainda.</p>
+    <p>Não clica Salvar, não aceita termo nem declarações, não resolve captcha e não troca de página. Você confere e salva cada item.</p>
+  </section>
   <script type="module" src="popup.mjs"></script>
   <script type="module" src="gravar.mjs"></script>
+  <script type="module" src="preencher.mjs"></script>
 </body></html>
