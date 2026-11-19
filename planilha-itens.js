@@ -158,7 +158,7 @@
     return `${i}.${f.padEnd(4, '0')}`;
   }
 
-  const api = { COLUNAS, MAX_LINHAS, MAX_BYTES, gerarCsv, lerCsv, validarLinhas, quatroCasas };
+  const api = { COLUNAS, MAX_LINHAS, MAX_BYTES, gerarCsv, lerCsv, validarLinhas, quatroCasas, registros, celula };
   global.LicitaPlanilhaItens = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

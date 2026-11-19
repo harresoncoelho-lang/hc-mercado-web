@@ -126,7 +126,7 @@ test("?aba= abre qualquer aba existente e ignora valor fora da lista", () => {
   const contexto = { URLSearchParams };
   vm.runInNewContext(`${linha}\nthis.abaDaUrl = abaDaUrl;`, contexto);
   const abas = [...html.matchAll(/class="aba[^"]*" data-aba="([a-z]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(abas, ["identificacao", "documentos", "agenda", "relatorio"]);
+  assert.deepEqual(abas, ["identificacao", "documentos", "catalogo", "agenda", "relatorio"]);
   for (const aba of abas) assert.equal(contexto.abaDaUrl(`?aba=${aba}`, abas), aba);
   for (const busca of ["", "?aba=", "?aba=inexistente", '?aba=agenda"]', "?aba=AGENDA", "?outra=agenda"]) assert.equal(contexto.abaDaUrl(busca, abas), null, busca);
 });

@@ -2,7 +2,8 @@
 //   node testar-dezembro.cjs
 // Mesma base de testar-aplicar.cjs (produção de 31/10), depois 01-aplicar.sql, depois
 // operacao_itens_proposta.sql + operacao_funil_etapas.sql + operacao_portal_cliente.sql + operacao_perfil_empresa.sql
-// + operacao_exigencias.sql + operacao_esteira.sql duas vezes, com os testes SQL e o 02 a cada rodada.
+// + operacao_exigencias.sql + operacao_esteira.sql + operacao_kit_modelos.sql + importacao_item_pncp_numero_int32.sql
+// + operacao_itens_numero_ordem.sql duas vezes, com os testes SQL e o 02 a cada rodada.
 // Auth/Storage do Supabase são stubs mínimos: não prova a API HTTP nem o dono de storage.objects.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const SUP = path.join(__dirname, '../../../supabase');
@@ -10,9 +11,10 @@ const ler = nome => fs.readFileSync(path.join(SUP, nome), 'utf8');
 const APLICAR = fs.readFileSync(path.join(__dirname, '01-aplicar.sql'), 'utf8');
 const VERIFICAR = fs.readFileSync(path.join(__dirname, '02-verificar.sql'), 'utf8');
 const NOVOS = ['operacao_itens_proposta.sql', 'operacao_funil_etapas.sql', 'operacao_portal_cliente.sql',
-  'operacao_perfil_empresa.sql', 'operacao_exigencias.sql', 'operacao_esteira.sql', 'operacao_kit_modelos.sql'];
+  'operacao_perfil_empresa.sql', 'operacao_exigencias.sql', 'operacao_esteira.sql', 'operacao_kit_modelos.sql',
+  'importacao_item_pncp_numero_int32.sql', 'operacao_itens_numero_ordem.sql', 'operacao_catalogo_produtos.sql'];
 const TESTES = ['testar_itens_proposta.sql', 'testar_funil_etapas.sql', 'testar_portal_cliente.sql',
-  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql', 'testar_kit_modelos.sql'];
+  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql', 'testar_kit_modelos.sql', 'testar_itens_numero_ordem.sql', 'testar_catalogo_produtos.sql'];
 
 function carregarPGlite() {
   const candidatos = [process.env.PGLITE_MODULE_PATH, '@electric-sql/pglite',
@@ -104,7 +106,9 @@ function carregarPGlite() {
       if (rodada === 1) {
         const r = (await db.query(`select unidade,codigo_catalogo,marca,valor_unitario_proposta::text v,atualizado_em=timestamptz '2020-01-01' intacto from operacao_itens_resultado where id=$1`, [id(42)])).rows[0];
         assert.deepEqual(r, { unidade: 'PCT', codigo_catalogo: '222', marca: 'Marca antiga', v: '9.99', intacto: true }, 'preenchimento inicial');
-        log.push('preenchimento de itens existentes: observação mais recente (PCT/222); marca, oferta e atualizado_em intactos');
+        const o = (await db.query(`select numero_ordem::text n from operacao_itens_resultado where id=$1`, [id(42)])).rows[0];
+        assert.deepEqual(o, { n: '5' }, 'numero_ordem do item existente');
+        log.push('preenchimento de itens existentes: observação mais recente (PCT/222); marca, oferta e atualizado_em intactos; numero_ordem=5');
         const k = (await db.query(`select formato,modelo_codigo,atualizado_em=timestamptz '2020-01-01' intacto from operacao_kit_documentos where id=$1`, [id(901)])).rows[0];
         assert.deepEqual(k, { formato: 1, modelo_codigo: null, intacto: true }, 'peça antiga do kit');
         log.push('peça do kit anterior: formato 1, sem modelo, atualizado_em intacto');
