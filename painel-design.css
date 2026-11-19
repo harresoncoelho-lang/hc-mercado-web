@@ -554,6 +554,62 @@
   .pp-mediana-valor { font: 600 32px/40px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-primary); }
   .pp-mediana-ajuda { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
   #status-cartoes .cartao .valor { white-space: normal; overflow: visible; text-overflow: clip; }
+
+  /* ---- 16. Acabamento de Status, Funil, calendário e Minha conta (E6, aguarda aprovação) ---- */
+  /* Status: grade de cartões do mesmo tamanho (antes o último esticava na linha toda) e a cor da
+     situação numa faixa fina no topo, igual às colunas do Funil. */
+  #status-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-16); margin-bottom: 0; }
+  #status-cartoes .cartao { border-top-width: 4px; min-width: 0; }
+  #status-cartoes .cartao h3 { display: flex; align-items: center; gap: var(--space-8); margin-bottom: var(--space-8); color: var(--text-primary); font-weight: 600; }
+  #status-cartoes .cartao h3 .icone-ph { flex-shrink: 0; width: 16px; height: 16px; color: var(--text-secondary); }
+  #status-cartoes .cartao .valor { font: 600 14px/20px var(--font-sans); }
+
+  /* Funil: ações do cartão com ícone e texto na mesma linha; o sino (só ícone) fica estreito. */
+  .kanban-card-acoes { flex-wrap: wrap; gap: var(--space-4); }
+  .kanban-card-acoes button {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-4);
+    min-height: 32px; padding: 4px 8px; white-space: nowrap; border-radius: var(--radius-control);
+    border-color: var(--border-default); background: var(--surface-default); color: var(--text-primary); font: 600 12px/16px var(--font-sans);
+  }
+  .kanban-card-acoes button:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--surface-sunken); }
+  .kanban-card-acoes .btn-criar-lembrete { flex: 0 0 32px; padding: 4px; }
+  .kanban-card-acoes .icone-ph { width: 14px; height: 14px; flex-shrink: 0; }
+  .kanban-btn-sistema, .kanban-btn-sistema:hover {
+    border-radius: var(--radius-control); background: var(--action-tint); border-color: var(--info-border); color: var(--action-text);
+  }
+  .kanban-card-mover, .kanban-card-anotacao { border-radius: var(--radius-control); background: var(--surface-default); border-color: var(--border-strong); }
+  .kanban-card-remover { min-width: 24px; min-height: 24px; border-radius: var(--radius-control); }
+  .kanban-card-remover:hover { background: var(--error-bg); color: var(--error-text); }
+  .kanban-vazio { border-color: var(--border-strong); border-radius: var(--radius-control); background: var(--surface-sunken); color: var(--text-secondary); }
+  .kanban-quadro { scroll-snap-type: x proximity; }
+  .kanban-coluna { scroll-snap-align: start; }
+  @media (max-width: 600px) { .kanban-coluna { flex: 0 0 calc(100% - 40px); } }
+
+  /* Calendário do Boletim: células baixas (antes eram quadradas e o mês ocupava ~700px na tela
+     larga); o número de oportunidades fica dentro da célula, sem vazar a borda. */
+  .bol-cal-grade { gap: var(--space-4); }
+  .bol-cal-dia { aspect-ratio: auto; height: 48px; font: 400 13px/20px var(--font-sans); }
+  .bol-cal-dia.tem-dados { font-weight: 600; }
+  .bol-cal-dia-badge { top: 3px; right: 3px; min-width: 16px; height: 16px; font: 600 10px/16px var(--font-sans); }
+  .bol-cal-nav { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--surface-default); border-color: var(--border-strong); border-radius: var(--radius-control); color: var(--text-primary); }
+  .bol-cal-nav:hover { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--text-primary); }
+  .bol-cal-dia:focus-visible, .bol-cal-nav:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .bol-cal-legenda { font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+  .bol-cal-filtro-ativo button { border-color: var(--border-strong); border-radius: var(--radius-control); color: var(--text-primary); }
+  @media (max-width: 560px) {
+    .bol-cal-dia { height: 40px; font-size: 12px; }
+    .bol-cal-dia-badge { top: 1px; right: 1px; min-width: 14px; height: 14px; font-size: 9px; line-height: 14px; }
+  }
+
+  /* Minha conta: título e botão de fechar no padrão dos outros modais. */
+  #modal-conta-fundo .modal-ia { width: calc(100% - 32px); box-sizing: border-box; overflow-y: auto; }
+  #modal-conta-titulo { display: flex; align-items: center; gap: var(--space-8); font: 600 18px/26px var(--font-sans) !important; color: var(--text-primary); }
+  #modal-conta-fechar {
+    display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;
+    border-radius: var(--radius-control) !important; color: var(--text-secondary) !important; font-size: 18px !important;
+  }
+  #modal-conta-fechar:hover { background: var(--surface-sunken) !important; color: var(--text-primary) !important; }
+  #modal-conta-fechar:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 }
 
 .contatos-resumo { border: 1px solid var(--borda); border-radius: var(--radius-card, 8px); padding: 12px; }

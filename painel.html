@@ -1450,7 +1450,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="painel-design.css?v=5">
+<link rel="stylesheet" href="painel-design.css?v=6">
 <script src="contatos-resumo.js?v=1" defer></script>
 <script src="decisoes-resumo.js?v=1" defer></script>
 </head>
@@ -1575,7 +1575,7 @@
   <div class="modal-ia" style="max-width:420px;height:auto;max-height:80vh;padding:22px;">
     <div class="modal-ia-topo">
       <h3 id="modal-conta-titulo" style="margin:0;font-size:16px;">Minha conta</h3>
-      <button type="button" id="modal-conta-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;"><svg class='icone-ph'><use href='#ph-x'></use></svg></button>
+      <button type="button" id="modal-conta-fechar" title="Fechar" aria-label="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
     </div>
     <div id="modal-conta-corpo" style="margin-top:10px;"></div>
   </div>
@@ -1604,7 +1604,7 @@
   <button data-alvo="kanban" title="Funil"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-folders'></use></svg></span><span class="nav-label">Funil</span></button>
   <a href="operacao.html" class="nav-externo" title="Minhas empresas e documentos (abre outra página)"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-files'></use></svg></span><span class="nav-label">Minhas empresas e documentos</span><svg class='icone-ph nav-externo-ico' aria-hidden="true"><use href='#ph-arrow-square-out'></use></svg></a>
   <button data-alvo="juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-scales'></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></button>
-  <button data-alvo="status" title="Status das Ferramentas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-circle'></use></svg></span><span class="nav-label">Status das Ferramentas</span></button>
+  <button data-alvo="status" title="Status das Ferramentas"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-info'></use></svg></span><span class="nav-label">Status das Ferramentas</span></button>
 </nav>
 
 <script>
@@ -5369,10 +5369,10 @@
         <textarea class="kanban-card-anotacao" data-id="${escapeHtml(id)}" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual || "")}</textarea>
         ${linkSistema ? `<a class="kanban-btn-sistema" href="${escapeHtml(linkSistema)}">Abrir no sistema</a>` : ""}
         <div class="kanban-card-acoes">
-          <button type="button" class="kanban-btn-dossie" data-id="${escapeHtml(id)}">Dossiê</button>
+          <button type="button" class="kanban-btn-dossie" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-folder-open'></use></svg> Dossiê</button>
           <button type="button" class="kanban-btn-resumir" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumo</button>
           <button type="button" class="kanban-btn-abrir" data-id="${escapeHtml(id)}"><svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg> PNCP</button>
-          ${(edital.numeroControlePNCP && edital.encerramento) ? `<button type="button" class="btn-criar-lembrete" title="Ser avisado por e-mail antes do prazo final de propostas" data-numero-controle="${escapeHtml(edital.numeroControlePNCP)}" data-encerramento="${escapeHtml(edital.encerramento)}" data-objeto="${escapeHtml((edital.objeto || "").slice(0, 200))}"><svg class='icone-ph'><use href='#ph-bell'></use></svg></button>` : ""}
+          ${(edital.numeroControlePNCP && edital.encerramento) ? `<button type="button" class="btn-criar-lembrete" title="Ser avisado por e-mail antes do prazo final de propostas" aria-label="Criar lembrete do prazo" data-numero-controle="${escapeHtml(edital.numeroControlePNCP)}" data-encerramento="${escapeHtml(edital.encerramento)}" data-objeto="${escapeHtml((edital.objeto || "").slice(0, 200))}"><svg class='icone-ph'><use href='#ph-bell'></use></svg></button>` : ""}
         </div>
       </div>`;
   }
@@ -10867,11 +10867,11 @@ window.__preencherIdentidadeUsuario();
         const linhasHtml = linhas
           .map(
             ([label, valor]) =>
-              `<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #eef1f6;font-size:13.5px;"><span style="color:#64748b;">${label}</span><span style="font-weight:600;text-align:right;">${valor ? escapeHtml(String(valor)) : "&mdash;"}</span></div>`
+              `<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--border-default);font-size:13.5px;"><span style="color:var(--text-secondary);flex-shrink:0;max-width:55%;">${label}</span><span style="font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere;">${valor ? escapeHtml(String(valor)) : "&mdash;"}</span></div>`
           )
           .join("");
         const atividadesHtml = c.atividades
-          ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid #eef1f6;"><div style="font-size:12px;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Atividades detalhadas</div><div style="font-size:13.5px;line-height:1.5;">${escapeHtml(String(c.atividades))}</div></div>`
+          ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-default);"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Atividades detalhadas</div><div style="font-size:13.5px;line-height:1.5;">${escapeHtml(String(c.atividades))}</div></div>`
           : "";
         abrirModalConta("Minha conta", linhasHtml + atividadesHtml);
       } else if (acao === "planos") {
@@ -10879,7 +10879,7 @@ window.__preencherIdentidadeUsuario();
         const html = `
           <div style="font-size:13.5px;line-height:1.6;">
             <p style="margin:0 0 10px;">Seu plano atual: <strong>${escapeHtml(String(plano))}</strong></p>
-            <p style="margin:0;color:#64748b;">Pra conhecer outros planos ou fazer upgrade, fale com a gente pelo WhatsApp ou e-mail.</p>
+            <p style="margin:0;color:var(--text-secondary);">Pra conhecer outros planos ou fazer upgrade, fale com a gente pelo WhatsApp ou e-mail.</p>
           </div>`;
         abrirModalConta("Planos e preços", html);
       } else if (acao === "lembretes") {
@@ -10895,11 +10895,11 @@ window.__preencherIdentidadeUsuario();
           const html = lembretes
             .map((l) => {
               const dataProposta = formatarPrazoPropostas(l.data_final_proposta).split(" (")[0];
-              return `<div style="padding:10px 0;border-bottom:1px solid #eef1f6;">
+              return `<div style="padding:10px 0;border-bottom:1px solid var(--border-default);">
                 <p style="margin:0 0 4px;font-size:13px;font-weight:600;">${escapeHtml(l.objeto_resumo || l.numero_controle_pncp)}</p>
-                <p style="margin:0 0 4px;font-size:12.5px;color:#64748b;">Aviso ${l.dias_antes ? `${l.dias_antes} dia(s) antes` : "no dia"} às ${String(l.hora_aviso ?? 8).padStart(2, "0")}:00 · prazo ${escapeHtml(dataProposta)}</p>
+                <p style="margin:0 0 4px;font-size:12.5px;color:var(--text-secondary);">Aviso ${l.dias_antes ? `${l.dias_antes} dia(s) antes` : "no dia"} às ${String(l.hora_aviso ?? 8).padStart(2, "0")}:00 · prazo ${escapeHtml(dataProposta)}</p>
                 ${l.nota ? `<p style="margin:0 0 6px;font-size:12.5px;"><svg class='icone-ph'><use href='#ph-note-pencil'></use></svg> ${escapeHtml(l.nota)}</p>` : ""}
-                <button type="button" class="btn-cancelar-lembrete" data-id="${escapeHtml(l.id)}" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:12.5px;padding:0;">✕ Cancelar lembrete</button>
+                <button type="button" class="btn-cancelar-lembrete" data-id="${escapeHtml(l.id)}" style="background:none;border:none;color:var(--error-text);cursor:pointer;font-size:12.5px;padding:0;">✕ Cancelar lembrete</button>
               </div>`;
             })
             .join("");
