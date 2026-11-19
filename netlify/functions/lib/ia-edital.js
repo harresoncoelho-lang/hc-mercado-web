@@ -42,6 +42,8 @@ const MAX_BYTES_REQUISICAO_RESUMO = 48000;
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
 const MAX_DOCUMENTOS_PARA_LEITURA = 3;
+// Marca, na lista de não lidos, a falha que pode passar sozinha (o robô lê de novo só nesses casos).
+const MOTIVO_DOWNLOAD_INDISPONIVEL = "download indisponível no PNCP";
 // O robô de dossiês (GitHub Actions) não tem essa janela curta: o workflow define
 // prazos maiores por env, sem mudar o comportamento da Function no site.
 const TIMEOUT_LISTA_PNCP_MS = Number(process.env.TIMEOUT_LISTA_PNCP_MS) || 4000;
@@ -153,6 +155,14 @@ function selecionarDocumentosParaLeitura(lista, limite = MAX_DOCUMENTOS_PARA_LEI
       return true;
     }).slice(0, limite);
 }
+// Botão "Tentar ler de novo" do resumo parcial. No máximo uma nova leitura por hora por edital:
+// cada leitura do robô usa a cota gratuita da IA, e quem gera continua sendo o robô (teto diário).
+const INTERVALO_NOVA_LEITURA_MS = 60 * 60 * 1000;
+function pedidoDeNovaLeitura(body, dossie, agora = Date.now()) {
+  if (body?.novaLeitura !== true || !dossie?.estrutura?.coberturaLeitura?.parcial) return false;
+  const gerado = Date.parse(dossie.geradoEm || "");
+  return !Number.isFinite(gerado) || agora - gerado >= INTERVALO_NOVA_LEITURA_MS;
+}
 function leituraPrioritariaPendente(cobertura) {
   return Boolean(cobertura?.parcial && !cobertura.prioridadeDocumentoPrincipal &&
     cobertura.documentosNaoLidos?.some((documento) => /\bedital(?:\.pdf)?\b.*limite de documentos/i.test(documento)));
@@ -162,7 +172,10 @@ function precisaReleituraPrioritaria(cache) {
 }
 
 // Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
-async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DOCUMENTOS_PARA_LEITURA, extrairArquivo = null, ocrPDF } = {}) {
+// prazoLeitura (robô): hora limite para começar a baixar/ler outro anexo. Um edital escaneado com
+// 26 anexos levou 12,5 min só na leitura (18/11/2026), mais que a rodada inteira: o job era morto
+// sem registrar a tentativa e o mesmo edital voltava primeiro na fila, travando os demais.
+async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DOCUMENTOS_PARA_LEITURA, extrairArquivo = null, ocrPDF, prazoLeitura = Infinity } = {}) {
   if (ocrPDF === undefined && process.env.LEITURA_OCR_LOCAL === "1") {
     try { ocrPDF = require("../_pdf_ocr_local").ocrLocalConfigurado(); } catch (_) { ocrPDF = null; }
   }
@@ -360,6 +373,7 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
     const baixados = new Map();
     let bytesBaixados = 0;
     if (extrairArquivo) for (const doc of candidatos) {
+      if (Date.now() >= prazoLeitura) { baixados.set(doc, { semTempo: true }); continue; }
       try {
         const arquivo = await baixarDocumento(doc, 64 * 1024 * 1024 - bytesBaixados);
         bytesBaixados += arquivo.buffer.length;
@@ -371,6 +385,10 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
     for (const doc of candidatos) {
       if (totalCaracteres >= MAX_CARACTERES_TEXTO) {
         documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de texto`);
+        continue;
+      }
+      if (Date.now() >= prazoLeitura || baixados.get(doc)?.semTempo) {
+        documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de tempo da leitura`);
         continue;
       }
       try {
@@ -410,12 +428,18 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
           totalCaracteres += texto.length;
         }
       } catch (e) {
-        if (e?.name === "AbortError" || e?.name === "TypeError") downloadsIndisponiveis += 1;
-        documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): não foi possível ler`);
+        const falhaRede = e?.name === "AbortError" || e?.name === "TypeError";
+        if (falhaRede) downloadsIndisponiveis += 1;
+        // O motivo decide se vale ler de novo: download que falhou pode dar certo depois;
+        // arquivo ilegível dá o mesmo resultado em toda tentativa.
+        const motivo = falhaRede || /^HTTP (5\d\d|429)$/.test(e?.message || "") ? MOTIVO_DOWNLOAD_INDISPONIVEL
+          : /ilegível|sem texto/.test(e?.message || "") ? "formato ilegível ou sem texto" : /limite de bytes/.test(e?.message || "") ? e.message : "";
+        documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): não foi possível ler${motivo ? ` (${motivo})` : ""}`);
       }
     }
 
-    if (pedacos.length === 0) return { texto: null, escaneado: algumPdfPareceEscaneado, indisponivel: downloadsIndisponiveis === candidatos.length, coberturaLeitura: { documentosLidos, documentosNaoLidos, ocrDocumentos, avisosOCR, parcial: true, prioridadeDocumentoPrincipal: true } };
+    if (pedacos.length === 0) return { texto: null, escaneado: algumPdfPareceEscaneado, indisponivel: downloadsIndisponiveis === candidatos.length,
+      semTempo: documentosNaoLidos.some((item) => item.endsWith(": limite de tempo da leitura")), coberturaLeitura: { documentosLidos, documentosNaoLidos, ocrDocumentos, avisosOCR, parcial: true, prioridadeDocumentoPrincipal: true } };
     const textoCompleto = pedacos.join("").trim();
     if (textoCompleto.length > MAX_CARACTERES_TEXTO) documentosNaoLidos.push("Texto excedeu o limite de leitura; conteúdo final não analisado");
     return { texto: textoCompleto.slice(0, MAX_CARACTERES_TEXTO), escaneado: false,
@@ -764,7 +788,7 @@ async function chamarSinteseEdital(apiKey, mensagens) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, schemaTransporteDaEtapa, mensagensTransporteDaEtapa, traduzirEtapaTransportada, fonteDaEtapa, requisitosConhecidosDaFonte, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, selecionarDocumentosParaLeitura, leituraPrioritariaPendente, precisaReleituraPrioritaria, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, schemaTransporteDaEtapa, mensagensTransporteDaEtapa, traduzirEtapaTransportada, fonteDaEtapa, requisitosConhecidosDaFonte, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, MOTIVO_DOWNLOAD_INDISPONIVEL, pedidoDeNovaLeitura, selecionarDocumentosParaLeitura, leituraPrioritariaPendente, precisaReleituraPrioritaria, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -1387,6 +1411,8 @@ exports.handler = async (event) => {
         // Dossiês concluídos só no Blob (antes da gravação pelo Gateway) entram no Supabase
         // quando o robô passa por eles; é o Supabase que o robô consulta para saber o que falta.
         if (ehRoboInterno && cacheDoBlob) await salvarDossiePersistido(edital.numeroControlePNCP, cache);
+        const novaLeitura = !ehRoboInterno && pedidoDeNovaLeitura(body, cache);
+        if (novaLeitura) await enfileirarDossie(edital.numeroControlePNCP, { novaLeitura: true });
         return {
           statusCode: 200,
           headers,
@@ -1404,6 +1430,7 @@ exports.handler = async (event) => {
             revisaoPrazos: Boolean(cache.revisaoPrazos),
             prazosEmConferencia: Boolean(cache.prazosEmConferencia),
             doCache: true,
+            ...(novaLeitura ? { dossieEmPreparacao: true } : {}),
             erro: null,
           }),
         };

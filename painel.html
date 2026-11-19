@@ -28,7 +28,7 @@
 <link rel="stylesheet" href="licitacao-anterior.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
-<script src="resumo-modelo.js?v=953e30c32a3c"></script>
+<script src="resumo-modelo.js?v=e1323d60b45b"></script>
 <script src="capag.js?v=167fac74e421"></script>
 <script src="defesa-licitante.js?v=0fc91f5a970b"></script>
 <script src="empresa-identificacao-ui.js?v=782a6b926bae"></script>
@@ -3241,6 +3241,17 @@
         bloco.append(dt, dd); dl.appendChild(bloco);
       }
       secao.appendChild(dl);
+      // Leitura parcial: o cliente vê o que faltou acima e pode pedir ao robô uma nova leitura.
+      if (def.titulo === "Cobertura da análise" && est.coberturaLeitura?.parcial && est.fonteLida) {
+        const botao = document.createElement("button");
+        botao.type = "button";
+        botao.className = "btn-ia-edital";
+        botao.style.margin = "4px 0 12px";
+        botao.dataset.novaLeitura = "1";
+        botao.textContent = "Tentar ler de novo";
+        botao.addEventListener("click", () => { botao.disabled = true; void chamarIA("resumo", null, { novaLeitura: true }); });
+        secao.appendChild(botao);
+      }
       };
       if (def.recolhida) secao.addEventListener("toggle", () => { if (secao.open) preencher(); });
       else preencher();
@@ -3434,7 +3445,7 @@
         signal: controlador.signal,
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${credencial}` },
-        body: JSON.stringify({ modo, edital, pergunta, hashFonte: iaEstruturaAtual?.hashFonte, retomarAnalise: Boolean(opcoes.retomarAnalise), historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
+        body: JSON.stringify({ modo, edital, pergunta, hashFonte: iaEstruturaAtual?.hashFonte, retomarAnalise: Boolean(opcoes.retomarAnalise), novaLeitura: opcoes.novaLeitura === true, historico: iaHistorico, textoEdital: iaTextoEdital, reprocessarEstrutura: Boolean(opcoes.reprocessarEstrutura || modo === "resumo") }),
       });
       let resp = await enviar(token);
       if (geracao !== iaGeracaoModal || controlador.signal.aborted) return;
@@ -3489,6 +3500,12 @@
         estruturaRecebida.metodoResumo = dados.metodoResumo || estruturaRecebida.metodoResumo;
         estruturaRecebida.aviso = dados.aviso || estruturaRecebida.aviso;
         renderizarEstruturaIA(estruturaRecebida);
+        if (opcoes.novaLeitura) {
+          const aviso = escreverMensagemIA(dados.dossieEmPreparacao ? "Nova leitura pedida. O resumo se atualiza sozinho quando o robô terminar, em geral dentro de 1 hora." : "Este edital foi lido há menos de 1 hora. Peça a nova leitura mais tarde.", "");
+          aviso.dataset.avisoNovaLeitura = "1";
+          const cobertura = document.querySelector('[data-resumo-secao="Cobertura da análise"]');
+          if (cobertura) { cobertura.after(aviso); aviso.scrollIntoView({ block: "nearest" }); }
+        }
         if (dados.dossieEmPreparacao) aguardarDossiePronto(edital, geracao);
       } else {
         escreverMensagemIA((dados.resposta || "").replace(/\*\*(.+?)\*\*/g, "$1"), "");

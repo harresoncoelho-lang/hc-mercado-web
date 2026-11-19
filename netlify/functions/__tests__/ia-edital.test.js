@@ -385,3 +385,33 @@ test("conversão híbrida recebe só fonte delimitada e conserva texto documenta
     assert.ok(mensagens[1].content.includes(fonte));
   } finally { global.fetch = fetchOriginal; }
 });
+
+test("nova leitura só vale para dossiê parcial e no máximo uma vez por hora", () => {
+  const { pedidoDeNovaLeitura } = require("../lib/ia-edital").__test;
+  const agora = Date.parse("2026-11-19T12:00:00Z");
+  const parcial = (geradoEm) => ({ geradoEm, estrutura: { coberturaLeitura: { parcial: true } } });
+  assert.equal(pedidoDeNovaLeitura({ novaLeitura: true }, parcial("2026-11-19T10:00:00Z"), agora), true);
+  assert.equal(pedidoDeNovaLeitura({ novaLeitura: true }, parcial("2026-11-19T11:30:00Z"), agora), false);
+  assert.equal(pedidoDeNovaLeitura({ novaLeitura: "sim" }, parcial("2026-11-19T10:00:00Z"), agora), false);
+  assert.equal(pedidoDeNovaLeitura({}, parcial("2026-11-19T10:00:00Z"), agora), false);
+  assert.equal(pedidoDeNovaLeitura({ novaLeitura: true }, { geradoEm: "2026-11-19T10:00:00Z", estrutura: { coberturaLeitura: { parcial: false } } }, agora), false);
+});
+
+test("pedido de nova leitura zera as tentativas na fila; clique comum preserva", async () => {
+  const fetchOriginal = global.fetch;
+  const chaveOriginal = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const corpos = [];
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "teste";
+  global.fetch = async (_url, opcoes) => { corpos.push(JSON.parse(opcoes.body)[0]); return { ok: true }; };
+  try {
+    const { enfileirarDossie } = require("../_dossies_persistidos");
+    await enfileirarDossie("1-1-000001/2026");
+    await enfileirarDossie("1-1-000001/2026", { novaLeitura: true });
+    assert.equal("tentativas" in corpos[0], false);
+    assert.equal(corpos[1].tentativas, 0);
+    assert.equal(corpos[1].concluido_em, null);
+  } finally {
+    global.fetch = fetchOriginal;
+    if (chaveOriginal === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = chaveOriginal;
+  }
+});

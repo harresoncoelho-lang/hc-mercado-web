@@ -58,7 +58,8 @@ async function salvarDossiePersistido(numeroControlePNCP, dossie) {
 // Pedido de dossiê feito por um clique sem resumo pronto. Só zera a conclusão: as
 // tentativas anteriores continuam valendo, para um edital que sempre falha não voltar
 // a ser processado a cada clique. Quem gera é scripts/gerar_dossies_gemini.js.
-async function enfileirarDossie(numeroControlePNCP) {
+// novaLeitura (botão do resumo parcial): zera as tentativas para o robô ler o edital outra vez.
+async function enfileirarDossie(numeroControlePNCP, { novaLeitura = false } = {}) {
   const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!chave || !numeroControlePNCP) return;
   try {
@@ -70,7 +71,7 @@ async function enfileirarDossie(numeroControlePNCP) {
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify([{ numero_controle_pncp: numeroControlePNCP, concluido_em: null }]),
+      body: JSON.stringify([{ numero_controle_pncp: numeroControlePNCP, concluido_em: null, ...(novaLeitura ? { tentativas: 0 } : {}) }]),
     });
     if (!resposta.ok) console.error(`fila_dossies: pedido recusado HTTP ${resposta.status} ${numeroControlePNCP}`);
   } catch (e) {

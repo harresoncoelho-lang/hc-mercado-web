@@ -385,6 +385,36 @@ test("preparação lê seis anexos sem alterar o limite interativo nem esconder 
   }
 });
 
+test("anexo não lido diz se foi o download (vale tentar de novo) ou o próprio arquivo", async () => {
+  const caminhoPdf = require.resolve("pdf-parse");
+  const cachePdf = require.cache[caminhoPdf];
+  const fetchOriginal = global.fetch;
+  require.cache[caminhoPdf] = { exports: async () => ({ text: "Cláusula pesquisável do documento. ".repeat(30), numpages: 1 }) };
+  global.fetch = async (url) => {
+    if (url.endsWith("/arquivos")) return { ok: true, json: async () => [1, 2, 3].map((n) => ({ sequencialDocumento: n, titulo: `Anexo ${n}` })) };
+    if (url.endsWith("/2")) return { ok: false, status: 503 };
+    return { ok: true, arrayBuffer: async () => Buffer.from(url.endsWith("/3") ? "conteúdo .rar desconhecido" : "%PDF-documento") };
+  };
+  try {
+    const { buscarTextoEdital, MOTIVO_DOWNLOAD_INDISPONIVEL } = require("../lib/ia-edital").__test;
+    const { coberturaLeitura } = await buscarTextoEdital("12345678000199-1-000407/2026", { limiteDocumentos: 12 });
+    assert.deepEqual(coberturaLeitura.documentosNaoLidos, [
+      `Anexo 2 (#2): não foi possível ler (${MOTIVO_DOWNLOAD_INDISPONIVEL})`,
+      "Anexo 3 (#3): não foi possível ler (formato ilegível ou sem texto)",
+    ]);
+    assert.equal(coberturaLeitura.parcial, true);
+    // Fim do prazo do robô: não baixa mais nada e avisa que faltou tempo, não que faltou documento.
+    const semTempo = await buscarTextoEdital("12345678000199-1-000407/2026", { limiteDocumentos: 12, prazoLeitura: Date.now() - 1, extrairArquivo: async () => { throw new Error("não deveria ler"); } });
+    assert.equal(semTempo.texto, null);
+    assert.equal(semTempo.semTempo, true);
+    assert.equal(semTempo.coberturaLeitura.documentosNaoLidos.filter((d) => d.endsWith("limite de tempo da leitura")).length, 3);
+  } finally {
+    global.fetch = fetchOriginal;
+    if (cachePdf) require.cache[caminhoPdf] = cachePdf;
+    else delete require.cache[caminhoPdf];
+  }
+});
+
 test("leitura agrega edital e TR e sinaliza página com imagem em documento parcialmente legível", async () => {
   const caminhoPdf = require.resolve("pdf-parse");
   const cachePdf = require.cache[caminhoPdf];

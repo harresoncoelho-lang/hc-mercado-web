@@ -74,3 +74,28 @@ test("interface separa extração parcial de envio integral à síntese", () => 
   assert.match(s, /Anexo.pdf/);
   assert.doesNotMatch(s, /HTTP 503/);
 });
+
+test("cobertura diz ao cliente por que cada documento faltou, sem erro técnico nem repetir o aviso de OCR", () => {
+  const ocr = "Edital (#1): OCR automático não revisado (por), páginas 3; conferir números.";
+  const r = modelo.montar({ coberturaLeitura: { parcial: true, documentosLidos: ["Edital (#1)"], avisosOCR: [ocr], documentosNaoLidos: [ocr,
+    "TR (#2): não foi possível ler (download indisponível no PNCP)",
+    "Planilha (#3): não foi possível ler (formato ilegível ou sem texto)",
+    "Ata (#13): limite de documentos",
+    "Edital (#1), páginas 19, 20: pouco texto extraível; conferir imagens e tabelas",
+    "Anexo (#4): ValueError: Traceback interno",
+    "ETP (#9): limite de tempo da leitura",
+    "Minuta (#5): limite de texto",
+    "Pacote (#6): anexo.zip/tr.pdf: limite de texto"] } });
+  const campos = r.secoes.find((secao) => secao.titulo === "Cobertura da análise").campos;
+  assert.match(campos[0].valor, /8 não lido/);
+  assert.deepEqual(campos.find((c) => c.rotulo === "Documentos não lidos").valor, [
+    "TR (#2): o PNCP não entregou o arquivo; vale tentar ler de novo",
+    "Planilha (#3): arquivo sem texto legível (pode ser imagem ou formato não suportado); confira o original",
+    "Ata (#13): não lido: o edital tem mais anexos que o limite de leitura",
+    "Edital (#1), páginas 19, 20: páginas com imagem ou tabela sem texto extraível; confira o original",
+    "Anexo (#4)",
+    "ETP (#9): leitura interrompida pelo tempo da rodada; vale tentar ler de novo",
+    "Minuta (#5): não lido: o limite de texto da leitura acabou antes deste arquivo",
+    "Pacote (#6): lido até o limite de texto; o final não foi analisado",
+  ]);
+});

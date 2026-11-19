@@ -58,6 +58,40 @@ class AnexosTest(unittest.TestCase):
         self.assertNotIn('pagina 114.', r['texto'])
         self.assertTrue(any('limite de tempo' in p for p in r['pendencias']))
 
+    def test_logotipo_repetido_nao_manda_toda_pagina_ao_ocr(self):
+        cabecalho = 'page num type width height color comp bpc enc interp object ID x-ppi y-ppi size ratio\n----\n'
+        logo = ''.join(f'{p} 0 image 770 312 rgb 3 8 jpeg no 61 0 276 292 44K 6%\n' for p in range(1, 57))
+        foto = '30 1 image 1700 2200 rgb 3 8 jpeg no 900 0 200 200 300K 40%\n'
+        base = self.pdf_simulado(56)
+        ocr = []
+        def comando(args):
+            if args[0] == 'pdfimages':
+                return (cabecalho + logo + foto).encode()
+            if args[0] == 'pdftoppm':
+                ocr.append(int(args[2]))
+                return b''
+            if args[0] == 'tesseract':
+                return b'Tabela digitalizada'
+            return base(args)
+        with patch.object(anexo.Leitor, 'comando', side_effect=comando):
+            r = anexo.extrair(self.arquivo('edital.pdf', b'%PDF-'))
+        self.assertEqual([30], ocr)
+        self.assertIn('pagina 056.', r['texto'])
+        self.assertEqual([], r['pendencias'])
+
+    def test_fim_do_prazo_guarda_texto_nativo_sem_ocr(self):
+        base = self.pdf_simulado(3)
+        def comando(args):
+            if args[0] == 'pdftotext':
+                return b'' if args[2] == '2' else base(args)
+            if args[0] in ('pdftoppm', 'tesseract'):
+                self.fail('OCR sem tempo de sobra')
+            return base(args)
+        with patch.object(anexo.Leitor, 'comando', side_effect=comando), patch.object(anexo, 'RESERVA_TEXTO_SEGUNDOS', 10 ** 6):
+            r = anexo.extrair(self.arquivo('edital.pdf', b'%PDF-'))
+        self.assertIn('pagina 003.', r['texto'])
+        self.assertTrue(any('página 2: OCR não concluído (limite de tempo)' in p for p in r['pendencias']))
+
     def arquivo(self, nome, conteudo):
         pasta = tempfile.TemporaryDirectory()
         self.addCleanup(pasta.cleanup)

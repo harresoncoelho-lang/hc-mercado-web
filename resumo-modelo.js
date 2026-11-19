@@ -98,6 +98,27 @@ const CAMPOS = {
     const extras = [quantidade, unitario, beneficio].filter(Boolean).join(" · ");
     return `${item.numeroItem || item.numero || i + 1}. ${texto(item.descricao).replace(/<[^>]*>/g, " ")}${extras ? ` — ${extras}` : ""}`;
   }
+  function pendentesLeitura(cobertura = {}) {
+    const avisosOCR = new Set(cobertura.avisosOCR || []);
+    return (cobertura.documentosNaoLidos || []).filter((v) => !avisosOCR.has(v));
+  }
+  // Motivo em linguagem do cliente, só para causas conhecidas; erro técnico (HTTP, exceção) fica só o nome.
+  const MOTIVOS_LEITURA = [
+    [/download indisponível/, "o PNCP não entregou o arquivo; vale tentar ler de novo"],
+    [/ilegível|sem texto/, "arquivo sem texto legível (pode ser imagem ou formato não suportado); confira o original"],
+    [/limite de documentos/, "não lido: o edital tem mais anexos que o limite de leitura"],
+    [/^: limite de texto$/, "não lido: o limite de texto da leitura acabou antes deste arquivo"],
+    [/limite de texto|excedeu o limite/, "lido até o limite de texto; o final não foi analisado"],
+    [/OCR não concluído|imagem sem texto/, "páginas digitalizadas sem leitura automática concluída; confira o original"],
+    [/pouco texto extraível/, "páginas com imagem ou tabela sem texto extraível; confira o original"],
+    [/limite de tempo/, "leitura interrompida pelo tempo da rodada; vale tentar ler de novo"],
+  ];
+  function pendenciaLegivel(v) {
+    const textoPendencia = String(v);
+    const nome = textoPendencia.split(":")[0];
+    const motivo = MOTIVOS_LEITURA.find(([padrao]) => padrao.test(textoPendencia.slice(nome.length)));
+    return motivo ? `${nome}: ${motivo[1]}` : nome;
+  }
   function montar(resumo = {}, edital = {}, consideracoes = "") {
     const est = {
       ...resumo,
@@ -154,8 +175,10 @@ const CAMPOS = {
       ["Penalidades e multas", [...livre("Penalidades", est.penalidades), ...livre("Multas", est.multas)]],
       ["Análise crítica", [...lista("Pontos de atenção (dados oficiais do PNCP)", pncp.atencao), ...campos("analiseCritica"), ...lista("Pendências para conferência", est.pendenciasParaConferencia), ...lista("Possíveis questionamentos", est.possiveisQuestionamentos), ...lista("Perguntas sugeridas ao órgão", est.questionamentosSugeridos)]],
       ...(est.coberturaSintese || est.coberturaLeitura ? [["Cobertura da análise", [
-        ...(est.coberturaLeitura ? [{ rotulo: "Extração dos documentos", valor: `${est.coberturaLeitura.parcial !== false ? "Extração parcial" : "Documentos selecionados extraídos"}. ${est.coberturaLeitura.documentosLidos?.length || 0} documento(s) lido(s); ${est.coberturaLeitura.documentosNaoLidos?.length || 0} não lido(s).` },
-          ...lista("Documentos não lidos", (est.coberturaLeitura.documentosNaoLidos || []).map((v) => String(v).split(":")[0])),
+        // O motivo fica visível (antes só o nome): "download indisponível" pede nova leitura, "ilegível" pede o original.
+        // O aviso de OCR já tem a própria lista; repeti-lo aqui contava o documento lido como não lido.
+        ...(est.coberturaLeitura ? [{ rotulo: "Extração dos documentos", valor: `${est.coberturaLeitura.parcial !== false ? "Extração parcial" : "Documentos selecionados extraídos"}. ${est.coberturaLeitura.documentosLidos?.length || 0} documento(s) lido(s); ${pendentesLeitura(est.coberturaLeitura).length} não lido(s).` },
+          ...lista("Documentos não lidos", pendentesLeitura(est.coberturaLeitura).map(pendenciaLegivel)),
           ...lista("Conferência do OCR automático", est.coberturaLeitura.avisosOCR || []),
           ...lista("Páginas pendentes do OCR", (est.coberturaLeitura.ocrDocumentos || []).flatMap((d) => (d.pendencias || []).map((p) => `${d.documento}: ${p}`)))] : []),
         ...(est.coberturaSintese ? [{ rotulo: "Síntese dos documentos", valor: Number.isFinite(est.coberturaSintese.caracteresEnviados) && Number.isFinite(est.coberturaSintese.caracteresFonte) ? `${est.coberturaSintese.parcial ? "Síntese parcial" : "Fonte extraída integral enviada à síntese"}: ${est.coberturaSintese.caracteresEnviados} de ${est.coberturaSintese.caracteresFonte} caracteres. Isso não equivale à auditoria de todas as cláusulas.` : "Cobertura da síntese por IA não confirmada. A extração documental não comprova uma síntese integral nem a auditoria de todas as cláusulas." }] : []),
@@ -199,7 +222,7 @@ const CAMPOS = {
     }
     return modelo;
   }
-  const api = { montar, montarVisual, texto, util };
+  const api = { montar, montarVisual, texto, util, pendentesLeitura };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else raiz.ResumoModelo = api;
 })(globalThis);

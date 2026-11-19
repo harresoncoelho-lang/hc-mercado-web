@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 process.env.MAX_TENTATIVAS_DOSSIE = "2";
-const { cabeNovoDossie, limiteDocumentosLeitura, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, montarProvedores, chamarCadeia, corpoCompat, GeminiSobrecarregado, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
+const { leituraPodeMelhorar, registroDoResultado, cabeNovoDossie, limiteDocumentosLeitura, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, dossieCompleto, gerarComEspera, montarProvedores, chamarCadeia, corpoCompat, GeminiSobrecarregado, CotaEsgotada, VERSAO_DOSSIE } = require("./gerar_dossies_gemini");
 const contrato = require("../netlify/functions/_resumo_gateway_contrato");
 const { estruturaValida } = require("../netlify/functions/_resumo_gateway");
 
@@ -323,7 +323,32 @@ test("rodada de oito minutos não inicia outro edital com só 39 segundos", () =
   const minuto = 60000;
   assert.equal(cabeNovoDossie({ inicio: 0, agora: 441000, limite: 8 * minuto, maiorDuracao: 441000 }), false);
   assert.equal(cabeNovoDossie({ inicio: 0, agora: 2 * minuto, limite: 8 * minuto, maiorDuracao: 2 * minuto }), true);
-  assert.equal(cabeNovoDossie({ inicio: 0, agora: 4 * minuto, limite: 8 * minuto, maiorDuracao: 2 * minuto }), false);
+  // A chamada à IA é cortada no fim da rodada; a reserva acompanha o edital mais lento, não os 5 min do timeout.
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 4 * minuto, limite: 8 * minuto, maiorDuracao: 2 * minuto }), true);
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 6 * minuto, limite: 8 * minuto, maiorDuracao: 2 * minuto }), false);
+  assert.equal(cabeNovoDossie({ inicio: 0, agora: 6.5 * minuto, limite: 8 * minuto, maiorDuracao: 30000 }), false);
+});
+
+test("chamada à IA não passa do fim da rodada e não gasta tentativa", async () => {
+  let sinal;
+  const fetchFn = (url, opcoes) => { sinal = opcoes.signal; return new Promise((_, rejeitar) => opcoes.signal.addEventListener("abort", () => rejeitar(opcoes.signal.reason))); };
+  const inicio = Date.now();
+  await assert.rejects(chamarGemini({}, "fonte", { apiKey: "k", fetchFn, modelos: ["a"], prazoFinal: Date.now() + 50 }), GeminiSobrecarregado);
+  assert.ok(sinal.aborted);
+  assert.ok(Date.now() - inicio < 5000);
+});
+
+test("parcial só volta à fila quando o download ou o conversor falhou", () => {
+  const { MOTIVO_DOWNLOAD_INDISPONIVEL } = require("../netlify/functions/lib/ia-edital").__test;
+  assert.equal(leituraPodeMelhorar({ documentosNaoLidos: [`Edital (#1): não foi possível ler (${MOTIVO_DOWNLOAD_INDISPONIVEL})`] }), true);
+  assert.equal(leituraPodeMelhorar({ documentosNaoLidos: ["TR (#2): conversor ampliado indisponível"] }), true);
+  assert.equal(leituraPodeMelhorar({ documentosNaoLidos: ["Edital (#1): não foi possível ler (formato ilegível ou sem texto)", "Ata (#13): limite de documentos", "Edital (#1), página 4: OCR não concluído (limite de tempo)"] }), false);
+  assert.equal(leituraPodeMelhorar(undefined), false);
+  assert.deepEqual(registroDoResultado({ completo: true }), { concluido: true });
+  assert.deepEqual(registroDoResultado({ completo: false, limiteContexto: true, leituraPodeMelhorar: true }), { erro: "sintese_parcial_limite_contexto", esgotar: true });
+  assert.deepEqual(registroDoResultado({ completo: false, leituraPodeMelhorar: true }), { erro: "leitura_parcial_transitoria" });
+  // Mesmo texto na próxima rodada = mesma chamada de IA paga com cota e o mesmo parcial: sai da fila.
+  assert.deepEqual(registroDoResultado({ completo: false, leituraPodeMelhorar: false }), { erro: "leitura_parcial_definitiva", concluido: true, esgotar: true });
 });
 
 test("reserva inclui margem e adapta-se a um edital lento sem impedir o primeiro", () => {

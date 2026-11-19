@@ -66,6 +66,12 @@ const MODELOS_CLOUDFLARE_PADRAO = "@cf/openai/gpt-oss-120b";
 const NAO_INFORMADO = "Não informado";
 const URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 const TIMEOUT_CHAMADA_MS = 300000;
+// Folga mínima para começar outro edital. A chamada à IA é cortada no fim da rodada (prazoFinal),
+// então não é preciso reservar o TIMEOUT_CHAMADA_MS inteiro: com 8 min de rodada e a reserva de
+// 5 min, cabiam só 1 ou 2 editais por execução e a fila crescia mais rápido do que esvaziava.
+const RESERVA_MINIMA_MS = 180000;
+// Parte da reserva que fica para a IA depois da leitura dos anexos.
+const RESERVA_IA_MS = 90000;
 // Mistral e OpenRouter têm contexto de 128k tokens; precisa caber fonte + instrução + schema + até
 // 32768 tokens de saída. 200 mil caracteres de edital em português são ~60-70 mil tokens. Os editais
 // reais chegam a ~100 mil caracteres; o corte só protege contra os maiores. O Gemini (1M) não corta.
@@ -140,16 +146,16 @@ async function registrarRecusa(rotulo, resposta) {
 }
 
 // Falha de rede ou timeout vira "sem resposta" (null): conta como sobrecarga, não como erro do edital.
-async function tentarFetch(rotulo, fetchFn, url, opcoes) {
+async function tentarFetch(rotulo, fetchFn, url, opcoes, prazoFinal = Infinity) {
   try {
-    return await fetchFn(url, { ...opcoes, signal: AbortSignal.timeout(TIMEOUT_CHAMADA_MS) });
+    return await fetchFn(url, { ...opcoes, signal: AbortSignal.timeout(Math.max(1, Math.min(TIMEOUT_CHAMADA_MS, prazoFinal - Date.now()))) });
   } catch (erro) {
     console.log(`[dossiês] ${rotulo}: sem resposta (${erro.name}: ${String(erro.message).slice(0, 100)})`);
     return null;
   }
 }
 
-async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = MODELOS, esgotados = new Set() } = {}) {
+async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = MODELOS, esgotados = new Set(), prazoFinal } = {}) {
   let comSchema = true, sobrecarga = false, cotaEsgotada = false;
   for (let indice = 0; indice < modelos.length;) {
     const rotulo = `gemini/${modelos[indice]}`;
@@ -158,7 +164,7 @@ async function chamarGemini(ficha, fonte, { apiKey, fetchFn = fetch, modelos = M
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify(corpoGemini(ficha, fonte, comSchema)),
-    });
+    }, prazoFinal);
     if (resposta?.status === 404) { await registrarRecusa(rotulo, resposta); indice += 1; continue; }
     // Na cota gratuita cada modelo tem a própria cota: um 429 no primeiro modelo não
     // impede o segundo de responder. Fica esgotado até o fim da rodada.
@@ -208,7 +214,7 @@ function lerSaidaCompat(dados) {
   return saida;
 }
 
-async function chamarCompat(provedor, ficha, fonte, { fetchFn = fetch, esgotados = new Set() } = {}) {
+async function chamarCompat(provedor, ficha, fonte, { fetchFn = fetch, esgotados = new Set(), prazoFinal } = {}) {
   const { nome, url, apiKey, modelos } = provedor;
   let sobrecarga = false, cotaEsgotada = false;
   if (fonte.length > MAX_CARACTERES_FONTE_COMPAT) console.log(`[dossiês] ${nome}: fonte de ${fonte.length} caracteres cortada em ${MAX_CARACTERES_FONTE_COMPAT} para caber no contexto.`);
@@ -222,7 +228,7 @@ async function chamarCompat(provedor, ficha, fonte, { fetchFn = fetch, esgotados
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(corpoCompat(ficha, fonte, modelos[indice], comFormato)),
-    });
+    }, prazoFinal);
     if (resposta?.status === 404) { await registrarRecusa(rotulo, resposta); indice += 1; continue; }
     // 401/403 = chave recusada: não é culpa do edital, então o modelo sai da rodada como na cota.
     if ([401, 403, 429].includes(resposta?.status)) {
@@ -269,11 +275,11 @@ function montarProvedores(env = process.env) {
 }
 
 // Percorre a cadeia na ordem. `esgotados` vale pela rodada inteira (compartilhado entre editais).
-async function chamarCadeia(ficha, fonte, { provedores, fetchFn, esgotados = new Set() }) {
+async function chamarCadeia(ficha, fonte, { provedores, fetchFn, esgotados = new Set(), prazoFinal }) {
   let sobrecarga = false, cotaEsgotada = false;
   for (const provedor of provedores) {
     try {
-      return { ...await provedor.chamar(ficha, fonte, { fetchFn, esgotados }), provedor: provedor.nome };
+      return { ...await provedor.chamar(ficha, fonte, { fetchFn, esgotados, prazoFinal }), provedor: provedor.nome };
     } catch (erro) {
       if (erro instanceof GeminiSobrecarregado) sobrecarga = true;
       else if (erro instanceof CotaEsgotada) cotaEsgotada = true;
@@ -400,26 +406,45 @@ async function registrarTentativa(candidato, tentativasAnteriores, { erro = null
   });
 }
 
+// Só falha de download ou do conversor pode sumir numa nova leitura; documento ilegível, limite de
+// documentos ou de tempo do OCR dão o mesmo resultado. Antes todo parcial voltava à fila, gastava
+// outra chamada de IA com o mesmo texto e ficava pendente para sempre ao esgotar as tentativas.
+function leituraPodeMelhorar(cobertura) {
+  return (cobertura?.documentosNaoLidos || []).some((item) => String(item).includes(iaEdital.MOTIVO_DOWNLOAD_INDISPONIVEL) || /conversor ampliado indisponível/.test(item));
+}
+
+// O que gravar na fila depois de gerar: completo sai; parcial que pode melhorar volta; o resto sai
+// como parcial definitivo (o cliente vê o que faltou e pode pedir nova leitura no painel).
+function registroDoResultado(resultado) {
+  if (resultado.completo) return { concluido: true };
+  if (resultado.limiteContexto) return { erro: "sintese_parcial_limite_contexto", esgotar: true };
+  if (resultado.leituraPodeMelhorar) return { erro: "leitura_parcial_transitoria" };
+  return { erro: "leitura_parcial_definitiva", concluido: true, esgotar: true };
+}
+
 // Processo com interesse lê todos os anexos; os limites de bytes e de texto continuam valendo.
 function limiteDocumentosLeitura(origem) {
   return origem === "interesse" ? Infinity : 12;
 }
 
-async function gerarDossie(numero, { origem, provedores, fetchFn, esgotados } = {}) {
+async function gerarDossie(numero, { origem, provedores, fetchFn, esgotados, prazoFinal } = {}) {
   const ficha = await iaEdital.buscarFichaCanonica(numero) || { numeroControlePNCP: numero, fonte: "PNCP" };
   // A preparação em segundo plano pode ler os anexos que não cabem no limite interativo.
-  const leitura = await iaEdital.buscarTextoEdital(numero, { limiteDocumentos: limiteDocumentosLeitura(origem),
+  // A leitura para a tempo de sobrar a reserva mínima para a IA dentro da rodada.
+  const leitura = await iaEdital.buscarTextoEdital(numero, { limiteDocumentos: limiteDocumentosLeitura(origem), prazoLeitura: (prazoFinal ?? Infinity) - RESERVA_IA_MS,
     extrairArquivo: process.env.LEITURA_MULTIFORMATO === "1" ? require("./extrair_anexo_local").extrairAnexoLocal : null });
+  // Sem tempo para ler nenhum anexo não é edital sem documento: fica para a próxima rodada.
+  if (!leitura.texto && leitura.semTempo) return { semTempo: true };
   if (!leitura.texto && leitura.indisponivel) return { pncpIndisponivel: true };
   if (!leitura.texto) return { semDocumento: true, motivo: leitura.escaneado ? "escaneado" : "sem_documento" };
-  const { saida, modelo, provedor, uso } = await chamarCadeia(ficha, leitura.texto, { provedores, fetchFn, esgotados });
+  const { saida, modelo, provedor, uso } = await chamarCadeia(ficha, leitura.texto, { provedores, fetchFn, esgotados, prazoFinal });
   const resultado = montarResultado(saida, leitura.texto, leitura.coberturaLeitura, Date.now(), { provedor, modelo });
   await salvarDossiePersistido(numero, resultado);
   // salvarDossiePersistido só registra a falha no log; sem esta conferência um dossiê
   // não gravado sairia da fila como concluído e o cliente ficaria só com a ficha.
   const gravado = await (await restFetch(`dossies_editais?numero_controle_pncp=eq.${encodeURIComponent(numero)}&select=versao,status`)).json();
   if (Number(gravado[0]?.versao) !== VERSAO_DOSSIE) throw new Error("gravacao_falhou");
-  return { modelo, provedor, uso, completo: dossieCompleto(gravado[0]), limiteContexto: Boolean(resultado.estrutura.coberturaSintese?.parcial) };
+  return { modelo, provedor, uso, completo: dossieCompleto(gravado[0]), limiteContexto: Boolean(resultado.estrutura.coberturaSintese?.parcial), leituraPodeMelhorar: leituraPodeMelhorar(leitura.coberturaLeitura) };
 }
 
 // Na primeira execução em produção (09/10/2026) o Google respondeu "sobrecarregado" e a
@@ -428,7 +453,7 @@ async function gerarDossie(numero, { origem, provedores, fetchFn, esgotados } = 
 async function gerarComEspera(numero, { prazoFinal, gerar = gerarDossie, esperar = (ms) => new Promise((r) => setTimeout(r, ms)), ...opcoes }) {
   for (let espera = 0; ; espera += 1) {
     try {
-      return await gerar(numero, opcoes);
+      return await gerar(numero, { ...opcoes, prazoFinal });
     } catch (erro) {
       const cabeEspera = Date.now() + ESPERA_SOBRECARGA_MS < prazoFinal;
       if (!(erro instanceof GeminiSobrecarregado) || espera >= ESPERAS_SOBRECARGA || !cabeEspera) throw erro;
@@ -441,7 +466,7 @@ async function gerarComEspera(numero, { prazoFinal, gerar = gerarDossie, esperar
 // Reserva pelo menos uma chamada de IA e acompanha o edital mais lento da rodada.
 // shortcut: estima a leitura seguinte; arquivos excepcionalmente lentos ainda têm seus próprios limites.
 function cabeNovoDossie({ inicio, agora, limite = LIMITE_MS, maiorDuracao = 0 }) {
-  const reserva = Math.min(limite, Math.max(TIMEOUT_CHAMADA_MS, maiorDuracao + 30000));
+  const reserva = Math.min(limite, Math.max(RESERVA_MINIMA_MS, maiorDuracao + 30000));
   return agora - inicio < limite && limite - (agora - inicio) >= reserva;
 }
 
@@ -474,6 +499,10 @@ async function main() {
         console.warn(`[dossiês] PNCP não respondeu ao baixar ${candidato.numero}; o restante fica para a próxima execução.`);
         break;
       }
+      if (resultado.semTempo) {
+        console.log(`[dossiês] sem tempo na rodada para ler ${candidato.numero}; fica para a próxima, sem consumir tentativa.`);
+        break;
+      }
       if (resultado.semDocumento) {
         // Sem documento legível não há o que a IA ler: não volta para a fila.
         await registrarTentativa(candidato, anteriores, { erro: resultado.motivo, esgotar: true });
@@ -482,7 +511,7 @@ async function main() {
         continue;
       }
       // O dossiê parcial já fica visível ao cliente, mas o edital segue na fila para nova leitura.
-      await registrarTentativa(candidato, anteriores, resultado.completo ? { concluido: true } : { erro: resultado.limiteContexto ? "sintese_parcial_limite_contexto" : "leitura_parcial", esgotar: resultado.limiteContexto });
+      await registrarTentativa(candidato, anteriores, registroDoResultado(resultado));
       contagem.gerado += 1;
       console.log(`[dossiês] gerado ${resultado.completo ? "completo" : "parcial"} (${resultado.provedor}/${resultado.modelo}, ${resultado.uso?.totalTokenCount || "?"} tokens): ${candidato.numero}`);
     } catch (erro) {
@@ -504,4 +533,4 @@ if (require.main === module) {
   main().catch((erro) => { console.error(`[dossiês] ${erro.message}`); process.exitCode = 1; });
 }
 
-module.exports = { cabeNovoDossie, limiteDocumentosLeitura, VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, carregarAntecipados, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
+module.exports = { leituraPodeMelhorar, registroDoResultado, cabeNovoDossie, limiteDocumentosLeitura, VERSAO_DOSSIE, montarProvedores, chamarCadeia, chamarCompat, corpoCompat, ajustarAoSchema, schemaParaGemini, corpoGemini, chamarGemini, montarResultado, selecionarCandidatos, carregarAntecipados, dossieCompleto, gerarComEspera, CotaEsgotada, GeminiSobrecarregado };
