@@ -4,4 +4,3 @@
 .local/
 supabase/.temp/
 supabase/.branches/
-*.local.txt
