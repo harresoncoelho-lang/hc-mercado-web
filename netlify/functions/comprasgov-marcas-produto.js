@@ -24,12 +24,21 @@ const semAcento = (valor) => String(valor || "").normalize("NFD").replace(/[̀-�
 const palavras = (valor) => semAcento(valor).replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter((p) => p.length > 1);
 
 // A marca da Pesquisa de Preços é texto livre: o fornecedor escreve "Conforme TR", "20L", "Cor: Amarela"
-// ou repete a descrição. Só fica o que parece nome de marca.
+// ou repete a descrição. Só fica o que parece nome de marca; o resto vira "marca não informada" (a compra não some).
 const MARCAS_INUTEIS = new Set(["nao se aplica", "na", "n a", "nao informado", "nao informada", "nao consta", "sem marca", "conforme edital", "conforme tr",
-  "conforme termo de referencia", "conforme especificacao", "diversas", "diversos", "propria", "generica", "generico", "similar", "nacional", "importado",
-  "caneta", "produto", "material", "outros", "outra", "varias", "padrao", "un", "und", "unid", "unidade", "pc", "peca"]);
+  "conforme termo de referencia", "conforme especificacao", "diversas", "diversos", "diverso", "propria", "proprio", "generica", "generico", "similar", "nacional",
+  "importado", "importada", "multimarcas", "caneta", "produto", "material", "outros", "outra", "varias", "padrao", "un", "und", "unid", "unidade", "pc", "peca",
+  "eco", "ink", "sem", "marca", "fabricante", "marca fabricante", "modelo"]);
+// Siglas de 1-2 letras ("sm", "TR", "FC") quase sempre são abreviação ou lixo; estas são marcas de verdade.
+const MARCAS_CURTAS = new Set(["3m", "hp", "lg", "bd", "ge"]);
+// "Conforme o TR", "de acordo com o edital", "Não especificado": remete ao edital, não declara marca.
+const REFERENCIA_EDITAL = /\b(tr|edital|termo de referencia|conforme|de acordo|especificad[ao]s?|especificacao|solicitad[ao]|informad[ao]|exigid[ao]|proposta)\b/;
 // Número com unidade em qualquer posição ("20L", "A4 90 gramas", "galão c/ 5 lts"): é embalagem/medida, não marca.
 const MEDIDA = /\b\d+( \d+)?\s*(l|lt|lts|litros?|ml|g|gr|grs|gramas?|kg|mm|cm|m|un|und|unid|unidades?|fls?|folhas?|pct|cx)\b/;
+// Palavras que sozinhas descrevem embalagem, formato ou cor ("FRASCO 1L", "MILILITRO", "A4 BRANCO").
+const NAO_MARCA = new Set(["frasco", "galao", "bombona", "litro", "litros", "mililitro", "mililitros", "grama", "gramas", "quilo", "caixa", "pacote", "resma",
+  "embalagem", "rolo", "fardo", "kit", "cx", "pct", "ml", "lt", "kg", "a3", "a4", "a5", "oficio", "carta", "branco", "branca", "azul", "preto", "preta",
+  "vermelho", "vermelha", "verde", "amarelo", "amarela", "colorido", "colorida", "transparente", "papel", "sulfite", "com", "de", "c"]);
 // Muitas linhas repetem a mesma descrição do CATMAT; normalizar uma vez cabe nos 10 ms de CPU do Cloudflare.
 const memoDescricao = new Map();
 function palavrasDaDescricao(descricao) {
@@ -39,11 +48,26 @@ function palavrasDaDescricao(descricao) {
   }
   return memoDescricao.get(descricao);
 }
+// "REPORT/REPORT", "NSK - NSK", "ENZ ENZ": o fornecedor repetiu a marca; fica uma vez.
+function semRepeticao(marca) {
+  const partes = marca.split(/\s*[/|]\s*|\s+-\s+/).filter(Boolean);
+  if (partes.length > 1 && partes.every((p) => semAcento(p) === semAcento(partes[0]))) return partes[0];
+  const p = marca.split(" ");
+  const meio = p.length / 2;
+  return p.length % 2 === 0 && semAcento(p.slice(0, meio).join(" ")) === semAcento(p.slice(meio).join(" ")) ? p.slice(0, meio).join(" ") : marca;
+}
 function marcaUtil(valor, descricao = "") {
-  const marca = textoSeguro(valor, 120);
+  const marca = semRepeticao(textoSeguro(valor, 120).replace(/^[\s.,;:/|-]+|[\s.,;:/|-]+$/g, "").replace(/^marca\s*:\s*/i, ""));
   const normalizada = semAcento(marca).replace(/[^a-z0-9]+/g, " ").trim();
-  if (!marca || !/[a-z]/.test(normalizada) || /^[.-]+$/.test(marca) || /^\d{4}$/.test(marca)) return null;
+  if (MARCAS_CURTAS.has(normalizada)) return marca;
+  if (!marca || !/[a-z]/.test(normalizada) || /^\d{4}$/.test(marca) || /r\$|\d+,\d{2}\b/i.test(marca)) return null;
   if (MARCAS_INUTEIS.has(normalizada) || /^(cor|tipo|tamanho|material|capacidade|conforme)\b/.test(normalizada) || MEDIDA.test(normalizada)) return null;
+  if (REFERENCIA_EDITAL.test(normalizada)) return null;
+  // "PRÓPRIA/PRÓPRIO", "Diversas / genérica": cada parte é texto genérico.
+  if (marca.split(/\s*[/|]\s*/).every((p) => MARCAS_INUTEIS.has(semAcento(p).replace(/[^a-z0-9]+/g, " ").trim()))) return null;
+  const tokens = normalizada.split(" ");
+  if (!MARCAS_CURTAS.has(normalizada) && tokens.every((t) => t.replace(/\d/g, "").length <= 2)) return null;
+  if (tokens.every((t) => /^\d/.test(t) || NAO_MARCA.has(t))) return null;
   // Todas as palavras da "marca" já estão na descrição do item: é característica, não marca ("térmico", "A4 90 gramas").
   const descricaoPalavras = palavrasDaDescricao(descricao);
   if (descricaoPalavras.size && palavras(marca).every((p) => descricaoPalavras.has(p))) return null;
@@ -69,14 +93,51 @@ function centavosDoPreco(valor) {
   return c > 0 ? c : null;
 }
 
+// Especificação no termo ("papel A4", "caneta azul", "detergente 500 ml"): medida, formato de papel e cor.
+// O catálogo público não filtra por isso; aqui cada compra é marcada se a descrição dela tem esses atributos.
+const CORES = [["azul", "azu(?:l|is)"], ["preta", "pret[ao]s?"], ["vermelha", "vermelh[ao]s?"], ["verde", "verdes?"], ["amarela", "amarel[ao]s?"],
+  ["branca", "branc[ao]s?"], ["rosa", "rosas?"], ["roxa", "rox[ao]s?"], ["laranja", "laranjas?"], ["cinza", "cinzas?"], ["marrom", "marro(?:m|ns)"]];
+const FORMATOS = { a3: [297, 420], a4: [210, 297], a5: [148, 210], oficio: [216, 330], carta: [216, 279] };
+// Unidade -> [grandeza, fator para a menor unidade]. 1,5 L = 1500 ml; 0,5 kg = 500 g.
+const UNIDADES = { ml: ["volume", 1], l: ["volume", 1000], lt: ["volume", 1000], lts: ["volume", 1000], litro: ["volume", 1000], litros: ["volume", 1000],
+  g: ["massa", 1], gr: ["massa", 1], grs: ["massa", 1], grama: ["massa", 1], gramas: ["massa", 1], kg: ["massa", 1000], mm: ["comprimento", 1], cm: ["comprimento", 10], m: ["comprimento", 1000] };
+const RE_MEDIDA = /(\d{1,6})(?:[.,](\d{1,3}))?\s*(ml|litros?|lts?|l|gramas?|grs?|g|kg|mm|cm|m)(?![a-z])/g;
+// Valor em milésimos da menor unidade, só com inteiros ("0,5 l" -> 500000).
+const medidasDe = (texto) => [...semAcento(texto).matchAll(RE_MEDIDA)].map((m) => {
+  const [grandeza, fator] = UNIDADES[m[3]];
+  return { grandeza, valor: (Number(m[1]) * 1000 + Number((m[2] || "").padEnd(3, "0"))) * fator, texto: m[0].replace(/\s+/g, " ") };
+});
+function separarEspecificacao(termo) {
+  const busca = semAcento(textoSeguro(termo));
+  const atributos = medidasDe(busca).map((m) => ({ rotulo: m.texto, confere: (d) => medidasDe(d).some((x) => x.grandeza === m.grandeza && x.valor === m.valor) }));
+  let resto = busca.replace(RE_MEDIDA, " ");
+  for (const [nome, [a, b]] of Object.entries(FORMATOS)) {
+    const re = new RegExp(`\\b${nome}\\b`);
+    if (!re.test(resto)) continue;
+    resto = resto.replace(re, " ");
+    // "A4" na descrição do CATMAT aparece como "TAMANHO (C X L): 297 X 210 MM".
+    const medida = new RegExp(`\\b(${a}\\s*(mm)?\\s*x\\s*${b}|${b}\\s*(mm)?\\s*x\\s*${a})\\b`);
+    atributos.push({ rotulo: nome.toUpperCase(), confere: (d) => re.test(semAcento(d)) || medida.test(semAcento(d)) });
+  }
+  for (const [rotulo, raiz] of CORES) {
+    const re = new RegExp(`\\b${raiz}\\b`);
+    if (!re.test(resto)) continue;
+    resto = resto.replace(re, " ");
+    atributos.push({ rotulo, confere: (d) => re.test(semAcento(d)) });
+  }
+  return { produto: resto.replace(/\s+/g, " ").trim(), atributos };
+}
+
 // Termo amplo devolve dezenas de PDMs. Ordem: apelido conhecido, nome igual ao termo, mais palavras do
 // termo no nome, nome começando pelo termo, alfabética. Ex.: "papel A4" não está no nome de PDM nenhum.
 // shortcut: apelidos fixos para os produtos mais buscados; trocar por busca de itens do CATMAT se a lista crescer.
 const APELIDOS = [[/\b(a4|sulfite|oficio|chamex)\b/, "papel para impressao formatado"], [/^caneta$/, "caneta esferografica"]];
 function selecionarPdms(registros, termo, limite = MAX_PDMS) {
-  const busca = semAcento(textoSeguro(termo));
+  const completo = semAcento(textoSeguro(termo));
+  const apelido = APELIDOS.find(([re]) => re.test(completo))?.[1];
+  // "caneta esferográfica azul": "azul" não está no nome de PDM nenhum; sem tirá-lo, entram caneta odontológica e afins.
+  const busca = separarEspecificacao(termo).produto || completo;
   const termos = palavras(busca);
-  const apelido = APELIDOS.find(([re]) => re.test(busca))?.[1];
   const unicos = new Map();
   for (const registro of registros || []) {
     const codigo = Number(registro.codigoPdm ?? registro.codigoPDM);
@@ -92,7 +153,9 @@ function selecionarPdms(registros, termo, limite = MAX_PDMS) {
   const notas = [...unicos.values()].map((pdm) => ({ pdm, n: nota(pdm) }));
   // Havendo PDM do apelido ou com todas as palavras do termo, os parciais ("Caneta - indicador" para "caneta esferográfica",
   // "Dobradeira papel" para "papel A4") só gastam consulta e dividem as 200 linhas com o produto certo.
-  const completos = notas.filter((x) => x.n[0] || x.n[2] === termos.length);
+  // "papel A4": sem o "A4" sobra "papel", que casaria papel alumínio, almaço…; com especificação no termo, o apelido manda.
+  const doApelido = busca !== completo ? notas.filter((x) => x.n[0]) : [];
+  const completos = doApelido.length ? doApelido : notas.filter((x) => x.n[0] || x.n[2] === termos.length);
   return (completos.length ? completos : notas)
     .sort((a, b) => b.n[0] - a.n[0] || b.n[1] - a.n[1] || b.n[2] - a.n[2] || b.n[3] - a.n[3] || a.pdm.descricao.localeCompare(b.pdm.descricao, "pt-BR"))
     .slice(0, limite)
@@ -101,11 +164,11 @@ function selecionarPdms(registros, termo, limite = MAX_PDMS) {
 
 function normalizarResultado(linha, pdm) {
   const descricaoItem = textoSeguro(linha.descricaoItem || linha.descricaoDetalhadaItem, 500);
-  const declarada = marcaUtil(linha.marca, descricaoItem);
-  if (!declarada) return null;
+  const util = marcaUtil(linha.marca, descricaoItem);
   // "DETERGENTE DESINCRUS" ou a própria categoria: o fornecedor repetiu o nome do produto no campo marca.
-  if (semAcento(declarada) === semAcento(pdm.descricao) || palavras(declarada)[0] === palavras(pdm.descricao)[0]) return null;
-  const { marca, modelo, fabricante } = separarMarcaModelo(declarada);
+  const declarada = util && semAcento(util) !== semAcento(pdm.descricao) && palavras(util)[0] !== palavras(pdm.descricao)[0] ? util : null;
+  // Sem marca aproveitável a compra continua (preço e órgão valem), no grupo "marca não informada".
+  const { marca, modelo, fabricante } = declarada ? separarMarcaModelo(declarada) : { marca: null, modelo: null, fabricante: null };
   // idCompra vem como número JSON de 17 dígitos (> 2^53): o JSON.parse arredonda (…025 vira …024). O idCompraItem vem
   // como texto = idCompra + 5 dígitos do item; dele sai o número exato. Sem ele, só aceita o número se ainda for exato.
   const itemCompra = textoSeguro(linha.idCompraItem || linha.idItemCompra, 30);
@@ -126,6 +189,8 @@ function normalizarResultado(linha, pdm) {
     quantidade: Number(linha.quantidade) || null,
     unidade: textoSeguro(linha.siglaUnidadeFornecimento, 20).toUpperCase(),
     unidadeNome: textoSeguro(linha.nomeUnidadeFornecimento, 60),
+    // "FR" sozinho não diz o tamanho; a fonte informa a capacidade à parte (FR 500 ML, EMB 5 L).
+    embalagem: Number(linha.capacidadeUnidadeFornecimento) > 0 && linha.siglaUnidadeMedida ? textoSeguro(`${linha.capacidadeUnidadeFornecimento} ${linha.siglaUnidadeMedida}`, 30).toUpperCase() : null,
     dataResultado: textoSeguro(linha.dataResultado || linha.dataCompra, 20),
     uf: textoSeguro(linha.estado, 2).toUpperCase(),
     municipio: textoSeguro(linha.municipio, 120),
@@ -135,6 +200,19 @@ function normalizarResultado(linha, pdm) {
     catalogoCodigo: textoSeguro(linha.codigoItemCatalogo, 20),
     link: /^\d{8,25}$/.test(compra) ? LINK_COMPRA + compra : null,
   };
+}
+
+// especificacao: true = a descrição tem todos os atributos do termo; false = diferente; null = termo sem atributo.
+// Muitas linhas repetem a descrição: uma conferência por descrição (teto de CPU do Cloudflare).
+function marcarEspecificacao(itens, termo) {
+  const { atributos } = separarEspecificacao(termo);
+  const memo = new Map();
+  return itens.map((item) => {
+    if (!atributos.length) return { ...item, especificacao: null };
+    const texto = `${item.descricaoItem} ${item.embalagem || ""}`;
+    if (!memo.has(texto)) memo.set(texto, atributos.every((a) => a.confere(texto)));
+    return { ...item, especificacao: memo.get(texto) };
+  });
 }
 
 async function buscarJson(url, signal) {
@@ -169,13 +247,13 @@ exports.handler = async (event) => {
     // variação rara, como caneta laser, esconda o produto principal pesquisado.
     const grupos = consultas.filter((consulta) => consulta.status === "fulfilled").map((consulta) => consulta.value);
     grupos.sort((a, b) => a.pdm.ordem - b.pdm.ordem || b.itens.length - a.itens.length);
-    const itens = grupos.flatMap((grupo) => grupo.itens.sort((a, b) => String(b.dataResultado).localeCompare(String(a.dataResultado))));
+    const itens = marcarEspecificacao(grupos.flatMap((grupo) => grupo.itens.sort((a, b) => String(b.dataResultado).localeCompare(String(a.dataResultado)))).slice(0, MAX_LINHAS), termo);
     const falhas = consultas.filter((c) => c.status === "rejected").length;
     return {
       statusCode: 200,
       // Resposta parcial (alguma consulta falhou) não fica em cache: a próxima busca tenta de novo.
       headers: falhas ? headers : { ...headers, "Cache-Control": CACHE },
-      body: JSON.stringify({ ok: true, fonte: "Catálogo e Pesquisa de Preços do Compras.gov", catalogos: pdms, itens: itens.slice(0, MAX_LINHAS), consultasComFalha: falhas }),
+      body: JSON.stringify({ ok: true, fonte: "Catálogo e Pesquisa de Preços do Compras.gov", catalogos: pdms, atributos: separarEspecificacao(termo).atributos.map((a) => a.rotulo), itens, consultasComFalha: falhas }),
     };
   } catch (erro) {
     return { statusCode: 502, headers, body: JSON.stringify({ ok: false, erro: "Não foi possível consultar as fontes públicas agora." }) };
@@ -189,4 +267,6 @@ module.exports.selecionarPdms = selecionarPdms;
 module.exports.normalizarResultado = normalizarResultado;
 module.exports.separarMarcaModelo = separarMarcaModelo;
 module.exports.centavosDoPreco = centavosDoPreco;
+module.exports.separarEspecificacao = separarEspecificacao;
+module.exports.marcarEspecificacao = marcarEspecificacao;
 module.exports.MAX_PDMS = MAX_PDMS;
