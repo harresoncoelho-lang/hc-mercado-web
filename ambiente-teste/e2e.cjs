@@ -29,7 +29,7 @@ async function comoUsuario(u, caminho, op = {}) {
 }
 function robo(script, env = {}) {
   const r = spawnSync(process.execPath, ['-r', path.join(AQUI, 'redirecionar-fetch.cjs'), path.join(RAIZ, 'scripts', script)],
-    { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, AMBIENTE_TESTE_REDIRECIONAR: '1', ...env }, timeout: 600000 });
+    { cwd: RAIZ, encoding: 'utf8', env: { ...process.env, AMBIENTE_TESTE_REDIRECIONAR: '1', LOTE_ESTEIRA: '30', ...env }, timeout: 600000 });
   return { status: r.status, saida: (r.stdout + r.stderr).slice(-3000) };
 }
 
@@ -77,7 +77,7 @@ async function escolherEdital(editais) {
     try {
       const itens = await fetch(base + '/itens?pagina=1&tamanhoPagina=50').then(r => r.json());
       const arqs = await fetch(base + '/arquivos').then(r => r.json());
-      if (!Array.isArray(itens) || !itens.length || itens.some(i => !(i.numeroItem >= 1 && i.numeroItem <= 2147483647))) { pulados.push(`${e}: numeroItem fora de 1..2147483647`); continue; }
+      if (!Array.isArray(itens) || itens.length < 2 || itens.some(i => !(i.numeroItem >= 1 && i.numeroItem <= 2147483647))) { pulados.push(`${e}: menos de 2 itens ou numeroItem fora de 1..2147483647`); continue; }
       if (!arqs.some(a => /\.pdf$/i.test(a.titulo || ''))) { pulados.push(`${e}: sem PDF no PNCP`); continue; }
       return { edital: e, pulados };
     } catch (err) { pulados.push(`${e}: ${err.message}`); }
@@ -133,7 +133,7 @@ async function main() {
 
   await passo('esteira: tarefas criadas pelo gatilho', null, async () => {
     const t = await banco(`operacao_esteira_tarefas?processo_id=eq.${contexto.proc.id}&select=etapa,estado`);
-    exigir(t.length === 4, `esperava 4 tarefas, veio ${JSON.stringify(t)}`);
+    exigir(t.length === 6, `esperava 6 tarefas (itens, exigencias, cruzamento, historico, resultado, contrato), veio ${JSON.stringify(t)}`);
     const fila = await banco(`fila_dossies?numero_controle_pncp=eq.${encodeURIComponent(edital)}&select=origem`);
     return `tarefas ${t.map(x => x.etapa + ':' + x.estado).join(', ')}; fila_dossies=${fila[0]?.origem}`;
   });
@@ -187,7 +187,7 @@ async function main() {
     await p.waitForTimeout(1500);
     fs.writeFileSync(path.join(PRINTS, 'dom-processo.txt'), await p.innerText('main'));
     const ck = await p.innerText('#checklist-esteira');
-    exigir(/Pronto: \d+ itens/.test(ck), 'checklist sem "Pronto: N itens": ' + ck.slice(0, 300));
+    exigir(/Pronto: \d+ itens?/.test(ck), 'checklist sem "Pronto: N itens": ' + ck.slice(0, 300));
     const ordem = await p.locator('#itens-processo [data-item-lista] li .itens-cabeca strong').allInnerTexts();
     const ordenada = [...ordem].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
     exigir(ordem.join('|') === ordenada.join('|'), 'itens fora de ordem (B4): ' + ordem.join(', '));
@@ -260,10 +260,10 @@ async function main() {
     await li.getByRole('button', { name: /^Editar/ }).click();
     const form = p.locator('#itens-processo form').first();
     await form.locator('[name=marca]').fill('Marca Fictícia'); await form.locator('[name=modelo]').fill('Modelo X');
-    await form.locator('[name=valorUnitario]').fill('35.90');
+    await form.locator('[name=valorUnitario]').fill('37.90');
     await form.getByRole('button', { name: /Salvar item/ }).click(); await p.waitForTimeout(2000);
     const [it] = await banco(`operacao_itens_resultado?id=eq.${contexto.itemId}&select=marca,modelo,valor_unitario_proposta,quantidade`);
-    exigir(it?.marca === 'Marca Fictícia' && Number(it.valor_unitario_proposta) === 35.9, 'item não atualizado: ' + JSON.stringify(it) + ' ' + (await p.innerText('#itens-processo')).slice(0, 300));
+    exigir(it?.marca === 'Marca Fictícia' && Number(it.valor_unitario_proposta) === 37.9, 'item não atualizado: ' + JSON.stringify(it) + ' ' + (await p.innerText('#itens-processo')).slice(0, 300));
     return JSON.stringify(it);
   });
 
@@ -314,9 +314,9 @@ async function main() {
     exigir(!/\d,000\b/.test(textoKit), 'quantidade com 3 casas no formulário (B5)');
     exigir(!/Conferir itens observados|Nao autoriza|Conferir página com extensão/.test(textoKit), 'bloco técnico da extensão visível (B6)');
     const d = await baixarDocx('proposta');
-    exigir(/35,90/.test(d.xml) && /Marca Fictícia/.test(d.xml), 'DOCX da proposta sem valor 35,90/marca: ' + d.xml.slice(0, 500));
+    exigir(/37,90/.test(d.xml) && /Marca Fictícia/.test(d.xml), 'DOCX da proposta sem valor 37,90/marca: ' + d.xml.slice(0, 500));
     exigir(d.xml.includes('Validade: 60 dias') && d.xml.includes('30 dias após o aceite') && d.xml.includes(unidadePncp), 'DOCX sem condições do perfil/unidade: ' + d.xml.slice(-500));
-    return `${path.basename(d.destino)} com item, marca, R$ 35,90, unidade "${unidadePncp}" do PNCP e validade/prazo/pagamento do perfil, sem digitar; sem bloco da extensão; quantidade sem ",000"`;
+    return `${path.basename(d.destino)} com item, marca, R$ 37,90, unidade "${unidadePncp}" do PNCP e validade/prazo/pagamento do perfil, sem digitar; sem bloco da extensão; quantidade sem ",000"`;
   });
 
   await passo('checklist: gerar declarações exigidas pelo edital', p, async () => {

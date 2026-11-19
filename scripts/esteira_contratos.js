@@ -102,7 +102,8 @@ async function acharContratoGov({ fetchPncp, esperar, cache }, pncp) {
 async function enriquecerComGov(deps, pncp, idConhecido) {
   const { fetchPncp, esperar } = deps;
   let contrato = null;
-  if (idConhecido) contrato = await pegar(fetchPncp, `${GOV}/id/${idConhecido}`);
+  // /id/{id} devolve uma lista de 1 item (confirmado na fonte real), não o objeto.
+  if (idConhecido) { const r = await pegar(fetchPncp, `${GOV}/id/${idConhecido}`); contrato = Array.isArray(r) ? r[0] : r; }
   if (!contrato) contrato = await acharContratoGov(deps, pncp);
   if (!contrato?.id) return null;
   const buscar = async (sufixo) => { await esperar(400); return (await pegar(fetchPncp, `${GOV}/${contrato.id}/${sufixo}`)) || []; };

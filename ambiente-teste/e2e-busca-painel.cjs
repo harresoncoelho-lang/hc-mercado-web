@@ -41,6 +41,9 @@ const municipios = async (p) => (await p.locator('#op-resultado .boletim-card').
   await p.locator('nav button[data-alvo="oportunidades"]').dispatchEvent('click');
   await p.waitForSelector('#op-palavras', { state: 'visible' });
   const limpar = async () => psql(`delete from public.filtros_salvos where cliente_id='${uid}'; delete from public.editais_sem_interesse where cliente_id='${uid}'; delete from public.lembretes where cliente_id='${uid}';`);
+  // O seed local traz editais reais do PNCP (oportunidades_abertas) que podem casar com "limpeza" e somar um cartão a mais.
+  // Só no banco LOCAL (a trava do fetch recusa produção): tira-os para a contagem da fixture ficar exata.
+  psql(`delete from public.oportunidades_abertas where objeto ilike '%limpeza%';`);
   await limpar();
   try {
     await passo('busca simples traz os 5 editais da fixture', p, async () => {

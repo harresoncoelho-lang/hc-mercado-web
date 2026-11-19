@@ -80,7 +80,7 @@ async function passosNovos({ navegador, p, contexto, urlProcesso }) {
     });
 
     // Termo curto da 1ª descrição do processo: o produto do catálogo precisa "parecer" com o item para "Usar do catálogo".
-    // Item 2: o item 1 ficou com mínimo 36,15 acima do valor 35,90 (passos 12-13) e o servidor recusa mudar o custo dele (bug listado no RESULTADO.md).
+    // Item 2: o item 1 tem mínimo 36,15 e valor 37,90 (passos 12-13); o servidor já recusa valor abaixo do mínimo, mas o e2e segue no item 2.
     const [item1] = await banco(`operacao_itens_resultado?processo_id=eq.${contexto.proc.id}&select=id,descricao,identificador&order=numero_ordem.asc.nullslast&offset=1&limit=1`);
     const termoItem = String(item1.descricao).split(/[,;:(\n–]| - /)[0].replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ').slice(0, 100);
 

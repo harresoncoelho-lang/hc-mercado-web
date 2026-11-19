@@ -135,8 +135,10 @@ const pesquisa = (id, orgao, numero, objeto, data, itens) => ({
     exigir(/fonte sem HTTPS/.test(t), 'selo fonte sem HTTPS ausente');
     exigir(/Empresa com sanção vigente \(CEIS\)/.test(t), 'selo de sanção ausente');
     exigir(/grave com a extensão do LicitaPlena/.test(t), 'dica de gravar ausente nas compras sem gravação');
-    const hrefs = await alvo.locator('a').evaluateAll((as) => as.map((a) => a.href));
-    exigir(hrefs.every((h) => !/AtaEletronico/i.test(h)), 'link para a ata com captcha');
+    // O cartão híbrido tem o link explícito "Ver tudo"/"Abrir a ata completa" (o usuário resolve o captcha); nenhum OUTRO link pode levar à ata com captcha.
+    const links = await alvo.locator('a').evaluateAll((as) => as.map((a) => ({ href: a.href, texto: a.textContent })));
+    const fora = links.filter((l) => /AtaEletronico/i.test(l.href) && !/ver tudo|abrir a ata completa/i.test(l.texto));
+    exigir(!fora.length, 'link para a ata com captcha fora do botão "Ver tudo": ' + JSON.stringify(fora));
     const nSelos = await alvo.locator('.sancao-selo').count();
     return `selos de sanção ${nSelos}; ${t.slice(t.indexOf('Pregão'), t.indexOf('Pregão') + 260)}`;
   });

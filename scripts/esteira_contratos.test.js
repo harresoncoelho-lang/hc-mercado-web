@@ -95,7 +95,7 @@ test("contrato: id do Contratos.gov já conhecido evita baixar a lista da UASG; 
   const f = async (url) => {
     if (url.includes("/contratos/contratacao/")) return json({ data: [CONTRATO_PNCP], paginasRestantes: 0 });
     if (url.endsWith("/termos") || url.includes("/empenhos?pagina")) return json(null, 204);
-    if (url.endsWith("/id/797807")) return json({ id: 797807, numero: "00001/2026", valor_global: "100,00" });
+    if (url.endsWith("/id/797807")) return json([{ id: 797807, numero: "00001/2026", valor_global: "100,00" }]);
     if (/\/797807\/(empenhos|historico|faturas)$/.test(url)) return json([]);
     throw new Error(`inesperado ${url}`);
   };
