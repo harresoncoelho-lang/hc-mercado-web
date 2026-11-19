@@ -1,6 +1,7 @@
 // Análise por CNPJ (tela "Analisar concorrente" do painel): coleta por demanda e guarda nas tabelas historico_*.
 //   POST {acao:"buscar", q}      -> {fornecedores:[{cnpj, nome, total}]}  (nome ou CNPJ, filtro do PNCP; sem CPF)
 //   POST {acao:"coletar", cnpj}  -> {situacao, total_pncp, coletadas, compras_pendentes, meses_pendentes, gerado_em}
+//   POST {acao:"cadastro", cnpj} -> {cadastro, guardado}  (base aberta da Receita, cache de 30 dias em empresas_cadastro)
 // A leitura dos dados é direto do navegador (RPC analise_cnpj_participacoes, com a RLS do usuário).
 // Orçamento (Cloudflare grátis, 50 subrequisições): login 1 + cache 1 + cota 1 + PNCP até 3 + dados abertos
 // 4 compras x 3 + gravação ~6 + fila 1 ≈ 27. O resto (compras do PNCP fora do Compras.gov e o arquivo
@@ -21,6 +22,9 @@ const MAX_FILA_SOLICITANTE = 10;
 const VALIDADE_MS = 7 * 24 * 3600 * 1000;
 const COMPRAS_NA_HORA = 4;
 const PAGINAS_PNCP = 2;
+const PAGINAS_CONTRATOS = 1; // 100 contratos mais recentes na hora; o robô lê o resto (contratos_lidos_em nulo)
+const VALIDADE_CADASTRO_MS = 30 * 24 * 3600 * 1000;
+const LIMITE_CADASTRO_DIARIO = 100;
 
 async function rest(caminho, opcoes = {}) {
   const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -58,7 +62,8 @@ const resumoFila = (l, guardado) => ({ situacao: l.situacao, nome: l.nome, total
 // para gravar e a fila do robô. Puro quanto ao banco (testado com fetch falso).
 async function coletarNaHora(cnpj, { fetchImpl = (...a) => fetch(...a), orcamento = 20, agora = Date.now(), anterior = null } = {}) {
   const b = L.criarBuscador({ fetchImpl, orcamento, esperar: async () => {}, pausaMs: 0 });
-  const saida = { nome: null, total_pncp: 0, compras: [], itens: [], participacoes: [], pendentes: [], coletadas: 0, avisos: [] };
+  const saida = { nome: null, total_pncp: 0, compras: [], itens: [], participacoes: [], pendentes: [], coletadas: 0, avisos: [],
+    contratos: [], contratos_total: null, contratos_completo: false };
   try {
     const achado = (await A.sugerirFornecedores(b, cnpj)).find((f) => f.cnpj === cnpj);
     if (achado) {
@@ -68,6 +73,8 @@ async function coletarNaHora(cnpj, { fetchImpl = (...a) => fetch(...a), orcament
       saida.compras = compras.map(({ _ref, ...c }) => c);
       saida.pendentes = compras.map((c) => c.id_compra);
       if (total > compras.length) saida.avisos.push(`O PNCP lista ${total} contratações; as ${compras.length} mais recentes entram nesta análise.`);
+      const ct = await A.contratosDoFornecedor(b, achado.ids, cnpj, PAGINAS_CONTRATOS);
+      Object.assign(saida, { contratos: ct.contratos, contratos_total: ct.total, contratos_completo: ct.completo });
       for (const c of compras.filter((x) => L.decifrarIdCompra(x.id_compra)?.lei14133).slice(0, COMPRAS_NA_HORA)) {
         const r = await A.coletarCompra(b, c, cnpj);
         if (!r) continue;
@@ -108,6 +115,7 @@ exports.handler = async (event) => {
       const lista = await A.sugerirFornecedores(b, q);
       return responder(200, { fornecedores: lista.slice(0, 15).map(({ cnpj, nome, total }) => ({ cnpj, nome, total })) });
     }
+    if (dados?.acao === "cadastro") return await cadastro(usuario, String(dados.cnpj || "").replace(/\D/g, ""), responder);
     if (dados?.acao !== "coletar") return responder(400, { erro: "Ação inválida." });
     const cnpj = String(dados.cnpj || "").replace(/\D/g, "");
     if (!A.cnpjValido(cnpj)) return responder(400, { erro: "Informe um CNPJ válido (14 dígitos)." });
@@ -127,9 +135,11 @@ exports.handler = async (event) => {
     const r = await coletarNaHora(cnpj, { anterior: linha });
     // Cabeçalhos de todas as compras do PNCP (órgão, UF, link) e, das coletadas, itens e resultados.
     await L.gravar(rest, r);
+    if (r.contratos.length) await L.upsertPorColunas(rest, "historico_contratos_fornecedor", "numero_controle_pncp", r.contratos);
     const agora = new Date().toISOString();
     const fila = { cnpj, nome: r.nome || linha?.nome || null, situacao: "parcial", total_pncp: r.total_pncp, compras_pendentes: r.pendentes,
-      meses_pendentes: r.meses, meses_lidos: linha?.meses_lidos || [], erro: null, gerado_em: agora, atualizado_em: agora, pedido_em: agora, solicitante, tentativas: 0, mes_falhas: null };
+      meses_pendentes: r.meses, meses_lidos: linha?.meses_lidos || [], erro: null, gerado_em: agora, atualizado_em: agora, pedido_em: agora, solicitante, tentativas: 0, mes_falhas: null,
+      contratos_total: r.contratos_total, contratos_lidos_em: r.contratos_completo ? agora : null };
     await rest("historico_cnpj_consultas?on_conflict=cnpj", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify([fila]) });
     return responder(200, { ...resumoFila(fila, false), coletadas: r.coletadas, avisos: r.avisos });
   } catch (e) {
@@ -138,5 +148,26 @@ exports.handler = async (event) => {
   }
 };
 
+// Dados cadastrais: cache de 30 dias por CNPJ (dado público, compartilhado). Fonte fora do ar com cache vencido:
+// devolve o guardado (guardado: true, vencido: true) em vez de nada.
+async function cadastro(usuario, cnpj, responder, { fetchImpl = (...a) => fetch(...a), agora = Date.now() } = {}) {
+  if (!A.cnpjValido(cnpj)) return responder(400, { erro: "Informe um CNPJ válido (14 dígitos)." });
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return responder(503, { erro: "Consulta cadastral indisponível neste ambiente." });
+  const [guardado] = await (await rest(`empresas_cadastro?cnpj=eq.${cnpj}&select=*`)).json();
+  if (guardado && agora - Date.parse(guardado.consultado_em) < VALIDADE_CADASTRO_MS) return responder(200, { cadastro: guardado, guardado: true });
+  const cota = await verificarLimiteDiario(usuario.userId, "analise-cnpj-cadastro", LIMITE_CADASTRO_DIARIO);
+  if (!cota.ok) return guardado ? responder(200, { cadastro: guardado, guardado: true, vencido: true }) : responder(429, { erro: cota.erro || "Limite diário de consultas cadastrais atingido." });
+  let linha;
+  try { linha = await A.buscarCadastro(fetchImpl, cnpj); } catch (e) {
+    console.warn("analise-cnpj cadastro:", e.message);
+    return guardado ? responder(200, { cadastro: guardado, guardado: true, vencido: true }) : responder(502, { erro: "A base da Receita não respondeu agora. Tente de novo em instantes." });
+  }
+  if (!linha) return responder(404, { erro: "CNPJ não encontrado na base aberta da Receita." });
+  const salvo = { ...linha, consultado_em: new Date(agora).toISOString() };
+  await rest("empresas_cadastro?on_conflict=cnpj", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify([salvo]) });
+  return responder(200, { cadastro: salvo, guardado: false });
+}
+
 exports.coletarNaHora = coletarNaHora;
+exports.cadastro = cadastro;
 exports.LIMITES = { MAX_FILA_GLOBAL, MAX_FILA_SOLICITANTE, LIMITE_BUSCA_DIARIO };

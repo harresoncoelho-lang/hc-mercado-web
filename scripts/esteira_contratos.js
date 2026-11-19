@@ -151,4 +151,4 @@ async function etapaContrato(tarefa, deps) {
   return todosEncerrados ? { estado: "feito", detalhe, erro: null } : depois(REVERIFICAR_CONTRATO_MS, detalhe);
 }
 
-module.exports = { etapaResultado, etapaContrato, pegar, ErroFonte };
+module.exports = { etapaResultado, etapaContrato, enriquecerComGov, pegar, ErroFonte };

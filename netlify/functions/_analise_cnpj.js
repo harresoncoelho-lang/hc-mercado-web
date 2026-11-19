@@ -194,5 +194,75 @@ async function gravarDoArquivo(rest, { compras, itens, participacoes }) {
   if (participacoes.length) await L.upsertPorColunas(rest, "historico_participacoes", "id_compra,numero_item,fornecedor_chave", participacoes);
 }
 
+// ---------- Dados cadastrais (base aberta de CNPJ da Receita) ----------
+// BrasilAPI e, de reserva, minhareceita.org: mesmo formato, grátis, sem chave. Sem User-Agent a BrasilAPI responde 403.
+const FONTES_RECEITA = [["brasilapi", (c) => `https://brasilapi.com.br/api/cnpj/v1/${c}`], ["minhareceita", (c) => `https://minhareceita.org/${c}`]];
+const dia = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || "")) ? String(v).slice(0, 10) : null);
+// A Receita publica MEI como "FULANA DE TAL ***75059***" (pedaço do CPF entre asteriscos): sai junto com o CPF inteiro.
+const CPF_MASCARADO = /\*+[\d.-]*\d[\d.-]*\*+/g;
+const nomeSemCpf = (v, max) => texto(semCpf(v, " ").replace(CPF_MASCARADO, " "), max);
+const cnae = (codigo, descricao) => (/^\d{5,7}$/.test(digitos(codigo)) ? { codigo: digitos(codigo), descricao: texto(descricao, 200) } : null);
+
+// Resposta da fonte -> linha de empresas_cadastro. Sócio: só nome (sem CPF), qualificação e entrada; o campo
+// cnpj_cpf_do_socio da Receita (CPF mascarado ou CNPJ) nunca é lido.
+function cadastroDaReceita(j, cnpj, fonte) {
+  if (!j || digitos(j.cnpj) !== cnpj) return null;
+  const socios = (Array.isArray(j.qsa) ? j.qsa : []).map((s) => ({ nome: nomeSemCpf(s.nome_socio, 200), qualificacao: texto(s.qualificacao_socio, 120), entrada: dia(s.data_entrada_sociedade) }))
+    .filter((s) => s.nome).slice(0, 200);
+  return { cnpj, razao_social: nomeSemCpf(j.razao_social, 300), nome_fantasia: nomeSemCpf(j.nome_fantasia, 300),
+    situacao: texto(j.descricao_situacao_cadastral, 60), data_situacao: dia(j.data_situacao_cadastral),
+    motivo_situacao: texto(j.descricao_motivo_situacao_cadastral, 200), situacao_especial: texto(j.situacao_especial, 200),
+    porte: texto(j.descricao_porte || j.porte, 60), natureza_juridica: texto(j.natureza_juridica, 200), data_abertura: dia(j.data_inicio_atividade),
+    capital_social: numero(j.capital_social), opcao_simples: typeof j.opcao_pelo_simples === "boolean" ? j.opcao_pelo_simples : null,
+    opcao_mei: typeof j.opcao_pelo_mei === "boolean" ? j.opcao_pelo_mei : null,
+    cnae_principal: cnae(j.cnae_fiscal, j.cnae_fiscal_descricao),
+    cnaes_secundarios: (Array.isArray(j.cnaes_secundarios) ? j.cnaes_secundarios : []).map((c) => cnae(c.codigo, c.descricao)).filter(Boolean).slice(0, 300),
+    socios, municipio: texto(j.municipio, 120), uf: /^[A-Z]{2}$/.test(String(j.uf || "")) ? j.uf : null, fonte };
+}
+
+// Uma fonte por vez; 404 = CNPJ inexistente na base aberta (não tenta a reserva). Erro de rede/5xx/429 -> próxima.
+async function buscarCadastro(fetchImpl, cnpj, timeoutMs = 10000) {
+  let ultimoErro = null;
+  for (const [fonte, url] of FONTES_RECEITA) {
+    try {
+      const r = await fetchImpl(url(cnpj), { headers: { Accept: "application/json", "User-Agent": "LicitaPlena/1.0 (analise-cnpj)" }, signal: globalThis.AbortSignal.timeout(timeoutMs) });
+      if (r.status === 404) return null;
+      if (!r.ok) { ultimoErro = new Error(`${fonte} HTTP ${r.status}`); continue; }
+      return cadastroDaReceita(await r.json(), cnpj, fonte);
+    } catch (e) { ultimoErro = e; }
+  }
+  throw ultimoErro || new Error("Receita indisponível");
+}
+
+// ---------- Contratos por fornecedor (PNCP) ----------
+// O mesmo id do filtro "Fornecedores" do PNCP vale para contratos (conferido em nov/2026: BMS, id 288035).
+// UF: a da unidade contratante (sub-rogada, se houver), nunca a da sede do órgão.
+const ESFERAS = new Set(["F", "E", "M", "D", "N"]);
+function contratoDaBusca(i, cnpj) {
+  if (digitos(i?.fornecedor_ni) !== cnpj || !/^\d{14}-2-\d+\/\d{4}$/.test(String(i.numero_controle_pncp || ""))) return null;
+  const uf = [i.unidade_subrogada_uf, i.uf].find((u) => /^[A-Z]{2}$/.test(String(u || ""))) || null;
+  const m = /^(\d{14})-2-0*(\d+)\/(\d{4})$/.exec(i.numero_controle_pncp);
+  return { numero_controle_pncp: i.numero_controle_pncp, fornecedor_ni: cnpj, fornecedor_nome: nomeSemCpf(i.fornecedor_nome, 300),
+    orgao_cnpj: /^\d{14}$/.test(digitos(i.orgao_cnpj)) ? digitos(i.orgao_cnpj) : null, orgao_nome: texto(i.orgao_nome, 300),
+    unidade_codigo: texto(i.unidade_subrogada_codigo || i.unidade_codigo, 20), unidade_nome: texto(i.unidade_subrogada_nome || i.unidade_nome, 300),
+    municipio: texto(i.unidade_subrogada_municipio_nome || i.municipio_nome, 120), uf, esfera: ESFERAS.has(i.esfera_id) ? i.esfera_id : null,
+    tipo: texto(i.tipo_contrato_nome || i.tipo_nome, 80), numero: texto(i.numero_contrato_empenho, 60), ano: Number(i.ano) || null,
+    objeto: texto(i.description || i.title, 1000), data_assinatura: dia(i.data_assinatura), vigencia_inicio: dia(i.data_inicio_vigencia),
+    vigencia_fim: dia(i.data_fim_vigencia), valor_global: numero(i.valor_global), link_pncp: `${PNCP}/app/contratos/${m[1]}/${m[3]}/${m[2]}` };
+}
+
+async function contratosDoFornecedor(b, ids, cnpj, maxPaginas) {
+  const contratos = new Map();
+  let total = 0, completo = false;
+  for (let p = 1; p <= maxPaginas; p++) {
+    const q = new URLSearchParams({ tipos_documento: "contrato", ordenacao: "-data", pagina: String(p), tam_pagina: "100", status: "todos", fornecedores: ids.join("|") });
+    const r = await b.json(`${PNCP}/api/search?${q}`);
+    total = Number(r?.total) || total;
+    for (const i of r?.items || []) { const c = contratoDaBusca(i, cnpj); if (c) contratos.set(c.numero_controle_pncp, c); }
+    if (!r?.items?.length || p * 100 >= total) { completo = true; break; }
+  }
+  return { contratos: [...contratos.values()], total, completo };
+}
+
 module.exports = { cnpjValido, mesesJanela, sugerirFornecedores, comprasComResultado, coletarCompra, criarFiltroCnpjs, gravarDoArquivo,
-  refDoControle, linkPncpDoControle, mascarar, SITUACAO_ITEM, MESES_JANELA };
+  refDoControle, linkPncpDoControle, mascarar, SITUACAO_ITEM, MESES_JANELA, cadastroDaReceita, buscarCadastro, contratoDaBusca, contratosDoFornecedor };

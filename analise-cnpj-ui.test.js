@@ -78,3 +78,47 @@ test("camadas do CNPJ: automático, gravado (verificado) e pregões com recusa q
   assert.equal(com.verificadas, 1);
   assert.equal(com.faltam.length, 0);
 });
+
+// ---------- parte 2: contratos por estado e alerta de vulnerabilidade ----------
+const contratos = [
+  { numero_controle_pncp: "a", uf: "AM", valor_global: 10379826.5, vigencia_fim: "2027-01-30", valor_empenhado: 1500, valor_liquidado: 800, valor_pago: 700, valor_faturado: 800 },
+  { numero_controle_pncp: "b", uf: "AM", valor_global: 5959800, vigencia_fim: "2025-09-15" },
+  { numero_controle_pncp: "c", uf: null, valor_global: null },
+];
+
+test("contratos: total, vigentes, por UF da unidade e valores federais só de quem tem empenho", () => {
+  const c = U.resumirContratos(contratos, "2026-11-19");
+  assert.equal(c.total, 3);
+  assert.equal(c.vigentes, 1);
+  assert.equal(c.valorContratado, 10379826.5 + 5959800);
+  assert.equal(c.maiorContrato, 10379826.5);
+  assert.deepEqual(c.porUf.map((g) => [g.chave, g.contratos, g.vigentes]), [["AM", 2, 1], ["Não informado", 1, 0]]);
+  assert.deepEqual([c.federaisComValores, c.valorContratadoFederal, c.empenhado, c.pago, c.faturado], [1, 10379826.5, 1500, 700, 800]);
+  assert.equal(U.resumirContratos(null, "2026-11-19").total, 0);
+});
+
+test("vulnerabilidade: sanção vigente, situação irregular, recém-aberta, capital baixo, MEI acima do teto e recusas", () => {
+  const ct = U.resumirContratos(contratos, "2026-11-19");
+  const resumo = { disputas: 10, recusadas: [{ id_compra: "x", numero_item: 1 }, { id_compra: "x", numero_item: 2 }] };
+  const mot = { desclassificacoes: 1, inabilitacoes: 0, chaves: new Set(["x|1"]) };
+  const a = U.alertasVulnerabilidade({ hoje: "2026-11-19", contratos: ct, resumo, mot,
+    sancoes: { vigentes: [{ orgao_sancionador: "UFAM" }], expiradas: [] },
+    cadastro: { situacao: "INAPTA", data_situacao: "2026-01-02", motivo_situacao: "OMISSAO DE DECLARACOES", situacao_especial: "RECUPERACAO JUDICIAL",
+      data_abertura: "2026-06-01", capital_social: 100000, opcao_mei: true } });
+  const niveis = a.map((x) => x.nivel);
+  assert.deepEqual(niveis, ["alto", "alto", "alto", "medio", "medio", "medio", "medio"]);
+  assert.match(a[0].texto, /vigente.*UFAM/);
+  assert.match(a[1].texto, /INAPTA desde 02\/01\/2026 \(OMISSAO/);
+  assert.match(a[3].texto, /aberta há 5 mês/);
+  assert.match(a[4].texto, /menos de 10%/);
+  assert.match(a[6].texto, /^2 desclassificação.*10 disputas \(20%\)/);
+});
+
+test("vulnerabilidade: empresa regular e antiga não gera alerta; sanção só encerrada é informativa", () => {
+  const ct = U.resumirContratos(contratos, "2026-11-19");
+  const cad = { situacao: "ATIVA", motivo_situacao: "SEM MOTIVO", situacao_especial: null, data_abertura: "1999-04-12", capital_social: 6000000, opcao_mei: false };
+  assert.deepEqual(U.alertasVulnerabilidade({ hoje: "2026-11-19", contratos: ct, cadastro: cad, sancoes: { vigentes: [], expiradas: [] },
+    resumo: { disputas: 3, recusadas: [{ id_compra: "x", numero_item: 1 }] }, mot: { desclassificacoes: 0, inabilitacoes: 0, chaves: new Set() } }), []);
+  const so = U.alertasVulnerabilidade({ hoje: "2026-11-19", sancoes: { vigentes: [], expiradas: [{}] } });
+  assert.deepEqual(so.map((x) => x.nivel), ["info"]);
+});

@@ -5,7 +5,9 @@
 //   - RPC analise_cnpj_participacoes (tabelas historico_*, com a RLS do usuário): PNCP, dados abertos do
 //     Compras.gov e arquivo semanal de propostas;
 //   - pregoes_gravados_* (extensão "Gravar pregão"): desclassificação/inabilitação com o texto literal;
-//   - /api/sancoes-cnpj (CEIS/CNEP) e /api/analise-cnpj (coleta por demanda + fila do robô).
+//   - /api/sancoes-cnpj (CEIS/CNEP) e /api/analise-cnpj (coleta por demanda + fila do robô);
+//   - /api/analise-cnpj {acao:"cadastro"} (base aberta da Receita, cache empresas_cadastro) e a tabela
+//     historico_contratos_fornecedor (contratos do PNCP por fornecedor; empenhado/pago/faturado do Contratos.gov.br).
 // Tudo por textContent (o dado vem de fontes externas). Regras puras exportadas para o node --test.
 (function (global) {
   'use strict';
@@ -100,6 +102,69 @@
     return { desclassificacoes: desclass.size, inabilitacoes: inabil.size, lista, chaves: new Set([...desclass, ...inabil]), naoVerificados };
   }
 
+  // Contratos do fornecedor (historico_contratos_fornecedor) -> totais e por UF da unidade contratante (puro).
+  // Empenhado/liquidado/pago/faturado só existem para contrato federal com registro no Contratos.gov.br.
+  function resumirContratos(contratos, hoje) {
+    const lista = Array.isArray(contratos) ? contratos : [];
+    const soma = (campo, l = lista) => l.reduce((t, c) => t + (num(c[campo]) || 0), 0);
+    const vigente = (c) => Boolean(c.vigencia_fim) && c.vigencia_fim >= hoje;
+    const comGov = lista.filter((c) => num(c.valor_empenhado) !== null || num(c.valor_pago) !== null);
+    const porUf = new Map();
+    for (const c of lista) {
+      const k = c.uf || 'Não informado';
+      const a = porUf.get(k) || { chave: k, contratos: 0, valor: 0, vigentes: 0 };
+      a.contratos++;
+      a.valor += num(c.valor_global) || 0;
+      if (vigente(c)) a.vigentes++;
+      porUf.set(k, a);
+    }
+    return { total: lista.length, valorContratado: soma('valor_global'), vigentes: lista.filter(vigente).length,
+      maiorContrato: lista.reduce((m, c) => Math.max(m, num(c.valor_global) || 0), 0),
+      federaisComValores: comGov.length, valorContratadoFederal: soma('valor_global', comGov), empenhado: soma('valor_empenhado', comGov),
+      liquidado: soma('valor_liquidado', comGov), pago: soma('valor_pago', comGov), faturado: soma('valor_faturado', comGov),
+      porUf: [...porUf.values()].sort((x, y) => y.valor - x.valor || y.contratos - x.contratos), lista };
+  }
+
+  // Alerta de vulnerabilidade (puro): o que o ConLicitação mostra no topo (desclassificações, inabilitações, sanções)
+  // mais sinais cadastrais. nivel: 'alto' (pode impedir de contratar) | 'medio' (atenção) | 'info'.
+  // Capital: a Lei 14.133 (art. 69, §4º) deixa o edital exigir capital ou patrimônio mínimo de até 10% do valor estimado;
+  // capital abaixo de 10% do maior contrato já assinado é sinal de que pode não passar nessa exigência.
+  const MS_DIA = 864e5;
+  const TETO_MEI = 81000;
+  function alertasCadastro(cadastro, maior, hoje) {
+    const a = [];
+    const situacao = String(cadastro.situacao || '').toUpperCase();
+    if (situacao && situacao !== 'ATIVA') {
+      const motivo = cadastro.motivo_situacao && !/sem motivo/i.test(cadastro.motivo_situacao) ? ` (${cadastro.motivo_situacao})` : '';
+      a.push({ nivel: 'alto', texto: `Situação cadastral na Receita: ${cadastro.situacao}${cadastro.data_situacao ? ` desde ${dataBr(cadastro.data_situacao)}` : ''}${motivo}.` });
+    }
+    if (cadastro.situacao_especial) a.push({ nivel: 'alto', texto: `Situação especial na Receita: ${cadastro.situacao_especial}.` });
+    const idadeDias = /^\d{4}-\d{2}-\d{2}$/.test(String(cadastro.data_abertura || '')) ? (Date.parse(hoje) - Date.parse(cadastro.data_abertura)) / MS_DIA : null;
+    if (idadeDias !== null && idadeDias >= 0 && idadeDias < 365) {
+      a.push({ nivel: 'medio', texto: `Empresa aberta há ${Math.floor(idadeDias / 30)} mês(es) (${dataBr(cadastro.data_abertura)}): pode não ter atestado de capacidade técnica nem balanço.` });
+    }
+    const capital = num(cadastro.capital_social);
+    if (capital !== null && maior > 0 && capital < maior * 0.1) {
+      a.push({ nivel: 'medio', texto: `Capital social de ${moeda(capital)} é menos de 10% do maior contrato dela (${moeda(maior)}): editais que exigem capital mínimo (até 10%, Lei 14.133 art. 69 §4º) podem barrá-la.` });
+    }
+    if (cadastro.opcao_mei && maior > TETO_MEI) a.push({ nivel: 'medio', texto: `Optante pelo MEI com contrato de ${moeda(maior)}: acima do teto anual do MEI (R$ 81 mil).` });
+    return a;
+  }
+  function alertasVulnerabilidade({ cadastro, sancoes, resumo, mot, contratos, hoje }) {
+    const a = [];
+    const vig = (sancoes && sancoes.vigentes) || [], exp = (sancoes && sancoes.expiradas) || [];
+    if (vig.length) a.push({ nivel: 'alto', texto: `${vig.length} sanção(ões) vigente(s) no CEIS/CNEP (${vig.map((x) => x.orgao_sancionador).filter(Boolean).slice(0, 2).join('; ') || 'órgão não informado'}).` });
+    else if (exp.length) a.push({ nivel: 'info', texto: `${exp.length} sanção(ões) já encerrada(s) no CEIS/CNEP: histórico, não impede contratar.` });
+    if (cadastro) a.push(...alertasCadastro(cadastro, contratos ? contratos.maiorContrato : 0, hoje));
+    if (mot && resumo) {
+      const recusas = mot.desclassificacoes + mot.inabilitacoes + resumo.recusadas.filter((p) => !mot.chaves.has(`${p.id_compra}|${p.numero_item}`)).length;
+      if (resumo.disputas >= 5 && recusas / resumo.disputas >= 0.2) {
+        a.push({ nivel: 'medio', texto: `${recusas} desclassificação(ões)/inabilitação(ões)/recusa(s) em ${resumo.disputas} disputas (${pct((recusas / resumo.disputas) * 100)}).` });
+      }
+    }
+    return a;
+  }
+
   // ---------- Tela ----------
   function el(doc, tag, attrs, ...filhos) {
     const e = doc.createElement(tag);
@@ -114,18 +179,77 @@
   const rolavel = (doc, tabela) => el(doc, 'div', { style: 'overflow-x:auto;-webkit-overflow-scrolling:touch' }, tabela);
   const cartao = (doc, titulo, valor) => el(doc, 'div', { class: 'cartao' }, el(doc, 'h3', { texto: titulo }), el(doc, 'div', { class: 'valor', texto: valor }));
 
-  function cabecalho(doc, cnpj, ficha) {
+  // Ficha da BrasilAPI que o painel já buscou -> mesmo formato de empresas_cadastro (quando o cache não respondeu).
+  const cadastroDaFicha = (ficha) => (ficha ? { razao_social: ficha.razao_social, municipio: ficha.municipio, uf: ficha.uf, porte: ficha.descricao_porte || ficha.porte,
+    situacao: ficha.descricao_situacao_cadastral, cnae_principal: ficha.cnae_fiscal ? { codigo: String(ficha.cnae_fiscal), descricao: ficha.cnae_fiscal_descricao } : null,
+    cnaes_secundarios: (ficha.cnaes_secundarios || []).filter((x) => x && x.codigo).map((x) => ({ codigo: String(x.codigo), descricao: x.descricao })),
+    data_abertura: ficha.data_inicio_atividade, capital_social: num(ficha.capital_social), natureza_juridica: ficha.natureza_juridica, socios: [] } : null);
+
+  // cad: linha de empresas_cadastro (via /api/analise-cnpj); sem ela, a ficha da BrasilAPI.
+  function cabecalho(doc, cnpj, cad, ficha) {
     const caixa = el(doc, 'div', { class: 'acn-cabecalho' });
-    if (!ficha) {
-      caixa.append(el(doc, 'p', { class: 'dica-clique', texto: `CNPJ ${cnpjFormatado(cnpj)} — dados cadastrais da Receita indisponíveis agora (BrasilAPI não respondeu ou o CNPJ não existe na base aberta).` }));
+    const c = cad || cadastroDaFicha(ficha);
+    if (!c) {
+      caixa.append(el(doc, 'p', { class: 'dica-clique', texto: `CNPJ ${cnpjFormatado(cnpj)} — dados cadastrais da Receita indisponíveis agora (a base aberta não respondeu ou o CNPJ não existe nela).` }));
       return caixa;
     }
-    const cnaes = [ficha.cnae_fiscal && `${ficha.cnae_fiscal} — ${ficha.cnae_fiscal_descricao || ''}`, ...(ficha.cnaes_secundarios || []).filter((c) => c && c.codigo).map((c) => `${c.codigo} — ${c.descricao || ''}`)];
-    caixa.append(el(doc, 'h3', { style: 'margin:0 0 4px', texto: ficha.razao_social || '—' }),
-      el(doc, 'p', { style: 'margin:0', texto: [`CNPJ ${cnpjFormatado(cnpj)}`, [ficha.municipio, ficha.uf].filter(Boolean).join('/'), ficha.descricao_porte || ficha.porte,
-        ficha.descricao_situacao_cadastral && `Situação: ${ficha.descricao_situacao_cadastral}`].filter(Boolean).join(' · ') }),
-      cnaes.length ? el(doc, 'details', {}, el(doc, 'summary', { texto: `CNAEs (${cnaes.length})` }), el(doc, 'ul', { class: 'ficha-lista' }, cnaes.map((c) => el(doc, 'li', { texto: c })))) : null,
-      el(doc, 'p', { class: 'dica-clique', style: 'margin:4px 0 0', texto: 'Fonte: base aberta de CNPJ da Receita Federal, consultada pela BrasilAPI (grátis, sem chave). Sócios: só nomes, na Análise administrativa abaixo.' }));
+    const cnaes = [c.cnae_principal && `${c.cnae_principal.codigo} — ${c.cnae_principal.descricao || ''} (principal)`, ...(c.cnaes_secundarios || []).map((x) => `${x.codigo} — ${x.descricao || ''}`)].filter(Boolean);
+    const campo = (rotulo, valor) => el(doc, 'li', {}, el(doc, 'strong', { texto: `${rotulo}: ` }), valor || '—');
+    const fonte = cad ? `${cad.fonte === 'minhareceita' ? 'minhareceita.org' : 'BrasilAPI'}, consultada em ${dataBr(cad.consultado_em)}` : 'BrasilAPI';
+    caixa.append(el(doc, 'h3', { style: 'margin:0 0 4px', texto: c.razao_social || '—' }),
+      el(doc, 'p', { style: 'margin:0', texto: [`CNPJ ${cnpjFormatado(cnpj)}`, [c.municipio, c.uf].filter(Boolean).join('/'), c.porte, c.situacao && `Situação: ${c.situacao}`].filter(Boolean).join(' · ') }),
+      el(doc, 'ul', { class: 'ficha-lista acn-cadastro' },
+        campo('Situação cadastral', [c.situacao, c.data_situacao && `desde ${dataBr(c.data_situacao)}`, c.situacao_especial && `situação especial: ${c.situacao_especial}`].filter(Boolean).join(' · ')),
+        campo('Abertura', c.data_abertura ? dataBr(c.data_abertura) : null),
+        campo('Capital social', num(c.capital_social) === null ? null : moeda(num(c.capital_social))),
+        campo('Porte', [c.porte, c.opcao_mei ? 'MEI' : c.opcao_simples ? 'Simples Nacional' : null].filter(Boolean).join(' · ')),
+        campo('Natureza jurídica', c.natureza_juridica),
+        campo('CNAE principal', c.cnae_principal ? `${c.cnae_principal.codigo} — ${c.cnae_principal.descricao || ''}` : null)),
+      cnaes.length > 1 ? el(doc, 'details', {}, el(doc, 'summary', { texto: `CNAEs (${cnaes.length})` }), el(doc, 'ul', { class: 'ficha-lista' }, cnaes.map((x) => el(doc, 'li', { texto: x })))) : null,
+      (c.socios || []).length ? el(doc, 'details', {}, el(doc, 'summary', { texto: `Sócios e administradores (${c.socios.length})` }),
+        el(doc, 'ul', { class: 'ficha-lista' }, c.socios.map((x) => el(doc, 'li', { texto: [x.nome, x.qualificacao, x.entrada && `desde ${dataBr(x.entrada)}`].filter(Boolean).join(' — ') })))) : null,
+      el(doc, 'p', { class: 'dica-clique', style: 'margin:4px 0 0', texto: `Fonte: base aberta de CNPJ da Receita Federal (${fonte}). Sócios: só o nome como a Receita publica; CPF não é guardado.` }));
+    return caixa;
+  }
+
+  const ROTULO_NIVEL = { alto: 'Alto', medio: 'Atenção', info: 'Info' };
+  function blocoVulnerabilidade(doc, alertas) {
+    const caixa = el(doc, 'div', { class: 'acn-vulnerabilidade' }, el(doc, 'h3', { texto: 'Alerta de vulnerabilidade' }));
+    if (!alertas.length) caixa.append(el(doc, 'p', { class: 'dica-clique', texto: 'Nenhum sinal de risco nas fontes consultadas (CEIS/CNEP, Receita, disputas e contratos guardados).' }));
+    else caixa.append(el(doc, 'ul', { class: 'ficha-lista' }, alertas.map((x) => el(doc, 'li', { class: x.nivel === 'alto' ? 'aviso' : null, 'data-nivel': x.nivel },
+      el(doc, 'strong', { texto: `${ROTULO_NIVEL[x.nivel]}: ` }), x.texto))));
+    caixa.append(el(doc, 'p', { class: 'dica-clique', texto: 'Certidões (CND federal, FGTS, trabalhista) não entram: as consultas oficiais exigem captcha. Confira no SICAF ou nos sites emissores.' }));
+    return caixa;
+  }
+
+  function linhaContrato(doc, x) {
+    const gov = Number(x.contratos_gov_id);
+    return el(doc, 'tr', {},
+      el(doc, 'td', { texto: `${x.numero || '—'} · ${x.objeto || 'Objeto não informado'}` }),
+      el(doc, 'td', { texto: [x.unidade_nome || x.orgao_nome, x.municipio, x.uf].filter(Boolean).join(' / ') || '—' }),
+      el(doc, 'td', { texto: `${dataBr(x.vigencia_inicio || x.data_assinatura)} a ${dataBr(x.vigencia_fim)}` }),
+      el(doc, 'td', { texto: moeda(num(x.valor_global)) }),
+      el(doc, 'td', { texto: num(x.valor_empenhado) === null ? '—' : `${moeda(num(x.valor_empenhado))} / ${moeda(num(x.valor_pago))} / ${moeda(num(x.valor_faturado))}` }),
+      el(doc, 'td', {}, link(doc, x.link_pncp, 'PNCP'), gov > 0 ? ' · ' : null, gov > 0 ? link(doc, `https://contratos.comprasnet.gov.br/api/contrato/id/${gov}`, 'Contratos.gov.br') : null));
+  }
+
+  function blocoContratos(doc, c) {
+    const caixa = el(doc, 'div', { class: 'acn-contratos' }, el(doc, 'h3', { texto: 'Contratos e valores faturados' }));
+    if (!c.total) { caixa.append(el(doc, 'p', { class: 'dica-clique', texto: 'Nenhum contrato deste CNPJ guardado ainda (PNCP). O robô completa a leitura na fila.' })); return caixa; }
+    const fed = (v) => (c.federaisComValores ? moeda(v) : '—');
+    caixa.append(el(doc, 'div', { class: 'cartoes' },
+      cartao(doc, 'Contratos (PNCP)', `${c.total} · ${c.vigentes} vigente(s)`), cartao(doc, 'Valor contratado', moeda(c.valorContratado)),
+      cartao(doc, 'Empenhado (federal)', fed(c.empenhado)), cartao(doc, 'Pago (federal)', fed(c.pago)), cartao(doc, 'Faturado (notas no Contratos.gov.br)', fed(c.faturado))));
+    if (c.federaisComValores) {
+      caixa.append(el(doc, 'p', { class: 'dica-clique', texto: `Empenhado, liquidado (${moeda(c.liquidado)}), pago e faturado de ${c.federaisComValores} contrato(s) federal(is) que somam ${moeda(c.valorContratadoFederal)} contratados (Contratos.gov.br). Estados e municípios não publicam esses valores numa fonte aberta única.` }));
+    }
+    caixa.append(el(doc, 'details', { class: 'acn-grupo', open: 'open' }, el(doc, 'summary', { texto: `Contratos por estado (${c.porUf.length})` }), rolavel(doc, el(doc, 'table', {},
+      el(doc, 'tr', {}, ['Estado (UF da unidade contratante)', 'Contratos', 'Vigentes', 'Valor contratado'].map((t) => el(doc, 'th', { texto: t }))),
+      c.porUf.map((g) => el(doc, 'tr', {}, el(doc, 'td', { texto: g.chave }), el(doc, 'td', { texto: String(g.contratos) }), el(doc, 'td', { texto: String(g.vigentes) }), el(doc, 'td', { texto: moeda(g.valor) })))))));
+    caixa.append(el(doc, 'details', { class: 'acn-grupo' }, el(doc, 'summary', { texto: `Lista de contratos (${c.total})` }), rolavel(doc, el(doc, 'table', {},
+      el(doc, 'tr', {}, ['Contrato', 'Contratante', 'Vigência', 'Valor', 'Empenhado / pago / faturado', 'Fonte'].map((t) => el(doc, 'th', { texto: t }))),
+      c.lista.slice(0, MAX_LINHAS).map((x) => linhaContrato(doc, x))))));
+    if (c.total > MAX_LINHAS) caixa.append(el(doc, 'p', { class: 'dica-clique', texto: `Lista: os ${MAX_LINHAS} mais recentes de ${c.total}; totais e estados contam todos.` }));
     return caixa;
   }
 
@@ -267,7 +391,10 @@
       linhas.push(...(data || []));
       if (!data || data.length < 1000) break;
     }
-    return { linhas, ...(await lerGravados(sb, cnpj)) };
+    // Contratos: tabela da parte 2 (analise_cnpj_v2.sql); ausente, a tela segue sem contratos.
+    const ct = await sb.from('historico_contratos_fornecedor').select('numero_controle_pncp,numero,objeto,orgao_nome,unidade_nome,municipio,uf,esfera,data_assinatura,vigencia_inicio,vigencia_fim,valor_global,valor_empenhado,valor_liquidado,valor_pago,valor_faturado,contratos_gov_id,link_pncp')
+      .eq('fornecedor_ni', cnpj).order('data_assinatura', { ascending: false, nullsFirst: false }).limit(1000);
+    return { linhas, contratos: ct.error ? [] : ct.data, ...(await lerGravados(sb, cnpj)) };
   }
   async function lerGravados(sb, cnpj) {
     // Tabelas da extensão ausentes (banco sem pregoes_gravados.sql): sem motivos gravados, o resto segue.
@@ -284,24 +411,26 @@
   async function montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, sancoesLote, hoje, LicitaSancoes }) {
     const doc = alvo.ownerDocument;
     const status = el(doc, 'div', { class: 'carregando', texto: 'Buscando as disputas deste CNPJ no PNCP e no Compras.gov…' });
-    alvo.replaceChildren(cabecalho(doc, cnpj, ficha), status);
-    const [coleta, sanc] = await Promise.all([requisitar({ acao: 'coletar', cnpj }).catch((e) => ({ erro: String(e.message || e) })), sancoes().catch(() => ({ erro: 'indisponível agora' }))]);
+    alvo.replaceChildren(cabecalho(doc, cnpj, null, ficha), status);
+    const [coleta, sanc, cad] = await Promise.all([requisitar({ acao: 'coletar', cnpj }).catch((e) => ({ erro: String(e.message || e) })), sancoes().catch(() => ({ erro: 'indisponível agora' })),
+      requisitar({ acao: 'cadastro', cnpj }).then((x) => (x && x.cadastro) || null).catch(() => null)]);
     let dados;
     try { dados = await lerTudo(sb, cnpj); } catch (e) {
       status.replaceWith(el(doc, 'div', { class: 'aviso', texto: `Não foi possível ler o histórico agora (${e.message || e.code || 'erro'}).` }));
       return null;
     }
-    const r = resumir(dados.linhas), mot = motivosGravados(dados.mensagens, dados.propostas);
+    const r = resumir(dados.linhas), mot = motivosGravados(dados.mensagens, dados.propostas), ct = resumirContratos(dados.contratos, hoje);
+    const vulneraveis = alertasVulnerabilidade({ cadastro: cad, sancoes: sanc && !sanc.erro ? sanc : null, resumo: r, mot, contratos: ct, hoje });
     let selos = null;
     const vencedores = sancoesLote && LicitaSancoes ? cnpjsDosVencedores(r.itensNaoVencidos) : [];
     if (vencedores.length) {
       try { const lote = await sancoesLote(vencedores); if (lote && lote.resultados) selos = { resultados: lote.resultados, hoje: lote.hoje || hoje, LicitaSancoes }; } catch { selos = null; }
     }
-    const desenhar = (mot, atualizado) => alvo.replaceChildren(cabecalho(doc, cnpj, ficha), blocoColeta(doc, coleta, () => montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, sancoesLote, hoje, LicitaSancoes })) || '',
+    const desenhar = (mot, atualizado) => alvo.replaceChildren(cabecalho(doc, cnpj, cad, ficha), blocoVulnerabilidade(doc, vulneraveis), blocoColeta(doc, coleta, () => montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, sancoesLote, hoje, LicitaSancoes })) || '',
       atualizado ? el(doc, 'p', { class: 'la-atualizado', role: 'status', texto: 'Atualizado com o que você gravou' }) : '',
       blocoCamadas(doc, camadasCnpj(r, mot.mensagens, mot.propostas)),
-      blocoAlertas(doc, r, mot, sanc, hoje, LicitaSancoes), blocoParticipacoes(doc, r, selos), blocoMotivos(doc, r, mot),
-      el(doc, 'p', { class: 'dica-clique', texto: 'Fontes: PNCP (resultados por fornecedor), dados abertos do Compras.gov, arquivo semanal de propostas (repositorio.dados.gov.br, só itens homologados), CEIS/CNEP da CGU e pregões gravados pela extensão. Outras plataformas (Licitanet, BLL, BNC…) entram só pelo resultado publicado no PNCP: as disputas perdidas nelas não são públicas.' }));
+      blocoAlertas(doc, r, mot, sanc, hoje, LicitaSancoes), blocoParticipacoes(doc, r, selos), blocoContratos(doc, ct), blocoMotivos(doc, r, mot),
+      el(doc, 'p', { class: 'dica-clique', texto: 'Fontes: PNCP (resultados e contratos por fornecedor), Contratos.gov.br (empenhos e faturas de contrato federal), base aberta de CNPJ da Receita, dados abertos do Compras.gov, arquivo semanal de propostas (repositorio.dados.gov.br, só itens homologados), CEIS/CNEP da CGU e pregões gravados pela extensão. Outras plataformas (Licitanet, BLL, BNC…) entram só pelo resultado publicado no PNCP: as disputas perdidas nelas não são públicas.' }));
     desenhar(Object.assign(mot, { mensagens: dados.mensagens, propostas: dados.propostas }), false);
     // Voltou da página do governo (foco da janela) e há gravação nova: atualiza sozinho, sem clicar.
     if (alvo.__acnVoltar && global.removeEventListener) global.removeEventListener('focus', alvo.__acnVoltar);
@@ -331,7 +460,7 @@
     })));
   }
 
-  const api = { resumir, motivosGravados, venceu, posicao, precoFinal, montar, montarEscolha, cnpjsDosVencedores, camadasCnpj };
+  const api = { resumir, motivosGravados, venceu, posicao, precoFinal, montar, montarEscolha, cnpjsDosVencedores, camadasCnpj, resumirContratos, alertasVulnerabilidade };
   global.LicitaAnaliseCnpj = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);
