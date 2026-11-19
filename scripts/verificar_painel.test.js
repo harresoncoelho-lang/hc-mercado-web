@@ -456,3 +456,41 @@ test("falha técnica não vaza no resumo, mas sessão expirada orienta novo logi
   assert.equal(mensagens[0], "");
   assert.match(mensagens[1], /Faça login novamente/);
 });
+
+test("visão geral do mercado lê o resumo do robô e só cai nas RPCs sem ele", async () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const vm = require("node:vm");
+  const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
+  const inicio = html.indexOf("async function consultasMercadoGeral(");
+  const fim = html.indexOf("let mercadoGeralJaCarregado", inicio);
+  assert.ok(inicio >= 0 && fim > inicio);
+  const contexto = vm.createContext({});
+  vm.runInContext(html.slice(inicio, fim), contexto);
+  const falso = (blob) => {
+    const chamadas = [];
+    const consulta = (nome) => ({ select: () => ({ eq: () => ({ maybeSingle: async () => { chamadas.push(nome); return blob; } }) }) });
+    return {
+      chamadas,
+      from: (tabela) => tabela === "dados_robo" ? consulta("dados_robo")
+        : { select: async () => { chamadas.push(tabela); return { count: 7 }; } },
+      rpc: async (nome) => { chamadas.push(nome); return { data: nome === "dashboard_estados_distintos" ? 2 : [{ uf: "SP", total: 7 }] }; },
+    };
+  };
+
+  const comResumo = falso({ data: { dado: { total: 9, estados_distintos: 3, estados_top: [{ uf: "AM", total: 5 }], segmentos_top: [{ segmento: "saude", total: 4 }] } } });
+  const [total, estados, rankUf, rankSeg] = await contexto.consultasMercadoGeral(comResumo);
+  assert.deepEqual(comResumo.chamadas, ["dados_robo"]);
+  assert.equal(total.count, 9);
+  assert.equal(estados.data, 3);
+  assert.equal(rankUf.data[0].uf, "AM");
+  assert.equal(rankSeg.data[0].segmento, "saude");
+
+  for (const blob of [{ data: null }, { error: { message: "x" } }, { data: { dado: { total: "9" } } }]) {
+    const semResumo = falso(blob);
+    const resp = await contexto.consultasMercadoGeral(semResumo);
+    assert.deepEqual(semResumo.chamadas, ["dados_robo", "contratos", "dashboard_estados_distintos", "dashboard_estados_top", "dashboard_segmentos_top"]);
+    assert.equal(resp[0].count, 7);
+    assert.equal(resp[1].data, 2);
+  }
+});

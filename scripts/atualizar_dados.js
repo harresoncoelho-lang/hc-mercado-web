@@ -1380,6 +1380,37 @@ async function sincronizarContratosNoSupabase(contratos) {
   await removerMaisAntigosQue("contratos", "data_assinatura", limiteRetencaoIso);
 }
 
+// Resumo da "Visão geral do mercado" do painel, gravado em dados_robo/dashboard_mercado.
+// As RPCs dashboard_* e o count exact sobre contratos rodam como o usuário, sob RLS, e
+// estouravam o statement timeout em produção (57014). O robô já tem a base inteira em
+// memória (hidratada + nova, já podada pela retenção), então agregar aqui custa nada.
+// Mesmas regras das funções em supabase/painel_objetos_sem_sql.sql: UF/segmento vazio não
+// conta, empate desempata pelo nome, top 10. Só registros com numeroControlePNCP (a PK).
+function resumoDashboardMercado(registros, agora = new Date()) {
+  const porUf = new Map();
+  const porSegmento = new Map();
+  let total = 0;
+  for (const r of registros) {
+    if (!r || !r.numeroControlePNCP) continue;
+    total++;
+    if (r.uf) porUf.set(r.uf, (porUf.get(r.uf) || 0) + 1);
+    for (const s of Array.isArray(r.segmentos) ? r.segmentos : []) {
+      if (s) porSegmento.set(s, (porSegmento.get(s) || 0) + 1);
+    }
+  }
+  const top = (mapa, rotulo) => [...mapa]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .slice(0, 10)
+    .map(([valor, n]) => ({ [rotulo]: valor, total: n }));
+  return {
+    total,
+    estados_distintos: porUf.size,
+    estados_top: top(porUf, "uf"),
+    segmentos_top: top(porSegmento, "segmento"),
+    atualizado_em: agora.toISOString(),
+  };
+}
+
 async function hidratarMercadoDoSupabase(caminhoArquivo, caminhoMeta) {
   const meta = await lerJsonExistente(caminhoMeta);
   if (!meta) {
@@ -1498,6 +1529,12 @@ async function main() {
     const contratos = await coletarContratos(caminhoContratos);
     if (contratos.parcial) pendencias.push("contratos: páginas pendentes");
     await sincronizarContratosNoSupabase(contratos);
+    // Painel cai nas RPCs antigas se o resumo faltar; falha aqui não deve derrubar a coleta.
+    try {
+      await salvarBlob("dados_robo", "dashboard_mercado", resumoDashboardMercado(contratos.registros));
+    } catch (e) {
+      console.warn(`[supabase] Resumo dashboard_mercado não gravado: ${e && e.message}`);
+    }
     const ids = contratos.consultaPendente?.paginacao?.ids || [];
     await salvarBlob("dados_robo", "contratos_coleta_pendente", { atualizadoEm: contratos.atualizadoEm, ids, hash: hashProgressoAtas(ids) });
     await gravarJson(caminhoContratos, contratos);
@@ -1572,7 +1609,7 @@ async function main() {
   console.log("Coleta finalizada com sucesso.");
 }
 
-module.exports = { fetchComRetentativa };
+module.exports = { fetchComRetentativa, resumoDashboardMercado };
 
 if (require.main === module) {
   main().catch((e) => {

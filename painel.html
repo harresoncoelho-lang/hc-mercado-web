@@ -10476,6 +10476,26 @@
   // página (guarda mercadoGeralJaCarregado) porque os rankings usam RPCs que fazem um
   // scan agregado de 100k+ linhas no Postgres (~300-850ms medido) — não vale a pena
   // repetir isso toda vez que o boletim recarrega e chama __atualizarDashboard de novo.
+  // Lê primeiro o resumo que o robô grava em dados_robo/dashboard_mercado (1 leitura
+  // pequena). Contar/agregar contratos direto, sob RLS, estourava o statement timeout em
+  // produção; as RPCs antigas ficam só como reserva enquanto o resumo não existir.
+  // Devolve [total, estados, rankingEstados, rankingSegmentos] no formato de resposta do supabase-js.
+  async function consultasMercadoGeral(sb) {
+    try {
+      const { data, error } = await sb.from("dados_robo").select("dado").eq("chave", "dashboard_mercado").maybeSingle();
+      const r = !error && data && data.dado;
+      if (r && typeof r.total === "number" && Array.isArray(r.estados_top) && Array.isArray(r.segmentos_top)) {
+        return [{ count: r.total }, { data: r.estados_distintos }, { data: r.estados_top.slice(0, 10) }, { data: r.segmentos_top.slice(0, 10) }];
+      }
+    } catch (e) {}
+    return Promise.all([
+      sb.from("contratos").select("numero_controle_pncp", { count: "exact", head: true }),
+      sb.rpc("dashboard_estados_distintos"),
+      sb.rpc("dashboard_estados_top", { limite: 10 }),
+      sb.rpc("dashboard_segmentos_top", { limite: 10 }),
+    ]);
+  }
+
   let mercadoGeralJaCarregado = false;
   async function carregarVisaoGeralMercado() {
     if (mercadoGeralJaCarregado) return;
@@ -10492,20 +10512,16 @@
     const elRankingEstados = document.getElementById("dash-ranking-estados");
     const elRankingSegmentos = document.getElementById("dash-ranking-segmentos");
 
-    const totalPromise = window.__sbClient.from("contratos").select("numero_controle_pncp", { count: "exact", head: true });
-    const estadosPromise = window.__sbClient.rpc("dashboard_estados_distintos");
-    const rankingEstadosPromise = window.__sbClient.rpc("dashboard_estados_top", { limite: 10 });
-    const rankingSegmentosPromise = window.__sbClient.rpc("dashboard_segmentos_top", { limite: 10 });
     // "Novas hoje" vem das oportunidades ABERTAS publicadas hoje, não da tabela contratos
     // (que só guarda contratos JÁ ASSINADOS/homologados) — é a métrica que corresponde de
     // verdade a "nova licitação" no sentido do Effecti. Conta no servidor (head: true,
-    // igual ao totalPromise acima) em vez de baixar a base nacional inteira só pra filtrar
+    // igual ao total em consultasMercadoGeral) em vez de baixar a base nacional inteira só pra filtrar
     // uma data no navegador: o payload aqui é zero.
     const hojeIso = new Date().toISOString().slice(0, 10);
     const novasHojePromise = window.__sbClient.from("oportunidades_abertas").select("chave", { count: "exact", head: true }).eq("publicacao", hojeIso);
 
-    const [totalResp, estadosResp, rankingEstadosResp, rankingSegmentosResp, novasHojeResp] = await Promise.all([
-      totalPromise, estadosPromise, rankingEstadosPromise, rankingSegmentosPromise, novasHojePromise,
+    const [[totalResp, estadosResp, rankingEstadosResp, rankingSegmentosResp], novasHojeResp] = await Promise.all([
+      consultasMercadoGeral(window.__sbClient), novasHojePromise,
     ]);
 
     if (elTotal) elTotal.textContent = (!totalResp.error && typeof totalResp.count === "number") ? totalResp.count.toLocaleString("pt-BR") : "–";

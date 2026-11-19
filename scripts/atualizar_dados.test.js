@@ -933,3 +933,33 @@ test("contratos: upsert envia só o que veio da fonte nesta execução, com atua
   assert.deepEqual(enviados.map((l) => l.numero_controle_pncp), ["recoletado", "inedito", "por-uf"]);
   assert.ok(enviados.every((l) => Number.isFinite(Date.parse(l.atualizado_em))));
 });
+
+test("resumoDashboardMercado agrega total, UFs e segmentos como as RPCs dashboard_*", () => {
+  const { resumoDashboardMercado } = require("./atualizar_dados");
+  const registros = [
+    { numeroControlePNCP: "1", uf: "SP", segmentos: ["saude", "obras"] },
+    { numeroControlePNCP: "2", uf: "SP", segmentos: ["saude"] },
+    { numeroControlePNCP: "3", uf: "AM", segmentos: [""] },
+    { numeroControlePNCP: "4", uf: "", segmentos: "invalido" },
+    { numeroControlePNCP: "5", uf: "AC" },
+    { numeroControlePNCP: null, uf: "RJ", segmentos: ["ti"] },
+  ];
+  const resumo = resumoDashboardMercado(registros, new Date("2026-11-19T10:00:00Z"));
+  assert.deepEqual(resumo, {
+    total: 5,
+    estados_distintos: 3,
+    estados_top: [{ uf: "SP", total: 2 }, { uf: "AC", total: 1 }, { uf: "AM", total: 1 }],
+    segmentos_top: [{ segmento: "saude", total: 2 }, { segmento: "obras", total: 1 }],
+    atualizado_em: "2026-11-19T10:00:00.000Z",
+  });
+});
+
+test("resumoDashboardMercado limita rankings a 10 e aceita base vazia", () => {
+  const { resumoDashboardMercado } = require("./atualizar_dados");
+  const ufs = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS"];
+  const resumo = resumoDashboardMercado(ufs.map((uf, i) => ({ numeroControlePNCP: String(i), uf })));
+  assert.equal(resumo.estados_distintos, 12);
+  assert.equal(resumo.estados_top.length, 10);
+  assert.deepEqual(resumoDashboardMercado([]).estados_top, []);
+  assert.equal(resumoDashboardMercado([]).total, 0);
+});
