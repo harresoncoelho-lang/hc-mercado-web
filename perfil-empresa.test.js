@@ -144,3 +144,12 @@ test('UF da sede: sugestão do endereço só preenche vazio, vira alteração a 
   assert.equal(P.valoresDoPerfil({ uf_sede: 'RR' }).uf_sede, 'RR');
   assert.equal(P.rotuloDoCampo('uf_sede'), 'UF da sede');
 });
+
+// Regressão (ambiente de teste local, 18/11): prévia via blob: era bloqueada pela CSP (img-src 'self' data: https:).
+test('logo: prévia em data: URL com o tipo certo e bytes íntegros (cabe na CSP do site)', () => {
+  const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 255]);
+  const url = P.dataUrlLogo(png, 'png');
+  assert.match(url, /^data:image\/png;base64,/);
+  assert.deepEqual([...Buffer.from(url.split(',')[1], 'base64')], [...png]);
+  assert.match(P.dataUrlLogo(new Uint8Array(70000).fill(7), 'jpg'), /^data:image\/jpeg;base64,/);
+});

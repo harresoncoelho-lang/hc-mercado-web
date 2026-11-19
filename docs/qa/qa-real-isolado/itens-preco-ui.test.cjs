@@ -113,3 +113,12 @@ test('banco antigo (precoDisponivel false): esconde premissas, preços e importa
   const linha = planilha.gerarCsv([{ identificador: '1', descricao: 'Material', quantidade: '2.000', valorUnitario: '1.25', marca: null, modelo: null }]).split('\r\n')[1];
   assert.equal(linha, '1;Material;2,000;;1,25;;;;');
 });
+
+// Regressão (ambiente de teste local, 18/11): item importado do PNCP mostrava "Unitário: R$ null" e "Quantidade: 500.000".
+test('linha do item: quantidade sem zeros à direita, em vírgula, e unitário ausente como "não informado"', () => {
+  assert.equal(ui.linhaQuantidade({ quantidade: '500.000', unidade: 'UNIDADE', valorUnitario: null }, null),
+    'Quantidade: 500 UNIDADE · Unitário: não informado · Total: indisponível');
+  assert.equal(ui.linhaQuantidade({ quantidade: '2.500', valorUnitario: '80.00' }, ui.totalCentavos('2.500', '80.00')),
+    'Quantidade: 2,5 · Unitário: R$ 80,00 · Total: R$ 200,00');
+  assert.equal(ui.linhaQuantidade({ quantidade: '10', valorUnitario: '1.10' }, 1100n), 'Quantidade: 10 · Unitário: R$ 1,10 · Total: R$ 11,00');
+});

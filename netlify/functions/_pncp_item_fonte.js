@@ -37,7 +37,7 @@ async function buscarFonteItem(ref,numeroItem,{fetchImpl=(...a)=>fetch(...a),tim
  const compra=`${ref.cnpj}-1-${ref.seq}/${ref.ano}`;
  if(!raw||Array.isArray(raw)||raw.numeroItem!==numeroItem||typeof raw.descricao!=='string'||!raw.descricao.trim()||raw.descricao.length>10000||typeof raw.unidadeMedida!=='string'||!raw.unidadeMedida.trim()||raw.unidadeMedida.length>100)falhar('Identidade ou conteúdo do item PNCP divergente.',502);
  if(raw.numeroControlePNCPCompra&&raw.numeroControlePNCPCompra.replace(/-1-0+(\d)/,'-1-$1')!==compra)falhar('Compra PNCP divergente.',502);
- let quantidade=fonte.quantidade;if(!/^(?:0|[1-9]\d{0,11})(?:\.\d{1,3})?$/.test(quantidade)||Number(quantidade)<=0)falhar('Quantidade PNCP não representável sem perda.',422);
+ let quantidade=fonte.quantidade;if(!/^(?:0|[1-9]\d{0,11})(?:\.\d{1,3}0*)?$/.test(quantidade)||Number(quantidade)<=0)falhar('Quantidade PNCP não representável sem perda.',422);
  if(quantidade.includes('.'))quantidade=quantidade.replace(/0+$/,'').replace(/\.$/,'');
  const item={numero:numeroItem,descricao:raw.descricao,quantidade,unidade:raw.unidadeMedida};
  // Identity remains the legacy normalized content hash, not a hash of original response bytes.

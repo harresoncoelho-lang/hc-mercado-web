@@ -69,6 +69,13 @@
   function reais(centavos) {
     return `R$ ${centavos / 100n},${String(centavos % 100n).padStart(2, '0')}`;
   }
+  // Linha do cartão do item. Item importado do PNCP chega sem valor ofertado (antes: "R$ null") e com a
+  // quantidade do banco em 3 casas ("500.000", que em pt-BR se lê quinhentos mil): mostra "500" e "não informado".
+  function linhaQuantidade(i, total) {
+    const q = String(i.quantidade ?? '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '').replace('.', ',');
+    const v = i.valorUnitario === null || i.valorUnitario === undefined || i.valorUnitario === '' ? 'não informado' : `R$ ${String(i.valorUnitario).replace('.', ',')}`;
+    return `Quantidade: ${q}${i.unidade ? ` ${i.unidade}` : ''} · Unitário: ${v} · Total: ${total === null ? 'indisponível' : reais(total)}`;
+  }
   function texto(valor, max) {
     if (typeof valor !== 'string' || valor.length > max || CONTROLE.test(valor)) return null;
     return valor.trim();
@@ -382,7 +389,7 @@
       const li = h('li', {},
         h('div', { classe: 'itens-cabeca' }, h('strong', { texto: i.identificador }), i.origemPncp === true ? seloEdital() : null),
         h('p', { texto: i.descricao }),
-        h('p', { texto: `Quantidade: ${i.quantidade}${i.unidade ? ` ${i.unidade}` : ''} · Unitário: R$ ${i.valorUnitario} · Total: ${t === null ? 'indisponível' : reais(t)}` }),
+        h('p', { texto: linhaQuantidade(i, t) }),
         h('p', { texto: `Marca: ${i.marca || 'não informada'} · Modelo: ${i.modelo || 'não informado'}` }),
         h('button', { type: 'button', 'data-item-editar': i.id, 'aria-label': `Editar ${i.identificador}`, texto: 'Editar' }));
       if (recursosPreco(precoDisponivel).precos) li.append(blocoPreco(i));
@@ -694,7 +701,7 @@
     };
   }
 
-  const api = { montar, validarItemCampos, totalCentavos, reais, decimalPositivo, numeroItemImportacao, respostaImportacao, MSG,
+  const api = { montar, validarItemCampos, totalCentavos, reais, linhaQuantidade, decimalPositivo, numeroItemImportacao, respostaImportacao, MSG,
     premissaDoCampo, premissaParaCampo, calcularPrecos, simularLance, corpoUsarLimite, unidadeCompras, referenciaDeResposta, decodificarPlanilha, previaPlanilha, recursosPreco };
   global.LicitaItensProcesso = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -47,6 +47,15 @@ module.exports = [
   },
   js.configs.recommended,
   {
+    // Ambiente de teste local (Supabase CLI + site + E2E): scripts Node CommonJS, fora do deploy.
+    files: ["ambiente-teste/**/*.cjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: { ...nodeGlobals, require: "readonly", module: "writable", __dirname: "readonly", AbortSignal: "readonly" },
+    },
+  },
+  {
     // O próprio arquivo de config também é lido pelo ESLint (roda em Node, CommonJS) —
     // sem isso, "eslint ." reclamava de require/module indefinidos nele mesmo.
     files: ["eslint.config.js"],

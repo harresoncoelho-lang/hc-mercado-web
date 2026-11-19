@@ -17,7 +17,8 @@ const EXTENSOES_SERVIDAS = new Set([".html", ".js", ".png", ".svg", ".ico", ".jp
 
 function arquivosDaRaiz() {
   return fs.readdirSync(RAIZ, { withFileTypes: true })
-    .filter((e) => e.isFile() && !IGNORADOS.has(e.name) && EXTENSOES_SERVIDAS.has(path.extname(e.name).toLowerCase()))
+    // Testes da raiz (*.test.js) não são do site: publicados, ficavam acessíveis e o `node --test` os achava em publico/.
+    .filter((e) => e.isFile() && !IGNORADOS.has(e.name) && !e.name.endsWith(".test.js") && EXTENSOES_SERVIDAS.has(path.extname(e.name).toLowerCase()))
     .map((e) => e.name)
     .concat("_headers");
 }

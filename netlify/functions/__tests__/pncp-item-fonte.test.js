@@ -77,3 +77,13 @@ test("buscarFonteItem normaliza quantidade e produz hash estável", async () => 
   assert.equal(a.hash, b.hash);
   assert.equal(a.snapshot.textoOriginal.includes("2.500"), true);
 });
+
+// Regressão (ambiente de teste local, 18/11): o PNCP real devolve "quantidade":200.0000 (4 casas);
+// zeros à direita não perdem nada, mas casa decimal significativa além da 3ª continua recusada.
+test("buscarFonteItem aceita zeros à direita além da 3ª casa e recusa casa significativa", async () => {
+  const ref = { cnpj: CNPJ, ano: "2026", seq: "41" };
+  const com = (q) => async () => new Response(`{"numeroItem":1,"descricao":"Memória RAM","quantidade":${q},"unidadeMedida":"Unidade"}`);
+  assert.equal((await buscarFonteItem(ref, 1, { fetchImpl: com("200.0000") })).item.quantidade, "200");
+  assert.equal((await buscarFonteItem(ref, 1, { fetchImpl: com("1.2500") })).item.quantidade, "1.25");
+  await assert.rejects(buscarFonteItem(ref, 1, { fetchImpl: com("1.2345") }), { status: 422 });
+});

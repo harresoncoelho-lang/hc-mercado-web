@@ -1,4 +1,4 @@
-/* global module, URL */
+/* global module, btoa */
 // Perfil da empresa (esteira E12): preenchido uma vez, usado pela proposta e pelas declarações.
 // Contrato no servidor: netlify/functions/empresa-identificacao.js (lerPerfil, salvarPerfil, registrarLogo).
 (function (raiz) {
@@ -247,13 +247,21 @@
         const { status, corpo: r } = await solicitar({ acao: 'registrarLogo', caminho, hash });
         if (!ativo()) return;
         if (status !== 200) { avisoTela(mensagemDoErro(status, r), 'erro', 'perfil-logo-aviso'); destacar('logo'); return; }
-        $('perfil-logo-previa').src = URL.createObjectURL(arquivo); $('perfil-logo-previa').hidden = false; avisoTela('Logo salva.', 'info', 'perfil-logo-aviso');
+        $('perfil-logo-previa').src = dataUrlLogo(bytes, img.ext); $('perfil-logo-previa').hidden = false; avisoTela('Logo salva.', 'info', 'perfil-logo-aviso');
       };
     }
     return { abrir, limpar: texto => { vigente = null; aviso(texto); } };
   }
 
-  const api = { LOGO, dimensoesLogo, validarLogo, sha256Hex, caminhoLogo, valoresDoPerfil, sugestoes, linhasDePremissas, montarPayload, linhaSemChave, idDoCampo, rotuloDoCampo, mensagemDoErro, montar };
+  // Prévia em data: URL. A CSP do site (img-src 'self' data: https:) bloqueia blob:, e a prévia
+  // via URL.createObjectURL ficava em branco (achado no ambiente de teste local, 18/11).
+  function dataUrlLogo(bytes, ext) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${btoa(s)}`;
+  }
+
+  const api = { LOGO, dimensoesLogo, validarLogo, sha256Hex, caminhoLogo, dataUrlLogo, valoresDoPerfil, sugestoes, linhasDePremissas, montarPayload, linhaSemChave, idDoCampo, rotuloDoCampo, mensagemDoErro, montar };
   raiz.PerfilEmpresa = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);
