@@ -59,3 +59,33 @@ test("handler: só cadastro aprovado lê a tabela (pendente 403), com o token do
     } finally { global.fetch = anterior; }
   }
 });
+
+test("montarConsulta com nível: início do nome, nome e só especificação (nunca AND solto entre termos)", () => {
+  const f = validar({ tipo: "ata", palavras: "papel a4, cafe" });
+  const p = (n) => new URL(montarConsulta(f, AGORA, n)).searchParams;
+  assert.equal(p("inicio").get("or"), "(busca_nome.ilike.papel a4*,busca_nome.ilike.cafe*)");
+  assert.equal(p("inicio").get("and"), null);
+  assert.equal(p("nome").get("and"), "(or(busca_nome.ilike.*papel a4*,busca_nome.ilike.*cafe*),not.or(busca_nome.ilike.papel a4*,busca_nome.ilike.cafe*))");
+  assert.equal(p("espec").get("and"), "(or(busca.ilike.*papel a4*,busca.ilike.*cafe*),not.or(busca_nome.ilike.*papel a4*,busca_nome.ilike.*cafe*))");
+  assert.equal(new URL(montarConsulta(f, AGORA, "espec", 17)).searchParams.get("limit"), "17");
+});
+
+test("handler: com palavras consulta nome antes da especificação, marca so_especificacao e respeita o limite", async () => {
+  const anterior = global.fetch;
+  const consultas = [];
+  global.fetch = async (url) => {
+    const u = new URL(url);
+    if (u.pathname === "/auth/v1/user") return Response.json({ id: "u1" });
+    if (u.pathname === "/rest/v1/clientes") return Response.json([{ status: "aprovado" }]);
+    const nivel = u.searchParams.get("or") ? "inicio" : /not\.or\(busca_nome\.ilike\.p/.test(u.searchParams.get("and")) ? "nome" : "espec";
+    consultas.push(nivel);
+    return Response.json([{ id: `${nivel}1`, coletado_em: "2026-11-19" }]);
+  };
+  try {
+    const r = await handler({ httpMethod: "GET", headers: { authorization: "Bearer T" }, queryStringParameters: { tipo: "ata", palavras: "papel a4" } });
+    assert.equal(r.statusCode, 200);
+    assert.deepEqual(consultas, ["inicio", "nome", "espec"]);
+    const { linhas } = JSON.parse(r.body);
+    assert.deepEqual(linhas.map((l) => [l.id, !!l.so_especificacao]), [["inicio1", false], ["nome1", false], ["espec1", true]]);
+  } finally { global.fetch = anterior; }
+});

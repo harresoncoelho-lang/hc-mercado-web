@@ -59,6 +59,23 @@ update public.prospeccao_itens set fornecedor_nome = nullif(btrim(regexp_replace
 alter table public.prospeccao_itens drop constraint if exists prospeccao_itens_fornecedor_sem_cpf;
 alter table public.prospeccao_itens add constraint prospeccao_itens_fornecedor_sem_cpf check (fornecedor_nome !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
 
+-- v2 (20/11/2026): adesões já usadas (Compras.gov 5_consultarAdesoesItem), número da ata e nome do item para a
+-- busca por texto priorizar o início da descrição. add column if not exists: idempotente; o robô preenche.
+alter table public.prospeccao_itens add column if not exists ata_numero text;
+alter table public.prospeccao_itens add column if not exists adesoes_usadas numeric;
+alter table public.prospeccao_itens add column if not exists adesoes_em timestamptz;
+alter table public.prospeccao_itens add column if not exists busca_nome text not null default '';
+alter table public.prospeccao_itens drop constraint if exists prospeccao_itens_v2_check;
+alter table public.prospeccao_itens add constraint prospeccao_itens_v2_check check (
+  (ata_numero is null or length(ata_numero) <= 40) and (adesoes_usadas is null or adesoes_usadas >= 0) and length(busca_nome) <= 200);
+-- Linhas gravadas antes da v2: nome = 90 primeiros caracteres da descrição + 90 do objeto, minúsculo e sem acento, até o robô regravar.
+update public.prospeccao_itens
+   set busca_nome = btrim(left(translate(lower(coalesce(descricao, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), 90) || ' '
+                       || left(translate(lower(coalesce(objeto, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), 90))
+ where busca_nome = '' and coalesce(descricao, objeto) is not null;
+-- Acento quebrado que a fonte devolve (UTF-8 lido como Windows-1252, "SAÃšDE"): o robô corrige ao gravar; as linhas
+-- antigas são corrigidas na próxima coleta (upsert pela mesma chave).
+
 alter table public.prospeccao_itens enable row level security;
 revoke all on public.prospeccao_itens from anon, authenticated;
 grant select on public.prospeccao_itens to authenticated;

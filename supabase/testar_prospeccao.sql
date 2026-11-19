@@ -53,6 +53,32 @@ do $$ declare v text; begin
  end loop;
  update public.prospeccao_itens set fornecedor_nome = 'EMPRESA 11.222.333/0001-81 LTDA' where id='ata:QA-8'; -- CNPJ formatado não é CPF
 end $$;
+-- v2: adesões, número da ata e busca_nome (idempotência do backfill e dos CHECKs).
+do $$ declare n int; begin
+ insert into public.prospeccao_itens(id,tipo,fonte,uf,descricao,objeto,link,ata_numero,adesoes_usadas,adesoes_em) values
+  ('ata:QA-9#1#11222333000181','ata','comprasgov_arp','AM','PAPEL A4 — Gramatura 75','Material','https://pncp.gov.br/app/atas/9','00076/2025',4,now());
+ if (select busca_nome from public.prospeccao_itens where id='ata:QA-9#1#11222333000181') <> '' then raise exception 'default de busca_nome deveria ser vazio'; end if;
+ -- Backfill do .sql (linha antiga, sem busca_nome): minúsculo, sem acento, 100 primeiros caracteres da descrição.
+ update public.prospeccao_itens set busca_nome = btrim(left(translate(lower(coalesce(descricao, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), 90) || ' '
+                       || left(translate(lower(coalesce(objeto, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), 90))
+  where busca_nome = '' and coalesce(descricao, objeto) is not null and id = 'ata:QA-9#1#11222333000181';
+ get diagnostics n = row_count;
+ if n <> 1 or (select busca_nome from public.prospeccao_itens where id='ata:QA-9#1#11222333000181') <> 'papel a4 — gramatura 75 material' then raise exception 'backfill de busca_nome errado'; end if;
+ update public.prospeccao_itens set busca_nome = btrim(left(translate(lower(coalesce(descricao, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), 90) || ' '
+                       || left(translate(lower(coalesce(objeto, '')), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), 90))
+  where busca_nome = '' and coalesce(descricao, objeto) is not null and id = 'ata:QA-9#1#11222333000181';
+ get diagnostics n = row_count;
+ if n <> 0 then raise exception 'backfill de busca_nome não é idempotente'; end if;
+ begin update public.prospeccao_itens set adesoes_usadas = -1 where id='ata:QA-9#1#11222333000181'; raise exception 'adesão negativa aceita';
+ exception when check_violation then null; end;
+ begin update public.prospeccao_itens set busca_nome = repeat('x', 201) where id='ata:QA-9#1#11222333000181'; raise exception 'busca_nome gigante aceito';
+ exception when check_violation then null; end;
+ -- O upsert do robô (linha sem as colunas de adesão) não apaga o que a rodada de adesões gravou.
+ insert into public.prospeccao_itens(id,tipo,fonte,uf,descricao,link,ata_numero,busca_nome) values
+  ('ata:QA-9#1#11222333000181','ata','comprasgov_arp','AM','PAPEL A4','https://pncp.gov.br/app/atas/9','00076/2025','papel a4')
+  on conflict (id) do update set descricao=excluded.descricao, ata_numero=excluded.ata_numero, busca_nome=excluded.busca_nome;
+ if (select adesoes_usadas from public.prospeccao_itens where id='ata:QA-9#1#11222333000181') <> 4 then raise exception 'upsert do robô apagou adesoes_usadas'; end if;
+end $$;
 do $$ begin
  if has_table_privilege('anon','public.prospeccao_itens','SELECT') then raise exception 'anon lê prospecção'; end if;
 end $$;

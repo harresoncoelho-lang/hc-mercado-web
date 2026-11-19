@@ -33,12 +33,25 @@
     const extra = l.descricao && l.objeto && l.objeto !== l.descricao ? `<small>${esc(l.objeto)}</small>` : '';
     return `<td data-rotulo="Item / objeto" class="item">${esc(principal)}${extra}${l.catmat ? `<small>Catálogo ${esc(l.catmat)}</small>` : ''}</td>`;
   }
-  function celulaValores(l) {
-    if (l.tipo === 'ata') {
+  // Adesão de um item de ata do Compras.gov: limite (máximo de adesão), já aderido (5_consultarAdesoesItem) e o que sobra.
+  function textoAdesao(l) {
+    if (!l.maximo_adesao) return '';
+    const limite = `limite de adesão ${qtd(l.maximo_adesao)}`;
+    if (l.adesoes_usadas === null || l.adesoes_usadas === undefined || !l.adesoes_em) return `<small class="adesao">${limite} · adesões ainda não consultadas</small>`;
+    const livre = Math.max(0, Number(l.maximo_adesao) - Number(l.adesoes_usadas));
+    return `<small class="adesao${livre === 0 ? ' esgotada' : ''}">${limite} · já aderido ${qtd(l.adesoes_usadas)} · <b>disponível ${qtd(livre)}</b></small>`;
+  }
+  function detalheAta(l) {
+    if (l.fonte === 'comprasgov_arp') {
       const saldo = l.saldo === null || l.saldo === undefined ? 'saldo não informado' : `saldo ${qtd(l.saldo)} de ${qtd(l.quantidade)}`;
-      const adesao = l.maximo_adesao ? ` · adesão até ${qtd(l.maximo_adesao)}` : '';
-      return `<td data-rotulo="Preço / saldo">${l.valor_unitario ? `${moeda(l.valor_unitario)} un.` : moeda(l.valor_total)}<small>${esc(l.fonte === 'comprasgov_arp' ? saldo + adesao : 'itens na ata do PNCP')}</small></td>`;
+      return `<small>${esc(saldo)}</small>${textoAdesao(l)}`;
     }
+    // Item de ata fora do Compras.gov: o PNCP traz fornecedor, quantidade e valor homologados, mas não saldo nem adesões.
+    if (l.fornecedor_nome || l.valor_unitario) return `<small>${l.quantidade ? `${esc(qtd(l.quantidade))} homologado${Number(l.quantidade) === 1 ? '' : 's'} · ` : ''}saldo e adesões não divulgados no PNCP</small>`;
+    return '<small>itens na ata do PNCP</small>';
+  }
+  function celulaValores(l) {
+    if (l.tipo === 'ata') return `<td data-rotulo="Preço / saldo / adesão">${l.valor_unitario ? `${moeda(l.valor_unitario)} un.` : moeda(l.valor_total)}${detalheAta(l)}</td>`;
     if (l.tipo === 'contrato') return `<td data-rotulo="Valor global">${moeda(l.valor_total)}</td>`;
     return `<td data-rotulo="Quantidade / valor">${qtd(l.quantidade)} × ${moeda(l.valor_unitario)}<small>total ${moeda(l.valor_total)}</small></td>`;
   }
@@ -53,16 +66,28 @@
   }
   function cabecalhoHtml(tipo) {
     const fornecedor = tipo === 'ata' || tipo === 'contrato' ? '<th>Fornecedor</th>' : '';
-    const valores = { ata: 'Preço / saldo', contrato: 'Valor global' }[tipo] || 'Quantidade / valor';
+    const valores = { ata: 'Preço / saldo / adesão', contrato: 'Valor global' }[tipo] || 'Quantidade / valor';
     return `<tr><th>${esc(ABAS[tipo].data)}</th><th>Órgão</th><th>Item / objeto</th>${fornecedor}<th>${valores}</th><th>Fonte oficial</th></tr>`;
   }
 
-  if (typeof module !== 'undefined' && module.exports) module.exports = { diasAte, linhaHtml, cabecalhoHtml, linkOficial, esc };
+  // Corpo da tabela: o que casa no nome do item vem primeiro; o que só cita o termo na especificação fica recolhido
+  // atrás de um botão (linhas hidden), para "papel a4" não abrir a lista com impressoras.
+  function corpoHtml(linhas, agora = Date.now()) {
+    const nome = linhas.filter((l) => !l.so_especificacao);
+    const espec = linhas.filter((l) => l.so_especificacao);
+    const texto = `Mostrar ${espec.length} resultado${espec.length === 1 ? '' : 's'} que só cit${espec.length === 1 ? 'a' : 'am'} o termo na especificação`;
+    const botao = espec.length
+      ? `<tr class="espec-cab"><td colspan="6"><button type="button" class="btn" id="btn-espec" aria-expanded="false" data-texto="${esc(texto)}">${esc(texto)}</button></td></tr>` : '';
+    return nome.map((l) => linhaHtml(l, agora)).join('') + botao + espec.map((l) => linhaHtml(l, agora).replace('<tr>', '<tr class="so-espec" hidden>')).join('');
+  }
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = { diasAte, linhaHtml, cabecalhoHtml, corpoHtml, linkOficial, esc };
   if (typeof document === 'undefined') return;
 
   const $ = (id) => document.getElementById(id);
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); // eslint-disable-line no-undef -- globais de supabase-config.js
   let abaAtual = 'pca';
+  let carga = 0; // só a última consulta pinta a tela: resposta atrasada (carga inicial x busca do usuário) não sobrescreve
   const cache = new Map();
 
   function aviso(texto, tipo) { const a = $('aviso'); a.textContent = texto || ''; a.className = texto ? `aviso ${tipo || 'info'}` : 'aviso'; }
@@ -80,6 +105,7 @@
 
   async function carregar(tipo) {
     abaAtual = tipo;
+    const minha = ++carga;
     document.querySelectorAll('.aba').forEach((b) => { const ativa = b.dataset.aba === tipo; b.classList.toggle('ativa', ativa); b.setAttribute('aria-selected', ativa ? 'true' : 'false'); });
     $('tabela-cabecalho').innerHTML = cabecalhoHtml(tipo);
     $('tabela-corpo').innerHTML = '<tr><td colspan="6" class="vazio">Carregando…</td></tr>';
@@ -99,15 +125,16 @@
         if (!r.ok) throw new Error(dados.erro || 'Consulta indisponível.');
         cache.set(chave, dados);
       }
-      if (abaAtual !== tipo) return;
+      if (minha !== carga) return;
       const linhas = dados.linhas || [];
-      $('tabela-corpo').innerHTML = linhas.length ? linhas.map((l) => linhaHtml(l)).join('') : `<tr><td colspan="6" class="vazio">${esc(ABAS[tipo].vazio)}</td></tr>`;
+      $('tabela-corpo').innerHTML = linhas.length ? corpoHtml(linhas) : `<tr><td colspan="6" class="vazio">${esc(ABAS[tipo].vazio)}</td></tr>`;
+      const soEspec = linhas.filter((l) => l.so_especificacao).length;
       $('contador').textContent = linhas.length
-        ? `${linhas.length}${dados.truncado ? '+ (mostrando os primeiros ' + dados.limite + '; refine o filtro)' : ''} resultado${linhas.length === 1 ? '' : 's'} · coletado em ${dataBr(dados.coletadoEm)}`
+        ? `${linhas.length}${dados.truncado ? '+ (mostrando os primeiros ' + dados.limite + '; refine o filtro)' : ''} resultado${linhas.length === 1 ? '' : 's'}${soEspec ? ` (${soEspec} só na especificação, recolhido${soEspec === 1 ? '' : 's'})` : ''} · coletado em ${dataBr(dados.coletadoEm)}`
         : '';
       aviso('');
     } catch (e) {
-      if (abaAtual !== tipo) return;
+      if (minha !== carga) return;
       $('tabela-corpo').innerHTML = '<tr><td colspan="6" class="vazio">Sem resultado.</td></tr>';
       $('contador').textContent = '';
       aviso(e.message || 'Não foi possível consultar.', 'erro');
@@ -115,6 +142,14 @@
   }
 
   document.querySelectorAll('.aba').forEach((b) => b.addEventListener('click', () => carregar(b.dataset.aba)));
+  $('tabela-corpo').addEventListener('click', (ev) => {
+    const b = ev.target.closest('#btn-espec');
+    if (!b) return;
+    const abrir = b.getAttribute('aria-expanded') !== 'true';
+    document.querySelectorAll('#tabela-corpo tr.so-espec').forEach((tr) => { tr.hidden = !abrir; });
+    b.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    b.textContent = abrir ? 'Recolher os que só citam o termo na especificação' : b.dataset.texto;
+  });
   $('form-filtros').addEventListener('submit', (ev) => { ev.preventDefault(); carregar(abaAtual); });
   $('btn-tema').addEventListener('click', () => {
     const claro = document.documentElement.classList.toggle('tema-claro');

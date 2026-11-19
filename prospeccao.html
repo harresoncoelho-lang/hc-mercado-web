@@ -55,6 +55,11 @@ input::placeholder{color:var(--text-secondary);opacity:1}
 .tabela td.item small:first-of-type{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .tabela a{color:var(--action-text);font-weight:600}
 .dias.urgente{color:var(--attention-text);font-weight:600}
+.tabela tr[hidden]{display:none}
+.tabela tr.espec-cab td{background:var(--surface-sunken);text-align:center;padding:10px 12px}
+.tabela tr.so-espec td{opacity:.85}
+.tabela small.adesao b{color:var(--text-primary)}
+.tabela small.adesao.esgotada,.tabela small.adesao.esgotada b{color:var(--attention-text)}
 .vazio{padding:24px;text-align:center}
 .aviso{display:none;margin:12px 0;border:1px solid;border-radius:var(--radius-card);padding:12px 16px}
 .aviso.erro{display:block;color:var(--error-text);border-color:var(--error-border);background:var(--error-bg)}
@@ -115,7 +120,7 @@ input::placeholder{color:var(--text-secondary);opacity:1}
     <button class="aba" type="button" role="tab" aria-selected="false" data-aba="ata">Atas para adesão</button>
     <button class="aba" type="button" role="tab" aria-selected="false" data-aba="contrato">Contratos vencendo</button>
   </div>
-  <p class="nota explica">Confira sempre o documento oficial pelo link de cada linha. Atas: só as que permitem adesão e seguem vigentes por mais 30 dias; o período não se aplica a elas.</p>
+  <p class="nota explica">Confira sempre o documento oficial pelo link de cada linha. Atas: só as que permitem adesão e seguem vigentes por mais 30 dias; o período não se aplica a elas. Nas atas do Compras.gov, "já aderido" vem da consulta de adesões do portal, atualizada em rodízio a cada poucos dias; no PNCP não há saldo nem adesões. Com palavras na busca, o que só cita o termo na especificação do item fica recolhido.</p>
   <p id="contador"></p>
   <div class="tabela-wrap"><table class="tabela"><thead id="tabela-cabecalho"></thead><tbody id="tabela-corpo"></tbody></table></div>
 </main>

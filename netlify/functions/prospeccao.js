@@ -14,7 +14,7 @@ const ANON = "sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb";
 const LIMITE = 200;
 const TIPOS = new Set(["pca", "irp", "ata", "contrato"]);
 const DIAS = new Set([30, 90, 180, 365]);
-const COLUNAS = "id,tipo,fonte,plataforma,uf,orgao_cnpj,orgao_nome,unidade_nome,municipio,objeto,descricao,catmat,quantidade,valor_unitario,valor_total,data_inicio,data_ref,fornecedor_cnpj,fornecedor_nome,saldo,maximo_adesao,link,coletado_em";
+const COLUNAS = "id,tipo,fonte,plataforma,uf,orgao_cnpj,orgao_nome,unidade_nome,municipio,objeto,descricao,catmat,quantidade,valor_unitario,valor_total,data_inicio,data_ref,fornecedor_cnpj,fornecedor_nome,saldo,maximo_adesao,adesoes_usadas,adesoes_em,link,coletado_em";
 const UFS = new Set("AC AL AM AP BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO".split(" "));
 // Brasília é UTC-3 fixo (mesma conta de contextos-operacao).
 const hojeBrasilia = (agora = Date.now(), dias = 0) => new Date(agora - 3 * 36e5 + dias * 864e5).toISOString().slice(0, 10);
@@ -38,11 +38,25 @@ function validar(q = {}) {
 
 // Janela por data_ref: o que vence/acontece de hoje até hoje+dias. Ata é diferente: para adesão interessa a
 // ata ainda vigente por pelo menos 30 dias (carona leva tempo), sem teto.
-function montarConsulta(f, agora = Date.now()) {
-  const p = new URLSearchParams({ select: COLUNAS, tipo: `eq.${f.tipo}`, order: "data_ref.asc,valor_total.desc.nullslast", limit: String(LIMITE + 1) });
+//
+// Com palavras, a busca é em três níveis (cada um é uma consulta, na ordem; os de baixo só entram se sobrar lugar):
+//   inicio  o nome do item (busca_nome = começo da descrição/objeto) começa com o termo
+//   nome    o termo aparece em outro ponto do nome
+//   espec   o termo só aparece no resto do texto (especificação): a tela recolhe esse grupo ("papel a4" dentro da ficha da impressora)
+const NIVEIS = ["inicio", "nome", "espec"];
+function filtroTexto(palavras, nivel) {
+  const cond = (coluna, antes, depois) => palavras.map((t) => `${coluna}.ilike.${antes}${t}${depois}`).join(",");
+  if (nivel === "inicio") return ["or", `(${cond("busca_nome", "", "*")})`];
+  if (nivel === "nome") return ["and", `(or(${cond("busca_nome", "*", "*")}),not.or(${cond("busca_nome", "", "*")}))`];
+  return ["and", `(or(${cond("busca", "*", "*")}),not.or(${cond("busca_nome", "*", "*")}))`];
+}
+
+function montarConsulta(f, agora = Date.now(), nivel = null, limite = LIMITE + 1) {
+  const p = new URLSearchParams({ select: COLUNAS, tipo: `eq.${f.tipo}`, order: "data_ref.asc,valor_total.desc.nullslast", limit: String(limite) });
   if (f.uf) p.set("uf", `eq.${f.uf}`);
   if (f.catmat) p.set("catmat", `eq.${f.catmat}`);
-  if (f.palavras.length) p.set("or", `(${f.palavras.map((t) => `busca.ilike.*${t}*`).join(",")})`);
+  if (f.palavras.length && !nivel) p.set("or", `(${f.palavras.map((t) => `busca.ilike.*${t}*`).join(",")})`);
+  else if (f.palavras.length) p.set(...filtroTexto(f.palavras, nivel));
   if (f.tipo === "ata") p.append("data_ref", `gte.${hojeBrasilia(agora, 30)}`);
   else {
     p.append("data_ref", `gte.${hojeBrasilia(agora)}`);
@@ -61,13 +75,22 @@ exports.handler = async (event) => {
   const filtro = validar(event.queryStringParameters || {});
   if (filtro.erro) return resposta(400, { erro: filtro.erro });
   try {
-    const r = await fetch(montarConsulta(filtro), {
-      headers: { apikey: ANON, Authorization: event.headers?.authorization || event.headers?.Authorization, Accept: "application/json" },
-      signal: globalThis.AbortSignal.timeout(10000),
-    });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const linhas = await r.json();
-    if (!Array.isArray(linhas)) throw new Error("resposta inválida");
+    const consultar = async (nivel, limite) => {
+      const r = await fetch(montarConsulta(filtro, Date.now(), nivel, limite), {
+        headers: { apikey: ANON, Authorization: event.headers?.authorization || event.headers?.Authorization, Accept: "application/json" },
+        signal: globalThis.AbortSignal.timeout(10000),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const lote = await r.json();
+      if (!Array.isArray(lote)) throw new Error("resposta inválida");
+      return nivel === "espec" ? lote.map((l) => ({ ...l, so_especificacao: true })) : lote;
+    };
+    // Sem palavras é uma consulta só. Com palavras, nome primeiro e especificação por último (no máximo 3 subrequisições).
+    const linhas = [];
+    for (const nivel of filtro.palavras.length ? NIVEIS : [null]) {
+      if (linhas.length > LIMITE) break;
+      linhas.push(...(await consultar(nivel, LIMITE + 1 - linhas.length)));
+    }
     const coletadoEm = linhas.reduce((m, l) => (l.coletado_em > m ? l.coletado_em : m), "") || null;
     return resposta(200, { tipo: filtro.tipo, linhas: linhas.slice(0, LIMITE), limite: LIMITE, truncado: linhas.length > LIMITE, coletadoEm });
   } catch (e) {
