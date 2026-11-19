@@ -16,6 +16,37 @@ function decimal(valor,escala){
 }
 function totalItem(q,p){const n=(decimal(q,3)*decimal(p,2)+500n)/1000n;if(n>999999999999999n)pendente('Total excede o limite.');return n;}
 const dinheiro=n=>`${n/100n},${String(n%100n).padStart(2,'0')}`;
+// Valor por extenso (proposta formato 2): centavos em BigInt, só aritmética inteira.
+const UNIDADES=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+const DEZENAS=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+const CENTENAS=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+const ESCALAS=[null,null,['milhão','milhões'],['bilhão','bilhões'],['trilhão','trilhões']];
+function ate999(n){
+ if(n===100)return 'cem';
+ const c=Math.floor(n/100),r=n%100,partes=[];
+ if(c)partes.push(CENTENAS[c]);
+ if(r)partes.push(r<20?UNIDADES[r]:DEZENAS[Math.floor(r/10)]+(r%10?` e ${UNIDADES[r%10]}`:''));
+ return partes.join(' e ');
+}
+function inteiroPorExtenso(n){
+ const grupos=[];for(let i=0;n>0n;i++,n/=1000n)grupos.push([Number(n%1000n),i]);
+ if(grupos.length>ESCALAS.length)throw new RangeError('Valor acima do suportado.');
+ const ativos=grupos.filter(([v])=>v).reverse();
+ return ativos.map(([v,i],k)=>{
+  const palavra=i===0?ate999(v):i===1?(v===1?'mil':`${ate999(v)} mil`):`${ate999(v)} ${ESCALAS[i][v===1?0:1]}`;
+  // "e" só antes do último grupo quando ele é < 100 ou centena redonda: "mil e um", "mil e duzentos", "mil duzentos e trinta".
+  return k>0&&k===ativos.length-1&&(v<100||v%100===0)?`e ${palavra}`:palavra;
+ }).join(' ');
+}
+function valorPorExtenso(centavos){
+ const n=BigInt(centavos);if(n<0n)throw new RangeError('Valor negativo.');
+ if(n===0n)return 'zero reais';
+ const reais=n/100n,cent=Number(n%100n),partes=[];
+ // Milhão/bilhão/trilhão redondo leva "de": "um milhão de reais".
+ if(reais)partes.push(`${inteiroPorExtenso(reais)} ${reais%1000000n===0n?'de ':''}${reais===1n?'real':'reais'}`);
+ if(cent)partes.push(`${ate999(cent)} ${cent===1?'centavo':'centavos'}`);
+ return partes.join(' e ');
+}
 function canonico(v){if(Array.isArray(v))return v.map(canonico);if(v&&typeof v==='object')return Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonico(v[k])]));return v;}
 const CPF_PREVIA='[CPF do representante]';
 function declaracao(empresa,processo,dados,body,fontes){
@@ -49,7 +80,8 @@ function proposta(ctx,body,fontes){
  conteudo=`${linhas.join('\n\n')}\n\n${rodape}`;
  fontes.push('Descrição, quantidade e preço ofertado: itens persistidos do processo. Unidade e condições informadas pelo usuário.');
 
- return {titulo,conteudo,campos,itens,tabela,rodape};
+ // Extenso só no rodapé da tabela (formato 2); prévia e revisaoHash continuam sem ele.
+ return {titulo,conteudo,campos,itens,tabela,rodape:rodape.replace('\n',` (${valorPorExtenso(total)})\n`)};
 }
 function preparar(ctx,body){
  const {empresa,processo,perfil}=ctx;
@@ -66,12 +98,12 @@ function preparar(ctx,body){
  texto(previa.texto,'conteúdo final',1000000);
  if(body.tipo==='proposta'&&Buffer.byteLength(previa.texto,'utf8')>LIMITES.previaBytes)pendente('Prévia excede o tamanho suportado. Reduza a seleção sem perder o rascunho.');
  const revisaoHash=createHash('sha256').update(JSON.stringify(canonico({userId:ctx.userId,empresa,processo,perfil,itens,campos,tipo:body.tipo,previa}))).digest('hex');
- // tabela: o mesmo conteúdo da prévia (que entra no hash), só arrumado em linhas para a proposta formato 2.
+ // tabela: o mesmo conteúdo da prévia (que entra no hash), só arrumado em linhas para a proposta formato 2; o total por extenso deriva do total já coberto pelo hash.
  return {previa,revisaoHash,titulo,...(comCpf?{textoComCpf:cpf=>`${titulo}\n\n${identidade}\n\n${comCpf(cpf)}`}:{}),...(tabela?{tabela:{antes:`${titulo}\n\n${identidade}`,linhas:tabela,depois:rodape}}:{})};
 }
 // Texto do DOCX: a prévia, ou o texto com o CPF lido na hora; null = a peça pede CPF e o perfil não tem.
 function textoFinal(resultado,cpf){if(!resultado.textoComCpf)return resultado.previa.texto;return cpf?resultado.textoComCpf(cpf):null;}
 // Tabela só quando a peça persistida nasceu no formato 2; sem logo nem formato, o DOCX sai como antes.
 function docx(resultado,{formato=1,logo=null,paginas}={}){return montarDocx({}, {}, {texto:resultado.previa.texto,preservarLinhas:true},resultado.titulo,{logo,tabela:formato===2?resultado.tabela:null,paginas});}
-module.exports={uuid,decimal,totalItem,preparar,docx,pendente,textoFinal,CPF_PREVIA};
+module.exports={valorPorExtenso,uuid,decimal,totalItem,preparar,docx,pendente,textoFinal,CPF_PREVIA};
 
