@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script><script src="supabase-config.js"></script>
-<script src="agenda-ics.js"></script><script src="operacao-identificacao.js"></script><script src="operacao-acompanhamento.js"></script><script src="operacao-acompanhamento-ui.js"></script><script src="operacao-edital.js"></script><script src="operacao-relatorio.js"></script><link rel="stylesheet" href="ds-tokens.css"><link rel="stylesheet" href="menu-lateral.css"><link rel="stylesheet" href="agenda-ics.css">
+<script src="agenda-ics.js"></script><script src="operacao-identificacao.js"></script><script src="contrato-publico.js"></script><script src="operacao-acompanhamento.js"></script><script src="operacao-acompanhamento-ui.js"></script><script src="operacao-edital.js"></script><script src="operacao-relatorio.js"></script><link rel="stylesheet" href="ds-tokens.css"><link rel="stylesheet" href="menu-lateral.css"><link rel="stylesheet" href="agenda-ics.css">
 <!-- Tema: mesma chave do painel; claro é o padrão, só quem escolheu "escuro" fica no escuro. data-theme pinta o menu lateral (ds-tokens.css). -->
 <script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}if(t!=="escuro")document.documentElement.classList.add("tema-claro");document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
 <style>
@@ -206,7 +206,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
   async function iniciar(){if(!await autenticar())return;const {data:orgId,error}=await sb.rpc("bootstrap_operacao");if(error){aviso("Processos precisa da migração do Supabase. Execute supabase/operacao_licitacoes.sql e recarregue.","erro");return;}estado.orgId=orgId;await carregarEmpresas();}
   async function carregarEmpresas(){const {data:empresas,error}=await sb.from("operacao_empresas").select("id,razao_social,cnpj").eq("organizacao_id",estado.orgId).eq("ativo",true).order("razao_social");if(error){aviso("Não foi possível carregar as empresas: "+error.message,"erro");return;}estado.empresas=empresas||[];$("empresa-atual").innerHTML=estado.empresas.map(e=>`<option value="${e.id}">${esc(e.razao_social)}${e.cnpj?` · ${esc(e.cnpj)}`:""}</option>`).join("");let preferida="";try{preferida=localStorage.getItem("licitaplena_empresa_operacional_id")||"";}catch(_){}const empresaLink=contextoLinkPendente?OperacaoIdentificacao.empresaDoLink(location.search,estado.empresas):undefined;contextoLinkPendente=false;estado.empresaId=empresaLink!==undefined?empresaLink:estado.empresas.some(e=>e.id===estado.empresaId)?estado.empresaId:estado.empresas.some(e=>e.id===preferida)?preferida:estado.empresas[0]?.id;$("empresa-atual").value=estado.empresaId||"";if(empresaLink===null){processoPendente=null;origemPendente=null;aviso("A empresa do link não está disponível no seu acesso. Selecione uma empresa autorizada.","erro");return;}await carregarTudo();}
   async function consultarTodas(montar){const todos=[];for(let inicio=0;;inicio+=500){let resposta;try{resposta=await montar().range(inicio,inicio+499);}catch(error){return {data:null,error};}const {data:pagina,error}=resposta;if(error)return {data:null,error};todos.push(...(pagina||[]));if(!pagina||pagina.length<500)return {data:todos,error:null};}}
-  async function consultarPorProcessos(tabela,ids,ordem,ascendente=true){const todos=[];for(let indice=0;indice<ids.length;indice+=100){const bloco=ids.slice(indice,indice+100);const resposta=await consultarTodas(()=>sb.from(tabela).select("*").in("processo_id",bloco).order(ordem,{ascending:ascendente}).order("id"));if(resposta.error)return resposta;todos.push(...resposta.data);}return {data:todos,error:null};}
+  async function consultarPorProcessos(tabela,ids,ordem,ascendente=true,filtro=null){const todos=[];for(let indice=0;indice<ids.length;indice+=100){const bloco=ids.slice(indice,indice+100);const resposta=await consultarTodas(()=>{const q=sb.from(tabela).select("*").in("processo_id",bloco);return (filtro?filtro(q):q).order(ordem,{ascending:ascendente}).order(tabela==="operacao_contratos_publicos"?"chave":tabela==="operacao_esteira_tarefas"?"etapa":"id");});if(resposta.error)return resposta;todos.push(...resposta.data);}return {data:todos,error:null};}
   async function carregarTudo(){
     const geracao=++geracaoCarregamento, usuario=usuarioSessao;
     if(!estado.empresaId)return;
@@ -220,10 +220,12 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
     let falha=[p,d].find(x=>x.error);
     if(falha){aviso("Não foi possível carregar o dossiê. Confira a migração operacao_acompanhamento.sql: "+falha.error.message,"erro");return;}
     estado.processos=p.data||[];estado.documentos=d.data||[];
-    estado.detalhesCarregados=false;estado.erroDetalhes=false;estado.prazos=[];estado.empenhos=[];estado.itens=[];estado.ocorrencias=[];estado.contratos=[];estado.anexos=[];
+    estado.detalhesCarregados=false;estado.erroDetalhes=false;estado.prazos=[];estado.empenhos=[];estado.itens=[];estado.ocorrencias=[];estado.contratos=[];estado.anexos=[];estado.contratosPublicos=[];estado.esteiraResultado=[];
     renderizar();
     const ids=estado.processos.map(processo=>processo.id);
     if(!ids.length){estado.detalhesCarregados=true;renderizar();abrirOrigemPendente();return;}
+    // Etapas 7 e 8 da esteira: tabelas opcionais (SQL ainda não aplicado ou falha de leitura = sem sugestão/quadro, nunca erro).
+    const opcional=async(tabela,filtro)=>{const r=await consultarPorProcessos(tabela,ids,"processo_id",true,filtro);return r.error?[]:r.data;};
     const [pr,e,itens,ocorrencias,contratos,anexos]=await Promise.all([
       consultarPorProcessos("operacao_prazos_processo",ids,"vencimento"),
       consultarPorProcessos("operacao_empenhos",ids,"emitido_em",false),
@@ -235,6 +237,8 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
     if(estado.empresaId!==empresaId||geracao!==geracaoCarregamento||usuario!==usuarioSessao)return;
     falha=[pr,e,itens,ocorrencias,contratos,anexos].find(x=>x.error);
     if(falha){estado.erroDetalhes=true;renderizar();if($("modal-dossie").classList.contains("aberto"))abrirDossie($("modal-dossie").dataset.processoId);aviso("Não foi possível carregar o acompanhamento. Confira a migração operacao_acompanhamento.sql: "+falha.error.message,"erro");return;}
+    [estado.contratosPublicos,estado.esteiraResultado]=await Promise.all([opcional("operacao_contratos_publicos"),opcional("operacao_esteira_tarefas",q=>q.eq("etapa","resultado"))]);
+    if(estado.empresaId!==empresaId||geracao!==geracaoCarregamento||usuario!==usuarioSessao)return;
     estado.prazos=pr.data||[];estado.empenhos=e.data||[];
     estado.itens=itens.data||[];estado.ocorrencias=ocorrencias.data||[];estado.contratos=contratos.data||[];estado.anexos=anexos.data||[];
     estado.detalhesCarregados=true;

@@ -28,6 +28,7 @@ function banco() {
     operacao_documentos: [],
     operacao_prazos_processo: [],
     operacao_agenda: [],
+    operacao_contratos_publicos: [],
   };
 }
 
@@ -81,7 +82,7 @@ test("devolve só a empresa do vínculo e seus processos, lendo com o token do u
   assert.equal(r.statusCode, 200);
   assert.equal(r.headers["Cache-Control"], "no-store");
   const corpo = JSON.parse(r.body);
-  assert.deepEqual(corpo, { userId: U, empresas: [{ empresaId: EMP_A, razaoSocial: "A" }], contextos: [{ empresaId: EMP_A, processoId: PROC_A, numero: "10/2026", objeto: "Papel A4", status: "triagem", prazo: "2026-12-01T13:00:00+00:00" }], certidoes: [], prazos: [], sancoes: [] });
+  assert.deepEqual(corpo, { userId: U, empresas: [{ empresaId: EMP_A, razaoSocial: "A" }], contextos: [{ empresaId: EMP_A, processoId: PROC_A, numero: "10/2026", objeto: "Papel A4", status: "triagem", prazo: "2026-12-01T13:00:00+00:00" }], certidoes: [], prazos: [], sancoes: [], contratos: [] });
   for (const c of chamadas.filter((x) => x.caminho.startsWith("/rest/"))) {
     assert.equal(c.auth, "Bearer TOKEN-U");
     assert.match(c.apikey, /^sb_publishable_/);
@@ -322,4 +323,37 @@ test("sanções: sem CNPJ é lista vazia; tabela ausente omite o bloco; outra fa
   assert.ok(Array.isArray(semTabela.contextos) && semTabela.contextos.length > 0, "catálogo continua");
   fonteSancoes(b, SANCOES, 500);
   assert.equal(JSON.parse((await handler(evento())).body).sancoes, null);
+}));
+
+// ---- Contratos e pagamentos (etapa 8 da esteira) ----
+const CT = (extra) => ({ empresa_id: EMP_A, organizacao_id: ORG_A, processo_id: PROC_A, tipo: "contrato", numero: "00001/2026", vigencia_fim: "2027-01-30",
+  valor_global: 1000, valor_empenhado: 500, a_pagar: null, liquidado_sem_pagamento_desde: null, ...extra });
+function fonteContratos(b, linhas, status = 200) {
+  instalarFetch(b);
+  const rls = global.fetch;
+  global.fetch = async (url, op) => {
+    const u = new URL(url);
+    if (u.pathname !== "/rest/v1/operacao_contratos_publicos") return rls(url, op);
+    return status === 200 ? Response.json(linhas) : new Response("{}", { status });
+  };
+}
+
+test("contratos: vence em até 90 dias e pagamento atrasado (mais de 30 dias) viram alerta; o resto não", () => comRelogio(async () => {
+  // Hoje em Brasília: 2026-11-18. 2027-01-30 = 73 dias (faixa de 90); 2027-06-01 fora; encerrado não alerta.
+  fonteContratos(banco(), [CT({}), CT({ numero: "2", vigencia_fim: "2027-06-01" }), CT({ numero: "3", vigencia_fim: "2026-11-01" }),
+    CT({ numero: "4", vigencia_fim: "2027-06-01", a_pagar: 90, liquidado_sem_pagamento_desde: "2026-10-01" }),
+    CT({ numero: "5", vigencia_fim: "2027-06-01", a_pagar: 90, liquidado_sem_pagamento_desde: "2026-11-10" }),
+    CT({ numero: "6", tipo: "empenho", vigencia_fim: "2026-12-31" }),
+    CT({ numero: "7", processo_id: PROC_B, empresa_id: EMP_B })]);
+  const { contratos } = JSON.parse((await handler(evento())).body);
+  assert.deepEqual(contratos.map((c) => [c.numero, c.tipo, c.dias, c.nivel ?? null]), [["4", "pagamento", 48, null], ["00001/2026", "vencimento", 73, 90]]);
+}));
+
+test("contratos: tabela ausente omite o bloco; outra falha vira null e o catálogo segue", () => comRelogio(async () => {
+  fonteContratos(banco(), [], 404);
+  assert.equal("contratos" in JSON.parse((await handler(evento())).body), false);
+  fonteContratos(banco(), [], 500);
+  const corpo = JSON.parse((await handler(evento())).body);
+  assert.equal(corpo.contratos, null);
+  assert.ok(corpo.contextos.length > 0);
 }));

@@ -7,7 +7,7 @@ const dominio = require("../operacao-acompanhamento");
 
 function preparar() {
   const codigo = fs.readFileSync(path.join(__dirname, "..", "operacao-acompanhamento-ui.js"), "utf8");
-  const janela = { LicitaAcompanhamento: dominio };
+  const janela = { LicitaAcompanhamento: dominio, ContratoPublico: require("../contrato-publico") };
   vm.runInNewContext(codigo, { window: janela });
   const ouvintes = new Map();
   const elementos = new Map();
@@ -157,4 +157,29 @@ test("falha ao registrar metadados remove o arquivo recém-enviado", async () =>
   assert.deepEqual(chamadas, ["upload", "insert", "remover"]);
   assert.equal(ambiente.elementos.get("btn-salvar-anexo").disabled, false);
   assert.match(ambiente.avisos[0], /falha na tabela/);
+});
+
+test("sugestão do robô: aparece só para item pendente e o clique grava só em item ainda pendente, com a fonte", async () => {
+  const ambiente = preparar();
+  const sugestao = { itens: [{ numero: 1, situacao: "ganho", unitario: 8, total: 1000, fonte: "https://pncp.gov.br/x" }, { numero: 2, situacao: "perdido", total: 90, motivo: "Perdeu para FULANO", fornecedor: { nome: "FULANO" } },
+    { numero: 3, situacao: "ganho", total: 5 }] };
+  Object.assign(ambiente.estado, {
+    itens: [{ id: "i1", processo_id: "p", tipo: "item", identificador: "1", situacao: "pendente" }, { id: "i2", processo_id: "p", tipo: "item", identificador: "2", situacao: "pendente" },
+      { id: "i3", processo_id: "p", tipo: "item", identificador: "3", situacao: "perdido" }],
+    esteiraResultado: [{ processo_id: "p", detalhe: { sugestao } }],
+  });
+  const gravados = [];
+  ambiente.deps.sb = { from: () => ({ update: dados => { const f = [["dados", dados]]; const q = { eq(c, v) { f.push([c, v]); return q; }, async select() { gravados.push(Object.fromEntries(f)); return { data: [{ id: "x" }], error: null }; } }; return q; } }) };
+  const ui = ambiente.janela.criarAcompanhamentoOperacional(ambiente.deps);
+  ui.renderizar({ id: "p", situacao_resultado: "nao_apurado" });
+  const html = ambiente.elementos.get("d-acompanhamento").innerHTML;
+  assert.match(html, /Você ganhou o item 1 \(R\$ 1000\) \/ perdeu o item 2 para FULANO/);
+  assert.match(html, /Nada foi gravado ainda/);
+  assert.doesNotMatch(html, /1, 3/); // o usuário já decidiu o 3: não é sobrescrito
+  ui.vincular();
+  await ambiente.ouvintes.get("d-conteudo")({ target: { closest: seletor => seletor.includes("[data-confirmar-sugestao]") ? { dataset: { confirmarSugestao: "p" }, disabled: false } : null } });
+  assert.equal(gravados.length, 2);
+  assert.deepEqual([gravados[0].id, gravados[0].situacao, gravados[0].dados.valor_homologado, gravados[0].dados.fonte_oficial], ["i1", "pendente", 1000, "https://pncp.gov.br/x"]);
+  assert.equal(gravados[1].dados.situacao, "perdido");
+  assert.equal(gravados[1].dados.valor_homologado, null);
 });

@@ -14,8 +14,11 @@
 //   nunca lista truncada, e não derruba o catálogo.
 // - Sanções vigentes (CEIS/CNEP, tabela sancoes_empresas) das empresas autorizadas, pelo CNPJ: mesma regra de bloco.
 //   Tabela ausente (SQL ainda não aplicado) omite o bloco em vez de mostrar erro.
+// - Contratos (operacao_contratos_publicos, etapa 8 da esteira): vencimento a até 90 dias e pagamento atrasado (liquidado
+//   sem pagamento há mais de 30 dias). Mesma regra de bloco; a conta de dias é a de contrato-publico.js.
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
 const {sancoesDoCnpj,textoSancao}=require('../../sancoes-ui.js');
+const {alertasDoContrato,DIAS_PAGAMENTO_ATRASADO}=require('../../contrato-publico.js');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
 const ANON='sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb';
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -52,6 +55,19 @@ async function blocoSancoes(empresas,ler,hojeIso){
  catch(e){return e.status===404?undefined:null;}
  return empresas.flatMap(e=>sancoesDoCnpj(linhas,e.cnpj,hojeIso).vigentes.map(s=>({empresaId:e.id,cadastro:s.cadastro,tipo:texto(s.tipo_sancao,300),dataFim:s.data_fim||null,texto:textoSancao(s,hojeIso)})))
   .sort((a,b)=>a.cadastro.localeCompare(b.cadastro)); // CEIS (impede contratar) antes de CNEP
+}
+
+// Contratos com alerta: [{empresaId,processoId,numero,tipo:'vencimento'|'pagamento',...}], null em falha, undefined se a tabela não existe.
+async function blocoContratos(ids,ler,hoje,contextos){
+ const dia=d=>new Date(d*MS_DIA).toISOString().slice(0,10);
+ const hojeIso=dia(hoje),ate=dia(hoje+90),antes=dia(hoje-DIAS_PAGAMENTO_ATRASADO);
+ let linhas;
+ try{linhas=await ler(`operacao_contratos_publicos?empresa_id=in.${emLista(ids)}&or=(and(vigencia_fim.gte.${hojeIso},vigencia_fim.lte.${ate}),liquidado_sem_pagamento_desde.lt.${antes})&select=empresa_id,organizacao_id,processo_id,tipo,numero,vigencia_fim,valor_global,valor_empenhado,a_pagar,liquidado_sem_pagamento_desde`);}
+ catch(e){return e.status===404?undefined:null;}
+ const abertos=new Map(contextos.map(c=>[c.processoId,c.empresaId]));
+ return linhas.filter(c=>c&&uuid(c.processo_id)&&abertos.get(c.processo_id)===c.empresa_id)
+  .flatMap(c=>alertasDoContrato(c,hojeIso).map(a=>({empresaId:c.empresa_id,processoId:c.processo_id,numero:texto(c.numero,60),tipoContrato:c.tipo,...a})))
+  .sort((a,b)=>(a.tipo==='pagamento'?0:1)-(b.tipo==='pagamento'?0:1)||(a.dias??0)-(b.dias??0));
 }
 
 exports.handler=async event=>{
@@ -111,8 +127,9 @@ exports.handler=async event=>{
     .map(a=>({id:a.id,origem:'agenda',empresaId:a.empresa_id,processoId:null,categoria:texto(a.categoria,40),titulo:texto(a.titulo,200),vencimento:a.vencimento,dias:diasDoPrazo(a.vencimento,hoje)}));
    return [...doProcesso,...daAgenda].filter(p=>p.dias!==null).sort((a,b)=>Date.parse(a.vencimento)-Date.parse(b.vencimento));
   });
+  const contratos=await blocoContratos([...porId.keys()],ler,hoje,contextos);
   const sancoes=await blocoSancoes(empresas,ler,new Date(hoje*MS_DIA).toISOString().slice(0,10));
-  return resposta(200,{userId,...(sancoes===undefined?{}:{sancoes}),empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos,certidoes,prazos});
+  return resposta(200,{userId,...(sancoes===undefined?{}:{sancoes}),...(contratos===undefined?{}:{contratos}),empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos,certidoes,prazos});
  }catch{
   return resposta(503,{erro:'Não foi possível carregar suas empresas agora. Tente de novo em instantes.'});
  }

@@ -45,6 +45,10 @@
       const anexos = doProcesso(estado.anexos, processo.id);
       const prazos = doProcesso(estado.prazos, processo.id);
       const empenhos = doProcesso(estado.empenhos, processo.id);
+      const CP = raiz.ContratoPublico;
+      const hoje = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10);
+      const publicos = doProcesso(estado.contratosPublicos || [], processo.id);
+      const sugeridos = CP.itensAindaPendentes(((estado.esteiraResultado || []).find(t => t.processo_id === processo.id) || {}).detalhe?.sugestao, itens);
       const apurado = raiz.LicitaAcompanhamento.resultadoEfetivo(processo, itens);
       const lista = (registros, montar, vazio) => registros.length ? registros.map(montar).join("") : `<p class="nota">${vazio}</p>`;
       $("d-acompanhamento").innerHTML = `
@@ -54,6 +58,7 @@
           <p class="nota">Data: ${data(processo.data_resultado)} · ${origem(processo.fonte_resultado) || "Fonte oficial não vinculada"}${processo.motivo_perda ? ` · ${esc(processo.motivo_perda)}` : ""}</p>
           ${processo.resultado ? `<p class="nota">Registro anterior do processo: ${esc(processo.resultado)}</p>` : ""}
           <div class="acoes-bloco"><button class="btn" data-editar-processo="${processo.id}">Editar cadastro e sessão</button><button class="btn" data-resultado="${processo.id}">Registrar resultado</button><button class="btn" data-item="${processo.id}">+ Item/lote</button></div>
+          ${sugeridos.length ? `<div class="linha-registro" data-sugestao-resultado="${processo.id}"><strong>Resultado encontrado no PNCP</strong><small>${esc(CP.textoSugestao(sugeridos, dinheiro))}</small><small>Nada foi gravado ainda. Confira e confirme para preencher o resultado de ${sugeridos.length} ${sugeridos.length === 1 ? "item" : "itens"}.</small><button class="btn" data-confirmar-sugestao="${processo.id}">Confirmar resultado</button></div>` : ""}
           ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · qtd.: ${esc(item.quantidade ?? "Não informada")} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}</small>${item.valor_unitario_proposta != null || item.valor_unitario_homologado != null ? `<small>Unitário proposto: ${valorOpcional(item.valor_unitario_proposta)} · unitário homologado: ${valorOpcional(item.valor_unitario_homologado)}</small>` : ""}${item.marca || item.modelo ? `<small>Marca: ${esc(item.marca || "—")} · Modelo: ${esc(item.modelo || "—")}</small>` : ""}${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button> <button class="btn perigo" data-excluir-item="${item.id}">Excluir lançamento</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
         </section>
         <section class="bloco-dossie"><h3>Relatório cronológico</h3><div class="acoes-bloco"><button class="btn" data-ocorrencia="${processo.id}">+ Ocorrência</button></div>
@@ -62,6 +67,9 @@
         <section class="bloco-dossie"><h3>Prazos e sessão</h3><div class="acoes-bloco"><button class="btn" data-add-prazo="${processo.id}">+ Prazo</button></div>
           <p class="nota">Sessão: ${dataHora(processo.data_sessao)}</p>
           ${lista(prazos, prazo => `<div class="linha-registro"><strong>${esc(prazo.titulo)}</strong><small>${dataHora(prazo.vencimento)} · ${esc(prazo.responsavel || "Sem responsável")} · ${prazo.concluido_em ? `concluído em ${dataHora(prazo.concluido_em)}` : "pendente"}</small><button class="btn" data-editar-prazo="${prazo.id}">Editar prazo</button> ${prazo.concluido_em ? "" : `<button class="btn" data-concluir-prazo="${prazo.id}">Concluir prazo</button>`}</div>`, "Nenhum prazo cadastrado.")}
+        </section>
+        <section class="bloco-dossie" data-quadro-contrato="${processo.id}"><h3>Contrato</h3>
+          ${CP.htmlQuadroContrato(publicos, hoje, { esc, dinheiro, data })}
         </section>
         <section class="bloco-dossie"><h3>Contratos e execução</h3><div class="acoes-bloco"><button class="btn" data-contrato="${processo.id}">+ Contrato</button><button class="btn" data-add-empenho="${processo.id}">+ Empenho</button></div>
           ${lista(contratos, contrato => `<div class="linha-registro"><strong>Contrato ${esc(contrato.numero)}</strong><small>${esc(rotulo(contrato.situacao))} · assinado: ${data(contrato.assinado_em)} · vigência: ${data(contrato.vigencia_inicio)} a ${data(contrato.vigencia_fim)} · valor: ${valorOpcional(contrato.valor)}</small>${contrato.observacoes ? `<small>${esc(contrato.observacoes)}</small>` : ""}<button class="btn" data-editar-contrato="${contrato.id}">Editar contrato</button></div>`, "Nenhum contrato cadastrado.")}
@@ -98,6 +106,23 @@
       const { error } = await sb.from("operacao_processos").update(dados).eq("id", id).eq("organizacao_id", estado.orgId);
       if (error) { aviso("Não foi possível salvar o resultado: " + error.message, "erro"); return; }
       formulario.reset(); fechar("modal-resultado"); await atualizarEReabrir(id);
+    }
+
+    // Confirma a sugestão do robô: grava só em item ainda pendente (o que o usuário já decidiu não é sobrescrito).
+    async function confirmarSugestao(processoId) {
+      const itens = doProcesso(estado.itens, processoId);
+      const tarefa = (estado.esteiraResultado || []).find(t => t.processo_id === processoId);
+      const sugeridos = raiz.ContratoPublico.itensAindaPendentes(tarefa?.detalhe?.sugestao, itens);
+      let gravados = 0;
+      for (const s of sugeridos) {
+        const registro = itens.find(i => i.tipo === "item" && String(i.identificador) === String(s.numero));
+        const dados = { ...raiz.ContratoPublico.dadosDoItem(s, s.fonte), atualizado_em: new Date().toISOString() };
+        const { data: linhas, error } = await sb.from("operacao_itens_resultado").update(dados).eq("id", registro.id).eq("processo_id", processoId).eq("organizacao_id", estado.orgId).eq("situacao", "pendente").select("id");
+        if (error) { aviso("Não foi possível gravar o item " + s.numero + ": " + mensagemErro(error), "erro"); break; }
+        gravados += linhas?.length || 0;
+      }
+      await atualizarEReabrir(processoId);
+      if (gravados) aviso(`Resultado confirmado em ${gravados} ${gravados === 1 ? "item" : "itens"}.`, "info");
     }
 
     async function salvarItem(ev) {
@@ -232,9 +257,10 @@
       $("form-contrato").addEventListener("submit", salvarContrato);
       $("form-anexo").addEventListener("submit", salvarAnexo);
       $("d-conteudo").addEventListener("click", async ev => {
-        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-excluir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-ler-evidencia],[data-concluir-prazo]");
+        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-excluir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-ler-evidencia],[data-concluir-prazo],[data-confirmar-sugestao]");
         if (!botao) return;
         const { editarProcesso: editar, resultado, item, corrigirItem, excluirItem: excluirId, ocorrencia, editarOcorrencia, editarPrazo, contrato, editarContrato, editarEmpenho, anexo, abrirAnexo: abrirId, concluirPrazo } = botao.dataset;
+        if (botao.dataset.confirmarSugestao) { botao.disabled = true; await confirmarSugestao(botao.dataset.confirmarSugestao); return; }
         if (editar) { editarProcesso(editar); return; }
         if (excluirId) { await excluirItem(excluirId); return; }
         if (resultado) {

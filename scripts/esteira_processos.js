@@ -16,6 +16,8 @@
 //   exigencias  espera o dossiê (dossies_editais); junta regras + IA, classifica, marca incomum, mede
 //               cobertura por documento e grava operacao_exigencias_processo (upsert; não toca resposta).
 //               Declaração com modelo literal no anexo do edital leva modelo_texto + modelo_fonte {documento, pagina}.
+//   resultado   (7) confere o resultado no PNCP e grava a sugestão em detalhe.sugestao; contrato (8) busca contrato,
+//               aditivos, empenhos e pagamentos (PNCP + Contratos.gov.br). Ver scripts/esteira_contratos.js.
 //   cruzamento  é a view operacao_exigencias_situacao (calculada na leitura): só marca feito.
 //   historico   licitação anterior do mesmo órgão e produto (scripts/historico_licitacoes.js): grava nas
 //               tabelas historico_* e deixa o casamento item a item no detalhe. No fim da rodada, com tempo
@@ -29,6 +31,7 @@ const ex = require("../netlify/functions/_exigencias");
 const { detectarModeloDoEdital, escolherModelo } = require("../declaracoes-modelos.js");
 const historico = require("./historico_licitacoes");
 const analiseCnpj = require("./analise_cnpj");
+const contratos = require("./esteira_contratos");
 
 const LOTE = Math.max(1, Number(process.env.LOTE_ESTEIRA || 5));
 const LIMITE_MS = Math.max(1, Number(process.env.LIMITE_MINUTOS_ESTEIRA || 10)) * 60000;
@@ -271,6 +274,12 @@ async function executarTarefa(tarefa, deps) {
       const detalhe = await historico.etapaHistorico(tarefa, deps);
       await atualizarTarefa(rest, tarefa, { estado: "feito", detalhe, erro: null });
       return "feito";
+    }
+    if (tarefa.etapa === "resultado" || tarefa.etapa === "contrato") {
+      // Patch pronto da etapa: reagenda sozinha (a vitória e o contrato mudam com o tempo) ou termina.
+      const patch = await (tarefa.etapa === "resultado" ? contratos.etapaResultado : contratos.etapaContrato)(tarefa, deps);
+      await atualizarTarefa(rest, tarefa, { ...patch, tentativas: 0 });
+      return patch.estado === "feito" ? "feito" : "reagendada";
     }
     if (tarefa.etapa === "cruzamento") {
       await atualizarTarefa(rest, tarefa, { estado: "feito", erro: null });

@@ -31,7 +31,7 @@ create table if not exists public.operacao_esteira_tarefas (
   foreign key (processo_id, empresa_id, organizacao_id)
     references public.operacao_processos(id, empresa_id, organizacao_id) on delete cascade
 );
--- Etapas aceitas (a 'historico' = licitação anterior, historico_licitacoes.sql). Recriada por nome para a
+-- Etapas aceitas ('historico' = licitação anterior; 'resultado' e 'contrato' = etapas 7 e 8, scripts/esteira_contratos.js). Recriada por nome para a
 -- reaplicação trocar a regra antiga (que vinha inline no create table) sem apagar linha nenhuma.
 do $$ declare c record; begin
  for c in select conname from pg_constraint where conrelid = 'public.operacao_esteira_tarefas'::regclass and contype = 'c'
@@ -40,7 +40,7 @@ do $$ declare c record; begin
  end loop;
 end $$;
 alter table public.operacao_esteira_tarefas add constraint operacao_esteira_tarefas_etapa_check
-  check (etapa in ('itens', 'exigencias', 'cruzamento', 'historico'));
+  check (etapa in ('itens', 'exigencias', 'cruzamento', 'historico', 'resultado', 'contrato'));
 create index if not exists operacao_esteira_tarefas_fila_idx
   on public.operacao_esteira_tarefas (proximo_em) where estado in ('pendente', 'aguardando_leitura');
 
@@ -128,7 +128,7 @@ begin
  v_primeira := not exists (select 1 from public.operacao_esteira_tarefas t where t.processo_id = new.id);
  insert into public.operacao_esteira_tarefas (organizacao_id, empresa_id, processo_id, etapa, criado_por)
  select new.organizacao_id, new.empresa_id, new.id, e, coalesce(auth.uid(), new.criado_por)
-   from unnest(array['itens', 'exigencias', 'cruzamento', 'historico']) e
+   from unnest(array['itens', 'exigencias', 'cruzamento', 'historico', 'resultado', 'contrato']) e
  on conflict do nothing;
  -- 'interesse' (lê todos os anexos, passa à frente na IA) só para edital que o robô coletou e com teto
  -- de 20 processos novos por organização em 24 h; fora disso entra como 'clique', sem rebaixar quem já está.
@@ -210,6 +210,13 @@ revoke all on function public.preservar_recolocacoes_esteira() from public, anon
 drop trigger if exists preservar_recolocacoes_esteira on public.operacao_esteira_tarefas;
 create trigger preservar_recolocacoes_esteira before update of detalhe on public.operacao_esteira_tarefas
   for each row execute function public.preservar_recolocacoes_esteira();
+
+-- Processos que já tinham tarefas antes das etapas 7 e 8 ganham as duas (idempotente; não mexe em operacao_processos).
+insert into public.operacao_esteira_tarefas (organizacao_id, empresa_id, processo_id, etapa, criado_por)
+select t.organizacao_id, t.empresa_id, t.processo_id, e, t.criado_por
+  from public.operacao_esteira_tarefas t cross join unnest(array['resultado', 'contrato']) e
+ where t.etapa = 'itens'
+on conflict do nothing;
 
 notify pgrst, 'reload schema';
 commit;

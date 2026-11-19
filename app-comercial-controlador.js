@@ -49,7 +49,7 @@
     const empresas = Array.isArray(j.empresas) ? j.empresas.filter((e) => e && typeof e.empresaId === 'string').map((e) => ({ empresaId: e.empresaId, razaoSocial: typeof e.razaoSocial === 'string' ? e.razaoSocial.trim() : '' })) : [];
     // Certidões e prazos: lista, null (o servidor não conseguiu ler) ou ausente (fonte sem esses blocos, como o QA).
     const bloco = (v) => (Array.isArray(v) ? v : v === null ? null : undefined);
-    return { estado: 'ok', sessao: { userId: j.userId, accessToken: accessToken || j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas, certidoes: bloco(j.certidoes), prazos: bloco(j.prazos), sancoes: bloco(j.sancoes) } };
+    return { estado: 'ok', sessao: { userId: j.userId, accessToken: accessToken || j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas, certidoes: bloco(j.certidoes), prazos: bloco(j.prazos), sancoes: bloco(j.sancoes), contratos: bloco(j.contratos) } };
   }
 
   // Produção (sistema.html): Supabase Auth no navegador, mesmo fluxo do login.html, inclusive recusar e
@@ -239,8 +239,9 @@
       if (!alvo) return;
       const certidoes = sessao?.certidoes, prazos = sessao?.prazos;
       // Sanções: o bloco só aparece se alguma empresa tiver sanção vigente (ou se a conferência falhou).
+      const contratos = sessao?.contratos, comContrato = contratos === null || (Array.isArray(contratos) && contratos.length > 0);
       const sancoes = sessao?.sancoes, comSancao = sancoes === null || (Array.isArray(sancoes) && sancoes.length > 0);
-      alvo.hidden = certidoes === undefined && prazos === undefined && !comSancao;
+      alvo.hidden = certidoes === undefined && prazos === undefined && !comSancao && !comContrato;
       if (alvo.hidden) { alvo.replaceChildren(); return; }
       const nomes = new Map(empresasAutorizadas().map((e) => [e.empresaId, e.rotulo]));
       const txt = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -249,6 +250,15 @@
         linhaAlerta('atrasado', 'Sanção', txt(s.texto, 300) || 'Empresa com sanção vigente',
           // CNEP já traz o tipo no texto principal; no CEIS o tipo (suspensão, inidoneidade...) vai no detalhe.
           [nomes.get(s.empresaId) || 'Empresa', s.cadastro === 'CEIS' && txt(s.tipo, 200), 'Fonte: CGU'].filter(Boolean).join(' · '))));
+      // Etapa 8 da esteira: contrato a vencer (90/60/30 dias) e pagamento atrasado, vindos do PNCP e do Contratos.gov.br.
+      if (comContrato) filhos.push(blocoAlerta('hoje-contratos-titulo', 'Contratos e pagamentos', contratos, '', (c) => {
+        const pag = c.tipo === 'pagamento';
+        const ref = [nomes.get(c.empresaId) || 'Empresa', 'Contrato ' + (txt(c.numero, 60) || 'sem número')].join(' · ');
+        return linhaAlerta(pag || c.dias <= 30 ? 'atrasado' : 'atencao', pag ? 'Pagamento atrasado' : 'Vence em ' + c.dias + (c.dias === 1 ? ' dia' : ' dias'),
+          pag ? 'Liquidado e sem pagamento há ' + c.dias + ' dias' + (Number.isFinite(c.valor) ? ' (R$ ' + c.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + ')' : '')
+            : 'Contrato vence em ' + c.dias + (c.dias === 1 ? ' dia' : ' dias') + ' (faixa de ' + c.nivel + ' dias)',
+          ref + ' · Fonte: PNCP/Contratos.gov.br');
+      }));
       if (certidoes !== undefined) filhos.push(blocoAlerta('hoje-certidoes-titulo', 'Certidões vencendo', certidoes, 'Nenhuma certidão vencida ou vencendo nos próximos 30 dias.', (c) => {
         const vencida = c.situacao === 'vencido';
         const empresa = nomes.get(c.empresaId) || 'Empresa';
