@@ -133,3 +133,106 @@ test("consultas avulsas: cada rodada pede a limpeza do cache de 30 dias", async 
   assert.equal(await H.completarConsultas({ rest, lerMes: async () => ({}) }), 0);
   assert.deepEqual(rpcs, [["rpc/historico_limpar_cache", { p_dias: 30 }]]);
 });
+
+// ---------- ComprasNet antigo (pregões até 2023, páginas públicas sem captcha) ----------
+const fs = require("node:fs");
+const path = require("node:path");
+const fixture = (n) => fs.readFileSync(path.join(__dirname, "../netlify/functions/__tests__/fixtures/comprasnet-antigo", n));
+const ID_IFAM = "15814205000232022"; // IFAM (UASG 158142), pregão 23/2022
+
+function portalAntigo(pedidos) {
+  return async (url, op = {}) => {
+    const u = new URL(url);
+    pedidos.push({ url: String(url), t: Date.now() });
+    const arq = { "/livre/pregao/ata4.asp": "ata4.html", "/livre/pregao/ata2.asp": "ata2.html", "/livre/pregao/FornecedorResultadoDecreto.asp": "fornecedor-ifam.html", "/livre/pregao/termojulg.asp": "termo-ifam.html" }[u.pathname];
+    return arq ? new Response(fixture(arq), { status: 200 }) : new Response("x", { status: 404 });
+  };
+}
+const restAntigo = (jaLidas = []) => async (caminho) => resposta(caminho.startsWith("historico_compras?") ? jaLidas.map((id_compra) => ({ id_compra })) : []);
+
+test("ComprasNet antigo: grava fonte, link público, situação e vencedor do item, sem apagar a marca da Pesquisa de Preços", async () => {
+  const pedidos = [];
+  const compras = [{ id_compra: ID_IFAM, plataforma: "ComprasNet (antigo)", data_publicacao: null }, { id_compra: "78882005900332025", plataforma: "Compras.gov.br" }];
+  const r = await H.lerComprasAntigas({ compras, numeros: new Map([[ID_IFAM, new Set([1, 2])], ["78882005900332025", new Set([107])]]) },
+    { rest: restAntigo(), fetchImpl: portalAntigo(pedidos), esperar: async () => {}, agora: () => Date.parse("2026-11-19T12:00:00Z") });
+  assert.deepEqual(r.resumo, { pregoes: 1, lidos: 1, jaLidos: 0, naoAchados: 0, falhas: 0 });
+  assert.deepEqual(r.compras, [{ id_compra: ID_IFAM, link_origem: "https://www.comprasnet.gov.br/livre/pregao/ata2.asp?co_no_uasg=158142&numprp=232022&codigoModalidade=5",
+    fonte: "comprasnet-antigo", fonte_lida_em: "2026-11-19T12:00:00.000Z", data_publicacao: "2022-12-05" }]);
+  assert.equal(r.itens.length, 2);
+  assert.equal(r.itens[0].situacao_item, "Adjudicado");
+  assert.equal(r.itens[0].tem_resultado, true);
+  assert.ok(!("motivo_situacao" in r.itens[0]), "campo vazio não vai (o upsert por colunas não pode apagar)");
+  const p = r.participacoes[0];
+  assert.equal(p.fornecedor_ni, "08759521000139");
+  assert.equal(p.ordem_classificacao, 1);
+  assert.equal(p.valor_homologado, 5689.01);
+  assert.equal(p.quantidade_homologada, 36);
+  assert.equal(p.data_resultado, "2022-12-05");
+  assert.ok(!("marca" in p), "grupo não traz marca: não manda null por cima da marca da Pesquisa de Preços");
+  assert.equal(pedidos.length, 4);
+  assert.ok(pedidos.every((x) => !/AtaEletronico/i.test(x.url)));
+});
+
+test("ComprasNet antigo: marca e descrição ofertada entram quando o item aparece no Resultado por Fornecedor; compra já lida não é relida", async () => {
+  const pedidos = [];
+  const fetchImpl = async (url) => {
+    const u = new URL(url);
+    pedidos.push(u.pathname);
+    const arq = { "/livre/pregao/ata4.asp": "ata4.html", "/livre/pregao/ata2.asp": "ata2.html", "/livre/pregao/FornecedorResultadoDecreto.asp": "fornecedor-inpa.html", "/livre/pregao/termojulg.asp": "termo-inpa.html" }[u.pathname];
+    const t = fixture(arq).toString("latin1").split("232022").join("132022").split("158142").join("240105");
+    return new Response(Buffer.from(t, "latin1"), { status: 200 });
+  };
+  const id = "24010505000132022";
+  const entrada = { compras: [{ id_compra: id, plataforma: "ComprasNet (antigo)", data_publicacao: "2022-12-05" }], numeros: new Map([[id, new Set([1, 4])]]) };
+  const r = await H.lerComprasAntigas(entrada, { rest: restAntigo(), fetchImpl, esperar: async () => {} });
+  const p1 = r.participacoes.find((x) => x.numero_item === 1);
+  assert.equal(p1.marca, "Proc9");
+  assert.equal(p1.fabricante, "Proc9");
+  assert.equal(p1.modelo, "proc9");
+  assert.match(p1.descricao_ofertada, /^Ácido Sulfúrico/);
+  assert.equal(p1.valor_homologado, 147.12);
+  assert.ok(!("data_publicacao" in r.compras[0]), "data que a Pesquisa de Preços já trouxe não é trocada");
+  pedidos.length = 0;
+  const de_novo = await H.lerComprasAntigas(entrada, { rest: restAntigo([id]), fetchImpl, esperar: async () => {} });
+  assert.equal(de_novo.resumo.jaLidos, 1);
+  assert.equal(pedidos.length, 0);
+});
+
+test("ComprasNet antigo: item cancelado grava situação e motivo literal, sem vencedor; pregão fora da lista e falha HTTP não derrubam a tarefa", async () => {
+  const termo = fixture("termo-cancelado.html").toString("latin1");
+  const fetchImpl = async (url) => {
+    const u = new URL(url);
+    if (u.pathname.endsWith("ata4.asp")) return new Response(fixture("ata4.html").toString("latin1").split("232022").join("32022").split("158142").join("160014"), { status: 200 });
+    if (u.pathname.endsWith("ata2.asp")) return new Response(fixture("ata2.html"), { status: 200 });
+    if (u.pathname.endsWith("FornecedorResultadoDecreto.asp")) return new Response(fixture("fornecedor-ifam.html"), { status: 200 });
+    return new Response(Buffer.from(termo, "latin1"), { status: 200 });
+  };
+  const id = "16001405000032022";
+  const r = await H.lerComprasAntigas({ compras: [{ id_compra: id, plataforma: "ComprasNet (antigo)" }, { id_compra: "99999905000012021", plataforma: "ComprasNet (antigo)" }],
+    numeros: new Map([[id, new Set([3])], ["99999905000012021", new Set([1])]]) }, { rest: restAntigo(), fetchImpl, esperar: async () => {} });
+  assert.equal(r.itens[0].situacao_item, "Cancelado no julgamento");
+  assert.equal(r.itens[0].motivo_situacao, "Por não haver propostas validas para continuidade do item.");
+  assert.equal(r.itens[0].tem_resultado, false);
+  assert.equal(r.participacoes.length, 0);
+  assert.equal(r.resumo.naoAchados, 1); // o segundo pregão não está na lista do portal
+  const falha = await H.lerComprasAntigas({ compras: [{ id_compra: id, plataforma: "ComprasNet (antigo)" }], numeros: new Map([[id, new Set([3])]]) },
+    { rest: restAntigo(), fetchImpl: async () => new Response("x", { status: 503 }), esperar: async () => {} });
+  assert.equal(falha.resumo.falhas, 1);
+  assert.equal(falha.compras.length, 0);
+});
+
+test("ComprasNet antigo: pausa mínima de 1,5 s entre as páginas, com relógio falso", async () => {
+  let t = 0;
+  const esperas = [];
+  const mapa = new Map([[ID_IFAM, new Set([1])], ["15814205000242022", new Set([1])]]);
+  const fetchImpl = async (url) => {
+    const u = new URL(url);
+    const arq = { "/livre/pregao/ata4.asp": "ata4.html", "/livre/pregao/ata2.asp": "ata2.html", "/livre/pregao/FornecedorResultadoDecreto.asp": "fornecedor-ifam.html", "/livre/pregao/termojulg.asp": "termo-ifam.html" }[u.pathname];
+    const texto = fixture(arq).toString("latin1").split("232022").join(String(Number(u.searchParams.get("numprp") || "232022")));
+    return new Response(Buffer.from(texto, "latin1"), { status: 200 });
+  };
+  await H.lerComprasAntigas({ compras: [...mapa.keys()].map((id_compra) => ({ id_compra, plataforma: "ComprasNet (antigo)" })), numeros: mapa },
+    { rest: restAntigo(), fetchImpl, esperar: async (ms) => { esperas.push(ms); t += ms; }, agora: () => t });
+  assert.ok(esperas.length >= 3);
+  assert.ok(esperas.every((ms) => ms >= 1500));
+});

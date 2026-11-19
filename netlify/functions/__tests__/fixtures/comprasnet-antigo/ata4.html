@@ -1,0 +1,92 @@
+
+<html>
+	<head>
+		<title>Compras.gov.br - O SITE DE COMPRAS DO GOVERNO</title>
+		<script language="javascript" type="text/javascript" SRC="../../imagens/action.js"></script>
+		<script LANGUAGE="javascript" src="/includes/aguarde.js"></script>
+		<link rel="stylesheet" href="../../imagens/style1.css" type="text/css">
+		<script language="javascript" >
+			function Dados_Ata(tpPregao, numPregao, codUasg, codigoModalidade){
+				if(aguarde()){
+					var url;
+					if (tpPregao == 'E') {
+						url = "ata2.asp?co_no_uasg="+codUasg+"&numprp="+numPregao+"&codigoModalidade="+codigoModalidade+
+							  "&f_lstSrp=T&f_Uf=&f_numPrp=0&f_codUasg=158142"
+							  +"&f_codMod="+codigoModalidade+"&f_tpPregao=E&f_lstICMS=T"
+							  +"&f_dtAberturaIni=05/12/2022&f_dtAberturaFim=09/12/2022";
+					}
+					else {
+						url = "ataPres.asp?coduasg="+codUasg+"&numprp="+numPregao+"&codigoModalidade="+codigoModalidade+
+					 		  "&f_lstSrp=T&f_Uf=&f_numPrp=0&f_codUasg=158142"
+							  +"&f_codMod="+codigoModalidade+"&f_tpPregao=E"
+							  +"&f_dtAberturaIni=05/12/2022&f_dtAberturaFim=09/12/2022";
+					}
+					
+					bloqueiaAcoes(document);
+					
+					location.href = url;
+					return false;
+				}
+			}
+			
+			function voltar(){
+				if(aguarde()){
+					bloqueiaAcoes(document);
+					location.href = "ata0.asp";
+				}
+			}
+		
+		</script>
+	</head>
+	<body bgcolor="#FFFFFF" text="#000000" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" class="body_2">
+		<h2 class="titulo">Consulta de Atas</h2>
+		<table border="0" cellspacing="1" cellpadding="2" width="98%">
+			<tr>
+				<td valign="top" align="right" width="23"><img src="../../imagens/tm_bullet4.gif" width="6" height="14"></td>
+				<td class="tex3">
+					Clique no número da licitação para ver a ata
+					<br/>
+					<br/>
+					
+						<table border="0" width="100%" class="td" cellpadding="2" cellspacing="1">
+							<tr bgcolor="#FFFFFF">
+								<td colspan="4" class="tex3"> 
+									Licitações Eletrônicas
+								</td>
+							</tr>
+						</table>
+						<table width="100%" border="0" cellpadding="2" cellspacing="1" class="td">
+<tr class="tex3b" align="center">
+<td> Nº da Licitação</td>
+<td nowrap="nowrap">Cód. UASG <br /> (Unid. de Compra)</td>
+<td nowrap="nowrap">Nome da UASG <br /> (Unid. de Compra)</td>
+<td>Data de Realização</td>
+</tr>
+<tr bgcolor="#FFFFFF" valign="middle" class="tex3">
+<td align="center">
+<a onclick="
+          Dados_Ata('E', '232022', '158142', '5');
+        " name="232022-158142-5" href="#232022-158142-5">
+232022
+</a> (Pregão)
+    </td>
+<td align="center">158142</td>
+<td align="center">INST.FED.DE EDUC.,CIENC.E TEC.DO AMAZONAS</td>
+<td align="center">05/12/2022</td>
+</tr>
+</table>
+
+					<br/>
+					<br/>
+					<input type="button" name="voltar" value="Voltar" class="texField2" onClick="javascript:voltar();">
+				</td>
+			</tr>
+		</table>
+		<br/>
+		<!-- frame e tabela que apresentarão a mensagem de aguarde na tela -->
+<iframe id="frameloading" name="frameloading" src="javascript:false;" scrolling="no" frameborder="0" style="display: none; position: absolute; left: 0; top: 0; z-index: -1;"></iframe>
+<table style="display:none; position: absolute;" id="loading" name="loading" class="box">
+	<tr><td class="cabecbox">Aguarde!</td></tr>
+</table>
+	</body>
+</html>

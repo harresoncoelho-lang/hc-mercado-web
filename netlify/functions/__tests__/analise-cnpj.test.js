@@ -106,7 +106,7 @@ test("CNPJ sem resultado no PNCP: nada de compra, mas os meses do arquivo entram
 });
 
 // Handler com fetch falso: login, cadastro, cota (incrementar_uso) e contagens da fila.
-async function comFetch({ status = "aprovado", uso = 1, parcial = 0, doSolicitante = 0, org = "o1" }, fn) {
+async function comFetch({ status = "aprovado", uso = 1, parcial = 0, doSolicitante = 0, org = "o1", linha = null }, fn) {
   const anterior = global.fetch, chamadas = [], envAnterior = process.env.SUPABASE_SERVICE_ROLE_KEY;
   process.env.SUPABASE_SERVICE_ROLE_KEY = "srv";
   global.fetch = async (url, op = {}) => {
@@ -119,7 +119,7 @@ async function comFetch({ status = "aprovado", uso = 1, parcial = 0, doSolicitan
     if (u.pathname === "/rest/v1/historico_cnpj_consultas" && op.headers?.Prefer === "count=exact") {
       return new Response("[]", { headers: { "content-range": `*/${u.searchParams.get("solicitante") ? doSolicitante : parcial}` } });
     }
-    if (u.pathname === "/rest/v1/historico_cnpj_consultas") return Response.json([]);
+    if (u.pathname === "/rest/v1/historico_cnpj_consultas") return Response.json(op.method === "GET" || !op.method ? (linha ? [linha] : []) : []);
     return Response.json({ items: [] });
   };
   try { return await fn(chamadas); } finally { global.fetch = anterior; process.env.SUPABASE_SERVICE_ROLE_KEY = envAnterior; }
@@ -163,5 +163,21 @@ test("handler: fila cheia (global ou da organização) recusa antes de coletar e
     assert.ok(chamadas.some((c) => c.includes("solicitante=eq.u1"))); // sem organização: o próprio usuário
     const gravou = chamadas.find((c) => c.startsWith("POST /rest/v1/historico_cnpj_consultas"));
     assert.ok(gravou);
+  });
+});
+
+test("handler: quem pede de novo uma análise parcial marca pedido_em (o robô atende primeiro); análise completa não volta para a fila", async () => {
+  const agora = new Date().toISOString();
+  const parcial = { cnpj: "48885922000150", nome: "F M", situacao: "parcial", total_pncp: 3, compras_pendentes: ["x"], meses_pendentes: ["2026/10"], meses_lidos: [], gerado_em: agora, atualizado_em: agora };
+  await comFetch({ linha: parcial }, async (chamadas) => {
+    const r = await handler(pedido({ acao: "coletar", cnpj: "48885922000150" }));
+    assert.equal(r.statusCode, 200);
+    assert.equal(JSON.parse(r.body).guardado, true);
+    assert.ok(chamadas.some((c) => c.startsWith("PATCH /rest/v1/historico_cnpj_consultas?cnpj=eq.48885922000150")));
+    assert.ok(!chamadas.some((c) => c.includes("incrementar_uso")), "cache não gasta cota");
+  });
+  await comFetch({ linha: { ...parcial, situacao: "completo" } }, async (chamadas) => {
+    assert.equal(JSON.parse((await handler(pedido({ acao: "coletar", cnpj: "48885922000150" }))).body).guardado, true);
+    assert.ok(!chamadas.some((c) => c.startsWith("PATCH")), "completo não entra na fila de novo");
   });
 });

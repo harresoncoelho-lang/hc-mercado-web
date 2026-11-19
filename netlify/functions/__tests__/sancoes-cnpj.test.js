@@ -41,7 +41,7 @@ test("sem login, CNPJ inválido ou método errado: recusa sem ler a tabela", () 
   assert.equal((await handler(evento("11222333000181", {}))).statusCode, 401);
   assert.equal((await handler(evento("123"))).statusCode, 400);
   assert.equal((await handler(evento(undefined))).statusCode, 400);
-  assert.equal((await handler(evento("11222333000181", { authorization: "Bearer TOKEN-U" }, "POST"))).statusCode, 405);
+  assert.equal((await handler(evento("11222333000181", { authorization: "Bearer TOKEN-U" }, "PUT"))).statusCode, 405);
   assert.ok(!chamadas.some((c) => c.url.pathname === "/rest/v1/sancoes_empresas"));
 }));
 
@@ -67,4 +67,48 @@ test("falha da tabela ou lista no teto: 503 sem cache (nunca 'sem sanção' erra
       assert.equal(r.headers["Cache-Control"], "no-store");
     });
   }
+});
+
+// ---------- consulta em lote (POST {cnpjs}) ----------
+const lote = (cnpjs, headers = { authorization: "Bearer TOKEN-U" }) => ({ httpMethod: "POST", headers, body: JSON.stringify({ cnpjs }) });
+const B = "11222333000181", C2 = "04252011000110";
+
+test("lote: uma leitura para vários CNPJs, token do usuário, resultado por CNPJ (inclusive sem sanção), sem fundamentação", () => comFetch(() => Response.json(LINHAS), async (chamadas) => {
+  statusCadastro = "aprovado";
+  const r = await handler(lote(["11.222.333/0001-81", C2, B]));
+  assert.equal(r.statusCode, 200);
+  const b = JSON.parse(r.body);
+  assert.deepEqual(Object.keys(b.resultados).sort(), [C2, B].sort(), "CNPJ repetido entra uma vez");
+  assert.deepEqual(b.resultados[B].vigentes.map((s) => s.codigo_sancao), ["1"]);
+  assert.deepEqual(b.resultados[B].expiradas.map((s) => s.codigo_sancao), ["2"]);
+  assert.deepEqual(b.resultados[C2], { vigentes: [], expiradas: [] });
+  assert.match(b.hoje, /^\d{4}-\d{2}-\d{2}$/);
+  const leituras = chamadas.filter((c) => c.url.pathname === "/rest/v1/sancoes_empresas");
+  assert.equal(leituras.length, 1);
+  assert.equal(leituras[0].auth, "Bearer TOKEN-U");
+  assert.equal(leituras[0].url.searchParams.get("cnpj"), `in.(${B},${C2})`);
+  assert.doesNotMatch(leituras[0].url.searchParams.get("select"), /fundamentacao/);
+}));
+
+test("lote: sem login 401, cadastro pendente 403, mais de 200 CNPJs ou CNPJ torto 400 — nada lido", () => comFetch(() => Response.json(LINHAS), async (chamadas) => {
+  statusCadastro = "aprovado";
+  assert.equal((await handler(lote([B], {}))).statusCode, 401);
+  const muitos = Array.from({ length: 201 }, (_, i) => String(10000000000000 + i));
+  assert.equal((await handler(lote(muitos))).statusCode, 400);
+  assert.equal((await handler(lote([B, "123"]))).statusCode, 400);
+  assert.equal((await handler(lote([]))).statusCode, 400);
+  assert.equal((await handler({ httpMethod: "POST", headers: { authorization: "Bearer TOKEN-U" }, body: "{" })).statusCode, 400);
+  assert.equal((await handler({ httpMethod: "POST", headers: { authorization: "Bearer TOKEN-U" }, body: JSON.stringify({ cnpjs: B }) })).statusCode, 400);
+  statusCadastro = "pendente";
+  assert.equal((await handler(lote([B]))).statusCode, 403);
+  statusCadastro = "aprovado";
+  assert.ok(!chamadas.some((c) => c.url.pathname === "/rest/v1/sancoes_empresas"));
+}));
+
+test("lote: exatamente 200 CNPJs passa; resposta no teto de linhas falha fechado (503)", async () => {
+  statusCadastro = "aprovado";
+  const duzentos = Array.from({ length: 200 }, (_, i) => String(10000000000000 + i));
+  await comFetch(() => Response.json([]), async () => { assert.equal((await handler(lote(duzentos))).statusCode, 200); });
+  const cheia = Array.from({ length: 5000 }, () => LINHAS[0]);
+  await comFetch(() => Response.json(cheia), async () => { assert.equal((await handler(lote([B]))).statusCode, 503); });
 });

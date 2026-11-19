@@ -153,7 +153,15 @@
   }
 
   const MAX_LINHAS = 100;
-  function tabelaItens(doc, titulo, itens, perdidos) {
+  // Selo CEIS/CNEP do vencedor (sancoes-ui.js) quando ele tem sanção; selos = { resultados, hoje, LicitaSancoes } da consulta em lote.
+  const seloDoVencedor = (doc, selos, ni) => {
+    const res = selos && ni && selos.resultados && selos.resultados[ni];
+    return res ? selos.LicitaSancoes.montarSelo(doc, res, selos.hoje) : null;
+  };
+  // CNPJs dos vencedores das linhas que a tabela mostra (até 200, o teto do endpoint em lote).
+  const cnpjsDosVencedores = (itens) => [...new Set(itens.slice(0, MAX_LINHAS).map((p) => p.vencedor_ni).filter((ni) => /^\d{14}$/.test(String(ni || ''))))].slice(0, 200);
+
+  function tabelaItens(doc, titulo, itens, perdidos, selos) {
     const caixa = el(doc, 'div', {}, el(doc, 'h3', { texto: `${titulo} (${itens.length})` }));
     if (!itens.length) { caixa.append(el(doc, 'p', { class: 'dica-clique', texto: 'Nenhum no histórico guardado.' })); return caixa; }
     const cab = ['Item', 'Qtd', 'Preço unit.', ...(perdidos ? ['Vencedor (preço)'] : []), 'Posição', 'Órgão', 'Data', 'Fonte'];
@@ -161,7 +169,7 @@
       el(doc, 'td', { texto: `${p.numero_item}. ${p.descricao || 'Descrição não informada pela fonte'}` }),
       el(doc, 'td', { texto: num(p.quantidade_homologada ?? p.quantidade) === null ? '—' : `${Number(p.quantidade_homologada ?? p.quantidade).toLocaleString('pt-BR')} ${p.unidade || ''}`.trim() }),
       el(doc, 'td', { texto: moeda(p._preco) }),
-      perdidos ? el(doc, 'td', { texto: p.vencedor_nome ? `${p.vencedor_nome} (${moeda(p._vencedorPreco)})` : '—' }) : null,
+      perdidos ? el(doc, 'td', {}, p.vencedor_nome ? `${p.vencedor_nome} (${moeda(p._vencedorPreco)})` : '—', seloDoVencedor(doc, selos, p.vencedor_ni)) : null,
       el(doc, 'td', { texto: p._recusada ? 'recusada' : p._fracassado1 ? '1º (item fracassado)' : p._posicao ? `${p._posicao}º` : '—' }),
       el(doc, 'td', { texto: [p.orgao_nome || p.unidade_nome, p.uf].filter(Boolean).join(' / ') || (p.uasg ? `UASG ${p.uasg}` : '—') }),
       el(doc, 'td', { texto: dataBr(p.data_resultado || p.data_publicacao) }),
@@ -171,7 +179,7 @@
     return caixa;
   }
 
-  function blocoParticipacoes(doc, r) {
+  function blocoParticipacoes(doc, r, selos) {
     const caixa = el(doc, 'div', { class: 'acn-participacoes' }, el(doc, 'h3', { texto: 'Participações' }));
     caixa.append(el(doc, 'div', { class: 'cartoes' },
       cartao(doc, 'Disputas (itens)', `${r.disputas} em ${r.compras} contratação(ões)`), cartao(doc, 'Vencidas', String(r.vencidas)),
@@ -181,7 +189,7 @@
       cartao(doc, 'Preço médio com que perde', r.paresComparados ? `${moeda(r.precoMedioPerde)} vs ${moeda(r.precoMedioVencedor)} do vencedor (${pct(Math.abs(r.diferencaMediaPerde))} ${r.diferencaMediaPerde >= 0 ? 'acima' : 'abaixo'}, ${r.paresComparados} itens)` : '—')));
     caixa.append(tabelaGrupo(doc, 'Por estado (UF do órgão)', r.porUf) || '', tabelaGrupo(doc, 'Por modalidade', r.porModalidade) || '',
       tabelaGrupo(doc, 'Por órgão', r.porOrgao) || '', tabelaGrupo(doc, 'Por produto / CATMAT', r.porProduto) || '');
-    caixa.append(tabelaItens(doc, 'Itens vencidos', r.itensVencidos, false), tabelaItens(doc, 'Itens não vencidos', r.itensNaoVencidos, true));
+    caixa.append(tabelaItens(doc, 'Itens vencidos', r.itensVencidos, false), tabelaItens(doc, 'Itens não vencidos', r.itensNaoVencidos, true, selos));
     return caixa;
   }
 
@@ -233,7 +241,8 @@
   }
 
   // alvo: container; requisitar(corpo) -> /api/analise-cnpj; sancoes() -> /api/sancoes-cnpj (ou {erro}).
-  async function montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, hoje, LicitaSancoes }) {
+  // sancoesLote(cnpjs) -> { resultados, hoje } (POST /api/sancoes-cnpj): selo de sanção nos vencedores das disputas perdidas.
+  async function montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, sancoesLote, hoje, LicitaSancoes }) {
     const doc = alvo.ownerDocument;
     const status = el(doc, 'div', { class: 'carregando', texto: 'Buscando as disputas deste CNPJ no PNCP e no Compras.gov…' });
     alvo.replaceChildren(cabecalho(doc, cnpj, ficha), status);
@@ -244,8 +253,13 @@
       return null;
     }
     const r = resumir(dados.linhas), mot = motivosGravados(dados.mensagens, dados.propostas);
-    alvo.replaceChildren(cabecalho(doc, cnpj, ficha), blocoColeta(doc, coleta, () => montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, hoje, LicitaSancoes })) || '',
-      blocoAlertas(doc, r, mot, sanc, hoje, LicitaSancoes), blocoParticipacoes(doc, r), blocoMotivos(doc, r, mot),
+    let selos = null;
+    const vencedores = sancoesLote && LicitaSancoes ? cnpjsDosVencedores(r.itensNaoVencidos) : [];
+    if (vencedores.length) {
+      try { const lote = await sancoesLote(vencedores); if (lote && lote.resultados) selos = { resultados: lote.resultados, hoje: lote.hoje || hoje, LicitaSancoes }; } catch { selos = null; }
+    }
+    alvo.replaceChildren(cabecalho(doc, cnpj, ficha), blocoColeta(doc, coleta, () => montar({ alvo, cnpj, ficha, sb, requisitar, sancoes, sancoesLote, hoje, LicitaSancoes })) || '',
+      blocoAlertas(doc, r, mot, sanc, hoje, LicitaSancoes), blocoParticipacoes(doc, r, selos), blocoMotivos(doc, r, mot),
       el(doc, 'p', { class: 'dica-clique', texto: 'Fontes: PNCP (resultados por fornecedor), dados abertos do Compras.gov, arquivo semanal de propostas (repositorio.dados.gov.br, só itens homologados), CEIS/CNEP da CGU e pregões gravados pela extensão. Outras plataformas (Licitanet, BLL, BNC…) entram só pelo resultado publicado no PNCP: as disputas perdidas nelas não são públicas.' }));
     return r;
   }
@@ -260,7 +274,7 @@
     })));
   }
 
-  const api = { resumir, motivosGravados, venceu, posicao, precoFinal, montar, montarEscolha };
+  const api = { resumir, motivosGravados, venceu, posicao, precoFinal, montar, montarEscolha, cnpjsDosVencedores };
   global.LicitaAnaliseCnpj = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

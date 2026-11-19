@@ -80,3 +80,63 @@ test("robô: poda historico_participacoes dos CNPJs da rodada (teto de linhas e 
   const poda = escritas.find((e) => e.caminho === "rpc/historico_participacoes_podar");
   assert.deepEqual(poda.corpo, { p_cnpjs: ["48885922000150"], p_max_linhas: 5000, p_meses: 37 });
 });
+
+// ---------- fila "parcial": prioridade para quem pediu, mais CNPJs por mês lido, mais meses quando sobra tempo ----------
+const CAB_ARQ = '"numero_uasg";"id_compra";"numero_item";"descricao";"identificacao_participante";"nome_participante";"classificacao";"situacao_proposta";"situacao_item"';
+function bancoFila({ prioritarias = [], todas }) {
+  const escritas = [];
+  const rest = async (caminho, opcoes = {}) => {
+    escritas.push({ caminho, metodo: opcoes.method || "GET", corpo: opcoes.body ? JSON.parse(opcoes.body) : null });
+    if (caminho.startsWith("historico_cnpj_consultas?situacao=eq.parcial")) return { json: async () => (caminho.includes("pedido_em=gte.") ? prioritarias : todas) };
+    return { json: async () => [] };
+  };
+  return { rest, escritas };
+}
+const fila = (cnpj, meses) => ({ cnpj, compras_pendentes: [], meses_pendentes: meses, meses_lidos: [] });
+const lerMesFalso = (lidos, relogio, custo = 0) => async (mes, filtro) => {
+  lidos.push(mes); relogio.t += custo;
+  filtro.linha(CAB_ARQ);
+  return { mes, linhas: 0, bytes: 0 };
+};
+
+test("fila: o mês de quem acabou de pedir é lido antes, mesmo sendo mais antigo; a fila antiga não fica de fora", async () => {
+  const velho = fila("11111111000191", ["2026/10"]), novo = fila("22222222000191", ["2026/08"]);
+  const { rest } = bancoFila({ prioritarias: [novo], todas: [velho, novo] });
+  const lidos = [], r = { t: 0 };
+  const c = await completarAnalises({ rest, lerMes: lerMesFalso(lidos, r), agora: () => r.t, esperar: async () => {} });
+  assert.deepEqual(lidos, ["2026/08", "2026/10"]);
+  assert.equal(c.cnpjs, 2, "sem duplicar quem está nas duas listas");
+});
+
+test("fila: mais de 5 CNPJs entram no filtro do mesmo mês (o arquivo é baixado uma vez só) e todos saem do mês", async () => {
+  const todas = Array.from({ length: 12 }, (_, i) => fila(`${String(10000000000000 + i)}`, ["2026/10"]));
+  const { rest, escritas } = bancoFila({ todas });
+  const lidos = [], r = { t: 0 };
+  const c = await completarAnalises({ rest, lerMes: lerMesFalso(lidos, r), agora: () => r.t, esperar: async () => {} });
+  assert.deepEqual(lidos, ["2026/10"]);
+  assert.equal(c.completos, 12);
+  assert.equal(escritas.filter((e) => e.metodo === "PATCH" && e.corpo.situacao === "completo").length, 12);
+});
+
+test("fila: tempo curto lê só o primeiro mês (sempre começa) e deixa o resto pendente; tempo sobrando lê todos", async () => {
+  const montar = () => bancoFila({ todas: [fila("11111111000191", ["2026/10", "2026/09", "2026/08"])] });
+  const curto = { t: 0 }, lidosCurto = [];
+  const a = await completarAnalises({ rest: montar().rest, lerMes: lerMesFalso(lidosCurto, curto, 60), agora: () => curto.t, prazoFinal: 100, esperar: async () => {} });
+  assert.deepEqual(lidosCurto, ["2026/10"], "o 2º mês (60 s de custo medido) não cabe nos 40 s que sobram");
+  assert.equal(a.meses, 1);
+  assert.equal(a.completos, 0);
+  const longo = { t: 0 }, lidosLongo = [];
+  const b = await completarAnalises({ rest: montar().rest, lerMes: lerMesFalso(lidosLongo, longo, 60), agora: () => longo.t, prazoFinal: 1000, esperar: async () => {} });
+  assert.deepEqual(lidosLongo, ["2026/10", "2026/09", "2026/08"]);
+  assert.equal(b.completos, 1);
+});
+
+test("fila: mês que falha não trava os seguintes nem os outros CNPJs", async () => {
+  const { rest } = bancoFila({ todas: [fila("11111111000191", ["2026/10", "2026/09"]), fila("22222222000191", ["2026/09"])] });
+  const lidos = [];
+  const lerMes = async (mes, filtro) => { lidos.push(mes); if (mes === "2026/10") throw new Error("HTTP 503"); filtro.linha(CAB_ARQ); return { mes, linhas: 0, bytes: 0 }; };
+  const c = await completarAnalises({ rest, lerMes, agora: () => 0, esperar: async () => {} });
+  assert.deepEqual(lidos, ["2026/10", "2026/09"]);
+  assert.equal(c.meses, 1);
+  assert.equal(c.completos, 1, "o CNPJ cujo único mês deu certo fecha; o outro continua parcial para a próxima rodada");
+});

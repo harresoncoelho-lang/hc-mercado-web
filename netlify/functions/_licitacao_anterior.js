@@ -16,6 +16,7 @@
 // pública do Compras.gov, que exige hCaptcha em cada chamada (etapa 4, pela extensão com a pessoa na frente).
 const { marcaUtil, separarMarcaModelo } = require("./comprasgov-marcas-produto");
 const { semCpf } = require("./_cpf");
+const { linkPregaoAntigo } = require("./_comprasnet_antigo");
 
 const PNCP = "https://pncp.gov.br";
 const PESQUISA = "https://dadosabertos.compras.gov.br/modulo-pesquisa-preco/1_consultarMaterial";
@@ -248,7 +249,8 @@ function compraSoPeloId(id, linha) {
     unidade_nome: texto(linha?.nomeUasg, 300), ano: d?.ano || null, numero: d ? `${d.numero}/${d.ano}` : null,
     modalidade: d?.modalidade === 5 ? "Pregão" : null, plataforma: d?.lei14133 ? "Compras.gov.br" : "ComprasNet (antigo)",
     situacao: null, objeto: texto(linha?.objetoCompra, 1000), data_publicacao: texto(linha?.dataCompra, 10),
-    link_origem: linkCompraGov(id), link_pncp: null, _ref: null,
+    // Pregão antigo (não 14.133): o cnetmobile não o abre; a página pública do ComprasNet (sem captcha) abre.
+    link_origem: d && d.modalidade === 5 && !d.lei14133 ? linkPregaoAntigo(d) : linkCompraGov(id), link_pncp: null, _ref: null,
   };
 }
 
@@ -476,4 +478,4 @@ async function gravar(rest, { compras, itens, participacoes }) {
 
 module.exports = { UA, coletar, catalogoDaCompra, gravar, upsertPorColunas, casar, melhorCasamento, palavras, normalizarMarca, chaveMarca, fornecedor, lerLinhaCsv, criarFiltroPropostas,
   mesesDePropostas, decifrarIdCompra, linkCompraGov, linkOficial, idDaLinhaPesquisa, compraDaBusca, SemOrcamento, MAX_PROPOSTAS_ITEM,
-  criarBuscador, fonteDadosAbertos, fontePncp, participacaoDoResultado, PORTES };
+  criarBuscador, fonteDadosAbertos, fontePncp, participacaoDoResultado, PORTES, HOSTS_OFICIAIS };

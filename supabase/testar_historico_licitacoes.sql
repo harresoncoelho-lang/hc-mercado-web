@@ -46,6 +46,41 @@ do $$ declare v text; begin
  update public.historico_participacoes set fornecedor_nome = 'EMPRESA 11.222.333/0001-81 LTDA' where numero_item=108 and fornecedor_chave='12345678000195'; -- CNPJ formatado não é CPF
 end $$;
 delete from public.historico_participacoes where numero_item=108 and fornecedor_chave='12345678000195';
+-- Links antigos: o UPDATE do .sql zera o que sai dos hosts oficiais (http, host parecido, usuário na URL, javascript:)
+-- e preserva o oficial; a segunda rodada não muda nada.
+insert into public.historico_compras(id_compra,link_origem,link_pncp) values
+ ('L0000000000000001','https://www.comprasnet.gov.br/livre/pregao/ata2.asp?co_no_uasg=158142&numprp=232022&codigoModalidade=5','https://pncp.gov.br/app/editais/1/2022/3'),
+ ('L0000000000000002','http://comprasnet.gov.br/x','https://pncp.gov.br.evil.com/x'),
+ ('L0000000000000003','https://pncp.gov.br@evil.com/x','javascript:alert(1)'),
+ ('L0000000000000004','https://licitanet.com.br/p/1','https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing?destino=acompanhamento-compra&compra=1'),
+ ('L0000000000000005','https://PNCP.gov.br/ok',null);
+do $$ declare n int; begin
+ for i in 1..2 loop
+  update public.historico_compras set
+   link_origem = case when link_origem ~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)' then link_origem end,
+   link_pncp = case when link_pncp ~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)' then link_pncp end
+  where id_compra like 'L%' and ((link_origem is not null and link_origem !~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)') or (link_pncp is not null and link_pncp !~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)'));
+  get diagnostics n = row_count;
+  if i = 1 and n <> 3 then raise exception 'limpeza de links tocou % linhas (esperado 3)', n; end if;
+  if i = 2 and n <> 0 then raise exception 'limpeza de links não é idempotente (% linhas)', n; end if;
+ end loop;
+ if (select link_origem from public.historico_compras where id_compra='L0000000000000001') is null then raise exception 'link oficial apagado'; end if;
+ if (select count(*) from public.historico_compras where id_compra in ('L0000000000000002','L0000000000000003') and (link_origem is not null or link_pncp is not null)) <> 0 then raise exception 'link fora dos hosts oficiais sobrou'; end if;
+ if (select link_pncp from public.historico_compras where id_compra='L0000000000000004') is null or (select link_origem from public.historico_compras where id_compra='L0000000000000004') is not null then raise exception 'limpeza por coluna errada'; end if;
+ if (select link_origem from public.historico_compras where id_compra='L0000000000000005') is null then raise exception 'host em maiúscula foi zerado'; end if;
+end $$;
+delete from public.historico_compras where id_compra like 'L%';
+
+-- ComprasNet antigo: colunas novas aceitam a leitura e recusam CPF no texto livre.
+do $$ begin
+ update public.historico_compras set fonte='comprasnet-antigo', fonte_lida_em=now() where id_compra='78882005900332025';
+ update public.historico_itens set motivo_situacao='Por não haver propostas válidas.', tem_recurso=false where numero_item=108;
+ update public.historico_participacoes set fabricante='Proc9', modelo='proc9', descricao_ofertada='Ácido Sulfúrico 98%' where numero_item=107 and fornecedor_chave='38350458000143';
+ begin update public.historico_itens set motivo_situacao='contato 970.481.432-15' where numero_item=108; raise exception 'CPF aceito em motivo_situacao';
+ exception when check_violation then null; end;
+ begin update public.historico_participacoes set descricao_ofertada='titular 97048143215' where numero_item=107 and fornecedor_chave='38350458000143'; raise exception 'CPF aceito em descricao_ofertada';
+ exception when check_violation then null; end;
+end $$;
 -- Usuário logado lê; não escreve. Anônimo não lê.
 set local role authenticated;
 do $$ begin

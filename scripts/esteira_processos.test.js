@@ -347,3 +347,22 @@ test("modelosDoEdital: modelo acima do teto fica de fora", () => {
   assert.deepEqual(modelosDoEdital(grande), []);
   assert.equal(modelosDoEdital({ "Edital (#1)": "ANEXO I - MODELO DE DECLARAÇÃO\nDeclaro." })[0].pagina, null);
 });
+
+test("esteira: a fila da análise por CNPJ roda mesmo sem tempo sobrando, com 3 min de reserva (senão ficava 'parcial' para sempre)", async () => {
+  const analise = require("./analise_cnpj"), historico = require("./historico_licitacoes");
+  const originalA = analise.completarAnalises, originalC = historico.completarConsultas;
+  const chamadas = [];
+  analise.completarAnalises = async (o) => { chamadas.push(o); return { cnpjs: 0 }; };
+  historico.completarConsultas = async () => 0;
+  try {
+    let t = T;
+    const rest = async () => resposta([]);
+    // Sem candidatas e com o relógio já passado do prazo de 10 min: antes não chamava; agora chama com prazo = agora + 3 min.
+    const relogioLonge = () => { const v = t; t += 11 * 60000; return v; };
+    await rodar({ rest, agora: relogioLonge, completarConsultas: true });
+    assert.equal(chamadas.length, 1);
+    const agoraDaChamada = t;
+    assert.ok(chamadas[0].prazoFinal >= agoraDaChamada - 11 * 60000 + 3 * 60000 - 1, "prazo = agora + reserva");
+    assert.ok(chamadas[0].prazoFinal - (agoraDaChamada - 11 * 60000) <= 3 * 60000 + 1);
+  } finally { analise.completarAnalises = originalA; historico.completarConsultas = originalC; }
+});

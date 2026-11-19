@@ -6,6 +6,7 @@
 // MAX_TENTATIVAS_ESTEIRA (5), BACKOFF_MINUTOS_ESTEIRA (5, dobra a cada falha),
 // ESPERA_DOSSIE_MINUTOS_ESTEIRA (30), ESPERA_LEITURA_HORAS_ESTEIRA (6),
 // PAUSA_ITEM_MS_ESTEIRA (1500 entre itens do PNCP),
+// RESERVA_MINUTOS_ANALISE_ESTEIRA (3: tempo garantido à fila da análise por CNPJ mesmo com as tarefas gastando a rodada),
 // ESTEIRA_SEGUNDA_PASSADA ("1" liga a segunda passada de IA; desligada por padrão).
 //
 // Etapas:
@@ -31,6 +32,7 @@ const analiseCnpj = require("./analise_cnpj");
 
 const LOTE = Math.max(1, Number(process.env.LOTE_ESTEIRA || 5));
 const LIMITE_MS = Math.max(1, Number(process.env.LIMITE_MINUTOS_ESTEIRA || 10)) * 60000;
+const RESERVA_ANALISE_MS = Math.max(0, Number(process.env.RESERVA_MINUTOS_ANALISE_ESTEIRA ?? 3)) * 60000;
 const MAX_TENTATIVAS = Math.max(1, Number(process.env.MAX_TENTATIVAS_ESTEIRA || 5));
 const BACKOFF_MS = Math.max(1, Number(process.env.BACKOFF_MINUTOS_ESTEIRA || 5)) * 60000;
 const ESPERA_DOSSIE_MS = Math.max(1, Number(process.env.ESPERA_DOSSIE_MINUTOS_ESTEIRA || 30)) * 60000;
@@ -306,9 +308,11 @@ async function rodar({ rest = restFetch, fetchPncp = (...a) => fetch(...a), espe
   if (completarConsultas && agora() < prazoFinal) {
     try { contagem.consultasAvulsas = await historico.completarConsultas({ rest, fetchPncp }); } catch (erro) { console.warn(`[esteira] consultas avulsas: ${erroCurto(erro)}`); }
   }
-  // Análise por CNPJ (fila da tela "Analisar concorrente"): retomável mês a mês, para no prazo da rodada.
-  if (completarConsultas && agora() < prazoFinal) {
-    try { contagem.analisesCnpj = await analiseCnpj.completarAnalises({ rest, fetchPncp, agora, prazoFinal }); } catch (erro) { console.warn(`[esteira] análise por CNPJ: ${erroCurto(erro)}`); }
+  // Análise por CNPJ (fila da tela "Analisar concorrente"): retomável mês a mês. Roda mesmo com as tarefas tendo gasto o
+  // tempo todo: sem uma reserva a fila ficava "parcial" para sempre quando o edital ocupava a rodada. O job do Actions
+  // tem 15 min (LIMITE 10 + reserva 3).
+  if (completarConsultas) {
+    try { contagem.analisesCnpj = await analiseCnpj.completarAnalises({ rest, fetchPncp, agora, prazoFinal: Math.max(prazoFinal, agora() + RESERVA_ANALISE_MS) }); } catch (erro) { console.warn(`[esteira] análise por CNPJ: ${erroCurto(erro)}`); }
   }
   console.log(`[esteira] ${candidatas.length} candidata(s): ${JSON.stringify(contagem)}`);
   return contagem;

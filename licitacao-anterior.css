@@ -36,3 +36,18 @@
 .la-itens[open] > summary { margin-bottom: 4px; }
 .la-produtos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .la-produto { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 2px; overflow-wrap: anywhere; }
+/* Pregão gravado por usuário (extensão): motivo literal por participante com selo de confiança e fonte sem HTTPS. */
+.la-motivo { margin: 2px 0 0; font-size: .82rem; overflow-wrap: anywhere; }
+.la-motivo q { font-style: italic; }
+.la-selo-leitura { display: inline-block; font-size: .75rem; border: 1px solid var(--borda, #d9dee7); border-radius: 999px; padding: 0 8px; }
+.la-nao-verificado { color: var(--aviso-texto, #8a5a00); border-color: var(--aviso-texto, #8a5a00); }
+.la-verificado { color: var(--ok, #2e7d32); border-color: var(--ok, #2e7d32); }
+.la-sem-https { font-weight: 600; color: var(--erro, #c0392b); }
+.la-situacao-participante { font-weight: 600; }
+.la-lista .sancao-selo { margin-top: 2px; }
+/* Selo de sanção dentro do cartão (sancoes-ui.js): cores do próprio cartão, texto diz a situação além da cor. */
+.la .sancao-selo { border: 1px solid var(--erro, #c0392b); border-radius: 8px; padding: 6px 10px; font-size: .82rem; display: grid; gap: 2px; overflow-wrap: anywhere; }
+.la .sancao-selo[data-situacao="expirada"] { border-color: var(--borda, #d9dee7); }
+.la .sancao-selo-titulo { margin: 0; font-weight: 600; }
+.la .sancao-selo ul { margin: 0; padding-left: 16px; }
+.la .sancao-selo-mais { margin: 0; }

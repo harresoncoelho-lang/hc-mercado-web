@@ -11,6 +11,10 @@
 // PAUSA_MS_ANALISE_CNPJ (400 entre chamadas às fontes), MAX_FALHAS_ANALISE_CNPJ (3 falhas no mesmo mês -> 'falhou',
 // para um arquivo quebrado não travar a fila), MAX_LINHAS_ANALISE_CNPJ (5000 participações por CNPJ) e
 // MESES_GUARDA_ANALISE_CNPJ (37: cobre os 3 anos da "Licitação anterior", que lê as mesmas linhas).
+// Fila "parcial" (a tela mostrava "Completando…" por dias): LOTE_MESES_ANALISE_CNPJ (30 CNPJs entram no filtro de cada mês
+// lido: ler o mês custa o mesmo para 1 ou 30), PRIORIDADE_HORAS_ANALISE_CNPJ (6: CNPJ pedido por usuário nessas horas vai
+// na frente; o resto segue por ordem de chegada, então ninguém fica para trás). Os meses seguem enquanto sobrar tempo:
+// só começa outro mês se o tempo que falta cobre o último (medido), e o primeiro mês da rodada sempre começa.
 const L = require("../netlify/functions/_licitacao_anterior");
 const A = require("../netlify/functions/_analise_cnpj");
 const { lerMesPropostas } = require("./historico_licitacoes");
@@ -23,6 +27,8 @@ const PAUSA_MS = Math.max(0, Number(process.env.PAUSA_MS_ANALISE_CNPJ ?? 400));
 const MAX_FALHAS = Math.max(1, Number(process.env.MAX_FALHAS_ANALISE_CNPJ || 3));
 const MAX_LINHAS = Math.max(100, Number(process.env.MAX_LINHAS_ANALISE_CNPJ || 5000));
 const MESES_GUARDA = Math.max(37, Number(process.env.MESES_GUARDA_ANALISE_CNPJ || 37));
+const LOTE_MESES = Math.max(LOTE, Number(process.env.LOTE_MESES_ANALISE_CNPJ || 30));
+const PRIORIDADE_MS = Math.max(0, Number(process.env.PRIORIDADE_HORAS_ANALISE_CNPJ ?? 6)) * 3600000;
 const DADOS_ABERTOS = "https://dadosabertos.compras.gov.br/modulo-contratacoes";
 const listaIn = (ids) => ids.map((x) => `"${String(x).replace(/[^0-9A-Za-z/-]/g, "")}"`).join(",");
 
@@ -80,23 +86,38 @@ async function completarCabecalhos(rest, b, ids) {
   return linhas.length;
 }
 
+// Fila da rodada: quem um usuário pediu há pouco primeiro (mais recente na frente), depois por ordem de chegada.
+async function filaDaRodada(rest, agora) {
+  const desde = new Date(agora() - PRIORIDADE_MS).toISOString();
+  const lista = async (filtro, ordem) => (await (await rest(`historico_cnpj_consultas?situacao=eq.parcial${filtro}&select=*&order=${ordem}&limit=${LOTE_MESES}`)).json()) || [];
+  const prioritarias = PRIORIDADE_MS ? await lista(`&pedido_em=gte.${encodeURIComponent(desde)}`, "pedido_em.desc") : [];
+  const vistos = new Set(prioritarias.map((f) => f.cnpj));
+  const demais = (await lista("", "gerado_em.asc")).filter((f) => !vistos.has(f.cnpj));
+  return { filas: [...prioritarias, ...demais].slice(0, LOTE_MESES), prioritarias: vistos };
+}
+
 async function completarAnalises({ rest, fetchPncp = (...a) => fetch(...a), lerMes = lerMesPropostas, agora = Date.now, prazoFinal = Infinity,
   esperar = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
-  const filas = await (await rest(`historico_cnpj_consultas?situacao=eq.parcial&select=*&order=gerado_em.asc&limit=${LOTE}`)).json();
+  const { filas, prioritarias } = await filaDaRodada(rest, agora);
   const contagem = { cnpjs: filas.length, compras: 0, meses: 0, linhas: 0, cabecalhos: 0, completos: 0 };
   if (!filas.length) return contagem;
   const b = L.criarBuscador({ fetchImpl: fetchPncp, orcamento: 100000, esperar, pausaMs: PAUSA_MS });
-  for (const fila of filas) {
+  // Compras pendentes custam chamadas por compra: só os LOTE primeiros (os prioritários vêm na frente).
+  for (const fila of filas.slice(0, LOTE)) {
     if (agora() >= prazoFinal) break;
     contagem.compras += await comprasPendentes(rest, b, fila, { agora, prazoFinal });
   }
-  // Mês mais novo primeiro: é o que muda toda semana e o que o usuário mais quer ver.
-  const meses = [...new Set(filas.flatMap((f) => f.meses_pendentes))].sort().reverse();
+  // Mês mais novo primeiro (é o que muda toda semana); os meses de quem está esperando antes dos demais.
+  const mesesDe = (lista) => [...new Set(lista.flatMap((f) => f.meses_pendentes))].sort().reverse();
+  const meses = [...new Set([...mesesDe(filas.filter((f) => prioritarias.has(f.cnpj))), ...mesesDe(filas)])];
+  let ultimaDuracao = 0;
   for (const mes of meses) {
-    if (agora() >= prazoFinal) break;
+    // Primeiro mês da rodada sempre começa (dentro do prazo); os seguintes só se o tempo que falta cobre o último.
+    if (agora() >= prazoFinal || (contagem.meses && agora() + ultimaDuracao * 1.2 > prazoFinal)) break;
     const daqui = filas.filter((f) => f.situacao !== "falhou" && f.meses_pendentes.includes(mes));
     if (!daqui.length) continue;
     const filtro = A.criarFiltroCnpjs(new Set(daqui.map((f) => f.cnpj)));
+    const comecou = agora();
     try {
       await lerMes(mes, filtro, { fetchImpl: fetchPncp });
     } catch (e) {
@@ -105,6 +126,7 @@ async function completarAnalises({ rest, fetchPncp = (...a) => fetch(...a), lerM
       for (const f of daqui) await registrarFalha(rest, f, msg, agora);
       continue; // fica pendente para a próxima rodada (até MAX_FALHAS no mês)
     }
+    ultimaDuracao = Math.max(ultimaDuracao, agora() - comecou);
     const res = filtro.resultado();
     await A.gravarDoArquivo(rest, res);
     contagem.meses++;

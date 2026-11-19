@@ -114,7 +114,11 @@ exports.handler = async (event) => {
     // Sem chave de serviço não há onde guardar nem fila para o robô: a tela mostra só o que já está no banco.
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return responder(503, { erro: "Coleta indisponível neste ambiente." });
     const [linha] = await (await rest(`historico_cnpj_consultas?cnpj=eq.${cnpj}&select=*`)).json();
-    if (linha && linha.situacao !== "falhou" && Date.now() - Date.parse(linha.gerado_em) < VALIDADE_MS) return responder(200, resumoFila(linha, true));
+    if (linha && linha.situacao !== "falhou" && Date.now() - Date.parse(linha.gerado_em) < VALIDADE_MS) {
+      // Quem pede de novo uma análise ainda parcial está esperando: o robô atende por pedido_em (scripts/analise_cnpj.js).
+      if (linha.situacao === "parcial") await rest(`historico_cnpj_consultas?cnpj=eq.${cnpj}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ pedido_em: new Date().toISOString() }) }).catch(() => null);
+      return responder(200, resumoFila(linha, true));
+    }
     const solicitante = await solicitanteDe(usuario.userId);
     const cheia = await filaCheia(solicitante);
     if (cheia) return responder(429, { erro: cheia });
@@ -125,7 +129,7 @@ exports.handler = async (event) => {
     await L.gravar(rest, r);
     const agora = new Date().toISOString();
     const fila = { cnpj, nome: r.nome || linha?.nome || null, situacao: "parcial", total_pncp: r.total_pncp, compras_pendentes: r.pendentes,
-      meses_pendentes: r.meses, meses_lidos: linha?.meses_lidos || [], erro: null, gerado_em: agora, atualizado_em: agora, solicitante, tentativas: 0, mes_falhas: null };
+      meses_pendentes: r.meses, meses_lidos: linha?.meses_lidos || [], erro: null, gerado_em: agora, atualizado_em: agora, pedido_em: agora, solicitante, tentativas: 0, mes_falhas: null };
     await rest("historico_cnpj_consultas?on_conflict=cnpj", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify([fila]) });
     return responder(200, { ...resumoFila(fila, false), coletadas: r.coletadas, avisos: r.avisos });
   } catch (e) {

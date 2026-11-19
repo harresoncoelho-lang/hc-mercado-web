@@ -83,6 +83,29 @@ create table if not exists public.historico_participacoes (
 -- Etapa 2 (análise por CNPJ do concorrente): onde ele disputou, ganhou e perdeu.
 create index if not exists historico_participacoes_ni_idx on public.historico_participacoes (fornecedor_ni) where fornecedor_ni is not null;
 
+-- ComprasNet antigo (pregões até 2023, páginas públicas sem captcha: FornecedorResultadoDecreto.asp e termojulg.asp,
+-- lidas pelo robô com ritmo baixo; netlify/functions/_comprasnet_antigo.js). Colunas só aditivas, nada é apagado.
+--   historico_compras.fonte / fonte_lida_em: de onde veio a leitura e quando (link_origem fica com a página pública do pregão);
+--   historico_itens.motivo_situacao / tem_recurso: motivo literal de item cancelado/fracassado no termo de adjudicação;
+--   historico_participacoes: fabricante, modelo e descrição do objeto ofertado pelo vencedor (a marca já tem coluna).
+alter table public.historico_compras add column if not exists fonte text check (length(fonte) <= 40);
+alter table public.historico_compras add column if not exists fonte_lida_em timestamptz;
+alter table public.historico_itens add column if not exists motivo_situacao text check (length(motivo_situacao) <= 1000 and motivo_situacao !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
+alter table public.historico_itens add column if not exists tem_recurso boolean;
+alter table public.historico_participacoes add column if not exists fabricante text check (length(fabricante) <= 120);
+alter table public.historico_participacoes add column if not exists modelo text check (length(modelo) <= 120);
+alter table public.historico_participacoes add column if not exists descricao_ofertada text check (length(descricao_ofertada) <= 600 and descricao_ofertada !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
+
+-- Links antigos (revisão de segurança 19/11/2026, M2): link_origem/link_pncp vinham do cadastro do órgão no PNCP e
+-- alguns eram de plataformas parceiras ou de qualquer host. A tela já bloqueia (linkOficial); aqui o banco também limpa.
+-- Só https nos hosts oficiais, sem usuário nem porta; o resto vira null (o robô recoloca o link do Compras.gov na
+-- próxima leitura). Idempotente: a segunda rodada não encontra mais nada para mudar.
+update public.historico_compras set
+  link_origem = case when link_origem ~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)' then link_origem end,
+  link_pncp = case when link_pncp ~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)' then link_pncp end
+ where (link_origem is not null and link_origem !~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)')
+    or (link_pncp is not null and link_pncp !~* '^https://(pncp\.gov\.br|dadosabertos\.compras\.gov\.br|contratos\.comprasnet\.gov\.br|cnetmobile\.estaleiro\.serpro\.gov\.br|(www\.)?comprasnet\.gov\.br)([/?#]|$)');
+
 -- Consulta avulsa (tela de pesquisa): cache por UASG + produto + período e fila do robô para completar
 -- os participantes pelo arquivo de propostas (a função no Cloudflare não baixa os 90 MB do mês).
 create table if not exists public.historico_consultas (

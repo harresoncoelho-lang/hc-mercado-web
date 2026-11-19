@@ -42,6 +42,10 @@ create table if not exists public.historico_cnpj_consultas (
 alter table public.historico_cnpj_consultas add column if not exists solicitante uuid;
 alter table public.historico_cnpj_consultas add column if not exists tentativas integer not null default 0 check (tentativas >= 0);
 alter table public.historico_cnpj_consultas add column if not exists mes_falhas text check (mes_falhas ~ '^\d{4}-\d{2}$');
+-- Última vez que um usuário pediu este CNPJ (análise nova ou releitura do cache): o robô atende primeiro quem está
+-- esperando (scripts/analise_cnpj.js) e depois a fila por ordem de chegada, para a fila antiga nunca ficar parada.
+alter table public.historico_cnpj_consultas add column if not exists pedido_em timestamptz;
+create index if not exists historico_cnpj_consultas_pedido_idx on public.historico_cnpj_consultas (pedido_em desc) where situacao = 'parcial';
 create index if not exists historico_cnpj_consultas_solicitante_idx on public.historico_cnpj_consultas (solicitante, gerado_em);
 -- LGPD: nome do PNCP pode ser razão social de MEI com o CPF do titular. Limpeza única e idempotente, depois CHECK.
 update public.historico_cnpj_consultas set nome = nullif(btrim(regexp_replace(regexp_replace(nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '')
