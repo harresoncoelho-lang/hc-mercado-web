@@ -12,6 +12,7 @@
 <script src="supabase-config.js"></script>
 <script src="empresa-identificacao-ui.js"></script>
 <script src="agenda-ics.js"></script>
+<script src="operacao-pdf-unico.js"></script>
 <script src="operacao-identificacao.js"></script>
 <script src="perfil-empresa.js"></script>
 <link rel="stylesheet" href="operacao-identificacao.css">
@@ -98,7 +99,8 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
 .perfil-premissas{min-width:760px}.perfil-premissas td{padding:6px 8px}.perfil-premissas input{min-height:36px;padding:6px 8px}.perfil-uf{width:64px;text-transform:uppercase}.perfil-pct{width:88px}
 #perfil-add-premissa{margin-top:10px}.perfil-rodape{display:flex;justify-content:flex-end;padding-top:8px}
 @media(max-width:820px){#perfil-empresa .form-grade{grid-template-columns:1fr}.perfil-cabeca{flex-direction:column}.perfil-logo{justify-items:start;text-align:left}.perfil-rodape .btn{width:100%}}
-@media(max-width:820px){header{padding:8px 12px}}
+.pdf-marca{display:inline-flex;align-items:center;gap:6px;min-height:32px;cursor:pointer}.pdf-marca input{width:18px;height:18px;margin:0}.pdf-ordem{min-width:14px;font-weight:700;color:var(--text-secondary)}#pdf-unico-avisos{margin:4px 0 0;padding-left:18px}#pdf-unico-avisos:empty{display:none}.pdf-acoes{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+@media(max-width:820px){header{padding:8px 12px}#aba-documentos .card-topo{flex-direction:column;align-items:flex-start}}
 @media(max-width:480px){.topo h1{font-size:24px;line-height:32px}.acoes .btn.tema-icone{display:inline-flex}}
 </style>
 </head>
@@ -130,7 +132,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
   <section class="metricas"><div class="metrica ok"><span>Documentos válidos</span><b id="m-validos">—</b><span>com validade regular</span></div><div class="metrica alerta"><span>Vencem em até 30 dias</span><b id="m-proximos">—</b><span>alerta configurável: 30, 15, 7, 3 e 1 dia</span></div><div class="metrica vencido"><span>Documentos vencidos</span><b id="m-vencidos">—</b><span>pedem renovação</span></div><div class="metrica"><span>Prontidão da empresa</span><b id="m-prontidao">—</b><span>documentos essenciais válidos</span></div></section>
   <div class="abas"><button class="aba" data-aba="identificacao">Dados da empresa</button><button class="aba ativa" data-aba="documentos">Documentos e certidões</button><button class="aba" data-aba="agenda">Agenda operacional</button><button class="aba" data-aba="relatorio">Prontidão e relatório</button></div>
   <section id="aba-identificacao" class="painel"><div class="card"><p>Identificação e representação da empresa ativa para preparar documentos e propostas.</p><p id="identificacao-retorno" hidden><a class="link" id="voltar-processo">Abrir processo de origem</a><br><span class="nota">Seu rascunho continua na aba original. Volte a ela para continuar a edição e atualizar a prévia.</span></p><div id="identificacao-empresa" aria-live="polite"><p>Carregando empresas autorizadas…</p></div></div><div class="card" id="perfil-empresa" aria-live="polite"><p>Carregando perfil…</p></div></section>
-  <section id="aba-documentos" class="painel ativo"><div class="card"><div class="card-topo"><div><h2>Central de documentos</h2><p>Federal, estadual, municipal, FGTS, CNDT, balanço, contrato social, licenças, registros, atestados e tipos personalizados.</p></div><button class="btn" id="btn-atualizar">Atualizar</button></div><div class="tabela-wrap"><table class="tabela"><thead><tr><th>Documento</th><th>Emissão / vencimento</th><th>Emissor / responsável</th><th>Status</th><th>Arquivo</th><th></th></tr></thead><tbody id="lista-documentos"></tbody></table></div></div></section>
+  <section id="aba-documentos" class="painel ativo"><div class="card"><div class="card-topo"><div><h2>Central de documentos</h2><p>Federal, estadual, municipal, FGTS, CNDT, balanço, contrato social, licenças, registros, atestados e tipos personalizados.</p></div><div class="pdf-acoes"><button class="btn" id="btn-pdf-unico" disabled title="Marque os documentos na ordem em que devem aparecer">Baixar PDF único</button><button class="btn" id="btn-atualizar">Atualizar</button></div></div><div class="tabela-wrap"><table class="tabela"><thead><tr><th title="Incluir no PDF único">PDF</th><th>Documento</th><th>Emissão / vencimento</th><th>Emissor / responsável</th><th>Status</th><th>Arquivo</th><th></th></tr></thead><tbody id="lista-documentos"></tbody></table></div><p class="nota" id="pdf-unico-status" aria-live="polite">Marque os documentos na ordem desejada para juntar em um PDF (até 30 arquivos / 60 MB). A montagem acontece no seu navegador.</p><ul class="nota" id="pdf-unico-avisos"></ul></div></section>
   <section id="aba-agenda" class="painel"><div class="card"><div class="card-topo"><div><h2>Agenda operacional</h2><p>Compromissos em atraso e próximos prazos da empresa.</p></div><button class="btn primario" id="btn-novo-evento">+ Compromisso</button></div><div id="lista-agenda" class="lista-agenda"></div></div></section>
   <section id="aba-relatorio" class="painel"><div class="grade"><div class="card"><h2>Checklist de habilitação</h2><p class="nota">Os documentos abaixo são indicadores operacionais. O edital de cada processo continua sendo a referência final.</p><div id="checklist"></div></div><div class="card"><h2>Exportação</h2><p>Exporte o recorte atual para conferência e prestação de contas.</p><button class="btn primario" id="btn-exportar">Baixar CSV de documentos</button><p class="nota">A exportação inclui somente a empresa ativa e não torna dados públicos.</p></div><div class="card"><h2>Histórico de renovações</h2><p class="nota">Nesta primeira fase, a troca de vencimento e arquivo preserva o registro do documento. A trilha detalhada de renovação será ativada junto à edição na próxima fatia.</p></div></div></section>
 </main>
@@ -144,7 +146,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
 (() => {
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const TIPOS_ESSENCIAIS = ["Certidão Federal", "Certidão Estadual", "Certidão Municipal", "FGTS", "CNDT", "Balanço patrimonial", "Contrato social"];
-  const estado = { orgId: null, empresas: [], empresaId: null, documentos: [], limiteCnpjs: undefined, acessoEmpresaId: null };
+  const estado = { orgId: null, empresas: [], empresaId: null, documentos: [], pdfOrdem: [], limiteCnpjs: undefined, acessoEmpresaId: null };
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   let contextoInicial = true, usuarioIdentificacao, sessaoIdentificacaoAlterada = false;
@@ -237,12 +239,12 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
   async function carregarDocumentos() {
     const { data, error } = await sb.from("operacao_documentos").select("*").eq("empresa_id", estado.empresaId).order("vencimento", { ascending: true, nullsFirst: false });
     if (error) { aviso("Não foi possível carregar os documentos: " + error.message, "erro"); return false; }
-    estado.documentos = data || []; renderizarDocumentos(); renderizarMetricas(); renderizarChecklist();
+    estado.documentos = data || []; estado.pdfOrdem = estado.pdfOrdem.filter(id => estado.documentos.some(d => d.id === id && d.arquivo_caminho)); renderizarDocumentos(); atualizarPdfUnico([]); renderizarMetricas(); renderizarChecklist();
     return true;
   }
   function renderizarDocumentos() {
-    const alvo = $("lista-documentos"); if (!estado.documentos.length) { alvo.innerHTML = `<tr><td colspan="6" class="vazio">Nenhum documento cadastrado para esta empresa.</td></tr>`; return; }
-    alvo.innerHTML = estado.documentos.map(d => { const [classe, texto] = statusDoc(d); return `<tr><td><strong>${esc(d.tipo)}</strong>${d.titulo ? `<br><span class="nota">${esc(d.titulo)}</span>` : ""}</td><td>${isoData(d.emissao)}<br><span class="nota">Vence: ${isoData(d.vencimento)}</span></td><td>${esc(d.orgao_emissor || "—")}<br><span class="nota">${esc(d.responsavel || "Sem responsável")}</span></td><td><span class="tag ${classe}">${texto}</span></td><td>${d.arquivo_caminho ? `<button class="link btn-arquivo" data-caminho="${esc(d.arquivo_caminho)}">Abrir arquivo</button>` : "<span class=\"nota\">Sem arquivo</span>"}</td><td><button class="btn perigo btn-excluir" data-id="${d.id}">Excluir</button></td></tr>`; }).join("");
+    const alvo = $("lista-documentos"); if (!estado.documentos.length) { alvo.innerHTML = `<tr><td colspan="7" class="vazio">Nenhum documento cadastrado para esta empresa.</td></tr>`; return; }
+    alvo.innerHTML = estado.documentos.map(d => { const [classe, texto] = statusDoc(d); const ordem = estado.pdfOrdem.indexOf(d.id) + 1; return `<tr><td><label class="pdf-marca"><input type="checkbox" data-id="${esc(d.id)}" ${ordem ? "checked" : ""} ${d.arquivo_caminho ? "" : "disabled"} aria-label="Incluir ${esc(d.tipo)} no PDF único"><span class="pdf-ordem">${ordem || ""}</span></label></td><td><strong>${esc(d.tipo)}</strong>${d.titulo ? `<br><span class="nota">${esc(d.titulo)}</span>` : ""}</td><td>${isoData(d.emissao)}<br><span class="nota">Vence: ${isoData(d.vencimento)}</span></td><td>${esc(d.orgao_emissor || "—")}<br><span class="nota">${esc(d.responsavel || "Sem responsável")}</span></td><td><span class="tag ${classe}">${texto}</span></td><td>${d.arquivo_caminho ? `<button class="link btn-arquivo" data-caminho="${esc(d.arquivo_caminho)}">Abrir arquivo</button>` : "<span class=\"nota\">Sem arquivo</span>"}</td><td><button class="btn perigo btn-excluir" data-id="${d.id}">Excluir</button></td></tr>`; }).join("");
   }
   function renderizarMetricas() { const docs = estado.documentos; const status = docs.map(statusDoc); const validos = status.filter(s => s[0] === "valido").length, proximos = status.filter(s => s[0] === "proximo").length, vencidos = status.filter(s => s[0] === "vencido").length; const essenciais = TIPOS_ESSENCIAIS.filter(t => docs.some(d => d.tipo === t && statusDoc(d)[0] === "valido")); const pct = TIPOS_ESSENCIAIS.length ? Math.round(essenciais.length / TIPOS_ESSENCIAIS.length * 100) : 0; $("m-validos").textContent = validos; $("m-proximos").textContent = proximos; $("m-vencidos").textContent = vencidos; $("m-prontidao").textContent = `${pct}%`; }
   function renderizarChecklist() { const alvo = $("checklist"); alvo.innerHTML = TIPOS_ESSENCIAIS.map(t => { const d = estado.documentos.find(x => x.tipo === t); const [c, txt] = d ? statusDoc(d) : ["pendente", "Pendente"]; return `<p style="display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--borda);padding:9px 0;margin:0"><span>${esc(t)}</span><span class="tag ${c}">${txt}</span></p>`; }).join(""); }
@@ -269,6 +271,33 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
     });
   }
   async function enviarArquivo(file) { if (!file?.name) return {}; const seguro = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-"); const caminho = `${estado.orgId}/${estado.empresaId}/${crypto.randomUUID()}-${seguro}`; const { error } = await sb.storage.from("operacao-documentos").upload(caminho, file, { upsert: false }); if (error) throw error; return { arquivo_caminho: caminho, arquivo_nome: file.name }; }
+  // PDF único: pdf-lib sob demanda (versão exata + SRI); arquivos baixados com a sessão do usuário, nada é enviado.
+  let pdfLib;
+  function carregarPdfLib() {
+    if (window.PDFLib) return Promise.resolve(window.PDFLib);
+    pdfLib ||= new Promise((ok, falha) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"; s.integrity = "sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI"; s.crossOrigin = "anonymous"; s.onload = () => ok(window.PDFLib); s.onerror = () => { pdfLib = null; falha(new Error("pdf-lib")); }; document.head.append(s); });
+    return pdfLib;
+  }
+  function atualizarPdfUnico(avisos) {
+    const n = estado.pdfOrdem.length; $("btn-pdf-unico").disabled = !n; $("btn-pdf-unico").textContent = n ? `Baixar PDF único (${n})` : "Baixar PDF único";
+    if (avisos) $("pdf-unico-avisos").innerHTML = avisos.map(a => `<li>${esc(a)}</li>`).join("");
+  }
+  async function baixarPdfUnico() {
+    const botao = $("btn-pdf-unico"), status = $("pdf-unico-status");
+    const { fila, avisos } = OperacaoPdfUnico.planejar(estado.documentos, estado.pdfOrdem);
+    if (!fila.length) { atualizarPdfUnico(avisos); status.textContent = "Nenhum arquivo para juntar."; return; }
+    botao.disabled = true; status.textContent = `Montando PDF com ${fila.length} arquivo(s)...`;
+    try {
+      const PDFLib = await carregarPdfLib();
+      const baixar = async caminho => { const { data, error } = await sb.storage.from("operacao-documentos").download(caminho); if (error) throw error; return new Uint8Array(await data.arrayBuffer()); };
+      const r = await OperacaoPdfUnico.montar(PDFLib, fila, baixar);
+      atualizarPdfUnico([...avisos, ...r.avisos]);
+      if (!r.bytes) { status.textContent = "Nenhum arquivo pôde ser incluído. Veja os motivos abaixo."; return; }
+      const url = URL.createObjectURL(new Blob([r.bytes], { type: "application/pdf" })); const a = document.createElement("a"); a.href = url; a.download = "documentos-habilitacao.pdf"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+      status.textContent = `PDF único baixado com ${r.incluidos} de ${fila.length + avisos.length} documento(s) marcado(s).`;
+    } catch (_) { status.textContent = "Não foi possível montar o PDF agora. Verifique a conexão e tente de novo."; }
+    finally { atualizarPdfUnico(); }
+  }
   async function abrirArquivo(caminho) { const { data, error } = await sb.storage.from("operacao-documentos").createSignedUrl(caminho, 60); if (error) { aviso("Não foi possível abrir o arquivo: " + error.message, "erro"); return; } window.open(data.signedUrl, "_blank", "noopener"); }
   async function salvarDocumento(ev) {
     ev.preventDefault();
@@ -332,7 +361,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
   }
   async function salvarEvento(ev) { ev.preventDefault(); const formulario = ev.currentTarget, f = new FormData(formulario); const { error } = await sb.from("operacao_agenda").insert({ organizacao_id: estado.orgId, empresa_id: estado.empresaId, categoria: f.get("categoria"), titulo: f.get("titulo"), vencimento: new Date(f.get("vencimento")).toISOString(), responsavel: f.get("responsavel") || null, observacoes: f.get("observacoes") || null }); if (error) { aviso("Não foi possível salvar o compromisso: " + error.message, "erro"); return; } formulario.reset(); fecharModal("modal-evento"); await carregarAgenda(); }
   function exportar() { const linhas = [["Tipo","Título","Emissão","Vencimento","Órgão emissor","Responsável","Status","Observações"]]; estado.documentos.forEach(d => linhas.push([d.tipo,d.titulo || "",d.emissao || "",d.vencimento || "",d.orgao_emissor || "",d.responsavel || "",statusDoc(d)[1],d.observacoes || ""])); const csv = "\ufeff" + linhas.map(l => l.map(v => `"${String(v).replace(/\"/g, '\"\"')}"`).join(";")).join("\r\n"); const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"})); a.download = "documentos-licitaplena.csv"; a.click(); URL.revokeObjectURL(a.href); }
-  $("empresa-atual").addEventListener("change", async e => { estado.empresaId = e.target.value; await carregarDados(); }); $("btn-nova-empresa").onclick = () => abrirModal("modal-empresa"); $("btn-novo-documento").onclick = () => abrirModal("modal-documento"); $("btn-novo-evento").onclick = () => abrirModal("modal-evento"); $("btn-atualizar").onclick = carregarDados; $("btn-exportar").onclick = exportar; $("form-documento").addEventListener("submit", salvarDocumento); $("form-empresa").addEventListener("submit", salvarEmpresa); $("form-evento").addEventListener("submit", salvarEvento); $("doc-tipo").addEventListener("change", e => { $("campo-tipo-personalizado").style.display = e.target.value === "personalizado" ? "block" : "none"; });
+  $("empresa-atual").addEventListener("change", async e => { estado.empresaId = e.target.value; await carregarDados(); }); $("btn-nova-empresa").onclick = () => abrirModal("modal-empresa"); $("btn-novo-documento").onclick = () => abrirModal("modal-documento"); $("btn-novo-evento").onclick = () => abrirModal("modal-evento"); $("btn-atualizar").onclick = carregarDados; $("btn-pdf-unico").onclick = baixarPdfUnico; $("lista-documentos").addEventListener("change", e => { const id = e.target.closest(".pdf-marca input")?.dataset.id; if (!id) return; estado.pdfOrdem = estado.pdfOrdem.filter(x => x !== id); if (e.target.checked) estado.pdfOrdem.push(id); renderizarDocumentos(); atualizarPdfUnico(); }); $("btn-exportar").onclick = exportar; $("form-documento").addEventListener("submit", salvarDocumento); $("form-empresa").addEventListener("submit", salvarEmpresa); $("form-evento").addEventListener("submit", salvarEvento); $("doc-tipo").addEventListener("change", e => { $("campo-tipo-personalizado").style.display = e.target.value === "personalizado" ? "block" : "none"; });
   document.querySelectorAll("[data-fechar]").forEach(b => b.onclick = () => fecharModal(b.dataset.fechar)); document.querySelectorAll(".modal").forEach(m => m.addEventListener("click", e => { if (e.target === m) fecharModal(m.id); })); document.querySelectorAll(".aba").forEach(b => b.onclick = () => { document.querySelectorAll(".aba").forEach(x => x.classList.remove("ativa")); document.querySelectorAll(".painel").forEach(x => x.classList.remove("ativo")); b.classList.add("ativa"); $("aba-" + b.dataset.aba).classList.add("ativo"); });
   $("lista-documentos").addEventListener("click", async e => { const abrir = e.target.closest(".btn-arquivo"), excluir = e.target.closest(".btn-excluir"); if (abrir) return abrirArquivo(abrir.dataset.caminho); if (excluir && confirm("Excluir este documento? O arquivo privado associado continuará armazenado para evitar exclusão acidental.")) { const { error } = await sb.from("operacao_documentos").delete().eq("id", excluir.dataset.id); if (error) aviso("Não foi possível excluir: " + error.message, "erro"); else carregarDocumentos(); } });
   $("empresa-atual").addEventListener("change", e => { try { localStorage.setItem("licitaplena_empresa_operacional_id", e.target.value); } catch (_) {} });
