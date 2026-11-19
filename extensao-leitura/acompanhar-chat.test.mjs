@@ -126,7 +126,7 @@ test('para ao sair da página, ao ser recarregada e ao encerrar a sessão; avisa
   const cenarios = [
     ['saiu', c => { c.janela.location.href = 'https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/home'; c.env.intervalos[0](); }],
     ['saiu', c => { c.janela.location.href = `${BASE}?compra=19302805900082026`; c.env.intervalos[0](); }],
-    ['saiu', c => c.janela.ouvintes.pagehide()],
+    ['recarregou', c => c.janela.ouvintes.pagehide()],
     ['sessao', c => { c.dom.body.innerText = 'Sua sessão expirou. Entre novamente.'; c.env.intervalos[0](); }],
   ];
   for (const [motivo, agir] of cenarios) {
@@ -270,9 +270,119 @@ test('worker: clicar na notificação traz a aba de volta', async () => {
 
 test('manifesto de produção: permissões mínimas, sem <all_urls>, sem 127.0.0.1, sem content_scripts', () => {
   const m = JSON.parse(readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'));
-  assert.deepEqual(m.permissions, ['activeTab', 'scripting', 'notifications']);
+  assert.deepEqual(m.permissions, ['activeTab', 'scripting', 'notifications', 'storage']);
   assert.doesNotMatch(JSON.stringify(m), /127\.0\.0\.1|<all_urls>|\*:\/\/\*/);
   assert.equal('content_scripts' in m, false);
   assert.equal('host_permissions' in m, false);
   assert.equal(m.background.service_worker, 'acompanhar-worker.mjs');
+});
+
+test('destaques novos: suspensão e aceite ("aceito", "aceita"); bipe só para mensagem importante com som ligado', () => {
+  const c = cenario({ html: HIST });
+  let bipes = 0;
+  c.janela.AudioContext = class { constructor() { bipes++; this.currentTime = 0; this.destination = {}; } createOscillator() { return { frequency: {}, connect() {}, start() {}, stop() {} }; } createGain() { return { gain: {}, connect() {} }; } close() {} };
+  c.iniciar({ som: true });
+  c.nova('', 'Sessão suspensa até amanhã às 9h.', '01/12/2026 11:50');
+  c.nova('', 'Proposta aceita para o item 3.', '01/12/2026 11:51');
+  c.mutar();
+  const itens = mensagens(c.env).flatMap(m => m.itens);
+  assert.deepEqual(itens.map(i => [...i.motivos]), [['suspensão'], ['aceite']]);
+  assert.equal(bipes, 1);
+  c.nova('', 'Bom dia.', '01/12/2026 11:52'); c.mutar();
+  assert.equal(bipes, 1, 'mensagem comum não bipa');
+});
+
+test('reconexão: com "desde", o que chegou durante a recarga alerta já na 1ª leitura; o resto não', () => {
+  const html = HIST + msgHtml('Mensagem antes da queda.', '01/12/2026 11:40') + msgHtml('Convocação enviada durante a recarga.', '01/12/2026 11:58');
+  const c = cenario({ html });
+  const r = c.iniciar({ desde: Date.parse('2026-12-01T11:58:30-03:00') });
+  assert.equal(r.jaNaTela, 3);
+  const itens = mensagens(c.env).flatMap(m => m.itens);
+  assert.deepEqual(itens.map(i => i.trecho), ['Convocação enviada durante a recarga.']);
+  assert.deepEqual({ ...c.env.enviadas.find(m => m.tipo === 'iniciou') }, { tipo: 'iniciou', empresaCnpj: '', empresaNome: '', jaNaTela: 3, compra: 'p:19302805900082025', som: false, gravar: false });
+});
+
+function chromeComSessao(opcoes = {}) {
+  const r = chromeFalso(opcoes);
+  const guardado = {};
+  r.guardado = guardado;
+  r.permitido = opcoes.permitido ?? true;
+  r.ouvintes.atualizada = null;
+  r.ouvintes.removida = null;
+  r.chrome.storage = { session: { get: async k => ({ [k]: guardado[k] }), set: async o => Object.assign(guardado, o), remove: async k => { delete guardado[k]; } } };
+  r.chrome.permissions = { contains: async () => r.permitido };
+  r.chrome.tabs.onUpdated = { addListener: f => { r.ouvintes.atualizada = f; } };
+  r.chrome.tabs.onRemoved = { addListener: f => { r.ouvintes.removida = f; } };
+  r.reinjecao = opcoes.reinjecao ?? { status: 'iniciado', jaNaTela: 2 };
+  const exec = r.chrome.scripting.executeScript;
+  r.chrome.scripting.executeScript = async o => (o.func.name === 'vigiarChat' ? (r.exec.push(['vigiarChat', o.args[0]]), [{ result: r.reinjecao }]) : exec(o));
+  return r;
+}
+const esperar = () => new Promise(res => setTimeout(res, 5));
+
+test('worker: aba recarregou -> espera carregar, injeta o vigia de novo com "desde" e não avisa "parei"', async () => {
+  const r = chromeComSessao(); criarWorkerAcompanhar(r.chrome);
+  r.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', som: true, gravar: false, empresaCnpj: '33442649000111', empresaNome: 'Max', jaNaTela: 2 }, rem);
+  await esperar();
+  r.ouvintes.msg({ tipo: 'parou', motivo: 'recarregou', som: true }, rem);
+  await esperar();
+  assert.equal(r.notificacoes.length, 0);
+  assert.equal(r.badges.at(-1).text, '…');
+  r.ouvintes.atualizada(7, { status: 'loading' }); await esperar();
+  assert.equal(r.exec.length, 0);
+  r.ouvintes.atualizada(7, { status: 'complete' }); await esperar();
+  const [[nome, entrada]] = r.exec;
+  assert.equal(nome, 'vigiarChat');
+  assert.deepEqual([entrada.empresaCnpj, entrada.som, typeof entrada.desde], ['33442649000111', true, 'number']);
+  r.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', som: true, jaNaTela: 2 }, rem); await esperar();
+  assert.equal(r.notificacoes.length, 0);
+  r.ouvintes.atualizada(7, { status: 'complete' }); await esperar();
+  assert.equal(r.exec.length, 1, 'carregamento sem recarga pendente não reinjeta');
+});
+
+test('worker: reconexão que volta sem chat na tela avisa para reabrir; página que não é mais o pregão avisa "parei"', async () => {
+  const r = chromeComSessao(); criarWorkerAcompanhar(r.chrome);
+  r.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', jaNaTela: 2 }, rem); await esperar();
+  r.ouvintes.msg({ tipo: 'parou', motivo: 'recarregou' }, rem); await esperar();
+  r.ouvintes.atualizada(7, { status: 'complete' }); await esperar();
+  r.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', jaNaTela: 0 }, rem); await esperar();
+  assert.match(r.notificacoes.at(-1).title, /não vejo o chat/);
+
+  const s = chromeComSessao({ reinjecao: { status: 'pagina_nao_suportada' } }); criarWorkerAcompanhar(s.chrome);
+  s.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', jaNaTela: 2 }, rem); await esperar();
+  s.ouvintes.msg({ tipo: 'parou', motivo: 'recarregou' }, rem); await esperar();
+  s.ouvintes.atualizada(7, { status: 'complete' }); await esperar();
+  assert.match(s.notificacoes.at(-1).title, /Parei de acompanhar/);
+  assert.deepEqual(s.guardado, {});
+});
+
+test('worker: sem permissão do portal, ou recargas demais em 10 min, avisa "parei" na hora; fechar a aba avisa e limpa', async () => {
+  const sem = chromeComSessao({ permitido: false }); criarWorkerAcompanhar(sem.chrome);
+  sem.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', jaNaTela: 1 }, rem); await esperar();
+  sem.ouvintes.msg({ tipo: 'parou', motivo: 'recarregou' }, rem); await esperar();
+  assert.match(sem.notificacoes.at(-1).message, /não consegui voltar/);
+
+  const loop = chromeComSessao(); criarWorkerAcompanhar(loop.chrome);
+  loop.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', jaNaTela: 1 }, rem); await esperar();
+  for (let i = 0; i < 5; i++) {
+    loop.ouvintes.msg({ tipo: 'parou', motivo: 'recarregou' }, rem); await esperar();
+    loop.ouvintes.atualizada(7, { status: 'complete' }); await esperar();
+    loop.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', jaNaTela: 1 }, rem); await esperar();
+  }
+  assert.equal(loop.notificacoes.length, 0);
+  loop.ouvintes.msg({ tipo: 'parou', motivo: 'recarregou' }, rem); await esperar();
+  assert.match(loop.notificacoes.at(-1).title, /Parei de acompanhar/);
+
+  const fechou = chromeComSessao(); criarWorkerAcompanhar(fechou.chrome);
+  fechou.ouvintes.msg({ tipo: 'iniciou', compra: 'p:x', jaNaTela: 1 }, rem); await esperar();
+  fechou.ouvintes.msg({ tipo: 'parou', motivo: 'recarregou' }, rem); await esperar();
+  fechou.ouvintes.removida(7); await esperar();
+  assert.match(fechou.notificacoes.at(-1).message, /fechada/);
+  assert.deepEqual(fechou.guardado, {});
+});
+
+test('reconexão com "chave" só retoma na mesma compra', () => {
+  const c = cenario({ html: HIST });
+  assert.equal(c.iniciar({ chave: 'p:19302805900082026' }).status, 'pagina_nao_suportada');
+  assert.equal(c.iniciar({ chave: 'p:19302805900082025' }).status, 'iniciado');
 });

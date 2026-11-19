@@ -121,9 +121,10 @@ test('abrir detalhes para no captcha e só clica no que está fechado', async ()
   assert.deepEqual({ ...await abrir() }, { status: 'captcha_pendente', abertos: 0 });
 });
 
-test('popup: só lê e grava (sem clicar/navegar) e lista o que falta abrir; manifesto sem site local nem Compras.gov', async () => {
+test('popup: só lê e grava (sem clicar/navegar) e lista o que falta abrir; manifesto sem site local; Compras.gov só opcional (reconexão do chat)', async () => {
   const manifesto = JSON.parse(readFileSync(new URL('./manifest.json', import.meta.url), 'utf8'));
-  assert.deepEqual(manifesto.optional_host_permissions, ['https://licitaplena.com.br/*', 'https://www.licitaplena.com.br/*', 'https://licitaplena.pages.dev/*']);
+  const LP = ['https://licitaplena.com.br/*', 'https://www.licitaplena.com.br/*', 'https://licitaplena.pages.dev/*'];
+  assert.deepEqual(manifesto.optional_host_permissions, [...LP, 'https://cnetmobile.estaleiro.serpro.gov.br/*']);
   assert.doesNotMatch(readFileSync(new URL('./popup.html', import.meta.url), 'utf8'), /gravarAbrir|gravarPercorrer/);
   const { MODO_AUTOMATICO } = await import('./pregao-leitor.mjs');
   assert.equal(MODO_AUTOMATICO, false);
@@ -134,7 +135,7 @@ test('popup: só lê e grava (sem clicar/navegar) e lista o que falta abrir; man
   globalThis.document = { getElementById: id => el[id] };
   globalThis.chrome = {
     runtime: { getManifest: () => manifesto },
-    permissions: { request: async ({ origins }) => { assert.deepEqual(origins, manifesto.optional_host_permissions); return true; } },
+    permissions: { request: async ({ origins }) => { assert.deepEqual(origins, LP); return true; } },
     tabs: {
       query: async q => q.active ? [{ id: 1, url: ITEM }] : [{ id: 2, url: 'https://licitaplena.com.br/sistema' }],
       update: () => assert.fail('o popup não navega a aba do usuário'),

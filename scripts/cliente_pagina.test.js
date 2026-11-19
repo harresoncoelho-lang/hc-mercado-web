@@ -94,6 +94,16 @@ test("mensagens por status e espera do Retry-After", () => {
   assert.equal(lotes(Array.from({ length: 401 }, (_, k) => k), cliente.MAX_LOTE).length, 3);
 });
 
+test("descrição do catálogo com marcação vira texto corrido", () => {
+  const { textoSemHtml } = cliente;
+  const bruto = "(ID126662) FONTE, Potencia: 400W. .<br><font color=red>INFORMACOES ADICIONAIS:</font> CONFORME TR &amp; anexo.<br/>";
+  assert.equal(textoSemHtml(bruto), "(ID126662) FONTE, Potencia: 400W.. INFORMACOES ADICIONAIS: CONFORME TR & anexo.");
+  assert.equal(textoSemHtml("Cabo 2 < 3 metros"), "Cabo 2 < 3 metros"); // "<" sem tag continua
+  assert.equal(textoSemHtml("&lt;script&gt;"), "<script>"); // entidade vira texto; a página usa textContent
+  assert.equal(textoSemHtml(null), null);
+  assert.equal(textoSemHtml(""), "");
+});
+
 test("cliente.* entra no publico/", () => {
   const { arquivosDaRaiz } = require("./montar_publico.js");
   const raiz = arquivosDaRaiz();

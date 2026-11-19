@@ -2,11 +2,13 @@
 // ele: ver MODO_AUTOMATICO em pregao-leitor.mjs) e envia pela aba do LicitaPlena já logada. O que falta abrir vira
 // uma lista de passos para o próprio usuário clicar. A permissão de site do LicitaPlena é opcional e pedida no
 // primeiro uso; as origens vêm do manifesto (o pacote QA acrescenta o site local do ambiente de teste).
+import { ehPortal, origensLicitaPlena as origens } from './diagnostico.mjs';
+import { oferecerDiagnostico } from './diagnostico-popup.mjs';
 import { enviarNaPagina, lerPaginaPregao } from './pregao-leitor.mjs';
 
 const status = document.getElementById('gravarStatus');
 const botao = document.getElementById('gravarLer');
-const origensLicitaPlena = () => chrome.runtime.getManifest().optional_host_permissions || [];
+const origensLicitaPlena = () => origens(chrome.runtime.getManifest());
 
 const MENSAGENS = {
   pagina_nao_suportada: 'Abra a página pública "Acompanhar Contratação" do Compras.gov (lista ou item) ou a ata completa do ComprasNet.',
@@ -63,7 +65,12 @@ botao.addEventListener('click', () => {
     status.textContent = 'Lendo o que a página mostra…';
     const [ativa] = await chrome.tabs.query({ active: true, currentWindow: true });
     const leitura = await executar(ativa.id, lerPaginaPregao);
-    if (leitura?.status !== 'ok') { status.textContent = MENSAGENS[leitura?.status] || 'Não foi possível ler a página.'; return; }
+    if (leitura?.status !== 'ok') {
+      status.textContent = MENSAGENS[leitura?.status] || 'Não foi possível ler a página.';
+      // Captcha não é falha de reconhecimento; página fora do portal não tem o que diagnosticar.
+      if (['sem_dados', 'pagina_nao_suportada'].includes(leitura?.status) && ehPortal(ativa.url))oferecerDiagnostico('gravar', leitura.status);
+      return;
+    }
     const envio = await gravar(leitura);
     status.textContent = resumir(leitura) + '\n' + (envio.ok
       ? `Gravado no LicitaPlena (${envio.propostas} propostas, ${envio.mensagens_novas} mensagens novas).`

@@ -1,17 +1,19 @@
 {
   "manifest_version": 3,
   "name": "LicitaPlena — leitura de contexto (protótipo)",
-  "version": "0.3.0",
-  "description": "Conferência manual de CNPJ e pregão, gravação e acompanhamento do chat do pregão aberto na aba. Não envia propostas ou lances.",
+  "version": "0.4.0",
+  "description": "Conferência manual de CNPJ e pregão, gravação, preenchimento assistido de proposta e acompanhamento do chat do pregão aberto na aba. Não envia propostas nem lances.",
   "permissions": [
     "activeTab",
     "scripting",
-    "notifications"
+    "notifications",
+    "storage"
   ],
   "optional_host_permissions": [
     "https://licitaplena.com.br/*",
     "https://www.licitaplena.com.br/*",
-    "https://licitaplena.pages.dev/*"
+    "https://licitaplena.pages.dev/*",
+    "https://cnetmobile.estaleiro.serpro.gov.br/*"
   ],
   "action": {
     "default_title": "LicitaPlena — conferir contexto / gravar pregão",

@@ -103,7 +103,17 @@
 
   const lotes = (lista, tamanho) => Array.from({ length: Math.ceil(lista.length / tamanho) }, (_, k) => lista.slice(k * tamanho, (k + 1) * tamanho));
 
-  const api = { decimal, totalCentavos, formatarCentavos, formatarValor, linkSeguro, tokenDoHash, formatarData, segundosDeEspera, mensagemDeErro, lotes, MAX_LOTE };
+  // A descrição do catálogo do Compras.gov vem com marcação ("<br><font color=red>…"). Vira texto corrido; o
+  // resultado continua entrando só por textContent (nada é interpretado como HTML).
+  const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+  function textoSemHtml(v) {
+    if (typeof v !== 'string') return v;
+    return v.replace(/<br\s*\/?>|<\/p\s*>/gi, ' ').replace(/<\/?[a-z][^<>]*>/gi, '')
+      .replace(/&(amp|lt|gt|quot|apos|nbsp);/gi, (_, e) => ENTIDADES[e.toLowerCase()])
+      .replace(/\s+/g, ' ').replace(/\s+([.,;])/g, '$1').trim();
+  }
+
+  const api = { decimal, totalCentavos, formatarCentavos, formatarValor, linkSeguro, tokenDoHash, formatarData, segundosDeEspera, mensagemDeErro, lotes, textoSemHtml, MAX_LOTE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof document === 'undefined') return;
 
@@ -220,7 +230,7 @@
   function colunas(itens) {
     const cols = [
       ['Nº', (i) => i.identificador],
-      ['Descrição', (i) => i.descricao, 'cl-col-descricao'],
+      ['Descrição', (i) => textoSemHtml(i.descricao), 'cl-col-descricao'],
       ['Qtd.', (i) => formatarValor(i.quantidade, false), 'cl-num'],
       ['Unidade', (i) => i.unidade],
       ['Valor unitário', (i) => formatarValor(i.valor_unitario_proposta, true), 'cl-num'],
@@ -256,9 +266,12 @@
     }
     renderizarPaginacao(d);
     renderizarHistorico(d.aceites);
+    // Aprovar item sem preço não diz nada ao cliente: avisa antes que ele decida.
+    $('aviso-sem-valor').hidden = !d.itens.some((i) => decimal(i.valor_unitario_proposta) === null);
     $('carregando').hidden = true;
     $('conteudo').hidden = false;
-    $('barra').hidden = false;
+    // Sem itens não há o que aprovar nem enviar: a barra some.
+    $('barra').hidden = !d.itens.length && !Number(d.total_itens);
     $('historico').hidden = false;
     atualizarProgresso();
   }
@@ -519,7 +532,10 @@
   }
 
   function iniciar() {
-    $('erro-tentar').addEventListener('click', () => ler(estado.pagina));
+    $('erro-tentar').addEventListener('click', () => {
+      $('carregando').hidden = false;
+      ler(estado.pagina);
+    });
     $('aprovar-todos').addEventListener('click', aprovarTodos);
     $('enviar').addEventListener('click', enviar);
     $('pag-anterior').addEventListener('click', () => ler(estado.pagina - 1));

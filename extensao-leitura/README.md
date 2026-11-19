@@ -146,20 +146,59 @@ Fluxo: popup → "Acompanhar chat" (CNPJ e nome da empresa, som, gravar) → **A
 
 Regras:
 - Alerta só para mensagem **nova** (aparecida depois do clique) e que não seja de participante. As que já estavam na tela são marcadas como vistas. Mensagem cuja hora no portal é mais de 30 min anterior ao agora, ao aparecer, é tratada como histórico aberto pelo usuário e não alerta (custo: computador dormindo por mais de 30 min perde o alerta daquela mensagem). Hora do portal lida como UTC-3.
-- Destaque (notificação "IMPORTANTE", fica na tela até o clique, badge vermelho): cita o CNPJ (14 dígitos, com ou sem pontuação) ou o nome informado; ou contém convocação, anexo, prazo, recusa, desclassific-, inabilit-, diligência, habilitação. Trecho de até 200 caracteres ao redor do primeiro termo, com a hora; CPF mascarado.
+- Destaque (notificação "IMPORTANTE", fica na tela até o clique, badge vermelho): cita o CNPJ (14 dígitos, com ou sem pontuação) ou o nome informado; ou contém convocação, anexo, prazo, recusa, desclassific-, inabilit-, diligência, habilitação, suspens-/suspend- (suspensão) ou aceit- (aceite/aceito/aceita). Com som ligado, mensagem importante também dá um bipe na própria aba (Web Audio), independente do som de notificação do sistema. Trecho de até 200 caracteres ao redor do primeiro termo, com a hora; CPF mascarado.
 - Não duplica: chave = hora + texto; novo clique na mesma compra preserva o já visto.
-- Para e avisa "Parei de acompanhar" quando: a rota sai da compra/página suportada (checada a cada 3 s, o Angular troca rota sem recarregar), a página mostra "sessão expirada/encerrada", a página é recarregada/fechada (`pagehide`). Trocar de item dentro da mesma compra continua.
+- Para e avisa "Parei de acompanhar" quando: a rota sai da compra/página suportada (checada a cada 3 s, o Angular troca rota sem recarregar), a página mostra "sessão expirada/encerrada". Trocar de item dentro da mesma compra continua.
+- **Reconexão (0.4.0):** `pagehide` manda `parou/recarregou`. Se o usuário aceitou a permissão opcional do portal (pedida no clique "Acompanhar"), o worker guarda a aba em `chrome.storage.session`, mostra "…" no ícone e, quando a aba termina de carregar (`tabs.onUpdated` complete), injeta `vigiarChat` de novo com `chave` (só a MESMA compra) e `desde` (mensagens desde a queda alertam já na 1ª leitura). Voltou sem chat na tela: aviso "não vejo o chat". Outra página, página de erro, sem permissão, aba fechada ou mais de 5 recargas em 10 min: "Parei de acompanhar".
 - O script **não** faz requisição (nem `fetch`/XHR/WebSocket/beacon), não recarrega, não navega, não clica, não toca em captcha; os testes armadilham essas APIs e checam o código-fonte.
 - Gravar no LicitaPlena é opcional (caixa desmarcada por padrão; pede a permissão de site do LicitaPlena no clique). Ao alertar, o worker (no máx. 1 vez a cada 30 s por aba) lê a página com o mesmo `lerPaginaPregao` e envia com `enviarNaPagina` pela aba logada do LicitaPlena para `/api/pregao-gravado`: mesma regra de CPF, aprovação e confiança do modo "Gravar pregão". Na sala de disputa (página não suportada pelo leitor) avisa que não gravou; o alerta segue.
 
-Permissões (manifesto 0.3.0): `activeTab` + `scripting` (já existiam): acesso temporário só à aba onde o usuário clicou e injeção do vigia; `notifications`: única forma de mostrar o aviso fora da aba; background `acompanhar-worker.mjs`: necessário porque script de página não cria notificação nem badge. O worker só reage a mensagens do próprio script da extensão (checa `sender.id` e aba), não guarda estado e não tem rede. Sem `storage` (empresa/opções ficam no localStorage do popup), `tabs`, `alarms`, `host_permissions`, `<all_urls>` nem 127.0.0.1 (este só no pacote QA, que agora também importa o worker de acompanhamento).
+Permissões (manifesto 0.4.0): `activeTab` + `scripting`: acesso temporário só à aba onde o usuário clicou e injeção do vigia; `notifications`: única forma de mostrar o aviso fora da aba; `storage` (sem aviso na instalação): só `chrome.storage.session` para a reconexão (some ao fechar o navegador); opcional `https://cnetmobile.estaleiro.serpro.gov.br/*`: pedida no clique "Acompanhar", só para reinjetar o vigia depois que a página recarrega (activeTab se perde na recarga); recusar não impede acompanhar. O worker só reage a mensagens do próprio script da extensão (checa `sender.id` e aba) e não tem rede. Sem `tabs`, `alarms`, `host_permissions`, `<all_urls>` nem 127.0.0.1 (este só no pacote QA e na cópia do teste no Edge).
 
 Limitações honestas:
 - Precisa da aba aberta e do computador ligado; fechar a aba, suspender o computador, ou o navegador "dormir" a aba interrompe o aviso sem nenhum alarme. Fechar o navegador não avisa nada.
 - Se o portal cair com a mesma URL (tela de erro sem sair da rota) e não mostrar "sessão expirada/encerrada", o script não percebe: sem mensagens, sem alerta e sem "parei". Se navegar para outra URL, avisa.
+- Mensagem que chegou e saiu da tela durante a recarga não é vista (só o que a página mostra depois de recarregar). Mensagens do mesmo minuto da queda podem alertar duas vezes (preferimos repetir a perder).
 - **A sala de disputa do fornecedor logado não foi mapeada**: aceito o prefixo `/comprasnet-web/seguro/fornecedor/`, mas os seletores do chat são os da página pública. Se a sala usar outras classes, nada é detectado. Precisa de um teste real (1 pregão) para confirmar seletores e a classe que distingue mensagem de participante.
 - Só chat visível/aberto na tela é lido (na pública, o chat de cada fornecedor só existe depois de aberto pelo usuário).
-- Som: é o da notificação do sistema (`silent` quando desmarcado), sujeito ao "Não perturbe" do Windows/macOS.
-- Não instalado nem homologado em navegador real; testado com DOM simulado e a fixture real do chat.
+- Som: o da notificação do sistema (`silent` quando desmarcado), sujeito ao "Não perturbe"; o bipe da aba depende de o usuário já ter clicado na página (regra de autoplay).
+- Carregada no Edge real (Playwright) contra a fixture servida no endereço do portal: notificação, badge, reconexão e "parei" conferidos. **Nunca rodou na sala de disputa real.**
 
-Testes: `node --test extensao-leitura/acompanhar-chat.test.mjs` (14 casos: detecção, destaques, sem duplicar, parada, sem rede, worker, manifesto). Ícone da notificação: `icone.png`.
+Testes: `node --test extensao-leitura/acompanhar-chat.test.mjs` (21 casos: detecção, destaques, sem duplicar, parada, reconexão, sem rede, worker, manifesto). Ícone da notificação: `icone.png`.
+
+## Sala de disputa (robô de lances) — só interface
+
+`sala-disputa.mjs` documenta o contrato do futuro leitor da sala de disputa (melhor valor, meu valor, situação, etapa, tempo restante por item) e devolve sempre `{ ok: false }` com "não implementado — precisa da sala real". Não está ligado ao popup nem ao worker, não pede permissão nova e não clica, preenche ou navega. O robô de lances do LicitaPlena é **assistido**: sugere o lance na tela do processo e a pessoa envia no portal. Pesquisa e pendências: `_historico/robo-lances-20261120.md` (pasta do projeto, fora do repositório).
+
+## Modo diagnóstico (0.4.0)
+
+Quando um fluxo não reconhece a página do portal, o popup mostra a seção **Página não reconhecida** com **Enviar diagnóstico** (só com clique do usuário). Gatilhos: gravar → `sem_dados`/`pagina_nao_suportada` numa página do portal (captcha não conta); preencher → `sem_itens`, alerta `campos_ausentes` ou `mascara`; acompanhar → `pagina_nao_suportada` no portal ou vigia iniciado com **0 mensagens** na tela (sala de disputa com seletor diferente).
+
+- `diagnostico.mjs` / `estruturaPagina` (injetada, autocontida): recusa qualquer host fora de `cnetmobile.estaleiro.serpro.gov.br`/`comprasnet.gov.br`. Guarda até 4000 elementos: tag, profundidade, id, classes (sem as geradas `ng-*`/`_ng*`), atributos de uma allowlist (`data-test`, `role`, `type`, `name`, `for`, `aria-label`, `placeholder`, `title`, `maxlength`, `formcontrolname`), host do `iframe`, caminho do `a` (sem query), `preenchido: true/false` dos campos (**nunca o valor**) e texto só de `label/legend/th/button/caption/summary/dt` (60 caracteres; `option` nunca, pode ter razão social). Toda sequência de 5+ dígitos vira `#` (CPF, CNPJ, telefone). Conta os seletores de que o fluxo depende (`seletores`), o que já aponta qual sumiu.
+- Envio pela aba logada do LicitaPlena (`enviarDiagnosticoNaPagina`) para `POST /api/extensao-diagnostico` (`netlify/functions/extensao-diagnostico.js`): login + cadastro aprovado, 20/dia, refaz a allowlist de chaves, mascara de novo com `_cpf.js` e recusa se ainda sobrar algo com cara de CPF. Tabela `extensao_diagnosticos` (`supabase/extensao_diagnosticos.sql`, só service_role, CHECK anti-CPF; **rodar no SQL Editor de produção antes de publicar**). A equipe lê pelo SQL Editor.
+
+## Empacotar para instalar (0.4.0)
+
+`npm run empacotar:extensao` gera `dist/licitaplena-extensao-<versão>.zip` (`dist/` no .gitignore). `scripts/empacotar-extensao.mjs` confere o manifesto (MV3, versão X.Y.Z, permissões só da allowlist, sem `host_permissions`/`content_scripts`/`key`/127.0.0.1/curinga, CSP `connect-src 'none'`, `MODO_AUTOMATICO = false`) e junta só os arquivos alcançáveis a partir do manifesto (popup, worker, ícones e seus imports); arquivo faltando, import externo ou teste/fixture referenciado abortam. O pacote QA (`empacotar-extensao-leitura-qa.mjs`) usa a mesma descoberta. Passo a passo para leigo e roteiro do primeiro teste real: `extensao.html`.
+
+## Teste com a extensão carregada no Edge
+
+`PORTA_TESTE=8831 node ambiente-teste/servidor.cjs` e depois `SITE_TESTE=http://127.0.0.1:8831 node ambiente-teste/e2e-extensao.cjs`: copia o pacote para uma pasta temporária (acrescenta `host_permissions` do portal e do site local, só na cópia), abre o Edge com `--load-extension`, serve as fixtures no endereço real do portal por `context.route` (nada sai para o governo) e confere gravar, preencher (sem clicar Salvar), diagnóstico até o banco local (sem CPF) e acompanhar (notificação, badge, reconexão após recarregar, "parei" ao sair). 6/6 em 20/11/2026.
+
+## Pontos frágeis conhecidos (revisão de 20/11/2026)
+
+| Fluxo | Ponto frágil | Efeito se o portal mudar | Proteção hoje |
+|---|---|---|---|
+| Gravar (Compras.gov) | Tags Angular `app-*` (`app-dados-proposta-item-em-selecao-fornecedores`, `app-detalhes-proposta-item`, `app-mensagens-chat-lista`), `data-test` (`item`, `identificacao-participante`, `situacao-proposta`) e classes `cp-valor-item*`/`cp-texto-item-08` | `sem_dados` ou propostas sem valor/marca | `sem_dados` → diagnóstico |
+| Gravar | Rótulos exatos ("valor ofertado (unitario)", "marca/fabricante", "modelo/versao") | campo `null` sem erro | **nenhuma** (silencioso; conferir no 1º teste) |
+| Gravar | URL `?compra=` com 17 dígitos e caminho `acompanhamento-compra(/item/N)` | `pagina_nao_suportada` | diagnóstico |
+| Gravar (ComprasNet) | Textos "Pregão Eletrônico Nº", "Item:", "Troca de Mensagens", "Eventos do Item", "Propostas", "valor unit" e colunas Porte/Quantidade | `sem_dados` ou item sem propostas | `sem_dados` → diagnóstico |
+| Gravar | Página ainda carregando (Angular renderiza depois do `load`) | `sem_dados` | mensagem "espere carregar e clique de novo" |
+| Preencher | `div.cp-itens-card`, `app-identificacao-item span` (nº do item), `data-test` dos 4 inputs, `situacao-item` "Proposta não cadastrada" | `sem_itens`, `campos_ausentes`, ou item tratado como "já cadastrado" se o texto da situação mudar | diagnóstico nos dois primeiros; o terceiro é **silencioso** |
+| Preencher | Máscara monetária do valor (relê o campo) | alerta `mascara`, item não preenchido | diagnóstico |
+| Preencher | Formulário abre só depois da seta (espera 1,5 s) | `camposFechados` em rede lenta | mensagem pede aceitar termo e clicar de novo |
+| Preencher | O que o "Salvar" faz (API, mensagem, captcha) nunca foi visto | — | depende do teste real |
+| Acompanhar | `.mensagens-texto`/`.mensagens-data` e classe `participante`/`fornecedor` (separa mensagem do licitante): **mapeados só na página pública** | 0 mensagens na sala de disputa; mensagens do próprio fornecedor podem alertar | aviso "0 mensagens" + diagnóstico |
+| Acompanhar | Data "dd/mm/aaaa hh:mm" (Brasília) | sem data: alerta sem hora; janela de 30 min não se aplica | — |
+| Acompanhar | Texto "sessão expirou/expirada/encerrada" | logout sem esse texto não para | "parei" se a rota mudar |
+| Todos | Portal instável pede recarregar | vigia some; preencher perde o que não foi salvo | reconexão do vigia; diário do preencher |

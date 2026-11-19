@@ -1,10 +1,12 @@
 // Popup, seção "Preencher proposta". Lote do LicitaPlena (aba logada) ou planilha CSV; preenche a página de cadastro
 // que o usuário já abriu. Não clica Salvar, não aceita termo/declarações, não resolve captcha, não navega.
 // Lote e diário ficam no globalThis.localStorage do popup, por compra, para retomar se o portal cair.
+import { origensLicitaPlena as origens } from './diagnostico.mjs';
+import { oferecerDiagnostico } from './diagnostico-popup.mjs';
 import { buscarLoteNaPagina, compraDaUrl, expirarArmazenamento, lerCsv, lerDiario, preencherPaginaCadastro, progresso, registrarDiario, resumirPreenchimento } from './preencher-proposta.mjs';
 
 const status = document.getElementById('preencherStatus');
-const origensLicitaPlena = () => chrome.runtime.getManifest().optional_host_permissions || [];
+const origensLicitaPlena = () => origens(chrome.runtime.getManifest());
 const chaveLote = compra => `lp-preencher-lote:${compra}`;
 const executar = async (tabId, func, args = []) => (await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, func, args }))?.[0]?.result;
 
@@ -59,6 +61,9 @@ document.getElementById('preencherAgora').addEventListener('click', () => {
     if (r.status === 'ok') registrarDiario(globalThis.localStorage, compra, r);
     const prog = mostrarProgresso(compra);
     status.textContent = resumirPreenchimento(r, prog);
+    // Página do cadastro aberta mas sem cartões, ou cartões com campos diferentes do mapa: seletor mudou.
+    const estranho = r.status === 'sem_itens' ? 'sem_itens' : r.alertas?.find(a => ['campos_ausentes', 'mascara'].includes(a.tipo))?.tipo;
+    if (estranho) oferecerDiagnostico('preencher', estranho);
     if (prog && prog.feitos >= prog.total) apagarLote(compra); // compra concluída: o lote (com valor mínimo) não fica no navegador
   })().catch(falha);
 });

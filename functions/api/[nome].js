@@ -50,6 +50,8 @@ import * as m25 from "../../netlify/functions/sancoes-cnpj.js";
 import * as pregaoGravado from "../../netlify/functions/pregao-gravado.js";
 // Lote de proposta para a extensão preencher o cadastro (só leitura, logado e aprovado).
 import * as propostaLote from "../../netlify/functions/proposta-lote.js";
+// Diagnóstico da extensão (só estrutura da página do portal, sem valores nem CPF): logado, 20/dia.
+import * as extensaoDiagnostico from "../../netlify/functions/extensao-diagnostico.js";
 // Prospecção (Inteligência de Mercado): logado, lê prospeccao_itens com a sessão do usuário (1 subrequisição).
 import * as m26 from "../../netlify/functions/prospeccao.js";
 // Análise por CNPJ (Analisar concorrente): logado, cota diária, ~27 subrequisições; o pesado fica na fila do robô.
@@ -72,6 +74,7 @@ const ROTAS = {
   "sancoes-cnpj": m25,
   "pregao-gravado": pregaoGravado,
   "proposta-lote": propostaLote,
+  "extensao-diagnostico": extensaoDiagnostico,
   prospeccao: m26,
   "analise-cnpj": analiseCnpj,
   "monte-busca-ia": monteBuscaIa,

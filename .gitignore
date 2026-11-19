@@ -40,3 +40,6 @@ publico/
 
 # Histórico do boletim por destinatário (e-mails): fica só no Supabase (dados_robo), nunca no git
 data/editais_vistos.json
+
+# Pacote da extensão (npm run empacotar:extensao)
+dist/

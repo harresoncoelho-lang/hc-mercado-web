@@ -33,7 +33,7 @@
   </section>
   <section aria-labelledby="acompanharTitulo">
     <h2 id="acompanharTitulo">Acompanhar chat</h2>
-    <p>Na aba do pregão que você já abriu, avisa (notificação, ícone e som opcional) quando o pregoeiro escrever. Só funciona com a aba aberta e o computador ligado.</p>
+    <p>Na aba do pregão que você já abriu, avisa (notificação, ícone e som opcional) quando o pregoeiro escrever. Só funciona com a aba aberta e o computador ligado. Se a página recarregar, volta a acompanhar sozinha (o Chrome pede uma vez a permissão do portal).</p>
     <label for="acompanharCnpj">CNPJ da sua empresa (para destacar quando for citada)</label><input id="acompanharCnpj" autocomplete="off" maxlength="18" inputmode="numeric">
     <label for="acompanharNome">Nome da empresa (opcional)</label><input id="acompanharNome" autocomplete="off" maxlength="120">
     <label><input id="acompanharSom" type="checkbox" checked> Tocar som no aviso</label>
@@ -41,7 +41,12 @@
     <button id="acompanharIniciar" type="button">Acompanhar este pregão</button>
     <button id="acompanharParar" type="button">Parar de acompanhar</button>
     <p id="acompanharStatus" role="status" aria-live="polite">Não está acompanhando.</p>
-    <p>Não faz requisições próprias, não recarrega nem navega, não resolve captcha. Se o portal deslogar ou a aba sair da página, avisa "parei de acompanhar".</p>
+    <p>Não faz requisições próprias, não recarrega nem navega, não resolve captcha. Se o portal deslogar, a aba sair da página ou não der para voltar depois de recarregar, avisa "parei de acompanhar".</p>
+  </section>
+  <section id="diagnostico" aria-labelledby="diagnosticoTitulo" hidden>
+    <h2 id="diagnosticoTitulo">Página não reconhecida</h2>
+    <button id="diagnosticoEnviar" type="button">Enviar diagnóstico</button>
+    <p id="diagnosticoStatus" role="status" aria-live="polite"></p>
   </section>
   <script type="module" src="popup.mjs"></script>
   <script type="module" src="gravar.mjs"></script>

@@ -2,6 +2,7 @@ import {createHash,createPublicKey} from 'node:crypto';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {arquivosDaExtensao} from './empacotar-extensao.mjs';
 const source=new URL('../extensao-leitura/',import.meta.url);
 export async function empacotarQA(config,destino){
  if(!config||Object.keys(config).sort().join()!=='caminho,extensionId,origem,publicKey')throw Error('Configuração QA incompleta');
@@ -16,7 +17,8 @@ export async function empacotarQA(config,destino){
  if(typeof destino!=='string'||!path.isAbsolute(destino))throw Error('Destino novo absoluto obrigatório');
  const manifest=JSON.parse(await readFile(new URL('manifest.json',source),'utf8'));
  manifest.background={service_worker:'worker-qa.mjs',type:'module'};manifest.key=publicKey;manifest.externally_connectable={matches:[origem+caminho]};manifest.optional_host_permissions=[...(manifest.optional_host_permissions||[]),'http://127.0.0.1/*']; // site do ambiente-teste só no pacote QA
- const files=['adapter.mjs','collector.mjs','ponte-receptor.mjs','ponte-worker.mjs','ponte-cliente.mjs','popup.mjs','popup.html','popup.css','gravar.mjs','pregao-leitor.mjs','acompanhar.mjs','acompanhar-chat.mjs','acompanhar-worker.mjs','icone.png','preencher.mjs','preencher-proposta.mjs'];
+ // Mesma descoberta do pacote de produção (empacotar-extensao.mjs) + o que só o worker QA importa.
+ const files=[...new Set([...(await arquivosDaExtensao()).arquivos,'ponte-receptor.mjs','ponte-worker.mjs'])];
  const content=await Promise.all(files.map(async file=>[file,await readFile(new URL(file,source))]));
  // Toda configuração e leitura validada antes da primeira escrita. Nunca sobrescreve destino.
  await mkdir(destino);

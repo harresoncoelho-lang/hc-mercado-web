@@ -71,7 +71,8 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .cl-segmentos input:checked+.cl-seg-recusado{background:var(--error-bg);color:var(--error-text);border-color:var(--error-text);border-left:1px solid var(--error-text)}
 .cl-segmentos input:checked+.cl-seg::before{content:"✓";margin-right:var(--space-4)}
 .cl-anterior{margin:0;color:var(--text-secondary);font:var(--text-label)}
-.cl-obs-botao{min-height:36px;padding:var(--space-4) 0;border:0;background:none;color:var(--action-text);text-decoration:underline;justify-self:start}
+/* min-height 36px -> 44px (alvo de toque no celular), 20/11/2026: aguarda aprovação. */
+.cl-obs-botao{min-height:44px;padding:var(--space-4) 0;border:0;background:none;color:var(--action-text);text-decoration:underline;justify-self:start}
 .cl-obs{display:grid;gap:var(--space-4)}
 .cl-obs label{font:var(--text-label);color:var(--text-secondary)}
 .cl-obs textarea{width:100%;font:var(--text-body);padding:var(--space-8);border:1px solid var(--border-strong);border-radius:var(--radius-control);resize:vertical}

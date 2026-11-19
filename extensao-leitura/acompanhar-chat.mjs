@@ -14,7 +14,7 @@ export function vigiarChat(entrada) {
   const semCpf = s => s.replace(/\b\d{3}[.\s]?\d{3}[.\s]?\d{3}[-\s/]?\d{2}\b/g, '***.***.***-**');
   const limpo = s => String(s || '').replace(/\s+/g, ' ').trim();
   const TERMOS = [['convocação', /convoca/], ['anexo', /anex/], ['prazo', /prazo/], ['recusa', /recus/], ['desclassificação', /desclassific/],
-    ['inabilitação', /inabilit/], ['diligência', /diligenc/], ['habilitação', /(?<!in)habilita/]];
+    ['inabilitação', /inabilit/], ['diligência', /diligenc/], ['habilitação', /(?<!in)habilita/], ['suspensão', /suspen[sd]/], ['aceite', /aceit/]];
   const cnpj = String(entrada?.empresaCnpj || '').replace(/\D/g, '');
   const nome = semAcento(entrada?.empresaNome).replace(/[^\p{L}\p{N} ]/gu, '');
 
@@ -30,7 +30,8 @@ export function vigiarChat(entrada) {
     return `${pub ? 'p' : 's'}:${c[0] || u.pathname}`;
   };
   const chave = chaveDe(g.location.href);
-  if (!chave) return { status: 'pagina_nao_suportada' };
+  // Reconexão só na MESMA compra/página: se a aba foi para outra, não segue acompanhando sozinho.
+  if (!chave || (entrada?.chave && entrada.chave !== chave)) return { status: 'pagina_nao_suportada' };
   const anterior = g.__lpAcompanhar;
   const vistas = anterior?.chave === chave ? anterior.vistas : new Set();
   anterior?.parar('voce', false);
@@ -39,6 +40,8 @@ export function vigiarChat(entrada) {
     const m = /(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/.exec(s || '');
     return m ? { iso: `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`, hora: `${m[4]}:${m[5]}` } : null;
   };
+  // Reconexão depois de recarregar (acompanhar-worker.mjs): mensagens desde a queda alertam mesmo na 1ª leitura.
+  const desde = Number.isFinite(entrada?.desde) ? entrada.desde - 60e3 : null;
   let parou = false, pronto = false, naoLidas = 0, timer = null, tick = null;
   const enviar = msg => {
     try { g.chrome.runtime.sendMessage({ ...msg, compra: chave, som: !!entrada?.som, gravar: !!entrada?.gravar })?.catch?.(() => {}); return true; } catch { return false; }
@@ -63,22 +66,35 @@ export function vigiarChat(entrada) {
       const k = `${dh?.iso || ''}|${semAcento(texto)}`;
       if (vistas.has(k)) continue;
       vistas.add(k);
-      if (!pronto) continue; // leitura inicial: só marca o que já estava na tela
+      const horario = dh ? g.Date.parse(`${dh.iso}-03:00`) : NaN;
+      if (!pronto && !(desde !== null && horario >= desde)) continue; // leitura inicial: só marca o que já estava na tela
       if (/(^|\s)(participante|fornecedor)(\s|$)|mensagens-(participante|fornecedor)/.test(caixa?.className || '')) continue; // não é do pregoeiro
-      if (dh && g.Date.now() - g.Date.parse(`${dh.iso}-03:00`) > JANELA_MS) continue; // histórico aberto agora
+      if (dh && g.Date.now() - horario > JANELA_MS) continue; // histórico aberto agora
       const c = classificar(texto);
       const ini = Number.isFinite(c.primeiro) ? Math.max(0, c.primeiro - 60) : 0;
       novas.push({ trecho: semCpf(texto.slice(ini, ini + 200)), hora: dh?.hora || null, motivos: c.motivos, citaEmpresa: c.cita, importante: c.cita || c.motivos.length > 0 });
     }
     if (!novas.length) return;
     if (g.document.hidden) naoLidas += novas.length;
+    if (entrada?.som && novas.some(n => n.importante)) bipe();
     if (!enviar({ tipo: 'mensagens', itens: novas, naoLidas })) parar('extensao', false);
+  };
+  // Bipe na própria aba: toca mesmo com o som de notificação do Windows desligado. Sem áudio liberado, fica só a notificação.
+  const bipe = () => {
+    try {
+      const ctx = new g.AudioContext();
+      const o = ctx.createOscillator(), v = ctx.createGain();
+      o.frequency.value = 880; v.gain.value = 0.15;
+      o.connect(v); v.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.4);
+      o.onended = () => ctx.close();
+    } catch { /* sem AudioContext ou autoplay bloqueado */ }
   };
   const agendar = () => { if (!timer) timer = g.setTimeout(() => { timer = null; varrer(); }, 300); };
 
   const observer = new g.MutationObserver(agendar);
   const aoVoltar = () => { if (!g.document.hidden && naoLidas) { naoLidas = 0; enviar({ tipo: 'visto' }); } };
-  const aoSair = () => parar('saiu');
+  const aoSair = () => parar('recarregou'); // pagehide: recarregou, navegou ou fechou; o worker tenta voltar
   function parar(motivo, avisar = true) {
     if (parou) return;
     parou = true;
@@ -103,7 +119,7 @@ export function vigiarChat(entrada) {
   tick = g.setInterval(conferir, 3000);
   g.addEventListener('pagehide', aoSair);
   g.document.addEventListener('visibilitychange', aoVoltar);
-  enviar({ tipo: 'iniciou' });
+  enviar({ tipo: 'iniciou', empresaCnpj: cnpj, empresaNome: String(entrada?.empresaNome || '').slice(0, 120), jaNaTela: vistas.size });
   return { status: 'iniciado', jaNaTela: vistas.size };
 }
 

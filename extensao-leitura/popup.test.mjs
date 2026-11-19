@@ -32,7 +32,7 @@ async function setup({ changedTab = false, fail = false, wrongUrl = false, editD
 }
 test('manifest limita permissões e não contém execução automática ou rede', async () => {
   const manifest = JSON.parse(await readFile(new URL('./manifest.json', import.meta.url), 'utf8'));
-  assert.deepEqual(manifest.permissions, ['activeTab', 'scripting', 'notifications']); assert.equal(manifest.background.service_worker, 'acompanhar-worker.mjs');
+  assert.deepEqual(manifest.permissions, ['activeTab', 'scripting', 'notifications', 'storage']); assert.equal(manifest.background.service_worker, 'acompanhar-worker.mjs');
   for (const key of ['content_scripts', 'host_permissions', 'externally_connectable']) assert.equal(key in manifest, false);
   assert.match(manifest.content_security_policy.extension_pages, /connect-src 'none'/);
 });
