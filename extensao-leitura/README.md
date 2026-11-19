@@ -137,3 +137,29 @@ Diário: `localStorage` do popup, por compra (`lp-preencher-diario:<compra>` e `
 Arquivos: `preencher-proposta.mjs` (CSV, diário, funções injetadas, resumo), `preencher.mjs` (popup), fixture `fixtures/comprasgov-cadastro-propostas.html` (montada do mapa `_historico/mapa-cadastro-proposta-comprasgov-20261118.md`, não capturada do portal). Testes: `node --test extensao-leitura/preencher-proposta.test.mjs netlify/functions/__tests__/proposta-lote.test.js` (DOM mínimo próprio, sem navegador).
 
 Não homologado no portal real. Suposições a confirmar com 1 item real: número do item é o primeiro `span` de `app-identificacao-item`; o formato `10,5000` é aceito pela máscara monetária (a releitura acusa se não); o Angular aceita o valor com esses eventos; abrir a seta mostra os campos sem outro gesto. Planilha: o seletor de arquivo pode fechar o popup em alguns Chromes (reabra: o lote lido fica guardado).
+
+## Modo "Acompanhar chat" (19/11/2026)
+
+Alerta quando o pregoeiro escreve, no pregão que o usuário **já tem aberto**. Decisões do dono: nada pago e nunca contornar captcha.
+
+Fluxo: popup → "Acompanhar chat" (CNPJ e nome da empresa, som, gravar) → **Acompanhar este pregão**. O popup injeta `vigiarChat` (`acompanhar-chat.mjs`) na aba ativa; o script observa o DOM com `MutationObserver` (debounce de 300 ms), lê `.mensagens-texto`/`.mensagens-data` (seletores da página pública mapeada em 19/11) e avisa o service worker (`acompanhar-worker.mjs`) por `chrome.runtime.sendMessage`, que mostra a notificação e o badge. Um clique do usuário inicia; **Parar de acompanhar** encerra.
+
+Regras:
+- Alerta só para mensagem **nova** (aparecida depois do clique) e que não seja de participante. As que já estavam na tela são marcadas como vistas. Mensagem cuja hora no portal é mais de 30 min anterior ao agora, ao aparecer, é tratada como histórico aberto pelo usuário e não alerta (custo: computador dormindo por mais de 30 min perde o alerta daquela mensagem). Hora do portal lida como UTC-3.
+- Destaque (notificação "IMPORTANTE", fica na tela até o clique, badge vermelho): cita o CNPJ (14 dígitos, com ou sem pontuação) ou o nome informado; ou contém convocação, anexo, prazo, recusa, desclassific-, inabilit-, diligência, habilitação. Trecho de até 200 caracteres ao redor do primeiro termo, com a hora; CPF mascarado.
+- Não duplica: chave = hora + texto; novo clique na mesma compra preserva o já visto.
+- Para e avisa "Parei de acompanhar" quando: a rota sai da compra/página suportada (checada a cada 3 s, o Angular troca rota sem recarregar), a página mostra "sessão expirada/encerrada", a página é recarregada/fechada (`pagehide`). Trocar de item dentro da mesma compra continua.
+- O script **não** faz requisição (nem `fetch`/XHR/WebSocket/beacon), não recarrega, não navega, não clica, não toca em captcha; os testes armadilham essas APIs e checam o código-fonte.
+- Gravar no LicitaPlena é opcional (caixa desmarcada por padrão; pede a permissão de site do LicitaPlena no clique). Ao alertar, o worker (no máx. 1 vez a cada 30 s por aba) lê a página com o mesmo `lerPaginaPregao` e envia com `enviarNaPagina` pela aba logada do LicitaPlena para `/api/pregao-gravado`: mesma regra de CPF, aprovação e confiança do modo "Gravar pregão". Na sala de disputa (página não suportada pelo leitor) avisa que não gravou; o alerta segue.
+
+Permissões (manifesto 0.3.0): `activeTab` + `scripting` (já existiam): acesso temporário só à aba onde o usuário clicou e injeção do vigia; `notifications`: única forma de mostrar o aviso fora da aba; background `acompanhar-worker.mjs`: necessário porque script de página não cria notificação nem badge. O worker só reage a mensagens do próprio script da extensão (checa `sender.id` e aba), não guarda estado e não tem rede. Sem `storage` (empresa/opções ficam no localStorage do popup), `tabs`, `alarms`, `host_permissions`, `<all_urls>` nem 127.0.0.1 (este só no pacote QA, que agora também importa o worker de acompanhamento).
+
+Limitações honestas:
+- Precisa da aba aberta e do computador ligado; fechar a aba, suspender o computador, ou o navegador "dormir" a aba interrompe o aviso sem nenhum alarme. Fechar o navegador não avisa nada.
+- Se o portal cair com a mesma URL (tela de erro sem sair da rota) e não mostrar "sessão expirada/encerrada", o script não percebe: sem mensagens, sem alerta e sem "parei". Se navegar para outra URL, avisa.
+- **A sala de disputa do fornecedor logado não foi mapeada**: aceito o prefixo `/comprasnet-web/seguro/fornecedor/`, mas os seletores do chat são os da página pública. Se a sala usar outras classes, nada é detectado. Precisa de um teste real (1 pregão) para confirmar seletores e a classe que distingue mensagem de participante.
+- Só chat visível/aberto na tela é lido (na pública, o chat de cada fornecedor só existe depois de aberto pelo usuário).
+- Som: é o da notificação do sistema (`silent` quando desmarcado), sujeito ao "Não perturbe" do Windows/macOS.
+- Não instalado nem homologado em navegador real; testado com DOM simulado e a fixture real do chat.
+
+Testes: `node --test extensao-leitura/acompanhar-chat.test.mjs` (14 casos: detecção, destaques, sem duplicar, parada, sem rede, worker, manifesto). Ícone da notificação: `icone.png`.

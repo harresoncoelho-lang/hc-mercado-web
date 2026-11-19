@@ -12,3 +12,6 @@ button:disabled { opacity: .6; cursor: wait; }
 #result { font-weight: 600; overflow-wrap: anywhere; white-space: pre-line; }
 h2 { font-size: 17px; margin: 22px 0 6px; }
 #gravarStatus { font-weight: 600; overflow-wrap: anywhere; white-space: pre-line; }
+#acompanharStatus { font-weight: 600; overflow-wrap: anywhere; white-space: pre-line; }
+label:has(> input[type=checkbox]) { display: flex; gap: 8px; align-items: center; }
+input[type=checkbox] { width: auto; }

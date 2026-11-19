@@ -32,8 +32,8 @@ async function setup({ changedTab = false, fail = false, wrongUrl = false, editD
 }
 test('manifest limita permissÃµes e nÃ£o contÃ©m execuÃ§Ã£o automÃ¡tica ou rede', async () => {
   const manifest = JSON.parse(await readFile(new URL('./manifest.json', import.meta.url), 'utf8'));
-  assert.deepEqual(manifest.permissions, ['activeTab', 'scripting']);
-  for (const key of ['background', 'content_scripts', 'host_permissions', 'externally_connectable']) assert.equal(key in manifest, false);
+  assert.deepEqual(manifest.permissions, ['activeTab', 'scripting', 'notifications']); assert.equal(manifest.background.service_worker, 'acompanhar-worker.mjs');
+  for (const key of ['content_scripts', 'host_permissions', 'externally_connectable']) assert.equal(key in manifest, false);
   assert.match(manifest.content_security_policy.extension_pages, /connect-src 'none'/);
 });
 
@@ -81,16 +81,16 @@ test('erro de extensÃ£o e CNPJ ausente nÃ£o aparentam conexÃ£o', async () => {
 });
 
 
-test('popup captura tentativa durante await e não cancela nova associação no finally', async t => {
+test('popup captura tentativa durante await e nï¿½o cancela nova associaï¿½ï¿½o no finally', async t => {
   let active='antiga';const cancelled=[];let release;
   const contexto={cnpj:'12.345.678/0001-95',uasg:'788820',number:'41',year:'2026',purchaseId:'78882005000412026'};
-  globalThis.licitaplenaPonteLeitura={obterTentativa:()=>({tentativaId:active,contexto,documentoId:'fixture',versao:1}),vincularPortal:()=>true,concluir:()=>{throw Error('não deve concluir');},cancelar:id=>{cancelled.push(id);if(active===id)active=null;}};
+  globalThis.licitaplenaPonteLeitura={obterTentativa:()=>({tentativaId:active,contexto,documentoId:'fixture',versao:1}),vincularPortal:()=>true,concluir:()=>{throw Error('nï¿½o deve concluir');},cancelar:id=>{cancelled.push(id);if(active===id)active=null;}};
   t.after(()=>delete globalThis.licitaplenaPonteLeitura);
   const app=await setup();await app.elements.adopt.handlers.click();
   chrome.scripting.executeScript=()=>new Promise(resolve=>{release=resolve;});
   const reading=app.read();await Promise.resolve();await Promise.resolve();
   assert.equal(app.elements.adopt.disabled,true);
-  active='nova';await app.elements.adopt.handlers.click(); // callback sintético também deve respeitar disabled.
+  active='nova';await app.elements.adopt.handlers.click(); // callback sintï¿½tico tambï¿½m deve respeitar disabled.
   app.elements.cnpj.handlers.input();
   release([{frameId:0,result:snapshot()}]);await reading;
   assert.equal(active,'nova');assert.ok(cancelled.length>0);assert.ok(cancelled.every(id=>id==='antiga'));

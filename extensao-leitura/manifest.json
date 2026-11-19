@@ -1,10 +1,30 @@
 {
   "manifest_version": 3,
   "name": "LicitaPlena — leitura de contexto (protótipo)",
-  "version": "0.2.0",
-  "description": "Conferência manual de CNPJ e pregão e gravação, com um clique, do pregão público aberto na aba. Não envia propostas ou lances.",
-  "permissions": ["activeTab", "scripting"],
-  "optional_host_permissions": ["https://licitaplena.com.br/*", "https://www.licitaplena.com.br/*", "https://licitaplena.pages.dev/*"],
-  "action": { "default_title": "LicitaPlena — conferir contexto / gravar pregão", "default_popup": "popup.html" },
-  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'" }
+  "version": "0.3.0",
+  "description": "Conferência manual de CNPJ e pregão, gravação e acompanhamento do chat do pregão aberto na aba. Não envia propostas ou lances.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "notifications"
+  ],
+  "optional_host_permissions": [
+    "https://licitaplena.com.br/*",
+    "https://www.licitaplena.com.br/*",
+    "https://licitaplena.pages.dev/*"
+  ],
+  "action": {
+    "default_title": "LicitaPlena — conferir contexto / gravar pregão",
+    "default_popup": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'"
+  },
+  "background": {
+    "service_worker": "acompanhar-worker.mjs",
+    "type": "module"
+  },
+  "icons": {
+    "48": "icone.png"
+  }
 }

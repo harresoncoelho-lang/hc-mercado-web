@@ -31,7 +31,20 @@
     <p id="preencherStatus" role="status" aria-live="polite">Nada preenchido ainda.</p>
     <p>Não clica Salvar, não aceita termo nem declarações, não resolve captcha e não troca de página. Você confere e salva cada item.</p>
   </section>
+  <section aria-labelledby="acompanharTitulo">
+    <h2 id="acompanharTitulo">Acompanhar chat</h2>
+    <p>Na aba do pregão que você já abriu, avisa (notificação, ícone e som opcional) quando o pregoeiro escrever. Só funciona com a aba aberta e o computador ligado.</p>
+    <label for="acompanharCnpj">CNPJ da sua empresa (para destacar quando for citada)</label><input id="acompanharCnpj" autocomplete="off" maxlength="18" inputmode="numeric">
+    <label for="acompanharNome">Nome da empresa (opcional)</label><input id="acompanharNome" autocomplete="off" maxlength="120">
+    <label><input id="acompanharSom" type="checkbox" checked> Tocar som no aviso</label>
+    <label><input id="acompanharGravar" type="checkbox"> Também gravar no LicitaPlena (só página pública)</label>
+    <button id="acompanharIniciar" type="button">Acompanhar este pregão</button>
+    <button id="acompanharParar" type="button">Parar de acompanhar</button>
+    <p id="acompanharStatus" role="status" aria-live="polite">Não está acompanhando.</p>
+    <p>Não faz requisições próprias, não recarrega nem navega, não resolve captcha. Se o portal deslogar ou a aba sair da página, avisa "parei de acompanhar".</p>
+  </section>
   <script type="module" src="popup.mjs"></script>
   <script type="module" src="gravar.mjs"></script>
   <script type="module" src="preencher.mjs"></script>
+  <script type="module" src="acompanhar.mjs"></script>
 </body></html>

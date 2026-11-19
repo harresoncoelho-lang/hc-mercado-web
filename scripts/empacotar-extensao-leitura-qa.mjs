@@ -16,13 +16,14 @@ export async function empacotarQA(config,destino){
  if(typeof destino!=='string'||!path.isAbsolute(destino))throw Error('Destino novo absoluto obrigatório');
  const manifest=JSON.parse(await readFile(new URL('manifest.json',source),'utf8'));
  manifest.background={service_worker:'worker-qa.mjs',type:'module'};manifest.key=publicKey;manifest.externally_connectable={matches:[origem+caminho]};manifest.optional_host_permissions=[...(manifest.optional_host_permissions||[]),'http://127.0.0.1/*']; // site do ambiente-teste só no pacote QA
- const files=['adapter.mjs','collector.mjs','ponte-receptor.mjs','ponte-worker.mjs','ponte-cliente.mjs','popup.mjs','popup.html','popup.css','gravar.mjs','pregao-leitor.mjs'];
+ const files=['adapter.mjs','collector.mjs','ponte-receptor.mjs','ponte-worker.mjs','ponte-cliente.mjs','popup.mjs','popup.html','popup.css','gravar.mjs','pregao-leitor.mjs','acompanhar.mjs','acompanhar-chat.mjs','acompanhar-worker.mjs','icone.png','preencher.mjs','preencher-proposta.mjs'];
  const content=await Promise.all(files.map(async file=>[file,await readFile(new URL(file,source))]));
  // Toda configuração e leitura validada antes da primeira escrita. Nunca sobrescreve destino.
  await mkdir(destino);
  for(const[file,body]of content)await writeFile(path.join(destino,file),body,{flag:'wx'});
  await writeFile(path.join(destino,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{flag:'wx'});
- await writeFile(path.join(destino,'worker-qa.mjs'),`import {criarWorkerLeitura} from './ponte-worker.mjs';\ncriarWorkerLeitura({runtime:chrome.runtime,origem:${JSON.stringify(origem)},caminho:${JSON.stringify(caminho)}});\n`,{flag:'wx'});
+ await writeFile(path.join(destino,'worker-qa.mjs'),`import './acompanhar-worker.mjs';
+import {criarWorkerLeitura} from './ponte-worker.mjs';\ncriarWorkerLeitura({runtime:chrome.runtime,origem:${JSON.stringify(origem)},caminho:${JSON.stringify(caminho)}});\n`,{flag:'wx'});
  return {destino,extensionId,instalado:false};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
