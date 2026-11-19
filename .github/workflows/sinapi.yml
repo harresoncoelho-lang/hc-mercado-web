@@ -1,0 +1,44 @@
+name: SINAPI (preços de insumos e composições da CAIXA)
+
+# Robô mensal da tela SINAPI (scripts/coletar_sinapi.js): baixa da CAIXA (grátis, sem login, sem captcha) o ZIP
+# da referência mais recente (~16 MB, todas as UFs) e grava a tabela sinapi_precos das UFs pedidas.
+# A CAIXA publica por volta do dia 10 a 15 do mês seguinte; roda dia 16 e dia 25 às 12:00 UTC (9h de Brasília)
+# para pegar atraso e retificação. Rodar de novo é seguro (upsert + limpeza da referência anterior por UF).
+# Não escreve no repositório: só no Supabase. Precisa de supabase/sinapi.sql aplicado antes.
+concurrency:
+  group: sinapi
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: "0 12 16,25 * *"
+  workflow_dispatch:
+    inputs:
+      ufs:
+        description: "UFs separadas por vírgula"
+        required: false
+        default: "AM"
+      referencia:
+        description: "Mês AAAA-MM (vazio = mais recente publicado)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Coletar SINAPI
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SINAPI_UFS: ${{ github.event.inputs.ufs || 'AM' }}
+          SINAPI_REFERENCIA: ${{ github.event.inputs.referencia || '' }}
+        run: node scripts/coletar_sinapi.js

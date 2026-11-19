@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SINAPI — LicitaPlena</title>
+<link rel="icon" type="image/png" href="favicon.png?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script><script src="supabase-config.js"></script>
+<link rel="stylesheet" href="ds-tokens.css"><link rel="stylesheet" href="menu-lateral.css">
+<!-- Tema: mesma chave do painel; claro é o padrão, só quem escolheu "escuro" fica no escuro. -->
+<script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}if(t!=="escuro")document.documentElement.classList.add("tema-claro");document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
+<style>
+/* Design System (ds-tokens.css): mesmas regras de componentes de processos.html (topo, botões, campos, tabela, abas, avisos). */
+*{box-sizing:border-box}
+[data-theme="dark"]{color-scheme:dark}[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--surface-page);color:var(--text-primary);font:var(--text-body);font-family:var(--font-sans)}
+button,input,select{font-family:var(--font-sans)}
+:is(button,a,input,select,[tabindex]):focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+header{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 24px;background:var(--surface-default);border-bottom:1px solid var(--border-default)}
+.topo-marca-linha{display:flex;align-items:center;gap:8px;min-width:0}
+header .marca{display:flex;align-items:center;gap:8px;color:var(--text-primary);text-decoration:none;font:600 16px/24px var(--font-sans)}
+.marca-placa{display:inline-grid;place-content:center;width:32px;height:32px;border-radius:var(--radius-control);background:#f6f8fc;border:1px solid #e3e8f0;flex:none}
+.marca-placa img{width:24px;height:24px;display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:500 14px/16px var(--font-sans);cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--surface-sunken)}
+.btn.primario{background:var(--action-strong);border-color:transparent;color:var(--action-on)}
+.btn.primario:hover{background:var(--action-strong-hover)}
+.tema-icone{width:40px;padding:0;font-size:16px}
+main{max-width:1280px;margin:auto;padding:24px 24px 56px}
+.topo h1{font:var(--text-title);margin:0 0 4px}
+.topo p,.nota,.vazio{color:var(--text-secondary);line-height:1.5;margin:0}
+.card{background:var(--surface-default);border:1px solid var(--border-default);border-radius:var(--radius-card);padding:16px;margin:16px 0}
+.filtros{display:grid;grid-template-columns:110px 170px 190px 1fr auto;gap:12px;align-items:end}
+label{display:block;font:var(--text-label);color:var(--text-primary);margin:0 0 6px}
+select,input{width:100%;min-height:40px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body)}
+input::placeholder{color:var(--text-secondary);opacity:1}
+.explica{margin:12px 0 8px;font-size:13px}
+#contador{font:var(--text-label);color:var(--text-secondary);margin:8px 0}
+.tabela-wrap{border:1px solid var(--border-default);border-radius:var(--radius-card);overflow:auto}
+.tabela{width:100%;border-collapse:collapse}
+.tabela th{background:var(--surface-sunken);color:var(--text-secondary);font:var(--text-label);text-align:left;padding:10px 12px;border-bottom:1px solid var(--border-default);white-space:nowrap}
+.tabela td{padding:10px 12px;line-height:20px;border-bottom:1px solid var(--border-default);vertical-align:top}
+.tabela tbody tr:last-child td{border-bottom:0}
+.tabela tbody tr:hover{background:var(--surface-sunken)}
+.tabela td small{display:block;color:var(--text-secondary);font-size:12px;line-height:18px;margin-top:2px}
+.tabela td.item{max-width:460px}
+.tabela a{color:var(--action-text);font-weight:600}
+.vazio{padding:24px;text-align:center}
+.aviso{display:none;margin:12px 0;border:1px solid;border-radius:var(--radius-card);padding:12px 16px}
+.aviso.erro{display:block;color:var(--error-text);border-color:var(--error-border);background:var(--error-bg)}
+.aviso.info{display:block;color:var(--info-text);border-color:var(--info-border);background:var(--info-bg)}
+@media(max-width:900px){.filtros{grid-template-columns:110px 1fr 1fr}.filtros .palavras,.filtros .acao{grid-column:1/-1}}
+@media(max-width:640px){
+  header{padding:8px 12px}main{padding:16px}
+  .filtros{grid-template-columns:1fr 1fr}.filtros .palavras,.filtros .encargos{grid-column:1/-1}
+  /* Celular: cada linha vira um cartão com o rótulo da coluna (data-rotulo), sem rolagem lateral. */
+  .tabela-wrap{border:0;overflow:visible}.tabela thead{display:none}
+  .tabela,.tabela tbody,.tabela tr,.tabela td{display:block;width:100%}
+  .tabela tr{border:1px solid var(--border-default);border-radius:var(--radius-card);margin-bottom:12px;background:var(--surface-default)}
+  .tabela td{border-bottom:1px solid var(--border-default);max-width:none}
+  .tabela td[data-rotulo]::before{content:attr(data-rotulo);display:block;font:var(--text-label);color:var(--text-secondary);margin-bottom:2px}
+  .tabela td.item{max-width:none}
+}
+</style>
+</head>
+<body>
+<header><div class="topo-marca-linha"><button id="nav-gaveta-btn" type="button" aria-controls="menu-principal" aria-expanded="false">Menu</button><a class="marca" href="painel.html" title="Voltar ao painel principal"><span class="marca-placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a></div><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button></div></header>
+<div class="shell">
+<!-- Menu lateral: mesma estrutura e itens do menu do painel.html (duplicação intencional entre páginas). Comportamento em menu-lateral.js. -->
+<nav id="menu-principal" aria-label="Menu principal">
+  <button id="nav-colapsar-btn" type="button" title="Recolher menu" aria-controls="menu-principal">
+    <span class="nav-ico" aria-hidden="true">&#171;</span><span class="nav-label">Recolher</span>
+  </button>
+  <a href="/sistema" title="Hoje"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-house"></use></svg></span><span class="nav-label">Hoje</span></a>
+  <a href="painel.html#boletim" title="Boletim"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-clipboard-text"></use></svg></span><span class="nav-label">Boletim</span></a>
+  <a href="painel.html#oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-magnifying-glass"></use></svg></span><span class="nav-label">Encontrar Licitações</span></a>
+  <a href="painel.html#diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Inteligência de Mercado</span></a>
+  <a href="prospeccao.html" title="Prospecção"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Prospecção</span></a>
+  <a href="painel.html#empresa" title="Analisar concorrente"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Analisar concorrente</span></a>
+  <a href="painel.html#transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-handshake"></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></a>
+  <a href="painel.html#precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Pesquisa de Preços</span></a>
+  <a href="bdi.html" title="Calculadora de BDI"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Calculadora de BDI</span></a>
+  <a href="painel.html#kanban" title="Funil"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folders"></use></svg></span><span class="nav-label">Funil</span></a>
+  <a href="processos.html" title="Processos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folder-open"></use></svg></span><span class="nav-label">Processos</span></a>
+  <a href="operacao.html" title="Minhas empresas e documentos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-files"></use></svg></span><span class="nav-label">Minhas empresas e documentos</span></a>
+  <a href="painel.html#juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-scales"></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></a>
+  <a href="painel.html#status" title="Status"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-circle"></use></svg></span><span class="nav-label">Status</span></a>
+</nav>
+<div class="nav-gaveta-fundo" id="nav-gaveta-fundo" hidden></div>
+<main>
+  <div class="topo"><h1>SINAPI</h1><p>Preços de insumos e custos de composições da CAIXA para orçamento de obras e serviços de engenharia. Busque pelo código ou pela descrição e use o preço num item do processo. Referência mais recente publicada pela CAIXA, atualizada uma vez por mês.</p></div>
+  <form class="card" id="form-busca">
+    <div class="filtros">
+      <div><label for="f-uf">UF</label><select id="f-uf"><option>AC</option><option>AL</option><option selected>AM</option><option>AP</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option><option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option><option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option><option>SP</option><option>TO</option></select></div>
+      <div><label for="f-tipo">Tabela</label><select id="f-tipo"><option value="composicao">Composições</option><option value="insumo">Insumos</option></select></div>
+      <div class="encargos"><label for="f-deson">Encargos sociais</label><select id="f-deson"><option value="nao">Não desonerado</option><option value="sim">Desonerado</option></select></div>
+      <div class="palavras"><label for="f-busca">Código ou descrição</label><input id="f-busca" maxlength="200" autocomplete="off" placeholder="Ex.: 104658 ou alvenaria bloco ceramico"></div>
+      <div class="acao"><button class="btn primario" type="submit">Buscar</button></div>
+    </div>
+  </form>
+  <div id="aviso" class="aviso" role="status" aria-live="polite"></div>
+  <p class="nota explica">Fonte: SINAPI/CAIXA, relatório de referência (preço mediano da capital). Desonerado: encargos com desoneração da folha (CPRB). Confira sempre o relatório oficial e o regime pedido no edital. Origem do insumo: C = coletado, CR = coeficiente de representatividade, AS = atribuído de São Paulo.</p>
+  <p id="contador"></p>
+  <div class="tabela-wrap"><table class="tabela"><thead><tr><th>Código</th><th>Descrição</th><th>Unidade</th><th>Preço</th><th>Ação</th></tr></thead><tbody id="tabela-corpo"><tr><td colspan="5" class="vazio">Busque pelo código ou pela descrição.</td></tr></tbody></table></div>
+</main>
+</div>
+<script src="sinapi-ui.js"></script>
+<script src="menu-lateral.js"></script>
+</body>
+</html>
