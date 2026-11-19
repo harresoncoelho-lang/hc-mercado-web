@@ -259,7 +259,9 @@
         const { status, corpo: r } = await solicitar({ acao: 'registrarLogo', caminho, hash });
         if (!ativo()) return;
         if (status !== 200) { avisoTela(mensagemDoErro(status, r), 'erro', 'perfil-logo-aviso'); destacar('logo'); return; }
-        $('perfil-logo-previa').src = dataUrlLogo(bytes, img.ext); $('perfil-logo-previa').hidden = false; avisoTela('Logo salva.', 'info', 'perfil-logo-aviso');
+        const url = dataUrlLogo(bytes, img.ext); $('perfil-logo-previa').src = url; $('perfil-logo-previa').hidden = false; avisoTela('Logo salva.', 'info', 'perfil-logo-aviso');
+        // Só avisa: a logo é da empresa. data: URL não "suja" o canvas, então dá para ler os pixels aqui.
+        const teste = new raiz.Image(); teste.onload = () => { try { const c = doc.createElement('canvas'), k = Math.min(1, 200 / Math.max(teste.width, teste.height)); c.width = Math.max(1, Math.round(teste.width * k)); c.height = Math.max(1, Math.round(teste.height * k)); const g = c.getContext('2d'); g.drawImage(teste, 0, 0, c.width, c.height); if (ativo() && logoClara(g.getImageData(0, 0, c.width, c.height).data)) avisoTela('Logo salva. Atenção: sua logo é clara e pode sumir no papel. Prefira uma versão escura ou colorida.', 'erro', 'perfil-logo-aviso'); } catch { /* sem canvas: segue sem o alerta */ } }; teste.src = url;
       };
     }
     return { abrir, limpar: texto => { vigente = null; aviso(texto); }, sugerirUf: endereco => sugerirUf(endereco) };
@@ -273,7 +275,14 @@
     return `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${btoa(s)}`;
   }
 
-  const api = { LOGO, dimensoesLogo, validarLogo, sha256Hex, caminhoLogo, dataUrlLogo, valoresDoPerfil, sugestoes, ufDoEndereco, linhasDePremissas, montarPayload, linhaSemChave, idDoCampo, rotuloDoCampo, mensagemDoErro, montar };
+  // RGBA: logo "clara" quando quase nenhum pixel é visível (opaco e mais escuro que quase-branco) no papel branco.
+  function logoClara(rgba) {
+    let visiveis = 0; const total = rgba.length / 4;
+    for (let i = 0; i < rgba.length; i += 4) if (rgba[i + 3] >= 64 && 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2] < 225) visiveis++;
+    return total > 0 && visiveis / total < 0.01;
+  }
+
+  const api = { LOGO, logoClara, dimensoesLogo, validarLogo, sha256Hex, caminhoLogo, dataUrlLogo, valoresDoPerfil, sugestoes, ufDoEndereco, linhasDePremissas, montarPayload, linhaSemChave, idDoCampo, rotuloDoCampo, mensagemDoErro, montar };
   raiz.PerfilEmpresa = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

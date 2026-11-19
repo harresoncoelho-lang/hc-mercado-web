@@ -16,7 +16,9 @@ function decimal(valor,escala){
  if(n<=0n||n>999999999999999n)pendente('Valor fora do limite ou igual a zero.');return n;
 }
 function totalItem(q,p){const n=(decimal(q,3)*decimal(p,2)+500n)/1000n;if(n>999999999999999n)pendente('Total excede o limite.');return n;}
-const dinheiro=n=>`${n/100n},${String(n%100n).padStart(2,'0')}`;
+const dinheiro=n=>`${String(n/100n).replace(/\B(?=(\d{3})+$)/g,'.')},${String(n%100n).padStart(2,'0')}`;
+// numeric(…,3) chega como texto: inteiro sem casas ("200"), fração só com as casas usadas ("2,5"); "200,000" parecia duzentos mil.
+const quantidade=q=>{const [i,f='']=q.split('.');const c=f.replace(/0+$/,'');return c?`${i},${c}`:i;};
 // Valor por extenso (proposta formato 2): centavos em BigInt, só aritmética inteira.
 const UNIDADES=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
 const DEZENAS=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
@@ -74,8 +76,8 @@ function proposta(ctx,body,fontes){
  texto(i.descricao,'descrição do item',10000);texto(i.identificador,'identificador do item',180);
  for(const c of ['marca','modelo'])if(i[c]!=null&&i[c]!=='')texto(i[c],c,500);
  const subtotal=totalItem(i.quantidade,i.valor_unitario_proposta);total+=subtotal;if(total>999999999999999n)pendente('Total excede o limite.');itens.push(i);
- tabela.push([i.identificador,i.descricao,i.quantidade.replace('.',','),unidade,`${i.marca||'não informada'} / ${i.modelo||'não informado'}`,dinheiro(decimal(i.valor_unitario_proposta,2)),dinheiro(subtotal)]);
- linhas.push(`Item ${i.identificador}: ${i.descricao}\nQuantidade: ${i.quantidade.replace('.',',')} | Unidade informada pelo usuário: ${unidade}\nMarca: ${i.marca||'não informada'} | Modelo: ${i.modelo||'não informado'}\nUnitário ofertado: R$ ${dinheiro(decimal(i.valor_unitario_proposta,2))} | Total: R$ ${dinheiro(subtotal)}`);
+ tabela.push([i.identificador,i.descricao,quantidade(i.quantidade),unidade,`${i.marca||'não informada'} / ${i.modelo||'não informado'}`,dinheiro(decimal(i.valor_unitario_proposta,2)),dinheiro(subtotal)]);
+ linhas.push(`Item ${i.identificador}: ${i.descricao}\nQuantidade: ${quantidade(i.quantidade)} | Unidade informada pelo usuário: ${unidade}\nMarca: ${i.marca||'não informada'} | Modelo: ${i.modelo||'não informado'}\nUnitário ofertado: R$ ${dinheiro(decimal(i.valor_unitario_proposta,2))} | Total: R$ ${dinheiro(subtotal)}`);
  }
  const rodape=`Total da proposta: R$ ${dinheiro(total)}\nValidade: ${campos.validade}\nPrazo de entrega: ${campos.prazoEntrega}\nPagamento: ${campos.pagamento}`;
  conteudo=`${linhas.join('\n\n')}\n\n${rodape}`;
@@ -115,6 +117,6 @@ function mascaraCnpj(cnpj){
 // Texto do DOCX: a prévia, ou o texto com o CPF lido na hora; null = a peça pede CPF e o perfil não tem.
 function textoFinal(resultado,cpf){const m=resultado.mascararCnpj||(t=>t);if(!resultado.textoComCpf)return m(resultado.previa.texto);return cpf?m(resultado.textoComCpf(cpf)):null;}
 // Tabela só quando a peça persistida nasceu no formato 2; sem logo nem formato, o DOCX sai como antes.
-function docx(resultado,{formato=1,logo=null,paginas}={}){return montarDocx({}, {}, {texto:resultado.previa.texto,preservarLinhas:true},resultado.titulo,{logo,tabela:formato===2?resultado.tabela:null,paginas});}
-module.exports={valorPorExtenso,uuid,decimal,totalItem,dinheiro,preparar,docx,pendente,textoFinal,CPF_PREVIA};
+function docx(resultado,{formato=1,logo=null,paginas}={}){return montarDocx({}, {}, {texto:resultado.previa.texto,preservarLinhas:true,tituloNegrito:true},resultado.titulo,{logo,tabela:formato===2?resultado.tabela:null,paginas});}
+module.exports={quantidade,valorPorExtenso,uuid,decimal,totalItem,dinheiro,preparar,docx,pendente,textoFinal,CPF_PREVIA};
 

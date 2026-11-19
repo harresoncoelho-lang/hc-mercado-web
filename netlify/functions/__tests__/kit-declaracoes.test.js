@@ -174,7 +174,7 @@ test('logo inválida ou com hash divergente: documento sai sem logo, como antes'
 test('montarDocx: com logo cria mídia, cabeçalho e relações; sem logo o pacote é o de hoje',()=>{
  const minuta={texto:'Linha 1\nLinha 2',preservarLinhas:true};
  const sem=new AdmZip(montarDocx({}, {}, minuta,'T'));
- assert.deepEqual(sem.getEntries().map(e=>e.entryName).sort(),['[Content_Types].xml','_rels/.rels','docProps/app.xml','docProps/core.xml','word/_rels/document.xml.rels','word/document.xml','word/styles.xml']);
+ assert.deepEqual(sem.getEntries().map(e=>e.entryName).sort(),['[Content_Types].xml','_rels/.rels','docProps/app.xml','docProps/core.xml','word/_rels/document.xml.rels','word/document.xml','word/settings.xml','word/styles.xml']);
  assert.doesNotMatch(sem.readAsText('word/document.xml'),/headerReference|xmlns:r=/);
  const com=new AdmZip(montarDocx({}, {}, minuta,'T',{logo:{bytes:PNG,tipo:'image/png',largura:300,altura:100}}));
  assert.ok(com.getEntry('word/media/logo.png').getData().equals(PNG));
@@ -195,7 +195,7 @@ test('proposta em tabela só para peça nova (formato 2); peça antiga continua 
  const antigo=await exportar();
  assert.doesNotMatch(antigo.doc,/<w:tblHeader\/>|Marca \/ modelo/);assert.match(antigo.doc,/Unitário ofertado: R\$ 1,25/);
  // Formato 1 fixo: "Item <id>: <descrição>" com espaço (regressão B4).
- assert.match(antigo.previa,/\nItem 1: Caneta\nQuantidade: 2,000 \| Unidade informada pelo usuário: un\nMarca: não informada \| Modelo: não informado\nUnitário ofertado: R\$ 1,25 \| Total: R\$ 2,50\n/);
+ assert.match(antigo.previa,/\nItem 1: Caneta\nQuantidade: 2 \| Unidade informada pelo usuário: un\nMarca: não informada \| Modelo: não informado\nUnitário ofertado: R\$ 1,25 \| Total: R\$ 2,50\n/);
  f.state.kit[0].formato=2;f.state.kit[0].revisao_hash=null;
  const novo=await exportar();
  assert.match(novo.doc,/<w:tblHeader\/>/);assert.match(novo.doc,/Marca \/ modelo/);assert.match(novo.doc,/>Caneta</);assert.match(novo.doc,/>2,50</);assert.match(novo.doc,/Total da proposta: R\$ 2,50 \(dois reais e cinquenta centavos\)/);assert.doesNotMatch(antigo.doc+novo.previa,/dois reais/);

@@ -27,7 +27,7 @@ test('proposta usa somente item persistido, condições obrigatórias e hash est
  assert.throws(()=>preparar({...contexto,itens:[{...contexto.itens[0],valor_unitario_proposta:null,valor_proposta:'1'}]},proposta));
 });
 test('quantidade apresentada em pt-BR conserva valor e total exato',()=>{
- for(const [quantidade,apresentada,total] of [['2.000','2,000','25,00'],['1.5','1,5','18,75']]){
+ for(const [quantidade,apresentada,total] of [['2.000','2','25,00'],['1.500','1,5','18,75'],['80.000','80','1.000,00']]){
  const c={...contexto,itens:[{...contexto.itens[0],quantidade,valor_unitario_proposta:'12.50'}]};
  const r=preparar(c,proposta);assert.match(r.previa.texto,new RegExp(`Quantidade: ${apresentada} \\|`));assert.ok(r.previa.texto.includes(`Total da proposta: R$ ${total}`));
  assert.ok(new AdmZip(docx(r)).readAsText('word/document.xml').includes(`Quantidade: ${apresentada} |`));
@@ -45,9 +45,25 @@ test('DOCX reutilizado contém texto literal escapado e título',async()=>{
 });
 test('DOCX da declaração preserva linhas vazias e não altera minuta legada',()=>{
  const {montarDocx}=require('../netlify/functions/gerar-checklist');
- const a=docx({titulo:'Livre',previa:{texto:'A\n\nB'}});
+ const a=docx({titulo:'Livre',previa:{texto:'Livre\n\nA\n\nB'}});
+ assert.match(new AdmZip(a).readAsText('word/document.xml'),/<w:jc w:val="center"\/><\/w:pPr><w:r><w:rPr>[^]*?<w:b\/><\/w:rPr><w:t xml:space="preserve">Livre</);
  assert.equal((new AdmZip(a).readAsText('word/document.xml').match(/<w:br\/>/g)||[]).length,2);
  const b=montarDocx({}, {}, {texto:'A\n\nB'});
  assert.equal((new AdmZip(b).readAsText('word/document.xml').match(/<w:br\/>/g)||[]).length,1);
  assert.match(new AdmZip(b).readAsText('docProps/core.xml'),/Checklist de Licitação/);
+});
+test('reais com milhar e DOCX com settings.xml (compatibilityMode 15) referenciado',()=>{
+ const {dinheiro,quantidade}=require('../netlify/functions/_kit_documentos');
+ assert.deepEqual([1n,99n,100n,775605n,100000000n,123456789012n].map(dinheiro),['0,01','0,99','1,00','7.756,05','1.000.000,00','1.234.567.890,12']);
+ assert.deepEqual(['200','200.000','2.500','0.125','1.010'].map(quantidade),['200','200','2,5','0,125','1,01']);
+ const zip=new AdmZip(docx(preparar(contexto,proposta)));
+ assert.match(zip.readAsText('word/settings.xml'),/<w:defaultTabStop w:val="720"\/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http:\/\/schemas.microsoft.com\/office\/word" w:val="15"\/>/);
+ assert.match(zip.readAsText('[Content_Types].xml'),/PartName="\/word\/settings.xml" ContentType="[^"]+settings\+xml"/);
+ assert.match(zip.readAsText('word/_rels/document.xml.rels'),/Type="[^"]+\/settings" Target="settings.xml"/);
+ assert.doesNotMatch(zip.readAsText('word/document.xml'),/defaultTabStop/);
+});
+test('formato 2: só o título vai em negrito; rodapé com total segue texto comum',()=>{
+ const zip=new AdmZip(docx(preparar(contexto,proposta),{formato:2}));const xml=zip.readAsText('word/document.xml');
+ assert.equal((xml.match(/<w:jc w:val="center"\/>/g)||[]).length,1);
+ assert.doesNotMatch(xml,/<w:b\/><\/w:rPr><w:t xml:space="preserve">Total da proposta/);
 });

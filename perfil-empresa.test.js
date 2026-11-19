@@ -160,3 +160,11 @@ test('UF do endereço: navegador lê igual ao servidor, inclusive sem UF e com s
     assert.equal(P.ufDoEndereco(e), S.ufDoEndereco(e), String(e));
   assert.equal(P.ufDoEndereco('Rua Fictícia, 100 — Manaus/AM'), 'AM');
 });
+
+test('logo clara: branca ou transparente avisa; logo com traço escuro não', () => {
+  const px = (n, r, g, b, a) => Uint8ClampedArray.from({ length: n * 4 }, (_, i) => [r, g, b, a][i % 4]);
+  assert.equal(P.logoClara(px(100, 255, 255, 255, 255)), true);
+  assert.equal(P.logoClara(px(100, 0, 0, 0, 0)), true);
+  const azul = px(100, 255, 255, 255, 0); azul.set([34, 85, 224, 255], 0); azul.set([34, 85, 224, 255], 4);
+  assert.equal(P.logoClara(azul), false);
+});

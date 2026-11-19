@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,34 +8,43 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds-tokens.css">
+<script>
+  // Tema antes de pintar (sem piscar): mesma chave e mesmo padrão claro do sistema (login.html).
+  (function () { var t = null; try { t = localStorage.getItem("licitaplena_tema"); } catch (e) { t = null; } document.documentElement.dataset.theme = t === "escuro" ? "dark" : "light"; })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
 <script src="senha-captcha-ui.js"></script>
 <style>
+  /* Design System (ds-tokens.css): os nomes antigos viram apelidos dos tokens, que trocam com o tema. Aguarda aprovação. */
   :root {
-    --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a;
-    --fundo: #0a121c; --cartao: #141f2e; --cartao-claro: #182638; --borda: #223144;
-    --texto: #eef3f8; --texto-fraco: #90a2b8; --verde: #34c17c; --vermelho: #e8617a;
-    --raio: 12px; --raio-pq: 8px;
+    --azul: var(--action-strong); --azul-escuro: var(--brand-navy); --laranja: var(--attention-text);
+    --fundo: var(--surface-page); --cartao: var(--surface-default); --cartao-claro: var(--surface-sunken); --borda: var(--border-default);
+    --texto: var(--text-primary); --texto-fraco: var(--text-secondary); --verde: var(--success-text); --vermelho: var(--error-text);
+    --raio: var(--radius-card); --raio-pq: var(--radius-control); --campo: var(--surface-default);
   }
   * { box-sizing: border-box; }
-  body {
-    font-family: "Inter", Arial, Helvetica, sans-serif;
-    background: radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%), var(--fundo);
-    background-attachment: fixed;
-    color: var(--texto);
-    margin: 0;
-  }
+  body { font: var(--text-body); background: var(--fundo); color: var(--texto); margin: 0; }
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  a { color: var(--action-text); }
   header {
-    background: linear-gradient(120deg, var(--azul-escuro) 0%, var(--azul) 55%, #1c63c7 100%);
-    padding: 22px 32px;
+    background: var(--cartao); border-bottom: 1px solid var(--borda);
+    padding: 16px 32px;
     display: flex; align-items: center; justify-content: space-between;
   }
   header .titulo { display: flex; align-items: center; gap: 12px; }
-  header img { width: 36px; height: 36px; }
-  header h1 { margin: 0; font-size: 19px; }
+  header img { width: 24px; height: 24px; display: block; }
+  /* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (regra do DS). */
+  .placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+  .topo-auth { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; line-height: 24px; color: var(--texto); }
+  .marca img { width: 24px; height: 24px; display: block; }
+  .btn-tema { background: transparent; border: 1px solid transparent; color: var(--action-text); height: 32px; padding: 0 8px; border-radius: var(--raio-pq); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn-tema:hover { background: var(--action-tint); }
+  header h1 { margin: 0; font: var(--text-section); font-size: 18px; }
   header button {
-    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff;
+    background: var(--cartao); border: 1px solid var(--border-strong); color: var(--texto);
     padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
   }
   main { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
@@ -44,7 +53,7 @@
     background: var(--cartao); border: 1px solid var(--borda); color: var(--texto-fraco);
     padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
   }
-  .tabs button.ativo { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .tabs button.ativo { background: var(--action-tint); color: var(--action-text); border-color: var(--action-text); }
   .cartao-lista {
     background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
     overflow: hidden;
@@ -54,32 +63,33 @@
   td { padding: 14px 16px; border-bottom: 1px solid var(--borda); vertical-align: top; }
   tr:last-child td { border-bottom: none; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-  .badge.pendente { background: rgba(242,137,26,0.15); color: var(--laranja); }
-  .badge.aprovado { background: rgba(52,193,124,0.15); color: var(--verde); }
-  .badge.rejeitado { background: rgba(232,97,122,0.15); color: var(--vermelho); }
-  .badge.owner { background: rgba(46,141,255,0.15); color: var(--azul); }
-  .badge.membro { background: rgba(144,162,184,0.15); color: var(--texto-fraco); }
+  .badge { border: 1px solid transparent; }
+  .badge.pendente { background: var(--attention-bg); color: var(--attention-text); border-color: var(--attention-border); }
+  .badge.aprovado { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+  .badge.rejeitado { background: var(--error-bg); color: var(--error-text); border-color: var(--error-border); }
+  .badge.owner { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+  .badge.membro { background: var(--cartao-claro); color: var(--texto-fraco); border-color: var(--borda); }
   .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
   .acoes button {
     border: none; padding: 7px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
-  .btn-aprovar { background: var(--verde); color: #06301b; }
-  .btn-rejeitar { background: var(--vermelho); color: #3a0713; }
+  .btn-aprovar { background: var(--action-strong); color: var(--action-on); }
+  .btn-rejeitar { background: var(--error-strong); color: var(--error-on); }
   .btn-reverter { background: var(--cartao-claro); color: var(--texto-fraco); border: 1px solid var(--borda) !important; }
-  .btn-detalhe { background: var(--cartao-claro); color: var(--azul); border: 1px solid var(--azul) !important; }
-  .btn-remover { background: var(--vermelho); color: #3a0713; }
-  .btn-adicionar { background: var(--azul); color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-detalhe { background: var(--cartao); color: var(--action-text); border: 1px solid var(--border-strong) !important; }
+  .btn-remover { background: var(--error-strong); color: var(--error-on); }
+  .btn-adicionar { background: var(--azul); color: var(--action-on); border: none; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
   .btn-adicionar:disabled { opacity: 0.6; cursor: default; }
   .nota-equipe {
-    background: rgba(46,141,255,0.08); border: 1px solid rgba(46,141,255,0.35);
-    color: var(--texto-fraco); font-size: 13px; line-height: 1.5;
+    background: var(--info-bg); border: 1px solid var(--info-border);
+    color: var(--info-text); font-size: 13px; line-height: 1.5;
     padding: 12px 14px; border-radius: var(--raio-pq); margin-bottom: 18px;
   }
   .form-equipe label { display: block; font-size: 13px; color: var(--texto-fraco); margin: 14px 0 6px; }
   .form-equipe label:first-child { margin-top: 0; }
-  .form-equipe input[type="email"], .form-equipe input[type="text"] {
-    width: 100%; max-width: 360px; padding: 10px 12px; background: #0d1826;
-    border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 14px;
+  .form-equipe input[type="email"], .form-equipe input[type="text"], .form-equipe select {
+    width: 100%; max-width: 360px; padding: 10px 12px; background: var(--campo);
+    border: 1px solid var(--border-strong); border-radius: 8px; color: var(--texto); font-size: 14px;
   }
   .form-equipe .checkbox-linha { display: flex; align-items: center; gap: 8px; margin-top: 16px; }
   .form-equipe .checkbox-linha input { width: 16px; height: 16px; }
@@ -87,13 +97,13 @@
   .vazio { padding: 40px; text-align: center; color: var(--texto-fraco); }
   .carregando { padding: 40px; text-align: center; color: var(--texto-fraco); }
   .modal-detalhe-fundo {
-    display: none; position: fixed; inset: 0; background: rgba(5,10,16,0.72);
+    display: none; position: fixed; inset: 0; background: rgba(11,16,32,0.55);
     z-index: 200; align-items: center; justify-content: center; padding: 20px;
   }
   .modal-detalhe-fundo.aberto { display: flex; }
   .modal-detalhe {
     background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
-    width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; padding: 24px;
+    width: 100%; max-width: 560px; max-height: 86vh; overflow-y: auto; padding: 24px; box-shadow: var(--shadow-overlay); border-radius: var(--radius-modal);
   }
   .modal-detalhe-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .modal-detalhe-topo button { background: none; border: none; color: var(--texto-fraco); font-size: 22px; cursor: pointer; line-height: 1; padding: 4px; }
@@ -104,14 +114,14 @@
   .modal-detalhe label:first-child { margin-top: 0; }
   .modal-detalhe input[type="text"], .modal-detalhe input[type="email"],
   .modal-detalhe select, .modal-detalhe textarea {
-    width: 100%; padding: 10px 12px; background: #0d1826; border: 1px solid var(--borda);
+    width: 100%; padding: 10px 12px; background: var(--campo); border: 1px solid var(--borda);
     border-radius: 8px; color: var(--texto); font-size: 14px; font-family: inherit;
   }
   .modal-detalhe textarea { resize: vertical; min-height: 60px; }
   .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
   .grade-checkbox {
     display: flex; flex-wrap: wrap; gap: 6px 16px; max-height: 170px; overflow-y: auto;
-    padding: 10px 12px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
+    padding: 10px 12px; background: var(--campo); border: 1px solid var(--borda); border-radius: 8px;
   }
   .grade-checkbox label {
     display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--texto);
@@ -119,7 +129,7 @@
   }
   .grade-checkbox input { width: 14px; height: 14px; }
   .modal-detalhe-rodape { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
-  .btn-salvar-cliente { background: var(--azul); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-salvar-cliente { background: var(--azul); color: var(--action-on); border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
   .btn-salvar-cliente:disabled { opacity: 0.6; cursor: default; }
   .faixa-auto-aprovacao {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -132,15 +142,16 @@
     background: var(--cartao-claro); color: var(--texto-fraco); border: 1px solid var(--borda) !important;
     white-space: nowrap; flex-shrink: 0;
   }
-  .switch-aprovacao[data-ativo="true"] { background: var(--verde); color: #06301b; border-color: var(--verde) !important; }
+  .switch-aprovacao[data-ativo="true"] { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border) !important; }
   .switch-aprovacao:disabled { opacity: 0.6; cursor: default; }
   .tela-auth { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
   .tela-auth .caixa { width: 100%; max-width: 380px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 32px; }
   .tela-auth label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
-  .tela-auth input { width: 100%; padding: 11px 12px; margin-bottom: 16px; background: #0d1826; border: 1px solid var(--borda); border-radius: 8px; color: var(--texto); font-size: 14px; letter-spacing: 0.05em; }
-  .tela-auth button[type="submit"] { width: 100%; padding: 12px; background: var(--laranja); color: #1a1005; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  .tela-auth input { width: 100%; height: 40px; padding: 0 12px; margin-bottom: 16px; background: var(--campo); border: 1px solid var(--border-strong); border-radius: 8px; color: var(--texto); font-size: 14px; letter-spacing: 0.05em; }
+  .tela-auth button[type="submit"] { width: 100%; height: 40px; background: var(--action-strong); color: var(--action-on); border: none; border-radius: var(--raio-pq); font-weight: 500; cursor: pointer; }
+  .tela-auth button[type="submit"]:hover { background: var(--action-strong-hover); }
   .tela-auth button[type="submit"]:disabled { opacity: 0.6; cursor: default; }
-  .tela-auth .erro { margin-top: 14px; font-size: 13px; color: #ffb3c1; display: none; }
+  .tela-auth .erro { margin-top: 16px; padding: 12px 16px; border-radius: var(--raio); border: 1px solid var(--error-border); background: var(--error-bg); font-size: 14px; color: var(--error-text); display: none; }
   .campo-senha-wrap { position: relative; }
   .campo-senha-wrap input { padding-right: 42px; margin-bottom: 0; }
   .btn-mostrar-senha {
@@ -151,14 +162,14 @@
   .btn-mostrar-senha:hover { color: var(--texto); }
   .btn-mostrar-senha svg { display: block; width: 18px; height: 18px; }
   .btn-mostrar-senha { min-width: 40px; min-height: 40px; right: 2px; }
-  .btn-mostrar-senha:focus-visible { outline: 2px solid var(--laranja); outline-offset: -2px; }
+  .btn-mostrar-senha:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
   .btn-mostrar-senha .olho-fechado, .btn-mostrar-senha.senha-visivel .olho-aberto { display: none; }
   .btn-mostrar-senha.senha-visivel .olho-fechado { display: block; }
   .mfa-qrcode { background: #fff; padding: 12px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
   .mfa-qrcode svg { display: block; width: 100%; height: auto; }
   .mfa-secreto { font-size: 12px; color: var(--texto-fraco); margin: 0 0 16px; word-break: break-all; }
-  .mfa-secreto code { background: #0d1826; padding: 2px 6px; border-radius: 4px; color: var(--texto); }
-  #btn-mfa-config { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: 8px; }
+  .mfa-secreto code { background: var(--campo); padding: 2px 6px; border-radius: 4px; color: var(--texto); }
+  #btn-mfa-config { background: var(--cartao); border: 1px solid var(--border-strong); color: var(--texto); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: 8px; }
 
   /* Tablet (768px) */
   @media (max-width: 880px) {
@@ -186,6 +197,7 @@
 
 <div id="tela-login" class="tela-auth">
   <div class="caixa">
+    <div class="topo-auth"><span class="marca"><span class="placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</span><button type="button" class="btn-tema">Tema escuro</button></div>
     <h2 style="margin-top:0;">Painel Admin</h2>
     <p style="color:var(--texto-fraco);font-size:14px;">Acesso restrito à administração da LicitaPlena.</p>
     <form id="form-login-admin">
@@ -238,11 +250,12 @@
 <div id="painel" style="display:none;">
   <header>
     <div class="titulo">
-      <img src="logo-icone-branco.svg" alt="">
+      <span class="placa"><img src="logo-icone.svg" alt=""></span>
       <h1>Painel Admin — Clientes</h1>
     </div>
     <div>
       <button id="btn-mfa-config" title="Configurar/desativar autenticação em duas etapas">🔒 2FA</button>
+      <button type="button" class="btn-tema">Tema escuro</button>
       <button id="btn-sair">Sair</button>
     </div>
   </header>
@@ -1062,6 +1075,20 @@
   });
 
   mostrarPainelSeAdmin();
+</script>
+<script>
+  // Alternar tema: grava na mesma chave que o sistema lê (igual a login.html).
+  (function () {
+    const botoes = document.querySelectorAll(".btn-tema");
+    const pintar = () => { for (const b of botoes) b.textContent = document.documentElement.dataset.theme === "dark" ? "Tema claro" : "Tema escuro"; };
+    pintar();
+    for (const b of botoes) b.addEventListener("click", () => {
+      const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem("licitaplena_tema", t === "dark" ? "escuro" : "claro"); } catch (e) { /* preferência opcional */ }
+      pintar();
+    });
+  })();
 </script>
 </body>
 </html>
