@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { rodar, reservar, buscarCandidatas, estadoAposFalha, erroCurto, MAX_TENTATIVAS } = require("./esteira_processos");
+const { rodar, reservar, buscarCandidatas, estadoAposFalha, erroCurto, modelosDoEdital, MAX_TENTATIVAS } = require("./esteira_processos");
 
 const T = Date.parse("2026-11-18T12:00:00.000Z");
 const ORG = "22222222-2222-2222-2222-222222222222", EMP = "11111111-1111-1111-1111-111111111111";
@@ -292,4 +292,30 @@ test("segunda passada desligada por padrão; ligada usa só o provedor injetado 
   assert.equal(chamadas, 1);
   assert.equal(db2.tarefas[0].detalhe.segundaPassada.descartadas, 1);
   assert.equal(db2.exigencias.some((e) => e.origem === "segunda_passada"), false);
+});
+
+test("exigências: declaração com modelo literal no anexo grava modelo_texto e a fonte; as outras levam null", async () => {
+  const anexo = "--- Anexos (#2) ---\n[Página 29]\nTexto qualquer.\n[Página 30]\nANEXO III - MODELO DE DECLARAÇÃO\nDECLARAÇÃO DE QUE NÃO EMPREGA MENOR\n" +
+    "A empresa ______, CNPJ nº ______, declara que não emprega menor de dezoito anos em trabalho noturno, perigoso ou insalubre.\f\n[Página 31]\nLocal e data.\n" +
+    "ANEXO IV - MINUTA DO CONTRATO\nCláusula primeira.\n";
+  const db = supabaseFalso({ tarefas: [tarefa("exigencias")], dossie: { ...DOSSIE, textoEdital: DOSSIE.textoEdital + anexo } });
+  assert.deepEqual(await rodar({ rest: db.rest, agora: relogio }), { feito: 1 });
+  const menor = db.exigencias.find((e) => e.categoria === "declaracao");
+  assert.ok(menor.modelo_texto.startsWith("ANEXO III - MODELO DE DECLARAÇÃO\nDECLARAÇÃO DE QUE NÃO EMPREGA MENOR"));
+  assert.ok(!/MINUTA|\[Página|\f/.test(menor.modelo_texto), "só o anexo do modelo, sem marcação de página nem controle");
+  assert.deepEqual(menor.modelo_fonte, { documento: "Anexos (#2)", pagina: 30 });
+  assert.ok(db.exigencias.every((e) => "modelo_texto" in e && "modelo_fonte" in e), "chaves iguais em todo o lote");
+  assert.ok(db.exigencias.filter((e) => e.categoria !== "declaracao").every((e) => e.modelo_texto === null && e.modelo_fonte === null));
+  assert.equal(db.tarefas[0].detalhe.modelosDoEdital, db.exigencias.filter((e) => e.modelo_texto).length);
+  // Sem anexo de modelo (ou modelo de outro tema): nada gravado, a tela cai na biblioteca.
+  db.dossie = { ...DOSSIE, textoEdital: DOSSIE.textoEdital + anexo.replace("não emprega menor de dezoito anos em trabalho noturno, perigoso ou insalubre", "possui programa de integridade").replace("NÃO EMPREGA MENOR", "INTEGRIDADE") };
+  Object.assign(db.tarefas[0], { estado: "pendente", proximo_em: new Date(T - 1).toISOString() });
+  await rodar({ rest: db.rest, agora: relogio });
+  assert.equal(menor.modelo_texto, null);
+});
+
+test("modelosDoEdital: modelo acima do teto fica de fora", () => {
+  const grande = { "Edital (#1)": "ANEXO I - MODELO DE DECLARAÇÃO\n" + "x".repeat(18001) };
+  assert.deepEqual(modelosDoEdital(grande), []);
+  assert.equal(modelosDoEdital({ "Edital (#1)": "ANEXO I - MODELO DE DECLARAÇÃO\nDeclaro." })[0].pagina, null);
 });

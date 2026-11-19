@@ -110,3 +110,19 @@ test('tentar de novo: chama a RPC com processo e etapa e traduz cada recusa do b
   assert.ok(!tecnico.mensagem.includes('HTTP'), 'erro técnico não vai para a tela');
   assert.equal((await C.tentarDeNovo({ rpc: async () => { throw new Error('rede'); } }, 'p1', 'itens')).ok, false);
 });
+
+test('lote de declarações: modelo do edital > biblioteca > livre; o mesmo modelo do edital vai uma vez', () => {
+  const modelo = 'ANEXO III - MODELO DE DECLARAÇÃO\nDeclaro que não emprego menor.';
+  const lote = C.loteDeclaracoes([
+    { codigo: 'R1', categoria: 'declaracao', texto: 'Declaração de que não emprega menor de 18 anos em trabalho noturno', modelo_declaracao: 'TRAB_MENOR',
+      modelo_texto: modelo, modelo_fonte: { documento: 'Edital (#1)', pagina: 30 } },
+    { codigo: 'R2', categoria: 'declaracao', texto: 'Declaração de não emprego de menor (repetida)', modelo_texto: modelo, modelo_fonte: { documento: 'Edital (#1)', pagina: 30 } },
+    { codigo: 'R3', categoria: 'declaracao', texto: 'Declaração de que não emprega menor de 18 anos', modelo_texto: '   ' },
+    { codigo: 'R4', categoria: 'declaracao', texto: 'Declaração de visita ao almoxarifado municipal' },
+    { codigo: 'R5', categoria: 'declaracao', texto: 'Declaração com modelo, mas não se aplica', modelo_texto: 'outro', resposta: 'nao_se_aplica' },
+  ]);
+  assert.deepEqual(lote[0], { modeloCodigo: 'edital', titulo: 'Declaração de que não emprega menor de 18 anos em trabalho noturno', texto: modelo,
+    fonte: 'Modelo do próprio edital (texto literal): Edital (#1), pág. 30. Confira com o original.' });
+  assert.deepEqual(lote.map((p) => p.modeloCodigo), ['edital', 'TRAB_MENOR', 'livre'], 'modelo vazio cai na biblioteca; sem nada, livre');
+  assert.equal(C.loteDeclaracoes([{ categoria: 'declaracao', texto: 'x', modelo_texto: 'Modelo' }])[0].fonte, 'Modelo do próprio edital (texto literal). Confira com o original.');
+});

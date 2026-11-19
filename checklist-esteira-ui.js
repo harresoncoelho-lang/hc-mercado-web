@@ -93,14 +93,24 @@
       incomuns: ativas.filter((e) => e.incomum === true).length };
   }
 
-  // Lote para gerarDeclaracoesLote. Biblioteca (código salvo pelo robô ou escolha pelo texto) > texto livre com
-  // marcador, para a declaração nunca sumir: sem modelo, o usuário redige a partir do trecho.
-  // shortcut: o modelo literal do edital (detectarModeloDoEdital) precisa do texto do anexo, que não chega ao navegador; quando o robô gravar modelo_declaracao='edital' com o texto, passar a usá-lo.
+  // Lote para gerarDeclaracoesLote. Modelo literal do edital (modelo_texto, gravado pelo robô) > biblioteca (código
+  // salvo pelo robô ou escolha pelo texto) > texto livre com marcador, para a declaração nunca sumir: sem modelo, o
+  // usuário redige a partir do trecho. O mesmo modelo do edital vai uma vez só (o servidor recusa texto repetido no lote).
   function loteDeclaracoes(exigencias) {
     const D = declaracoes();
     const pedidos = [], vistos = new Set();
     for (const e of ordenarExigencias(exigencias)) {
       if (e.categoria !== 'declaracao' || e.resposta === 'nao_se_aplica' || pedidos.length >= LOTE_MAX) continue;
+      if (typeof e.modelo_texto === 'string' && e.modelo_texto.trim()) {
+        if (!vistos.has(e.modelo_texto)) {
+          vistos.add(e.modelo_texto);
+          const f = e.modelo_fonte || {};
+          const local = [f.documento, f.pagina ? 'pág. ' + f.pagina : ''].filter(Boolean).join(', ');
+          pedidos.push({ modeloCodigo: 'edital', titulo: String(e.texto).slice(0, 180), texto: e.modelo_texto,
+            fonte: ('Modelo do próprio edital (texto literal)' + (local ? ': ' + local : '') + '. Confira com o original.').slice(0, 1000) });
+        }
+        continue;
+      }
       const modelo = D && (D.obterModelo(e.modelo_declaracao) || D.escolherModelo(e.texto));
       if (modelo) {
         if (!vistos.has(modelo.codigo)) { vistos.add(modelo.codigo); pedidos.push({ modeloCodigo: modelo.codigo }); }
@@ -169,7 +179,7 @@
       const g = ++geracao;
       const [t, e, k] = await Promise.all([
         ler(filtro(cliente.from('operacao_esteira_tarefas').select('etapa,estado,detalhe,erro,tentativas')).limit(10)),
-        ler(filtro(cliente.from('operacao_exigencias_situacao').select('id,codigo,categoria,texto,documento,pagina,trecho,origem,incomum,motivo_incomum,tipo_documento,modelo_declaracao,resposta,situacao,documento_empresa_titulo,documento_vencimento')).limit(500)),
+        ler(filtro(cliente.from('operacao_exigencias_situacao').select('id,codigo,categoria,texto,documento,pagina,trecho,origem,incomum,motivo_incomum,tipo_documento,modelo_declaracao,modelo_texto,modelo_fonte,resposta,situacao,documento_empresa_titulo,documento_vencimento')).limit(500)),
         ler(filtro(cliente.from('operacao_kit_documentos').select('id,versao,revisao_versao,texto:dados->declaracao->>texto')).eq('tipo', 'declaracao').limit(100)),
       ]);
       if (!vivo || g !== geracao) return;

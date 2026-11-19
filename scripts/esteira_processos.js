@@ -13,12 +13,14 @@
 //               Retomável: pula itens já em operacao_origens_pncp. Pausa de 500 ms; teto de 1000 itens.
 //   exigencias  espera o dossiê (dossies_editais); junta regras + IA, classifica, marca incomum, mede
 //               cobertura por documento e grava operacao_exigencias_processo (upsert; não toca resposta).
+//               Declaração com modelo literal no anexo do edital leva modelo_texto + modelo_fonte {documento, pagina}.
 //   cruzamento  é a view operacao_exigencias_situacao (calculada na leitura): só marca feito.
 // Regra fixa: nunca grava em operacao_processos (atualizado_em é controle de concorrência do kit).
 const { restFetch } = require("./supabase_dados");
 const { buscarFonteItem, listarNumerosItens } = require("../netlify/functions/_pncp_item_fonte");
 const { referencia } = require("../netlify/functions/importar-item-pncp");
 const ex = require("../netlify/functions/_exigencias");
+const { detectarModeloDoEdital, escolherModelo } = require("../declaracoes-modelos.js");
 
 const LOTE = Math.max(1, Number(process.env.LOTE_ESTEIRA || 5));
 const LIMITE_MS = Math.max(1, Number(process.env.LIMITE_MINUTOS_ESTEIRA || 10)) * 60000;
@@ -142,6 +144,31 @@ function linhaExigencia(tarefa, e, geradoEm) {
     motivo_incomum: textoOuNulo(e.motivoIncomum, 500), gerado_em: geradoEm };
 }
 
+// Modelo literal do edital (anexo "MODELO DE DECLARAÇÃO"), por documento. Texto externo: só vira texto
+// (sem controle, sem marcação de página, teto de tamanho); quem gera a peça ainda escapa "{{" e o usuário revisa.
+const MAX_MODELO = 18000; // abaixo dos 20000 do rascunho: o preenchimento das lacunas aumenta o texto.
+function modelosDoEdital(textoPorDocumento) {
+  const saida = [];
+  for (const [documento, texto] of Object.entries(textoPorDocumento)) {
+    for (const m of detectarModeloDoEdital(texto)) {
+      const pagina = Number([...texto.slice(0, m.posicao + 1).matchAll(/^\[Página (\d+)\]\s*$/gm)].pop()?.[1]) || null;
+      // eslint-disable-next-line no-control-regex -- PDF extraído traz \f e afins, que o rascunho recusa
+      const limpo = m.texto.replace(/^\[Página \d+\]\s*$/gm, "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+      if (!limpo || limpo.length > MAX_MODELO) continue;
+      saida.push({ texto: limpo, documento: documento.slice(0, 300), pagina, codigo: escolherModelo(limpo.slice(0, 1500))?.codigo || null });
+    }
+  }
+  return saida;
+}
+
+// Casa exigência de declaração e modelo do edital pelo mesmo tema da biblioteca.
+// shortcut: exigência genérica ("declarações do Anexo III") ou modelo sem tema reconhecido não casa e cai na biblioteca; casar pela referência ao anexo se isso aparecer nos editais reais.
+function modeloDaExigencia(l, modelos) {
+  const codigo = l.categoria === "declaracao" && modelos.length ? escolherModelo(`${l.texto} ${l.trecho || ""}`)?.codigo : null;
+  const m = codigo && modelos.find((x) => x.codigo === codigo);
+  return m ? { modelo_texto: m.texto, modelo_fonte: { documento: m.documento, pagina: m.pagina } } : { modelo_texto: null, modelo_fonte: null };
+}
+
 // Só a coluna uf_sede: o perfil guarda CPF e banco, que o robô nunca lê. Banco sem a coluna
 // (operacao_perfil_empresa.sql antigo) ou falha na leitura: segue sem UF, como antes.
 async function lerUfSede(rest, tarefa) {
@@ -176,6 +203,8 @@ async function etapaExigencias(tarefa, { rest, agora, segundaPassadaLigada, cham
   const tipoAtual = new Map(atuais.map((l) => [l.codigo, l.tipo_documento]));
   const linhas = marcadas.map((e) => linhaExigencia(tarefa, e, geradoEm)).filter((l) => l.texto)
     .map((l) => ({ ...l, tipo_documento: tipoAtual.get(l.codigo) || ex.tipoDocumentoDaExigencia(l.texto, l.categoria) }));
+  const modelos = modelosDoEdital(textoPorDocumento);
+  for (const l of linhas) Object.assign(l, modeloDaExigencia(l, modelos));
   // Exigência que não consta mais na leitura nova não é apagada (pode ter resposta); só fica listada.
   const novos = new Set(linhas.map((l) => l.codigo));
   const removidas = atuais.filter((l) => l.origem !== "manual").map((l) => l.codigo).filter((c) => !novos.has(c));
@@ -188,7 +217,7 @@ async function etapaExigencias(tarefa, { rest, agora, segundaPassadaLigada, cham
   return { aguardandoLeitura: etapa.estado === "aguardando_leitura", detalhe: {
     situacao: etapa.estado, mensagem: etapa.mensagem, exigencias: linhas.length, incomuns: linhas.filter((l) => l.incomum).length,
     naoLidos: etapa.naoLidos, alertas: etapa.alertas.slice(0, MAX_ALERTAS_DETALHE).map(({ documento, pagina, mensagem }) => ({ documento, pagina, mensagem })),
-    totalAlertas: etapa.alertas.length, avisos, removidas, dossie: { status: linha.status, versao: linha.versao },
+    totalAlertas: etapa.alertas.length, avisos, removidas, modelosDoEdital: linhas.filter((l) => l.modelo_texto).length, dossie: { status: linha.status, versao: linha.versao },
     ...(resumoSegunda ? { segundaPassada: resumoSegunda } : {}) } };
 }
 
@@ -253,5 +282,5 @@ if (require.main === module) {
   rodar().catch((erro) => { console.error(`[esteira] ${erroCurto(erro)}`); process.exitCode = 1; });
 }
 
-module.exports = { rodar, reservar, buscarCandidatas, executarTarefa, estadoAposFalha, erroCurto, linhaExigencia, ErroPermanente,
+module.exports = { rodar, reservar, buscarCandidatas, executarTarefa, estadoAposFalha, erroCurto, linhaExigencia, modelosDoEdital, ErroPermanente,
   MAX_TENTATIVAS, TETO_ITENS };

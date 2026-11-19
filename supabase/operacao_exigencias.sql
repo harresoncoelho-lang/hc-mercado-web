@@ -38,6 +38,12 @@ create table if not exists public.operacao_exigencias_processo (
   foreign key (processo_id, empresa_id, organizacao_id)
     references public.operacao_processos(id, empresa_id, organizacao_id) on delete cascade
 );
+-- Modelo literal do anexo do edital para a declaração (texto externo, gravado só pelo robô; o usuário não tem grant).
+-- Fonte = {documento, pagina}. Colunas novas por alter: a tabela já existe nos bancos aplicados antes.
+alter table public.operacao_exigencias_processo add column if not exists modelo_texto text
+  check (modelo_texto is null or length(modelo_texto) between 1 and 20000);
+alter table public.operacao_exigencias_processo add column if not exists modelo_fonte jsonb
+  check (modelo_fonte is null or jsonb_typeof(modelo_fonte) = 'object');
 create index if not exists operacao_exigencias_processo_empresa_tipo_idx
   on public.operacao_exigencias_processo (empresa_id, tipo_documento);
 
@@ -71,6 +77,8 @@ create policy operacao_exigencias_resposta on public.operacao_exigencias_process
 
 -- Calculada na leitura: o vencimento muda com o tempo. Invoker: RLS de cada tabela vale.
 -- Documento = o mais recente (emissão, depois cadastro) do mesmo tipo na mesma empresa.
+-- drop antes: e.* ganhou colunas no meio da lista e "create or replace" não aceita isso. Grants refeitos abaixo.
+drop view if exists public.operacao_exigencias_situacao;
 create or replace view public.operacao_exigencias_situacao with (security_invoker = on) as
 select e.*, d.id as documento_empresa_id, d.titulo as documento_empresa_titulo, d.vencimento as documento_vencimento,
   case

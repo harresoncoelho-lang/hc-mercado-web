@@ -4,7 +4,7 @@ const {createHash}=require('node:crypto');
 const AdmZip=require('adm-zip');
 const {handler}=require('../kit-documentos');
 const {montarDocx}=require('../gerar-checklist');
-const {preencherVariaveis,variaveis,idDeterministico,escaparChaves}=require('../_kit_declaracoes');
+const {preencherVariaveis,variaveis,idDeterministico,escaparChaves,preencherLacunas}=require('../_kit_declaracoes');
 const ids={empresa:'11111111-1111-1111-1111-111111111111',processo:'22222222-2222-2222-2222-222222222222',item:'33333333-3333-3333-3333-333333333333',org:'44444444-4444-4444-4444-444444444444',doc:'55555555-5555-5555-5555-555555555555'};
 const CPF='52998224725';
 // PNG mínimo: assinatura + IHDR 300x100 (só o cabeçalho é lido).
@@ -202,4 +202,29 @@ test('proposta em tabela só para peça nova (formato 2); peça antiga continua 
  // Prévia e hash não mudam com o formato (revisões antigas continuam valendo).
  assert.equal(novo.previa,antigo.previa);assert.equal(novo.hash,antigo.hash);
  const lista=await f.run({acao:'listar'});assert.equal(lista.json.documentos[0].formato,2);assert.equal(lista.json.documentos[0].modeloCodigo,null);
+});
+test('lacunas do modelo do edital: rótulo inequívoco vira variável, o resto vira [PREENCHER: campo]; CPF só o do representante e como marcador',()=>{
+ const t=preencherLacunas(escaparChaves('A empresa [nome da empresa], inscrita no CNPJ sob o nº ________, com sede em (endereço completo), neste ato representada por seu representante legal ________, portador do CPF nº ________, cargo: ____.'));
+ assert.equal(t,'A empresa {{razao_social}}, inscrita no CNPJ sob o nº {{cnpj}}, com sede em {{endereco}}, neste ato representada por seu representante legal {{representante}}, portador do CPF nº {{cpf_representante}}, cargo: {{cargo}}.');
+ assert.equal(preencherLacunas('Razão Social: ______\nCNPJ/MF: ______\n[CNPJ]'),'Razão Social: {{razao_social}}\nCNPJ/MF: {{cnpj}}\n{{cnpj}}');
+ // Negativos: ambíguo, CPF de terceiro, palavra colada, assinatura e lacuna sem rótulo.
+ assert.equal(preencherLacunas('CNPJ/CPF nº ______'),'CNPJ/CPF nº [PREENCHER: campo]');
+ assert.equal(preencherLacunas('Nome do parente: ______ CPF: ______ Grau: ______'),'Nome do parente: [PREENCHER: campo] CPF: [PREENCHER: campo] Grau: [PREENCHER: campo]');
+ assert.equal(preencherLacunas('encargo ______'),'encargo [PREENCHER: campo]');
+ assert.equal(preencherLacunas('RG nº ______, data ____'),'RG nº [PREENCHER: campo], data [PREENCHER: campo]');
+ assert.equal(preencherLacunas('______________________\nAssinatura: ________'),'______________________\nAssinatura: ________');
+ assert.equal(preencherLacunas('Texto sem lacuna (razão social do contratado é exigida).'),'Texto sem lacuna (razão social do contratado é exigida).');
+ // Chave plantada no edital continua escapada: a lacuna não reabre variável.
+ assert.equal(preencherLacunas(escaparChaves('{{cpf_representante}} ___')),'{ {cpf_representante} } [PREENCHER: campo]');
+});
+test('lote: modelo do edital ganha os dados da empresa nas lacunas; texto livre não',async t=>{
+ const f=fixture(t);
+ const r=await f.run(lote([{modeloCodigo:'edital',titulo:'Anexo III',texto:'A empresa ________, inscrita no CNPJ sob o nº ________, representada por seu representante legal ______, CPF nº ______, declara.',fonte:'Modelo do próprio edital (texto literal): Edital (#1), pág. 30. Confira com o original.'},
+  {modeloCodigo:'livre',titulo:'Livre',texto:'Razão Social: ______'}]));
+ assert.equal(r.statusCode,200,r.body);
+ const [edital,livre]=f.state.kit.map(d=>d.dados.declaracao);
+ assert.equal(edital.texto,'A empresa [PREENCHER: campo], inscrita no CNPJ sob o nº 11.222.333/0001-81, representada por seu representante legal Ana, CPF nº {{cpf_representante}}, declara.');
+ assert.equal(edital.fonte,'Modelo do próprio edital (texto literal): Edital (#1), pág. 30. Confira com o original.');
+ assert.equal(livre.texto,'Razão Social: ______');
+ assert.ok(!JSON.stringify(f.state.kit).includes('529.982.247-25'));
 });

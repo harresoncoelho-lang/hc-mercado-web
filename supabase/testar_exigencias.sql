@@ -50,6 +50,13 @@ do $$ begin
  begin insert into public.operacao_exigencias_processo(organizacao_id,empresa_id,processo_id,codigo,categoria,texto,origem)
   values('f6000000-0000-4000-8000-00000000000a','f6000000-0000-4000-8000-00000000001b','f6000000-0000-4000-8000-00000000002a','R0097','fiscal','x','manual');
   raise exception 'Exigência com empresa diferente do processo aceita'; exception when foreign_key_violation then null; end;
+ -- Modelo do edital: teto de 20000 e fonte só como objeto.
+ update public.operacao_exigencias_processo set modelo_texto='ANEXO III - MODELO DE DECLARAÇÃO', modelo_fonte='{"documento":"Edital.pdf","pagina":30}'
+  where processo_id='f6000000-0000-4000-8000-00000000002a' and codigo='R0001';
+ begin update public.operacao_exigencias_processo set modelo_texto=repeat('x',20001) where codigo='R0001';
+  raise exception 'Modelo > 20000 aceito'; exception when check_violation then null; end;
+ begin update public.operacao_exigencias_processo set modelo_fonte='[1]' where codigo='R0001';
+  raise exception 'Fonte do modelo fora de objeto aceita'; exception when check_violation then null; end;
 end $$;
 
 set local role authenticated;
@@ -76,6 +83,10 @@ begin
  exception when insufficient_privilege then null; end;
  begin update public.operacao_exigencias_processo set respondido_por=null where processo_id=pa; raise exception 'Usuário forjou respondido_por';
  exception when insufficient_privilege then null; end;
+ begin update public.operacao_exigencias_processo set modelo_texto='plantado' where processo_id=pa; raise exception 'Usuário trocou o modelo do edital';
+ exception when insufficient_privilege then null; end;
+ if (select modelo_fonte->>'pagina' from public.operacao_exigencias_situacao where processo_id=pa and codigo='R0001') is distinct from '30'
+  then raise exception 'View sem o modelo do edital';end if;
  begin insert into public.operacao_exigencias_processo(organizacao_id,empresa_id,processo_id,codigo,categoria,texto,origem)
   values('f6000000-0000-4000-8000-00000000000a','f6000000-0000-4000-8000-00000000001a',pa,'R0050','fiscal','x','manual'); raise exception 'Usuário inseriu exigência';
  exception when insufficient_privilege then null; end;

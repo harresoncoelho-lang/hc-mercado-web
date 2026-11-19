@@ -31,6 +31,24 @@ function variaveis({empresa,processo,identificacao,perfilEmpresa,objeto}){
 function preencherVariaveis(texto,vars){
  return texto.replace(/\{\{\s*([a-z_]+)\s*\}\}/g,(todo,nome)=>{if(!Object.hasOwn(ROTULOS,nome))return todo;if(nome==='cpf_representante')return MARCA_CPF;return limpar(vars[nome])||`[PREENCHER: ${ROTULOS[nome]}]`;});
 }
+// Lacunas típicas do modelo do edital (já escapado): só vira variável quando o rótulo é inequívoco, o resto de "___"
+// vira [PREENCHER: campo] (bloqueia a revisão). Linha só de "___" ou com "assinatura" é para assinar e fica.
+// CPF nunca é preenchido aqui: a lacuna claramente de CPF vira o marcador que só a exportação troca.
+const LACUNAS=[['raz[aã]o\\s+social|nome\\s+empresarial|nome\\s+da\\s+(?:empresa|licitante|proponente)','razao_social'],['cnpj(?:\\s*/\\s*mf)?','cnpj'],
+ ['cpf(?:\\s*/\\s*mf)?(?:\\s+do\\s+representante(?:\\s+legal)?)?','cpf_representante'],['endere[cç]o(?:\\s+completo)?(?:\\s+da\\s+(?:empresa|licitante))?','endereco'],
+ ['(?:nome\\s+do\\s+)?representante\\s+legal','representante'],['cargo','cargo']];
+const CONECTOR='((?:\\s*(?:sob\\s+o|n[º°o]\\.?|n\\.\\s*[º°o]|número|:|–|-))*\\s*)';
+function preencherLacunas(texto){
+ let t=texto;
+ for(const [rotulo,nome] of LACUNAS){
+  t=t.replace(new RegExp(`[\\[(<]\\s*(?:${rotulo})\\s*[\\])>]`,'giu'),`{{${nome}}}`)
+   // "/" antes do rótulo ("CNPJ/CPF nº ___") é ambíguo e letra colada ("encargo") é outra palavra: não casa.
+   .replace(new RegExp(`(?<!/\\s*)(?<!\\p{L})(${rotulo})${CONECTOR}_{3,}`,'giu'),(todo,r,c,pos,tudo)=>
+    // CPF solto pode ser de parente, sócio ou empregado (tabelas do modelo): só o do representante, na mesma linha.
+    nome==='cpf_representante'&&!/represent/i.test(r+tudo.slice(Math.max(0,pos-150),pos).split('\n').pop())?todo:`${r}${c}{{${nome}}}`);
+ }
+ return t.split('\n').map(l=>/^[\s_]*$/.test(l)||/assinatura/i.test(l)?l:l.replace(/_{3,}/g,'[PREENCHER: campo]')).join('\n');
+}
 // UUID determinístico por processo + modelo (+ texto para edital/livre): a mesma intenção cai sempre na mesma peça.
 function idDeterministico(processoId,modeloCodigo,textoOriginal){
  const h=sha(`kit-declaracao|${processoId}|${modeloCodigo}|${obterModelo(modeloCodigo)?'':sha(textoOriginal)}`);
@@ -64,7 +82,7 @@ async function gerarLote({c,empresa,processo,perfil,store,body}){
  const vars=variaveis({empresa,processo,identificacao:perfil&&!perfil.invalidado_em?perfil.dados_confirmados:null,perfilEmpresa,objeto});
  // Valida o lote inteiro antes da primeira escrita.
  const planos=pedidos.map((p,n)=>({documentoId:chaves[n],modeloCodigo:p.modeloCodigo,biblioteca:Boolean(obterModelo(p.modeloCodigo)),
-  dados:validarRascunho({acao:'salvar',empresaId:body.empresaId,processoId:body.processoId,documentoId:chaves[n],versaoEsperada:0,tipo:'declaracao',declaracao:{titulo:p.titulo,texto:preencherVariaveis(p.texto,vars),fonte:p.fonte}},[])}));
+  dados:validarRascunho({acao:'salvar',empresaId:body.empresaId,processoId:body.processoId,documentoId:chaves[n],versaoEsperada:0,tipo:'declaracao',declaracao:{titulo:p.titulo,texto:preencherVariaveis(p.modeloCodigo==='edital'?preencherLacunas(p.texto):p.texto,vars),fonte:p.fonte}},[])}));
  const atuais=await store.listar();const criados=[],existentes=[];
  for(const plano of planos){
   const igual=atuais.find(d=>d.id===plano.documentoId||(plano.biblioteca&&d.tipo==='declaracao'&&d.modelo_codigo===plano.modeloCodigo));
@@ -93,4 +111,4 @@ async function lerLogo(c,empresa){
   return {bytes,...validarLogo(bytes,tipo)};
  }catch{return null;}
 }
-module.exports={LOTE_MAX,MARCADOR,ROTULOS,variaveis,preencherVariaveis,idDeterministico,validarLote,gerarLote,lerLogo,lerCpf,escaparChaves};
+module.exports={LOTE_MAX,MARCADOR,ROTULOS,variaveis,preencherVariaveis,preencherLacunas,idDeterministico,validarLote,gerarLote,lerLogo,lerCpf,escaparChaves};
