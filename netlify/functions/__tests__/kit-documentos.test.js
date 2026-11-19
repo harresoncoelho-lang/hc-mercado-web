@@ -293,7 +293,7 @@ test('listagem marca origemPncp por item pelo embed, sem mudar o select do kit',
   const r=await f.run({acao,itensPaginados:true});assert.equal(r.statusCode,200);
   assert.deepEqual(r.json.itens.map(i=>[i.id,i.origemPncp]),[[ids.item,true],[outro,false]]);
  }
- const lista=f.calls.map(([u])=>u).filter(u=>u.includes('/operacao_itens_resultado?')&&u.includes('order=id.asc&limit='));
+ const lista=f.calls.map(([u])=>u).filter(u=>u.includes('/operacao_itens_resultado?')&&u.includes('order=numero_ordem.asc.nullslast,id.asc&limit='));
  assert.ok(lista.length&&lista.every(u=>u.includes('operacao_origens_pncp(item_id)')));
  const antigo=fixture(t,{semColunas:true,origens:[ids.item]});
  const r=await antigo.run({acao:'listarItens'});assert.equal(r.json.precoDisponivel,false);assert.equal(r.json.itens[0].origemPncp,false);

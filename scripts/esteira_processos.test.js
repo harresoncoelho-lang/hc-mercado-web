@@ -127,7 +127,35 @@ test("itens: retoma pulando os já importados, grava com o usuário da tarefa e 
   assert.deepEqual(db.gravados[0].p_referencia, { url_origem: null, origem_externa_id: COMPRA, numero: null });
   assert.equal(chamadas.some((u) => u.endsWith("/itens/1")), false);
   assert.deepEqual(pausas, [1500]);
-  assert.deepEqual(db.tarefas[0].detalhe, { total: 3, importados: 2, jaImportados: 1, colisoesManuais: [] });
+  assert.deepEqual(db.tarefas[0].detalhe, { total: 3, importados: 2, jaImportados: 1, colisoesManuais: [], recusados: [], totalRecusados: 0 });
+});
+
+test("itens: item recusado pelo RPC (HTTP 400) vai para o detalhe e é pulado; a tarefa termina", async () => {
+  const db = supabaseFalso({ tarefas: [tarefa("itens")] });
+  const rest = db.rest;
+  db.rest = async (caminho, opcoes) => {
+    if (caminho === "rpc/gravar_importacao_pncp" && JSON.parse(opcoes.body).p_numero === 2)
+      throw new Error(`Supabase REST ${caminho} -> HTTP 400: {"code":"PT400","message":"Observação inválida","cpf":"x"}`);
+    return rest(caminho, opcoes);
+  };
+  const { fetchPncp } = pncpFalso(3);
+  assert.deepEqual(await rodar({ rest: db.rest, fetchPncp, agora: relogio, esperar: async () => {} }), { feito: 1 });
+  assert.equal(db.tarefas[0].estado, "feito");
+  assert.deepEqual(db.origens, [1, 3]);
+  assert.deepEqual(db.tarefas[0].detalhe, { total: 3, importados: 2, jaImportados: 0, colisoesManuais: [],
+    recusados: [{ numero: 2, erro: "Supabase rpc/gravar_importacao_pncp HTTP 400" }], totalRecusados: 1 });
+});
+
+test("itens: 403/409 do RPC continuam falha da tarefa (não pula item)", async () => {
+  const db = supabaseFalso({ tarefas: [tarefa("itens")] });
+  db.rest = (rest => async (caminho, opcoes) => {
+    if (caminho === "rpc/gravar_importacao_pncp") throw new Error(`Supabase REST ${caminho} -> HTTP 409: {}`);
+    return rest(caminho, opcoes);
+  })(db.rest);
+  const { fetchPncp } = pncpFalso(2);
+  await rodar({ rest: db.rest, fetchPncp, agora: relogio, esperar: async () => {} });
+  assert.equal(db.tarefas[0].estado, "pendente");
+  assert.equal(db.tarefas[0].tentativas, 1);
 });
 
 test("itens: tempo da rodada esgotado devolve à fila sem gastar tentativa e a próxima rodada continua", async () => {

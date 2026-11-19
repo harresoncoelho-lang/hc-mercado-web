@@ -38,17 +38,21 @@ function criarFetchFicticio(documentos,cenarios){return async function fetchFict
   const d={...atual,revisao_hash:p.p_hash,revisao_previa:p.p_previa,revisao_versao:atual.versao,revisado_por:p.p_usuario,revisado_em:agora};documentos.set(d.id,d);return Response.json(d);
  }
  const tabela=u.pathname.replace('/rest/v1/','');
- const tabelas={clientes:[{id:ids(99),status:'aprovado'}],operacao_empresas:cenarios.map(c=>({...c.empresa,ativo:true})),operacao_membros:cenarios.map(c=>({usuario_id:ids(99),organizacao_id:c.empresa.organizacao_id,empresa_id:c.empresa.id,papel:'operador'})),operacao_identificacao_empresa:cenarios.map(c=>c.perfil),operacao_documentos:[],operacao_processos:[...cenarios.map(c=>c.processo),processoAdicional],operacao_itens_resultado:cenarios.flatMap(c=>c.itens),operacao_kit_documentos:[...documentos.values()]};
+ const tabelas={clientes:[{id:ids(99),status:'aprovado'}],operacao_empresas:cenarios.map(c=>({...c.empresa,ativo:true})),operacao_membros:cenarios.map(c=>({usuario_id:ids(99),organizacao_id:c.empresa.organizacao_id,empresa_id:c.empresa.id,papel:'operador'})),operacao_identificacao_empresa:cenarios.map(c=>c.perfil),operacao_documentos:[],operacao_processos:[...cenarios.map(c=>c.processo),processoAdicional],operacao_itens_resultado:cenarios.flatMap(c=>c.itens).map(i=>({...i,numero_ordem:/^\d{1,18}$/.test(i.identificador)?String(BigInt(i.identificador)):null})),operacao_kit_documentos:[...documentos.values()]};
  if(!Object.hasOwn(tabelas,tabela))throw new Error('Rede não autorizada bloqueada');
  rows=tabelas[tabela].filter(row=>[...u.searchParams].every(([k,v])=>{
   if(['select','order','limit'].includes(k))return true;
+  // Keyset da lista de itens (numero_ordem nulls last, id), como o PostgREST: (n>N) ou n nulo ou (n=N e id>I).
+  if(k==='or'){const m=/^\(numero_ordem\.gt\.(\d+),numero_ordem\.is\.null,and\(numero_ordem\.eq\.(\d+),id\.gt\.([0-9a-f-]+)\)\)$/.exec(v);if(!m||m[1]!==m[2])throw Error('Filtro fictício não implementado');
+   return row.numero_ordem===null||BigInt(row.numero_ordem)>BigInt(m[1])||(row.numero_ordem===m[1]&&String(row.id)>m[3]);}
+  if(v==='is.null')return row[k]===null;
   if(v.startsWith('eq.'))return String(row[k])===v.slice(3);
   if(v.startsWith('gt.'))return String(row[k])>v.slice(3);
   if(v.startsWith('in.(')&&v.endsWith(')'))return v.slice(4,-1).split(',').includes(String(row[k]));
   throw Error('Filtro fictício não implementado');
  }));
  const total=rows.length,order=u.searchParams.get('order');
- if(order){const campos=order.split(',').map(c=>{const [campo,direcao='asc']=c.split('.');if(!['asc','desc'].includes(direcao))throw Error('Ordem fictícia inválida');return [campo,direcao];});rows.sort((a,b)=>{for(const [campo,direcao] of campos){const r=(String(a[campo])<String(b[campo])?-1:String(a[campo])>String(b[campo])?1:0)*(direcao==='asc'?1:-1);if(r)return r;}return 0;});}
+ if(order){const campos=order.split(',').map(c=>{const [campo,direcao='asc',nulos]=c.split('.');if(!['asc','desc'].includes(direcao)||![undefined,'nullslast'].includes(nulos))throw Error('Ordem fictícia inválida');return [campo,direcao,nulos];});rows.sort((a,b)=>{for(const [campo,direcao,nulos] of campos){const r=nulos?(a[campo]===b[campo]?0:a[campo]===null?1:b[campo]===null?-1:BigInt(a[campo])<BigInt(b[campo])?-1:1):(String(a[campo])<String(b[campo])?-1:String(a[campo])>String(b[campo])?1:0)*(direcao==='asc'?1:-1);if(r)return r;}return 0;});}
  const limit=u.searchParams.get('limit');if(limit!==null){if(!/^[1-9]\d*$/.test(limit))throw Error('Limite inválido');rows=rows.slice(0,Number(limit));}
  const headers={'Content-Type':'application/json'};
  if(new Headers(op.headers).get('prefer')==='count=exact'){headers['Preference-Applied']='count=exact';headers['Content-Range']=rows.length?`0-${rows.length-1}/${total}`:'*/0';}

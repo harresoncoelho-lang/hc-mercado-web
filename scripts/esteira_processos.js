@@ -11,6 +11,7 @@
 // Etapas:
 //   itens       lista os itens do PNCP e grava um a um por gravar_importacao_pncp (p_usuario = criado_por).
 //               Retomável: pula itens já em operacao_origens_pncp. Pausa de 500 ms; teto de 1000 itens.
+//               Item recusado de vez (HTTP 400 do RPC, 422 da fonte) vai para detalhe.recusados e é pulado.
 //   exigencias  espera o dossiê (dossies_editais); junta regras + IA, classifica, marca incomum, mede
 //               cobertura por documento e grava operacao_exigencias_processo (upsert; não toca resposta).
 //               Declaração com modelo literal no anexo do edital leva modelo_texto + modelo_fonte {documento, pagina}.
@@ -94,6 +95,12 @@ async function carregarProcesso(rest, tarefa) {
   return p;
 }
 
+// Recusa permanente de UM item: validação do RPC (PT400 -> HTTP 400, inclusive número fora do integer) ou
+// quantidade do PNCP sem representação (422 da fonte). 403/404/409 são do processo inteiro e seguem como falha.
+function itemRecusado(erro) {
+  return erro?.status === 422 || /^Supabase REST rpc\/gravar_importacao_pncp -> HTTP 400\b/.test(String(erro?.message || ""));
+}
+
 async function etapaItens(tarefa, { rest, fetchPncp, esperar, prazoFinal, agora }) {
   if (!tarefa.criado_por) throw new ErroPermanente("Tarefa sem usuário de origem para gravar os itens.");
   const p = await carregarProcesso(rest, tarefa);
@@ -104,7 +111,7 @@ async function etapaItens(tarefa, { rest, fetchPncp, esperar, prazoFinal, agora 
   if (numeros.length > TETO_ITENS) throw new ErroPermanente(`Edital com ${numeros.length} itens, acima do teto de ${TETO_ITENS}; importe manualmente.`);
   const feitos = new Set((await json(rest, `operacao_origens_pncp?processo_id=eq.${q(p.id)}&compra=eq.${q(compra)}&select=numero_item`))
     .map((l) => l.numero_item));
-  const detalhe = { total: numeros.length, importados: 0, jaImportados: 0, colisoesManuais: [] };
+  const detalhe = { total: numeros.length, importados: 0, jaImportados: 0, colisoesManuais: [], recusados: [], totalRecusados: 0 };
   const escopo = { p_usuario: tarefa.criado_por, p_empresa: p.empresa_id, p_processo: p.id, p_organizacao: p.organizacao_id };
   const p_referencia = { url_origem: p.url_origem || null, origem_externa_id: p.origem_externa_id || null, numero: p.numero || null };
   let primeiro = true;
@@ -113,9 +120,18 @@ async function etapaItens(tarefa, { rest, fetchPncp, esperar, prazoFinal, agora 
     if (!primeiro) await esperar(PAUSA_ITEM_MS);
     primeiro = false;
     if (agora() >= prazoFinal) return { parcial: true, detalhe };
-    const { url, item, hash, snapshot } = await buscarFonteItem(ref, numero, { fetchImpl: fetchPncp });
-    const r = await json(rest, "rpc/gravar_importacao_pncp", { method: "POST", body: JSON.stringify({ ...escopo,
-      p_compra: compra, p_numero: numero, p_url: url, p_hash: hash, p_item: item, p_snapshot: snapshot, p_referencia }) });
+    let r;
+    try {
+      const { url, item, hash, snapshot } = await buscarFonteItem(ref, numero, { fetchImpl: fetchPncp });
+      r = await json(rest, "rpc/gravar_importacao_pncp", { method: "POST", body: JSON.stringify({ ...escopo,
+        p_compra: compra, p_numero: numero, p_url: url, p_hash: hash, p_item: item, p_snapshot: snapshot, p_referencia }) });
+    } catch (erro) {
+      // Item recusado de vez (dado do item inválido): registra e segue. Repetir não muda nada e travaria a tarefa.
+      if (!itemRecusado(erro)) throw erro;
+      detalhe.totalRecusados += 1;
+      if (detalhe.recusados.length < MAX_ALERTAS_DETALHE) detalhe.recusados.push({ numero, erro: erroCurto(erro) });
+      continue;
+    }
     // Item manual com o mesmo número: não liga sozinho (regra do RPC); fica registrado para o usuário.
     if (r?.estado === "colisao_manual") detalhe.colisoesManuais.push(numero);
     else if (!r || !["importado", "inalterado", "fonte_alterada"].includes(r.estado)) throw new Error(`Gravação do item ${numero} não confirmada.`);

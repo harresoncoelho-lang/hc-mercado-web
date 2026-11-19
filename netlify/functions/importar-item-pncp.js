@@ -18,7 +18,7 @@ function criarHandler({enabled=()=>process.env.IMPORTACAO_PNCP_LOCAL==='1',servi
  const a=await auth(event);if(!a.ok)return reply(a.status,{erro:a.erro});
  if(typeof event.body!=='string'||Buffer.byteLength(event.body)>2048)falhar('Solicitação inválida.',400);
  let b;try{b=JSON.parse(event.body);}catch{falhar('Solicitação inválida.',400);}
- if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['empresaId','processoId','numeroItem'].includes(k))||!uuid(b.empresaId)||!uuid(b.processoId)||!Number.isSafeInteger(b.numeroItem)||b.numeroItem<1||b.numeroItem>1000000)falhar('Seletores inválidos.',400);
+ if(!b||Array.isArray(b)||Object.keys(b).some(k=>!['empresaId','processoId','numeroItem'].includes(k))||!uuid(b.empresaId)||!uuid(b.processoId)||!Number.isSafeInteger(b.numeroItem)||b.numeroItem<1||b.numeroItem>2147483647)falhar('Seletores inválidos.',400);
  const c=await contexto(event,a.userId,b.empresaId),e=c.empresa;if(!e||e.id!==b.empresaId||!uuid(e.organizacao_id))falhar('Empresa indisponível.',403);
  const members=await c.rest(`operacao_membros?usuario_id=eq.${a.userId}&organizacao_id=eq.${e.organizacao_id}&select=usuario_id,organizacao_id,empresa_id,papel`);
  if(!members.some(m=>m.usuario_id===a.userId&&m.organizacao_id===e.organizacao_id&&['operador','gestor'].includes(m.papel)&&(m.empresa_id===null||m.empresa_id===e.id)))falhar('Acesso não autorizado.',403);

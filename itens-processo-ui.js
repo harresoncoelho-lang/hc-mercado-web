@@ -17,7 +17,7 @@
     editando: 'Ao salvar, uma revisão já confirmada desta proposta deixa de valer. Prepare e confirme de novo antes de exportar.',
     divergente: 'Resposta de outro cadastro descartada. Recarregue a página.',
     conexao: 'Não foi possível salvar agora. Tente de novo; o mesmo cadastro não será duplicado.',
-    numeroImportar: 'Informe o número do item no edital (só números, de 1 a 1000000). Ex.: 3',
+    numeroImportar: 'Informe o número do item no edital (só números, de 1 a 2147483647). Ex.: 3',
     importando: 'Importando item do PNCP…',
     importado: 'Item importado do PNCP. Informe sua oferta (valor unitário) editando o item.',
     inalterado: 'Este item já estava importado e não mudou no PNCP. Nada foi alterado.',
@@ -34,12 +34,12 @@
   const P = () => modulo('LicitaPrecificacao', './precificacao-item.js');
   const planilha = () => modulo('LicitaPlanilhaItens', './planilha-itens.js');
 
-  // Número do item no edital, mesmo limite do handler (inteiro de 1 a 1000000). Inválido: null.
+  // Número do item no edital, mesmo limite do handler (inteiro de 1 a 2147483647, o int do PNCP). Inválido: null.
   function numeroItemImportacao(textoDigitado) {
     const t = typeof textoDigitado === 'string' ? textoDigitado.trim() : '';
-    if (!/^[1-9][0-9]{0,6}$/.test(t)) return null;
+    if (!/^[1-9][0-9]{0,9}$/.test(t)) return null;
     const n = Number(t);
-    return n <= 1000000 ? n : null;
+    return n <= 2147483647 ? n : null;
   }
   // Resposta de /api/importar-item-pncp → { ok, texto }. Mensagem do servidor só como texto curto.
   function respostaImportacao(status, j) {

@@ -65,13 +65,14 @@ module.exports = { banco, comoUsuario, robo, passo, exigir, novaPagina, entrar, 
 
 async function escolherEdital(editais) {
   const pulados = [];
-  for (const e of editais.slice(1)) {
+  // EDITAL_TESTE força um edital do seed (ex.: o da Licitanet, com numeroItem acima de 1.000.000).
+  for (const e of process.env.EDITAL_TESTE ? [process.env.EDITAL_TESTE] : editais.slice(1)) {
     const [cnpj, , resto] = e.split('-'); const [seq, ano] = resto.split('/');
     const base = `https://pncp.gov.br/api/pncp/v1/orgaos/${cnpj}/compras/${ano}/${Number(seq)}`;
     try {
       const itens = await fetch(base + '/itens?pagina=1&tamanhoPagina=50').then(r => r.json());
       const arqs = await fetch(base + '/arquivos').then(r => r.json());
-      if (!Array.isArray(itens) || !itens.length || itens.some(i => !(i.numeroItem >= 1 && i.numeroItem <= 1000000))) { pulados.push(`${e}: numeroItem fora de 1..1000000`); continue; }
+      if (!Array.isArray(itens) || !itens.length || itens.some(i => !(i.numeroItem >= 1 && i.numeroItem <= 2147483647))) { pulados.push(`${e}: numeroItem fora de 1..2147483647`); continue; }
       if (!arqs.some(a => /\.pdf$/i.test(a.titulo || ''))) { pulados.push(`${e}: sem PDF no PNCP`); continue; }
       return { edital: e, pulados };
     } catch (err) { pulados.push(`${e}: ${err.message}`); }
@@ -83,7 +84,7 @@ async function main() {
   const navegador = await chromium.launch({ channel: process.env.NAVEGADOR === 'chrome' ? 'chrome' : 'msedge', headless: process.env.VER !== '1' });
   const { usuarios: U, editais, ids } = seed;
   // Os 15 editais vêm do PNCP ao vivo e mudam a cada seed. Usa o primeiro (fora o [0], que o seed já pôs no Funil)
-  // com PDF no PNCP (o dossiê simulado lê o texto) e numeroItem que o gravar_importacao_pncp aceita (1..1000000).
+  // com PDF no PNCP (o dossiê simulado lê o texto) e numeroItem que o gravar_importacao_pncp aceita (1..2147483647).
   const { edital, pulados } = await escolherEdital(editais);
   if (pulados.length) console.log('editais pulados: ' + pulados.join('; '));
   const p = await novaPagina(navegador);
@@ -185,7 +186,11 @@ async function main() {
     const ordem = await p.locator('#itens-processo [data-item-lista] li .itens-cabeca strong').allInnerTexts();
     const ordenada = [...ordem].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
     exigir(ordem.join('|') === ordenada.join('|'), 'itens fora de ordem (B4): ' + ordem.join(', '));
-    return `itens na ordem ${ordem.join(', ')}; ` + ck.replace(/\s+/g, ' ').slice(0, 200);
+    // Mais de 100 itens: a 1ª página tem de começar no menor número do processo (paginação por numero_ordem).
+    const menor = (await banco(`operacao_itens_resultado?processo_id=eq.${contexto.proc.id}&numero_ordem=not.is.null&select=numero_ordem&order=numero_ordem.asc&limit=1`))[0]?.numero_ordem;
+    const total = (await banco(`operacao_itens_resultado?processo_id=eq.${contexto.proc.id}&select=id`)).length;
+    exigir(menor !== undefined && (ordem[0].match(/\d+/) || [])[0] === String(menor), `lista começa em "${ordem[0]}", menor número é ${menor}`);
+    return `${total} itens no processo; lista começa em ${ordem[0]} (menor número ${menor}); ${ordem.length} na 1ª página: ${ordem.slice(0, 12).join(', ')}…; ` + ck.replace(/\s+/g, ' ').slice(0, 200);
   });
 
   await passo('identificação da empresa (endereço, representante, cargo)', p, async () => {

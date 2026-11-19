@@ -140,6 +140,29 @@ O vínculo com o portal **não** tem variável. A rota `vinculo-compra-portal` c
 
 ---
 
+## Ordem dos SQL novos (depois do `01-aplicar.sql` e do `02` com 81 `ok`)
+
+Cada arquivo é de `supabase/`, roda sozinho numa query nova e pode rodar de novo sem erro. Mesma ordem de
+`ambiente-teste/subir.cjs` e de `testar-dezembro.cjs`:
+
+| # | Arquivo | O que faz |
+|---|---|---|
+| 1 | `operacao_itens_proposta.sql` | Preço por item, premissas e referência. |
+| 2 | `operacao_funil_etapas.sql` | Etapas do Funil. |
+| 3 | `operacao_portal_cliente.sql` | Portal do cliente (links e aceites). |
+| 4 | `operacao_perfil_empresa.sql` | Perfil da empresa e "Proposta padrão". |
+| 5 | `operacao_exigencias.sql` | Exigências do processo. |
+| 6 | `operacao_esteira.sql` | Esteira do edital (tarefas e gatilho). |
+| 7 | `operacao_kit_modelos.sql` | Modelos e formato das peças do kit. |
+| 8 | `importacao_item_pncp_numero_int32.sql` | Troca só o corpo de `gravar_importacao_pncp`: o número do item passa de 1..1000000 para 1..2147483647 (inteiro do PNCP). Sem ele, compras da Licitanet (ex. item 8184615) dão HTTP 400. `importacao_item_pncp.sql` e o `01` ficam como estão (fonte preservada por hash); por isso este arquivo vem **depois** do `01`. Se o `01` rodar de novo, rode este de novo. |
+| 9 | `operacao_itens_numero_ordem.sql` | Coluna gerada `numero_ordem` (identificador só com dígitos, senão null) e índice em `operacao_itens_resultado`. A lista de itens pagina por ela; sem a coluna, o servidor volta à ordem por id (1ª página sem os menores números). Reescreve a tabela de itens uma vez (coluna `stored`), com `lock_timeout` de 5 s; não toca `atualizado_em`. |
+
+Testes (só no ambiente de teste, tudo em `rollback`): `testar_itens_proposta.sql`, `testar_funil_etapas.sql`,
+`testar_portal_cliente.sql`, `testar_perfil_empresa.sql`, `testar_exigencias.sql`, `testar_esteira.sql`,
+`testar_kit_modelos.sql`, `testar_itens_numero_ordem.sql`.
+
+---
+
 ## Ensaio local (18/11/2026)
 
 Script: `testar-aplicar.cjs`. Saída: `resultado-teste-20261118.txt`.

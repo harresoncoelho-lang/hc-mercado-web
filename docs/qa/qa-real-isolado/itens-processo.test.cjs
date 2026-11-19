@@ -279,8 +279,8 @@ test('UI espelha o total: overflow do produto é recusado no formulário antes d
 
 test('importação PNCP na tela de itens: número do item no limite do handler e resposta tratada como em processos.html', () => {
   const ui = require('../../../itens-processo-ui.js');
-  assert.deepEqual(['1', ' 42 ', '1000000'].map(ui.numeroItemImportacao), [1, 42, 1000000]);
-  for (const v of ['', '0', '-1', '1.5', '01', '1000001', '1e3', 'abc', null]) assert.equal(ui.numeroItemImportacao(v), null, String(v));
+  assert.deepEqual(['1', ' 42 ', '1000000', '8184615', '2147483647'].map(ui.numeroItemImportacao), [1, 42, 1000000, 8184615, 2147483647]);
+  for (const v of ['', '0', '-1', '1.5', '01', '2147483648', '10000000000', '1e3', 'abc', null]) assert.equal(ui.numeroItemImportacao(v), null, String(v));
   // Mesma mensagem do handler quando IMPORTACAO_PNCP_LOCAL está desligada.
   const { criarHandler } = require('../../../netlify/functions/importar-item-pncp.js');
   return criarHandler({ enabled: () => false })({ httpMethod: 'POST', headers: {}, body: '{}' }).then((r) => {
