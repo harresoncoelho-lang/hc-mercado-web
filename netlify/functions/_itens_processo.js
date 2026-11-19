@@ -9,7 +9,7 @@
 // - Edição: PATCH restrito por id+processo+organização. Zero linhas = indisponível (inclui ID cruzado).
 // Editar um item muda o conteúdo da prévia: o hash de revisão do kit deixa de conferir (contrato já existente).
 const {falhar}=require('./_empresa_identificacao');
-const {uuid,decimal,totalItem}=require('./_kit_documentos');
+const {uuid,decimal,totalItem,dinheiro}=require('./_kit_documentos');
 const {selectLista,colunaInexistente,origemPncp,ordemItem}=require('./_kit_proposta_itens');
 const {randomUUID}=require('node:crypto');
 const planilha=require('../../planilha-itens.js');
@@ -90,13 +90,29 @@ async function criar({token,organizacaoId,processoId,item}){
  falhar('Serviço de itens indisponível.',503);
 }
 
+const abaixoDoMinimo=(valor,minimo)=>`O valor ofertado R$ ${dinheiro(escalado(valor,2))} está abaixo do seu preço mínimo R$ ${dinheiro(escalado(minimo,2))}. Ajuste o valor ou o mínimo.`;
+// Valor ofertado abaixo do preço mínimo gravado é recusado aqui; antes passava e travava toda gravação de custo depois.
+// Banco sem a coluna do mínimo (operacao_itens_proposta.sql não aplicado) segue sem a conferência.
+async function minimoAtual(token,organizacaoId,processoId,id){
+ const r=await rest(token,caminhoItem(id,organizacaoId,processoId)+'&select='+selectLista);
+ if(!r.ok&&await colunaInexistente(r))return null;
+ const linhas=await exigirOk(r);
+ if(!Array.isArray(linhas)||linhas.length!==1)falhar('Item indisponível.',404);
+ conferirLinha(linhas[0],organizacaoId,processoId);
+ return linhas[0].valor_unitario_minimo??null;
+}
 async function editar({token,organizacaoId,processoId,item}){
  const {id,dados}=item;
- const r=await rest(token,'/rest/v1/'+escopoLinha(id,organizacaoId,processoId),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({...dados,atualizado_em:new Date().toISOString()})});
+ const minimo=await minimoAtual(token,organizacaoId,processoId,id);
+ if(minimo!==null&&escalado(minimo,2)>escalado(dados.valor_unitario_proposta,2))falhar(abaixoDoMinimo(dados.valor_unitario_proposta,minimo),422);
+ // O filtro repete a regra no PATCH: mínimo alterado entre a leitura e a gravação não passa.
+ const guarda=minimo!==null?`&or=(valor_unitario_minimo.is.null,valor_unitario_minimo.lte.${dados.valor_unitario_proposta})`:'';
+ const r=await rest(token,'/rest/v1/'+escopoLinha(id,organizacaoId,processoId)+guarda,{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify({...dados,atualizado_em:new Date().toISOString()})});
  if(r.status===409)falhar('Já existe item com este identificador neste processo.',409);
  if(r.status===401||r.status===403)falhar('Acesso não autorizado.',403);
  if(!r.ok)falhar('Serviço de itens indisponível.',503);
  const linhas=await r.json();
+ if(Array.isArray(linhas)&&!linhas.length&&minimo!==null)falhar('O item mudou enquanto você editava. Atualize e tente de novo.',409);
  if(!Array.isArray(linhas)||linhas.length!==1)falhar('Item indisponível.',404);
  conferirLinha(linhas[0],organizacaoId,processoId);
  return {status:200,body:{item:publico(linhas[0]),reaproveitado:false,editado:true}};
@@ -146,13 +162,16 @@ async function salvarPrecoItem({token,organizacaoId,processoId,body}){
  const atuais=await exigirOk(await rest(token,caminhoItem(body.itemId,organizacaoId,processoId)+'&select='+selectLista));
  if(!Array.isArray(atuais)||atuais.length!==1)falhar('Item indisponível.',404);
  conferirLinha(atuais[0],organizacaoId,processoId);
- const valor=atuais[0].valor_unitario_proposta;
- if(minimo&&valor!=null&&minimo.n>escalado(valor,2))falhar('O preço mínimo não pode ser maior que o valor unitário da proposta.',422);
- // O filtro repete a regra no PATCH: valor alterado entre a leitura e a gravação não passa.
- const guarda=minimo?`&or=(valor_unitario_proposta.is.null,valor_unitario_proposta.gte.${minimo.texto})`:'';
+ const valor=atuais[0].valor_unitario_proposta,gravado=atuais[0].valor_unitario_minimo;
+ const invalido=minimo&&valor!=null&&minimo.n>escalado(valor,2);
+ // Mínimo que já estava gravado acima do valor (estado antigo) não trava o custo: grava e avisa. Mínimo novo acima do valor é recusado.
+ const legado=invalido&&gravado!=null&&escalado(gravado,2)===minimo.n;
+ if(invalido&&!legado)falhar('O preço mínimo não pode ser maior que o valor unitário da proposta.',422);
+ // O filtro repete a regra no PATCH: valor (ou, no caso legado, o próprio valor lido) alterado entre a leitura e a gravação não passa.
+ const guarda=legado?`&valor_unitario_proposta=eq.${valor}`:minimo?`&or=(valor_unitario_proposta.is.null,valor_unitario_proposta.gte.${minimo.texto})`:'';
  const l=await patchItem(token,organizacaoId,processoId,body.itemId,{custo_unitario:custo?.texto??null,valor_unitario_minimo:minimo?.texto??null},guarda);
  if(!l)falhar('O item mudou enquanto você editava. Atualize e tente de novo.',409);
- return {status:200,body:{item:publicoPreco(l)}};
+ return {status:200,body:{item:publicoPreco(l),...(legado?{aviso:`Custo salvo. Atenção: ${abaixoDoMinimo(valor,minimo.texto)}`}:{})}};
 }
 
 async function salvarReferencia({token,organizacaoId,processoId,body}){

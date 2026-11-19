@@ -226,7 +226,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
     estado.orgId = orgId;
     const { data: acesso, error: erroAcesso } = await sb.rpc("meu_acesso_operacao");
     if (erroAcesso) { aviso("Não foi possível verificar seu acesso à empresa. Tente novamente.", "erro"); return; }
-    estado.acessoEmpresaId = acesso?.empresa_id || null;
+    estado.acessoEmpresaId = acesso?.empresa_id || null; estado.acessoPapel = acesso?.papel || null;
     if (estado.acessoEmpresaId) $("btn-nova-empresa").style.display = "none";
     await carregarEmpresas();
     if (!estado.acessoEmpresaId) await carregarLimiteCnpjs();
@@ -246,7 +246,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
   }
   // Catálogo e resumo custos × vendas (catalogo-produtos.js): mesma sessão e empresa ativa da página.
   const catalogo = CatalogoProdutos.montar({ alvo: $("catalogo-produtos"), sb });
-  async function carregarDados() { carregarIdentificacao(); if (!estado.empresaId) return; fecharAviso(); await Promise.all([carregarDocumentos(), carregarAgenda(), catalogo.abrir({ orgId: estado.orgId, empresaId: estado.empresaId }), CatalogoProdutos.carregarResumo({ alvo: $("resumo-custos-vendas"), sb, empresaId: estado.empresaId })]); }
+  async function carregarDados() { carregarIdentificacao(); if (!estado.empresaId) return; fecharAviso(); await Promise.all([carregarDocumentos(), carregarAgenda(), catalogo.abrir({ orgId: estado.orgId, empresaId: estado.empresaId, papel: estado.acessoPapel }), CatalogoProdutos.carregarResumo({ alvo: $("resumo-custos-vendas"), sb, empresaId: estado.empresaId })]); }
   async function carregarDocumentos() {
     const { data, error } = await sb.from("operacao_documentos").select("*").eq("empresa_id", estado.empresaId).order("vencimento", { ascending: true, nullsFirst: false });
     if (error) { aviso("Não foi possível carregar os documentos: " + error.message, "erro"); return false; }

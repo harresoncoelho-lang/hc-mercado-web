@@ -34,7 +34,7 @@ function fixture(t,changes={}){
  else if(url.includes('/operacao_processos?')){if(op.method==='PATCH'&&state.processo)Object.assign(state.processo,JSON.parse(op.body));data=projetar(url,state.processo?[state.processo]:[]);}
  else if(url.includes('/operacao_origens_pncp?')){const records=state.originState?[{item_id:ids.item,organizacao_id:ids.org,processo_id:ids.processo,estado:state.originState}]:[];return new Response(JSON.stringify(records),{headers:{'Content-Range':records.length?'0-0/1':'*/0','Preference-Applied':'count=exact'}});}
  else if(url.includes('/operacao_itens_resultado?')){assert.match(url,/quantidade:quantidade::text/);const q=new URL(url).searchParams;data=state.itens.filter(i=>['id','processo_id','organizacao_id','tipo'].every(k=>!q.get(k)?.startsWith('eq.')||q.get(k)==='eq.'+(i[k]??'item')));
- if(op.method==='PATCH'){const g=/valor_unitario_proposta\.gte\.([\d.]+)/.exec(q.get('or')||'');data=data.filter(i=>!g||i.valor_unitario_proposta==null||Number(i.valor_unitario_proposta)>=Number(g[1]));for(const i of data)Object.assign(i,JSON.parse(op.body));return new Response(JSON.stringify(projetar(url,data)));}
+ if(op.method==='PATCH'){const g=/valor_unitario_proposta\.gte\.([\d.]+)/.exec(q.get('or')||'');const m=/valor_unitario_minimo\.lte\.([\d.]+)/.exec(q.get('or')||'');data=data.filter(i=>(!g||i.valor_unitario_proposta==null||Number(i.valor_unitario_proposta)>=Number(g[1]))&&(!m||i.valor_unitario_minimo==null||Number(i.valor_unitario_minimo)<=Number(m[1])));for(const i of data)Object.assign(i,JSON.parse(op.body));return new Response(JSON.stringify(projetar(url,data)));}
  if(op.method==='POST'){const rows=JSON.parse(op.body);state.posts.push({url,op,rows});const out=rows.map(r=>{const i=state.itens.find(i=>i.processo_id===r.processo_id&&(i.tipo||'item')===r.tipo&&i.identificador===r.identificador);if(i)return Object.assign(i,r);state.itens.push({...r});return r;});return new Response(JSON.stringify(projetar(url,out)));}
  data=data.map(i=>({...i,operacao_origens_pncp:state.origens.includes(i.id)?[{item_id:i.id}]:[]}));const sel=q.get('id');if(sel?.startsWith('in.('))data=data.filter(i=>sel.slice(4,-1).split(',').includes(i.id));if(sel?.startsWith('gt.'))data=data.filter(i=>i.id>sel.slice(3));data=projetar(url,data);if(op.headers.Prefer==='count=exact'){const total=data.length;if(q.get('limit'))data=data.slice(0,Number(q.get('limit')));return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json','Content-Range':data.length?`0-${data.length-1}/${total}`:'*/0','Preference-Applied':'count=exact'}});}}
  else if(url.includes('/storage/'))return new Response(Buffer.from('%PDF-1.4\n'));
@@ -236,6 +236,22 @@ test('preço, referência e premissas validam regra, formato e escopo',async t=>
  const semFrete={...base};delete semFrete.frete;assert.equal((await f.run({acao:'salvarPremissas',...semFrete})).statusCode,400);
  assert.equal((await f.run({acao:'salvarPremissas',...base,tributos:'99.999'})).statusCode,200);
  f.state.membro.papel='leitura';assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:null,valorUnitarioMinimo:null})).statusCode,403);
+});
+test('editar item abaixo do preço mínimo é recusado; mínimo antigo inválido não trava o custo',async t=>{
+ const f=fixture(t);const item=v=>({acao:'salvarItem',modo:'editar',item:{id:ids.item,identificador:'1',descricao:'Material',quantidade:'2',valorUnitario:v}});
+ assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:null,valorUnitarioMinimo:'1.20'})).statusCode,200);
+ const abaixo=await f.run(item('1.19'));assert.equal(abaixo.statusCode,422);
+ assert.equal(abaixo.json.erro,'O valor ofertado R$ 1,19 está abaixo do seu preço mínimo R$ 1,20. Ajuste o valor ou o mínimo.');
+ assert.equal(f.state.itens[0].valor_unitario_proposta,'1.25');
+ assert.equal((await f.run(item('1.20'))).statusCode,200);assert.equal(f.state.itens[0].valor_unitario_proposta,'1.20');
+ // Estado antigo (gravado antes da regra): valor 1.10 com mínimo 1.20. Custo grava e avisa; mínimo novo acima do valor segue recusado.
+ f.state.itens[0].valor_unitario_proposta='1.10';
+ const custo=await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:'0.50',valorUnitarioMinimo:'1.20'});
+ assert.equal(custo.statusCode,200);assert.equal(f.state.itens[0].custo_unitario,'0.50');assert.match(custo.json.aviso,/R\$ 1,10 está abaixo do seu preço mínimo R\$ 1,20/);
+ assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:'0.50',valorUnitarioMinimo:'1.30'})).statusCode,422);
+ assert.equal((await f.run({acao:'salvarPrecoItem',itemId:ids.item,custoUnitario:'0.60',valorUnitarioMinimo:'1.00'})).json.aviso,undefined);
+ // Banco sem a coluna do mínimo: edição segue sem a conferência.
+ f.state.semColunas=true;assert.equal((await f.run(item('0.90'))).statusCode,200);
 });
 test('importarPlanilha grava em 1 POST com on_conflict, mesmas chaves e atualizado_em só quando muda a proposta',async t=>{
  const f=fixture(t,{origens:[ids.item]});const antigo='2026-01-01T00:00:00.000Z';

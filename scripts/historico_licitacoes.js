@@ -38,9 +38,21 @@ async function pncpJson(fetchPncp, url) {
   try {
     const r = await fetchPncp(url, { headers: { Accept: "application/json", "User-Agent": L.UA }, signal: ctrl.signal });
     if (r.status === 204 || r.status === 404) return null;
-    if (!r.ok) throw new Error(`PNCP HTTP ${r.status}`);
+    if (!r.ok) throw Object.assign(new Error(`PNCP HTTP ${r.status}`), { status: r.status });
     return await r.json();
   } finally { clearTimeout(timer); }
+}
+
+// Cabeçalho do edital: /api/consulta é a fonte principal; fora do ar (5xx, timeout, rede) cai na /api/pncp/v1,
+// que devolve o mesmo cadastro da compra. 4xx não troca de fonte: o pedido é que está errado.
+async function cabecalhoDoEdital(fetchPncp, ref) {
+  const caminho = `orgaos/${ref.cnpj}/compras/${ref.ano}/${Number(ref.seq)}`;
+  try { return await pncpJson(fetchPncp, `https://pncp.gov.br/api/consulta/v1/${caminho}`); }
+  catch (e) {
+    if (e.status && e.status < 500) throw e;
+    console.warn(`[historico] /api/consulta falhou (${String(e.message || e).slice(0, 120)}); usando /api/pncp/v1`);
+    return pncpJson(fetchPncp, `https://pncp.gov.br/api/pncp/v1/${caminho}`);
+  }
 }
 
 // Baixa um mês do arquivo de propostas e passa as linhas ao filtro sem descompactar o CSV inteiro (1,2 GB).
@@ -115,7 +127,7 @@ async function etapaHistorico(tarefa, { rest, fetchPncp = (...a) => fetch(...a),
     `&organizacao_id=eq.${q(tarefa.organizacao_id)}&select=id,url_origem,origem_externa_id,numero`)).json();
   if (!p) throw new ErroHistorico("Processo indisponível.");
   const ref = referencia(p);
-  const cab = await pncpJson(fetchPncp, `https://pncp.gov.br/api/consulta/v1/orgaos/${ref.cnpj}/compras/${ref.ano}/${Number(ref.seq)}`);
+  const cab = await cabecalhoDoEdital(fetchPncp, ref);
   const uasg = String(cab?.unidadeOrgao?.codigoUnidade || "").replace(/\D/g, "");
   if (!uasg) throw new ErroHistorico("Edital sem unidade compradora no PNCP.");
   const idAtual = String(cab.linkSistemaOrigem || "").match(/[?&]compra=(\d{17})\b/)?.[1] || null;

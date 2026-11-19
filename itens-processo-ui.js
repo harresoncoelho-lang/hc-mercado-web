@@ -181,6 +181,13 @@
     return { ok: true, corpo: { itemId: item.id, custoUnitario: item.custoUnitario ?? null, valorUnitarioMinimo: canonico(calc.limite, 2) } };
   }
 
+  // Mesma regra do servidor (salvarItem/editar): valor ofertado abaixo do preço mínimo gravado é recusado antes de enviar.
+  function abaixoDoMinimo(item, valorUnitario) {
+    const min = item?.valorUnitarioMinimo ? decimalPositivo(String(item.valorUnitarioMinimo), 2) : null, vu = decimalPositivo(valorUnitario, 2);
+    if (min === null || vu === null || vu >= min) return null;
+    return `O valor ofertado ${P().formatarReais(vu)} está abaixo do seu preço mínimo ${P().formatarReais(min)}. Ajuste o valor ou o mínimo.`;
+  }
+
   // Unidade do PNCP → sigla da Pesquisa de Preços (tabela do T5, docs/qa/integracao-20261118/T5-referencia-preco.md).
   const SIGLAS = { UNIDADE: 'UN', EMBALAGEM: 'EMB', FRASCO: 'FR', CAIXA: 'CX', ROLO: 'RO', PACOTE: 'PCT', SACO: 'SC', QUILOGRAMA: 'KG', BOBINA: 'BOB', GRAMA: 'G', LITRO: 'L', MILILITRO: 'ML', AMPOLA: 'AM', LATA: 'LT', METRO: 'M', SERINGA: 'SER',
     BOMBONA: 'BOM', GALAO: 'GL', PECA: 'PC', CONJUNTO: 'CJ', SACHE: 'SAC', CENTENA: 'C', BALDE: 'BD', PAR: 'PAR', POTE: 'POTE', BISNAGA: 'BIS', 'FRASCO-AMPOLA': 'FR-AM', BARRA: 'BR', TAMBOR: 'TB', MILHEIRO: 'MIL', GARRAFA: 'GRF', DUZIA: 'DZ',
@@ -413,7 +420,7 @@
     }
     // Marca e modelo entram pelo formulário do item (mesmo caminho de "Editar" + "Salvar item"): a pessoa confere antes de gravar.
     // Fabricante não tem campo no formulário; vai pela planilha de itens (coluna fabricante).
-    function preencherMarca(i, origem, prefixo) {
+    function preencherMarca(i, origem, prefixo, tipo = 'ok') {
       const n = nos.get(i.id);
       const mudaMarca = (origem.marca && origem.marca !== i.marca) || (origem.modelo && origem.modelo !== i.modelo);
       const partes = [prefixo];
@@ -425,14 +432,21 @@
         partes.push(`Marca ${origem.marca || i.marca || '—'}${origem.modelo ? ` / modelo ${origem.modelo}` : ''} no formulário do item, no topo: confira e clique em Salvar item.`);
       }
       if (origem.fabricante && origem.fabricante !== i.fabricante) partes.push(`Fabricante ${origem.fabricante}: grave pela planilha de itens (coluna fabricante).`);
-      marcar(n?.fonteEstado, partes.filter(Boolean).join(' '), 'ok');
+      marcar(n?.fonteEstado, partes.filter(Boolean).join(' '), tipo);
       if (mudaMarca) el('#itens-titulo')?.focus?.();
     }
-    function usarDoCatalogo(i, campos) {
+    async function usarDoCatalogo(i, campos) {
       const n = nos.get(i.id); if (!n) return;
-      // Custo grava direto (salvarPrecoItem: não toca atualizado_em nem a revisão da proposta).
-      if (campos.custoUnitario) { n.custo.value = virgula(campos.custoUnitario); void salvarCusto(i); }
-      preencherMarca(i, campos, campos.custoUnitario ? `Custo do catálogo: R$ ${virgula(campos.custoUnitario)}.` : 'O produto do catálogo não tem custo informado.');
+      // Custo grava direto (salvarPrecoItem: não toca atualizado_em nem a revisão da proposta). Só diz "salvo" com a confirmação do servidor.
+      let texto = 'O produto do catálogo não tem custo informado.', tipo = 'ok';
+      if (campos.custoUnitario) {
+        n.custo.value = virgula(campos.custoUnitario);
+        const s = await salvarCusto(i);
+        if (!vivo) return;
+        texto = s?.ok ? `Custo do catálogo salvo: R$ ${virgula(campos.custoUnitario)}.${s.aviso ? ` ${s.aviso}` : ''}` : `Custo do catálogo não foi salvo: ${s?.erro || 'tente de novo'}`;
+        if (!s?.ok || s.aviso) tipo = 'erro';
+      }
+      preencherMarca(i, campos, texto, tipo);
     }
     function cartaoItem(i) {
       const t = totalCentavos(i.quantidade, i.valorUnitario);
@@ -520,15 +534,17 @@
     async function salvarCusto(i) {
       const n = nos.get(i.id); if (!n) return;
       const t = n.custo.value.trim(), c = t ? P().lerDinheiro(t) : null;
-      if (t && (c === null || c === 0n)) { marcar(n.custoEstado, 'Use reais com vírgula, maior que zero. Ex.: 51,20', 'erro'); n.custo.setAttribute('aria-invalid', 'true'); return; }
+      if (t && (c === null || c === 0n)) { marcar(n.custoEstado, 'Use reais com vírgula, maior que zero. Ex.: 51,20', 'erro'); n.custo.setAttribute('aria-invalid', 'true'); return { ok: false, erro: 'Use reais com vírgula, maior que zero. Ex.: 51,20' }; }
       n.custo.removeAttribute('aria-invalid');
       const valor = c === null ? null : canonico(c, 2);
-      if (valor === (i.custoUnitario ? canonico(P().lerDinheiro(String(i.custoUnitario)), 2) : null)) { marcar(n.custoEstado, '', ''); return; }
+      if (valor === (i.custoUnitario ? canonico(P().lerDinheiro(String(i.custoUnitario)), 2) : null)) { marcar(n.custoEstado, '', ''); return { ok: true }; }
       marcar(n.custoEstado, 'Salvando…', 'carregando');
       const { r, j } = await chamar({ acao: 'salvarPrecoItem', itemId: i.id, custoUnitario: valor, valorUnitarioMinimo: i.valorUnitarioMinimo ?? null });
-      if (!vivo) return;
-      if (r && r.ok && j?.item) { i.custoUnitario = j.item.custoUnitario; i.valorUnitarioMinimo = j.item.valorUnitarioMinimo; marcar(nos.get(i.id)?.custoEstado, 'Salvo', 'ok'); atualizarPrecos(); return; }
-      marcar(nos.get(i.id)?.custoEstado, j?.erro || 'Não foi possível salvar agora. Saia do campo de novo para tentar.', 'erro');
+      if (!vivo) return { ok: false };
+      if (r && r.ok && j?.item) { i.custoUnitario = j.item.custoUnitario; i.valorUnitarioMinimo = j.item.valorUnitarioMinimo; marcar(nos.get(i.id)?.custoEstado, j.aviso || 'Salvo', j.aviso ? 'erro' : 'ok'); atualizarPrecos(); return { ok: true, aviso: j.aviso }; }
+      const erro = j?.erro || 'Não foi possível salvar agora. Saia do campo de novo para tentar.';
+      marcar(nos.get(i.id)?.custoEstado, erro, 'erro');
+      return { ok: false, erro };
     }
     async function usarLimite(i) {
       const n = nos.get(i.id);
@@ -648,6 +664,8 @@
       if (ocupado || !vivo) return;
       const v = validarItemCampos(campos());
       if (!v.ok) { el('[data-item-erros]').textContent = Object.values(v.erros).join(' '); return; }
+      const minimo = edicao ? abaixoDoMinimo(itens.find((x) => x.id === edicao), v.dados.valorUnitario) : null;
+      if (minimo) { el('[data-item-erros]').textContent = minimo; return; }
       el('[data-item-erros]').textContent = '';
       const modo = edicao ? 'editar' : 'criar';
       const chave = JSON.stringify([modo, edicao, v.dados]);
@@ -754,7 +772,7 @@
     };
   }
 
-  const api = { montar, validarItemCampos, totalCentavos, reais, linhaQuantidade, decimalPositivo, numeroItemImportacao, respostaImportacao, MSG,
+  const api = { montar, validarItemCampos, abaixoDoMinimo, totalCentavos, reais, linhaQuantidade, decimalPositivo, numeroItemImportacao, respostaImportacao, MSG,
     premissaDoCampo, premissaParaCampo, calcularPrecos, simularLance, corpoUsarLimite, unidadeCompras, referenciaDeResposta, decodificarPlanilha, previaPlanilha, recursosPreco };
   global.LicitaItensProcesso = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

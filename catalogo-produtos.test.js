@@ -146,3 +146,20 @@ test('usar do catálogo: botão lista sugestões e devolve os campos ao escolher
   assert.deepEqual(escolhido, { custoUnitario: '1.20', marca: 'Bic', modelo: 'Cristal', fabricante: 'Bic Brasil' });
   assert.equal(lista.hidden, true);
 });
+
+test('papel leitura: tela não mostra "+ Produto", importar nem "Editar"; operador vê', async () => {
+  // DOM mínimo: um nó por seletor; [data-escrita] devolve os dois botões de escrita.
+  const nos = {}, escrita = [{ hidden: false }, { hidden: false }];
+  const no = (s) => (nos[s] ||= { hidden: false, value: '', textContent: '', innerHTML: '', addEventListener() {} });
+  const alvo = { addEventListener() {}, querySelector: no, querySelectorAll: (s) => (s === '[data-escrita]' ? escrita : []) };
+  const consulta = { select: () => consulta, eq: () => consulta, order: () => consulta, limit: async () => ({ data: [{ id: 'p1', nome: 'Caneta', ativo: true }], error: null }) };
+  const sb = { from: () => consulta };
+  const tela = C.montar({ alvo, sb, doc: {} });
+  assert.match(alvo.innerHTML, /data-acao="novo" data-escrita/);
+  await tela.abrir({ orgId: 'o', empresaId: 'e', papel: 'leitura' });
+  assert.deepEqual(escrita.map((b) => b.hidden), [true, true]);
+  assert.doesNotMatch(no('.catalogo-lista').innerHTML, /data-editar/);
+  await tela.abrir({ orgId: 'o', empresaId: 'e', papel: 'operador' });
+  assert.deepEqual(escrita.map((b) => b.hidden), [false, false]);
+  assert.match(no('.catalogo-lista').innerHTML, /data-editar="p1"/);
+});

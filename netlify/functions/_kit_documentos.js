@@ -116,5 +116,5 @@ function mascaraCnpj(cnpj){
 function textoFinal(resultado,cpf){const m=resultado.mascararCnpj||(t=>t);if(!resultado.textoComCpf)return m(resultado.previa.texto);return cpf?m(resultado.textoComCpf(cpf)):null;}
 // Tabela só quando a peça persistida nasceu no formato 2; sem logo nem formato, o DOCX sai como antes.
 function docx(resultado,{formato=1,logo=null,paginas}={}){return montarDocx({}, {}, {texto:resultado.previa.texto,preservarLinhas:true},resultado.titulo,{logo,tabela:formato===2?resultado.tabela:null,paginas});}
-module.exports={valorPorExtenso,uuid,decimal,totalItem,preparar,docx,pendente,textoFinal,CPF_PREVIA};
+module.exports={valorPorExtenso,uuid,decimal,totalItem,dinheiro,preparar,docx,pendente,textoFinal,CPF_PREVIA};
 

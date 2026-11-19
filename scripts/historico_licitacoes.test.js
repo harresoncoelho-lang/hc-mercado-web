@@ -58,6 +58,28 @@ test("etapa historico: grava compras/itens/participações e deixa o casamento n
   assert.equal(gravado.historico_participacoes.find((p) => p.marca)?.marca, "PILÃO");
 });
 
+test("etapa historico: /api/consulta fora (5xx ou timeout) usa /api/pncp/v1, sem barra final; 4xx não troca de fonte", async (t) => {
+  t.mock.method(console, "warn", () => {});
+  for (const falha of [() => resposta({}, 503), () => { throw Object.assign(new Error("aborted"), { name: "AbortError" }); }]) {
+    const pedidos = [];
+    const fontesReserva = async (url) => {
+      pedidos.push(url);
+      const u = new URL(url);
+      if (u.pathname.startsWith("/api/consulta/v1/orgaos/")) return falha();
+      if (u.pathname === "/api/pncp/v1/orgaos/00394502002864/compras/2026/4000") return fontes(url.replace("/api/pncp/v1/", "/api/consulta/v1/"));
+      return fontes(url);
+    };
+    const d = await H.etapaHistorico(tarefa, { rest: banco().rest, fetchPncp: fontesReserva, esperar: async () => {}, lerMes: async (mes) => ({ mes, linhas: 0, bytes: 0 }) });
+    assert.equal(d.uasg, "788820");
+    assert.ok(pedidos.includes("https://pncp.gov.br/api/pncp/v1/orgaos/00394502002864/compras/2026/4000"));
+    assert.ok(pedidos.every((p) => !new URL(p).pathname.endsWith("/")));
+  }
+  const pedidos = [];
+  const so400 = async (url) => { pedidos.push(url); return new URL(url).pathname.startsWith("/api/consulta/") ? resposta({}, 400) : fontes(url); };
+  await assert.rejects(H.etapaHistorico(tarefa, { rest: banco().rest, fetchPncp: so400, esperar: async () => {} }), /PNCP HTTP 400/);
+  assert.equal(pedidos.filter((p) => p.includes("/api/pncp/v1/orgaos/00394502002864/compras/2026/4000")).length, 0);
+});
+
 test("esteira: etapa historico vira 'feito' com o detalhe; processo sumido falha de vez", async () => {
   const ok = banco();
   const r = await executarTarefa({ ...tarefa }, { rest: ok.rest, fetchPncp: fontes, esperar: async () => {}, agora: Date.now, lerMes: async (mes) => ({ mes, linhas: 0, bytes: 0 }) });

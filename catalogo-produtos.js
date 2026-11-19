@@ -197,12 +197,13 @@
   const CAMPOS_FORM = [['nome', 'Nome do produto', 'inteiro'], ['descricao', 'Descrição', 'inteiro'], ['marca', 'Marca'], ['modelo', 'Modelo'], ['fabricante', 'Fabricante'], ['unidade', 'Unidade'],
     ['custo_unitario', 'Custo unitário (R$)'], ['codigo_interno', 'Código interno'], ['fornecedor_nome', 'Fornecedor'], ['fornecedor_contato', 'Contato do fornecedor']];
 
+  const SO_LEITURA = 'Seu papel nesta empresa é só de leitura: peça a um gestor para cadastrar.';
   // sb = cliente Supabase da página. abrir({ orgId, empresaId }) recarrega para a empresa ativa.
   function montar({ alvo, sb, doc = global.document }) {
-    const estado = { orgId: null, empresaId: null, produtos: [], busca: '', editando: null, foto: null, importacao: null, referencia: null, mercado: null };
+    const estado = { orgId: null, empresaId: null, leitura: false, produtos: [], busca: '', editando: null, foto: null, importacao: null, referencia: null, mercado: null };
     const $ = (s) => alvo.querySelector(s);
     alvo.innerHTML = `<div class="card-topo"><div><h2>Catálogo de produtos</h2><p>Cadastre uma vez custo, marca, modelo e fornecedor. No preço por item do processo, "Usar do catálogo" preenche esses campos.</p></div>
-      <div class="pdf-acoes"><button class="btn" data-acao="exportar">Baixar planilha</button><label class="btn">Importar planilha<input type="file" accept=".csv,text/csv" data-acao="importar" hidden></label><button class="btn" data-acao="mercado" aria-expanded="false">Buscar no mercado (Compras.gov)</button><button class="btn primario" data-acao="novo">+ Produto</button></div></div>
+      <div class="pdf-acoes"><button class="btn" data-acao="exportar">Baixar planilha</button><label class="btn" data-escrita>Importar planilha<input type="file" accept=".csv,text/csv" data-acao="importar" hidden></label><button class="btn" data-acao="mercado" aria-expanded="false">Buscar no mercado (Compras.gov)</button><button class="btn primario" data-acao="novo" data-escrita>+ Produto</button></div></div>
       <section class="catalogo-mercado card" hidden aria-label="Buscar no mercado"><h2>Buscar no mercado (Compras.gov)</h2><p class="nota">Produtos que órgãos públicos já compraram, com a marca declarada e o preço pago. "Adicionar ao catálogo" preenche nome, marca, modelo, unidade e o preço de referência; o custo continua sendo o do seu fornecedor.</p><div class="catalogo-mercado-busca"></div></section>
       <input type="search" class="catalogo-busca" placeholder="Buscar por nome, marca, modelo ou código" aria-label="Buscar no catálogo" style="width:100%;margin:6px 0 10px">
       <div class="catalogo-importacao" aria-live="polite"></div><form class="catalogo-form card" hidden></form>
@@ -219,8 +220,8 @@
         <td>${esc([p.marca, p.modelo].filter(Boolean).join(' / ') || '—')}${p.fabricante ? `<br><span class="nota">${esc(p.fabricante)}</span>` : ''}</td><td>${esc(p.unidade || '—')}</td>
         <td>${p.custo_unitario === null || p.custo_unitario === undefined ? '<span class="tag pendente">Sem custo</span>' : esc(brl(centavos(p.custo_unitario)))}${p.preco_referencia ? `<br><span class="nota" title="${esc(p.referencia_fonte)}">Ref. mercado ${esc(brl(centavos(p.preco_referencia)))}</span>` : ''}</td>
         <td>${esc(p.fornecedor_nome || '—')}${p.fornecedor_contato ? `<br><span class="nota">${esc(p.fornecedor_contato)}</span>` : ''}</td>
-        <td><span class="tag ${p.ativo === false ? 'pendente' : 'valido'}">${p.ativo === false ? 'Inativo' : 'Ativo'}</span></td><td><button class="btn" data-editar="${esc(p.id)}">Editar</button></td></tr>`).join('')
-        : `<tr><td colspan="7" class="vazio">${estado.produtos.length ? 'Nenhum produto encontrado nesta busca.' : 'Nenhum produto no catálogo. Use "+ Produto" ou importe uma planilha.'}</td></tr>`;
+        <td><span class="tag ${p.ativo === false ? 'pendente' : 'valido'}">${p.ativo === false ? 'Inativo' : 'Ativo'}</span></td><td>${estado.leitura ? '' : `<button class="btn" data-editar="${esc(p.id)}">Editar</button>`}</td></tr>`).join('')
+        : `<tr><td colspan="7" class="vazio">${estado.produtos.length ? 'Nenhum produto encontrado nesta busca.' : estado.leitura ? 'Nenhum produto no catálogo.' : 'Nenhum produto no catálogo. Use "+ Produto" ou importe uma planilha.'}</td></tr>`;
       status(`${estado.produtos.length} produto(s) no catálogo${estado.busca ? ` · ${lista.length} na busca` : ''}.`);
     }
     async function carregar() {
@@ -294,7 +295,7 @@
         const { error } = await q;
         if (error) throw error;
       } catch (e) {
-        erro.textContent = /row-level|permission|42501/i.test(e.message || '') ? 'Seu papel nesta empresa é só de leitura: peça a um gestor para cadastrar.'
+        erro.textContent = /row-level|permission|42501/i.test(e.message || '') ? SO_LEITURA
           : /codigo_idx|duplicate key/i.test(e.message || '') ? 'Já existe um produto com este código interno.' : `Não foi possível salvar: ${e.message}`;
         botao.disabled = false;
         return;
@@ -310,7 +311,7 @@
       if (caixa.hidden) return;
       if (!estado.mercado && global.MercadoComprasGov) {
         estado.mercado = global.MercadoComprasGov.montar({ alvo: $('.catalogo-mercado-busca'), doc, rotuloUsar: 'Adicionar ao catálogo',
-          aoUsar: (item, resumo) => { abrirForm(global.MercadoComprasGov.produtoParaCatalogo(item, resumo)); $('.catalogo-form').scrollIntoView?.({ block: 'start' }); } });
+          aoUsar: (item, resumo) => { if (estado.leitura) { status(SO_LEITURA); return; } abrirForm(global.MercadoComprasGov.produtoParaCatalogo(item, resumo)); $('.catalogo-form').scrollIntoView?.({ block: 'start' }); } });
       }
       estado.mercado?.campo.focus();
     }
@@ -366,7 +367,8 @@
     $('.catalogo-busca').addEventListener('input', (e) => { estado.busca = e.target.value; desenharLista(); });
 
     return {
-      abrir({ orgId, empresaId }) { Object.assign(estado, { orgId, empresaId, produtos: [], busca: '' }); $('.catalogo-busca').value = ''; $('.catalogo-form').hidden = true; $('.catalogo-importacao').innerHTML = ''; return carregar(); },
+      // papel vem de meu_acesso_operacao (mesma fonte da página). Leitura não vê ações de escrita; o banco (RLS) segue sendo a barreira.
+      abrir({ orgId, empresaId, papel }) { Object.assign(estado, { orgId, empresaId, leitura: papel === 'leitura', produtos: [], busca: '' }); for (const b of alvo.querySelectorAll('[data-escrita]')) b.hidden = estado.leitura; $('.catalogo-busca').value = ''; $('.catalogo-form').hidden = true; $('.catalogo-importacao').innerHTML = ''; return carregar(); },
       produtos: () => estado.produtos,
     };
   }
