@@ -31,6 +31,8 @@ test('termoDoItem: nome curto da descrição do edital', () => {
   assert.equal(M.termoDoItem('Papel A4 75g/m² - caixa com 10 resmas'), 'Papel A4 75g/m²');
   assert.equal(M.termoDoItem('Detergente líquido neutro 500 ml frasco plástico biodegradável'), 'Detergente líquido neutro 500 ml frasco');
   assert.equal(M.termoDoItem(null), '');
+  assert.equal(M.termoDoItem('(ID126662) FONTE, Potencia: 400W'), 'FONTE');
+  assert.equal(M.termoDoItem(' [123](ID9) Caneta azul; ponta fina'), 'Caneta azul');
   assert.ok(M.termoDoItem('x'.repeat(300)).length <= 100);
 });
 

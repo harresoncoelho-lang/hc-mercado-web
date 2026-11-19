@@ -82,9 +82,11 @@ async function passosNovos({ navegador, p, contexto, urlProcesso }) {
     // Termo curto da 1ª descrição do processo: o produto do catálogo precisa "parecer" com o item para "Usar do catálogo".
     // Item 2: o item 1 tem mínimo 36,15 e valor 37,90 (passos 12-13); o servidor já recusa valor abaixo do mínimo, mas o e2e segue no item 2.
     const [item1] = await banco(`operacao_itens_resultado?processo_id=eq.${contexto.proc.id}&select=id,descricao,identificador&order=numero_ordem.asc.nullslast&offset=1&limit=1`);
-    const termoItem = String(item1.descricao).split(/[,;:(\n–]| - /)[0].replace(/\s+/g, ' ').trim().split(' ').slice(0, 6).join(' ').slice(0, 100);
+    // Mesma regra da tela (tira "(ID126662)" da frente). Termo vazio fazia o cadastro falhar e o includes('') do vazamento dar falso positivo.
+    const termoItem = require(path.join(RAIZ, 'mercado-comprasgov.js')).termoDoItem(item1.descricao);
 
     await passo('catálogo: cadastrar produto', p, async () => {
+      exigir(termoItem.length >= 3, `termo do item vazio/curto: "${termoItem}" de "${String(item1.descricao).slice(0, 80)}"`);
       await p.click('.aba[data-aba="catalogo"]');
       const cat = p.locator('#catalogo-produtos');
       await cat.locator('[data-acao="novo"]').click({ timeout: 15000 });
@@ -346,7 +348,9 @@ async function passosNovos({ navegador, p, contexto, urlProcesso }) {
       const st = await comoUsuario(U.outra_org, `/storage/v1/object/authenticated/operacao-documentos/${ids.orgA}/${ids.empA1}/e2e-certidao.pdf`);
       if (st.status === 200) vaz.storage_pdf = 1;
       await outraPg.goto(`${SITE}/operacao.html?aba=catalogo`); await outraPg.waitForTimeout(3000);
-      if ((await outraPg.innerText('body')).includes(termoItem.slice(0, 20))) vaz.tela_catalogo = 1;
+      // Só a lista do catálogo: o termo curto (ex.: "FONTE") pode aparecer em menu ou rodapé.
+      const listaOutra = outraPg.locator('.catalogo-lista');
+      if (termoItem && await listaOutra.count() && (await listaOutra.innerText()).includes(termoItem)) vaz.tela_catalogo = 1;
       // Hoje da outra org: não pode ver a sanção da empresa da org A.
       await outraPg.goto(SITE + '/sistema'); await outraPg.waitForTimeout(4000);
       if (/Materiais Horizonte/.test(await outraPg.innerText('body'))) vaz.hoje_sancao = 1;

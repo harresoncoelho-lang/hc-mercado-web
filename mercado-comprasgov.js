@@ -10,7 +10,9 @@
 
   // Descrição de edital é longa ("CANETA ESFEROGRÁFICA, MATERIAL: PLÁSTICO, ..."): o catálogo público acha pelo nome curto.
   function termoDoItem(descricao) {
-    const primeiro = String(descricao ?? '').split(/[,;:(\n–]| - /)[0].replace(/\s+/g, ' ').trim();
+    // Código do órgão na frente ("(ID126662) FONTE, ..."): sem tirar, o termo saía vazio e a busca não rodava.
+    const limpo = String(descricao ?? '').replace(/^(\s*[([][^)\]\n]{0,40}[)\]])+/, '');
+    const primeiro = limpo.split(/[,;:(\n–]| - /)[0].replace(/\s+/g, ' ').trim();
     return primeiro.split(' ').slice(0, 6).join(' ').slice(0, 100);
   }
 
