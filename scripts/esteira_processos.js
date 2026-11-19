@@ -16,12 +16,16 @@
 //               cobertura por documento e grava operacao_exigencias_processo (upsert; não toca resposta).
 //               Declaração com modelo literal no anexo do edital leva modelo_texto + modelo_fonte {documento, pagina}.
 //   cruzamento  é a view operacao_exigencias_situacao (calculada na leitura): só marca feito.
+//   historico   licitação anterior do mesmo órgão e produto (scripts/historico_licitacoes.js): grava nas
+//               tabelas historico_* e deixa o casamento item a item no detalhe. No fim da rodada, com tempo
+//               sobrando, completa as consultas avulsas pendentes (participantes pelo arquivo de propostas).
 // Regra fixa: nunca grava em operacao_processos (atualizado_em é controle de concorrência do kit).
 const { restFetch } = require("./supabase_dados");
 const { buscarFonteItem, listarNumerosItens } = require("../netlify/functions/_pncp_item_fonte");
 const { referencia } = require("../netlify/functions/importar-item-pncp");
 const ex = require("../netlify/functions/_exigencias");
 const { detectarModeloDoEdital, escolherModelo } = require("../declaracoes-modelos.js");
+const historico = require("./historico_licitacoes");
 
 const LOTE = Math.max(1, Number(process.env.LOTE_ESTEIRA || 5));
 const LIMITE_MS = Math.max(1, Number(process.env.LIMITE_MINUTOS_ESTEIRA || 10)) * 60000;
@@ -53,7 +57,7 @@ function erroCurto(erro) {
 // Backoff exponencial: 5, 10, 20, 40 min...; na 5ª falha vira 'falhou' e para de tentar.
 function estadoAposFalha(tarefa, erro, agora) {
   const tentativas = (Number(tarefa.tentativas) || 0) + 1;
-  const falhou = erro instanceof ErroPermanente || tentativas >= MAX_TENTATIVAS;
+  const falhou = erro instanceof ErroPermanente || erro instanceof historico.ErroHistorico || tentativas >= MAX_TENTATIVAS;
   return { estado: falhou ? "falhou" : "pendente", tentativas, erro: erroCurto(erro),
     proximo_em: iso(agora + (falhou ? 0 : BACKOFF_MS * 2 ** (tentativas - 1))) };
 }
@@ -259,6 +263,11 @@ async function executarTarefa(tarefa, deps) {
         : { estado: "feito", detalhe: r.detalhe, erro: null });
       return r.aguardandoLeitura ? "aguardando_leitura" : "feito";
     }
+    if (tarefa.etapa === "historico") {
+      const detalhe = await historico.etapaHistorico(tarefa, deps);
+      await atualizarTarefa(rest, tarefa, { estado: "feito", detalhe, erro: null });
+      return "feito";
+    }
     if (tarefa.etapa === "cruzamento") {
       await atualizarTarefa(rest, tarefa, { estado: "feito", erro: null });
       return "feito";
@@ -273,7 +282,8 @@ async function executarTarefa(tarefa, deps) {
 }
 
 async function rodar({ rest = restFetch, fetchPncp = (...a) => fetch(...a), esperar = esperarPadrao, agora = Date.now,
-  segundaPassadaLigada = process.env.ESTEIRA_SEGUNDA_PASSADA === "1", chamarIA = null, lote = LOTE } = {}) {
+  segundaPassadaLigada = process.env.ESTEIRA_SEGUNDA_PASSADA === "1", chamarIA = null, lote = LOTE,
+  completarConsultas = rest === restFetch } = {}) {
   const inicio = agora();
   const prazoFinal = inicio + LIMITE_MS;
   const contagem = {};
@@ -289,6 +299,10 @@ async function rodar({ rest = restFetch, fetchPncp = (...a) => fetch(...a), espe
     }
     const resultado = await executarTarefa(tarefa, { rest, fetchPncp, esperar, agora, prazoFinal, segundaPassadaLigada, chamarIA });
     contagem[resultado] = (contagem[resultado] || 0) + 1;
+  }
+  // Consulta avulsa só com tempo sobrando: a tarefa do processo vem primeiro. Falha aqui não derruba a rodada.
+  if (completarConsultas && agora() < prazoFinal) {
+    try { contagem.consultasAvulsas = await historico.completarConsultas({ rest, fetchPncp }); } catch (erro) { console.warn(`[esteira] consultas avulsas: ${erroCurto(erro)}`); }
   }
   console.log(`[esteira] ${candidatas.length} candidata(s): ${JSON.stringify(contagem)}`);
   return contagem;

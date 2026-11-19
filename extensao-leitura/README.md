@@ -11,7 +11,7 @@ O CNPJ é reconhecido pelo rótulo explícito `CNPJ do fornecedor:` ou pela estr
 ## Limites e proteção
 
 - Apenas URL HTTPS exata do cadastro de propostas do Compras.gov.br; validação antes e depois da coleta.
-- Manifesto fonte: apenas `activeTab` e `scripting`, sem worker ou conexões externas habilitadas. O pacote QA opt-in adiciona worker e uma origem/caminho explícitos; não adiciona permissões, rede, cookies ou armazenamento. O nonce fica no receptor/worker e retorna somente à página que iniciou a tentativa, nunca ao popup.
+- Manifesto fonte: apenas `activeTab` e `scripting`, sem worker ou conexões externas habilitadas. Desde a 0.2.0 há também `optional_host_permissions` só para as origens de produção do LicitaPlena, concedidas só quando o usuário usa o modo "Gravar pregão" (ver abaixo). O pacote QA opt-in adiciona worker e uma origem/caminho explícitos; não adiciona permissões, rede, cookies ou armazenamento. O nonce fica no receptor/worker e retorna somente à página que iniciou a tentativa, nunca ao popup.
 - O script não recebe os dados esperados. Retorna identificadores padronizados, aviso genérico de sessão/CAPTCHA e, quando a estrutura permite, até dez itens públicos da página observada: ID, descrição limitada a 2.000 caracteres, quantidade solicitada e unidade. Não retorna nomes da conta, CPF, endereços privados ou texto integral da página.
 - Identidade ausente, ambígua ou divergente, URL alterada, sessão expirada, coleta incompleta e mudança de aba invalidam a conferência.
 - Identificadores precisam ser visíveis, inclusive quanto à opacidade ancestral. Sem `Element.checkVisibility`, a coleta é incompleta.
@@ -77,3 +77,43 @@ Fontes oficiais consultadas via Context7:
 - [Ciclo de vida do worker](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)
 - [Externally connectable](https://developer.chrome.com/docs/extensions/manifest/externally_connectable)
 - [Chave pública e ID estável](https://developer.chrome.com/docs/extensions/reference/manifest/key)
+
+## Modo "Gravar pregão no LicitaPlena" (19/11/2026)
+
+Decisão do dono: nada pago (sem Integra Compras) e **nunca contornar captcha**. A parte que só existe atrás de captcha é lida pela extensão no navegador do próprio usuário, com um clique dele. Contrato do endpoint e da leitura: `docs/pregao-gravado.md`.
+
+Páginas suportadas (somente leitura):
+- Compras.gov novo, página pública `https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras/acompanhamento-compra?compra=<id>` (lista de itens) e `/item/{n}?compra=<id>` (propostas do item). O navegador do usuário resolve o hCaptcha invisível como em qualquer visita.
+- ComprasNet antigo, ata completa `comprasnet.gov.br/livre/pregao/AtaEletronico.asp?...`, depois que o usuário digita o captcha de imagem.
+
+Botão do popup (seção "Gravar pregão no LicitaPlena"):
+1. **Ler esta página e gravar** — lê o HTML que a página já montou (`pregao-leitor.mjs`, `lerPaginaPregao`): por item, participantes (CNPJ, nome, UF, ME/EPP, situação), valores ofertado/negociado/proposta/total, quantidade, **marca/fabricante e modelo** de cada proposta aberta e o **chat** de cada fornecedor aberto (data/hora, texto, tipo e motivo; recusa, desclassificação e inabilitação aparecem destacadas). Na ata antiga lê também lances (inclusive os excluídos) e "Troca de Mensagens". O que não está aberto na tela volta como "não lido" e o popup lista os passos para o próprio usuário clicar, por exemplo `Abra o item 1 → fornecedor CHIKUT ... (26153737000138) → Chat e Proposta` ou `Abra o item 6 ("Visualizar propostas") → em cada fornecedor, Chat e Proposta`; depois ele clica de novo e a gravação mescla com a anterior.
+
+**Sem modo automático** (decisão de 19/11, risco jurídico: o captcha existe para impedir consulta automatizada): a extensão não clica, não expande fornecedores e não navega item a item. `abrirDetalhesItem` continua em `pregao-leitor.mjs` atrás de `MODO_AUTOMATICO = false`, sem botão que a chame. **Não habilitar sem parecer jurídico.**
+
+O que a extensão **não** faz: não chama as APIs do portal por conta própria, não lê nem reaproveita o token do hCaptcha, não resolve desafio, não roda em segundo plano, não envia proposta ou lance.
+
+Envio: a extensão procura uma aba aberta do LicitaPlena (`licitaplena.com.br`, `www.`, `licitaplena.pages.dev`; o pacote QA acrescenta `http://127.0.0.1/*` do ambiente de teste) e executa nela `enviarNaPagina`, que pega a sessão Supabase que a própria página guarda (`sb-*-auth-token`) e faz `POST /api/pregao-gravado` na mesma origem. O token não sai daquela aba nem passa pelo popup; o CSP do popup continua `connect-src 'none'`. Sem aba logada, o popup pede para abrir o LicitaPlena.
+
+Privacidade: CPF nunca é gravado. Participante sem CNPJ vira `pf:<n>` com nome "Pessoa física"; CPF em texto livre é mascarado na extensão e de novo no servidor, e os CHECKs do banco recusam CPF formatado. Nome de MEI entra só porque é a razão social pública do CNPJ.
+
+Permissões: além de `activeTab` + `scripting`, o manifesto declara `optional_host_permissions` só para o LicitaPlena de produção (enviar). O Chrome pede a autorização no primeiro clique; nada é concedido na instalação. `http://127.0.0.1/*` (site do ambiente de teste) entra só no pacote gerado por `scripts/empacotar-extensao-leitura-qa.mjs`.
+
+### Carregar em modo desenvolvedor (não publicado)
+
+1. Chrome → `chrome://extensions` → ligue **Modo do desenvolvedor**.
+2. **Carregar sem compactação** → escolha a pasta `extensao-leitura/` do repositório.
+3. Fixe o ícone. Abra o LicitaPlena logado numa aba de produção. Para testar contra `PORTA_TESTE=8793 node ambiente-teste/servidor.cjs` (`http://127.0.0.1:8793`, banco de `ambiente-teste/subir.cjs`), carregue o pacote QA (com `127.0.0.1`), ou acrescente `http://127.0.0.1/*` à cópia local do manifesto — nunca ao manifesto fonte.
+4. Em outra aba, abra o pregão no Compras.gov, clique no ícone → "Gravar pregão no LicitaPlena". Aceite a permissão de site quando o Chrome pedir.
+5. Para atualizar depois de mudar o código: botão de recarregar no card da extensão em `chrome://extensions`.
+
+Não foi instalada no navegador do usuário nem homologada em navegador real; a leitura do Compras.gov foi conferida contra o DOM real capturado em 19/11 (fixture), a da ata antiga só contra fixture sintética (a ata real exige o captcha de imagem).
+
+### Testes
+
+```powershell
+node --test extensao-leitura/pregao-leitor.test.mjs netlify/functions/__tests__/pregao-gravado.test.js
+node docs/qa/integracao-20261118/testar-dezembro.cjs   # inclui supabase/pregoes_gravados.sql + testar_pregoes_gravados.sql
+```
+
+Fixtures em `fixtures/`: `comprasgov-item-19302805900082025-1.html` e `comprasgov-lista-19302805900082025.html` (recortes reais da página pública, só pessoas jurídicas) e `comprasnet-ata-sintetica.html` (estrutura modelada, empresas e CPF fictícios).

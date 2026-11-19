@@ -1,0 +1,329 @@
+/* global module, document */
+// "Licitação anterior": o que aconteceu nas contratações anteriores do mesmo órgão e do mesmo produto.
+// Dois usos, o mesmo desenho:
+//   montar          cartão dentro do processo (sistema.html): lê com o cliente supabase do usuário (RLS) a
+//                   tarefa 'historico' da esteira (casamento item a item) e as tabelas historico_*.
+//   montarPesquisa  tela avulsa (painel.html, Inteligência de Mercado): órgão + produto + período pela
+//                   função /api/licitacao-anterior.
+// Tudo por textContent (o dado vem de fontes externas). Banco sem as tabelas: o cartão fica vazio e oculto.
+(function (global) {
+  'use strict';
+  const SITUACAO_RUIM = /fracass|desert|cancel|anulad|revogad|suspens/i;
+  const moeda = (v) => (Number.isFinite(Number(v)) && v !== null ? Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—');
+  const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const chaveMarca = (m) => semAcento(m).replace(/[^a-z0-9]+/g, ' ').trim();
+  const cnpjFormatado = (d) => (/^\d{14}$/.test(String(d || '')) ? String(d).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : '');
+  const data = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10).split('-').reverse().join('/') : '');
+  const titulo = (m) => String(m).toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+
+  function tabelaAusente(erro) {
+    return Boolean(erro) && (erro.code === '42P01' || erro.code === 'PGRST205' || erro.status === 404);
+  }
+
+  // Vencedor: 1º colocado do PNCP ainda válido; sem PNCP (pregão antigo), o 1º do arquivo de propostas ou a
+  // linha da Pesquisa de Preços (que só tem o vencedor).
+  function vencedorDe(linhas) {
+    const validas = linhas.filter((p) => !/cancel/i.test(p.situacao_resultado || ''));
+    return validas.find((p) => p.ordem_classificacao === 1) || validas.find((p) => p.classificacao === 1)
+      || validas.find((p) => p.ordem_classificacao == null && p.classificacao == null && (p.marca || p.marca_declarada !== undefined)) || null;
+  }
+
+  function variacao(de, para) {
+    const a = Number(de), b = Number(para);
+    if (!(a > 0) || !Number.isFinite(b) || de === null || para === null) return null;
+    return Math.round(((b - a) / a) * 1000) / 10;
+  }
+
+  // Junta compras, itens, participações e casamentos no que a tela mostra. Puro: testado em node.
+  function montarVisao({ compras = [], itens = [], participacoes = [], casamentos = [], alvos = [] } = {}) {
+    const alvoPorNumero = new Map(alvos.filter((a) => a && a.numero != null).map((a) => [a.numero, a]));
+    const porItem = new Map();
+    for (const p of participacoes) {
+      const k = `${p.id_compra}|${p.numero_item}`;
+      if (!porItem.has(k)) porItem.set(k, []);
+      porItem.get(k).push(p);
+    }
+    const casPorItem = new Map();
+    for (const c of casamentos) {
+      const k = `${c.id_compra}|${c.numero_item}`;
+      if (!casPorItem.has(k)) casPorItem.set(k, []);
+      casPorItem.get(k).push(c);
+    }
+    // Marcas aceitas por produto: no processo, por item do edital; na tela avulsa, um produto só.
+    const grupos = new Map();
+    const grupo = (alvo) => {
+      const k = alvo ? alvo.numero : '*';
+      if (!grupos.has(k)) grupos.set(k, { numero: alvo ? alvo.numero : null, descricao: alvo ? alvo.descricao : null, marcas: new Map(), semMarca: 0 });
+      return grupos.get(k);
+    };
+    const geral = { marcas: new Map(), semMarca: 0 };
+    const somar = (g, marca, compra) => {
+      if (!marca) { g.semMarca++; return; }
+      const k = chaveMarca(marca);
+      const m = g.marcas.get(k) || { formas: new Map(), vitorias: 0, ultima: '', compras: new Set() };
+      m.formas.set(marca, (m.formas.get(marca) || 0) + 1);
+      m.vitorias++; m.compras.add(compra.id_compra);
+      if (String(compra.data_publicacao || '') > m.ultima) m.ultima = String(compra.data_publicacao || '');
+      g.marcas.set(k, m);
+    };
+    let ruins = 0;
+    const lista = compras.map((compra) => {
+      const seus = itens.filter((i) => i.id_compra === compra.id_compra && casPorItem.has(`${i.id_compra}|${i.numero_item}`))
+        .sort((a, b) => a.numero_item - b.numero_item)
+        .map((item) => {
+          const linhas = porItem.get(`${item.id_compra}|${item.numero_item}`) || [];
+          const ruim = SITUACAO_RUIM.test(item.situacao_item || '');
+          // Item fracassado/cancelado não tem vencedor, mesmo com 1º colocado no arquivo de propostas (recusado depois).
+          const vencedor = ruim ? null : vencedorDe(linhas);
+          const primeiroRecusado = ruim ? linhas.find((p) => p.classificacao === 1) || null : null;
+          // A marca é da linha da Pesquisa de Preços do mesmo fornecedor (a linha do vencedor no PNCP não tem marca).
+          const marca = vencedor ? (vencedor.marca || linhas.find((p) => p.fornecedor_chave === vencedor.fornecedor_chave && p.marca)?.marca || null) : null;
+          const cas = casPorItem.get(`${item.id_compra}|${item.numero_item}`);
+          const alvo = cas.map((c) => alvoPorNumero.get(c.item_edital)).find(Boolean) || null;
+          if (ruim) ruins++;
+          if (vencedor && !ruim) { somar(geral, marca, compra); somar(grupo(alvo), marca, compra); }
+          const homologado = vencedor ? vencedor.valor_homologado ?? vencedor.valor_negociado ?? vencedor.valor_lance ?? null : null;
+          return {
+            item, casamentos: cas, alvo, vencedor, primeiroRecusado, marca, ruim, homologado,
+            sobreEstimado: variacao(item.valor_estimado, homologado),
+            sobreEstimadoAtual: alvo ? variacao(alvo.valor_estimado, homologado) : null,
+            reservas: linhas.filter((p) => p.ordem_classificacao > 1 && !/cancel/i.test(p.situacao_resultado || '')).sort((a, b) => a.ordem_classificacao - b.ordem_classificacao),
+            cancelados: linhas.filter((p) => /cancel/i.test(p.situacao_resultado || '')),
+            participantes: linhas.filter((p) => p.classificacao != null || p.valor_proposta != null)
+              .sort((a, b) => (a.classificacao ?? 1e9) - (b.classificacao ?? 1e9)),
+          };
+        });
+      return { compra, itens: seus };
+    }).filter((c) => c.itens.length)
+      .sort((a, b) => String(b.compra.data_publicacao || '').localeCompare(String(a.compra.data_publicacao || '')));
+    const listar = (marcas) => [...marcas.values()].map((m) => ({
+      // Forma mais usada pelos fornecedores; caixa alta inteira vira "Pilão" para a leitura.
+      marca: titulo([...m.formas].sort((a, b) => b[1] - a[1])[0][0]), vitorias: m.vitorias, ultima: m.ultima, compras: m.compras.size,
+    })).sort((a, b) => b.vitorias - a.vitorias || a.marca.localeCompare(b.marca));
+    const porProduto = [...grupos.values()].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0))
+      .map((g) => ({ numero: g.numero, descricao: g.descricao, marcasAceitas: listar(g.marcas), semMarca: g.semMarca }));
+    return { compras: lista, marcasAceitas: listar(geral.marcas), semMarca: geral.semMarca, porProduto, ruins };
+  }
+
+  // ---------- desenho ----------
+  function el(tag, classe, texto) {
+    const n = document.createElement(tag);
+    if (classe) n.className = classe;
+    if (texto !== undefined && texto !== null) n.textContent = texto;
+    return n;
+  }
+  function link(href, texto) {
+    const a = el('a', 'la-link', texto);
+    a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    return a;
+  }
+  const pct = (v) => (v === null ? '' : ` (${v > 0 ? '+' : ''}${String(v).replace('.', ',')}%)`);
+  function fornecedorTexto(p) {
+    return [p.fornecedor_nome || 'Fornecedor', cnpjFormatado(p.fornecedor_ni), p.porte, p.uf].filter(Boolean).join(' · ');
+  }
+
+  function desenharItem(v, comEdital) {
+    const box = el('div', 'la-item' + (v.ruim ? ' la-item-ruim' : ''));
+    const topo = el('p', 'la-item-topo');
+    topo.append(el('strong', null, `Item ${v.item.numero_item}`), ` ${String(v.item.descricao || '').slice(0, 140)}`);
+    box.append(topo);
+    const meta = el('p', 'la-meta');
+    const sit = el('span', 'la-situacao' + (v.ruim ? ' la-ruim' : ''), v.item.situacao_item || 'Situação não informada');
+    meta.append(sit);
+    const c = v.casamentos[0];
+    meta.append(el('span', `la-confianca la-${c.confianca}`, `${c.confianca === 'alta' ? 'Casamento alto' : c.confianca === 'media' ? 'Casamento médio' : 'Casamento baixo'}: ${c.regra}`));
+    if (comEdital && v.casamentos.some((x) => x.item_edital != null)) {
+      meta.append(el('span', 'la-edital', `item ${[...new Set(v.casamentos.map((x) => x.item_edital).filter((x) => x != null))].join(', ')} do edital atual`));
+    }
+    box.append(meta);
+    const precos = el('p', 'la-precos');
+    precos.textContent = `Estimado ${moeda(v.item.valor_estimado)} · Homologado ${moeda(v.homologado)}${pct(v.sobreEstimado)}` +
+      (v.alvo && v.alvo.valor_estimado ? ` · Estimado agora ${moeda(v.alvo.valor_estimado)}${v.sobreEstimadoAtual === null ? '' : ` (vencedor anterior ${pct(v.sobreEstimadoAtual).trim()} do estimado de agora)`}` : '');
+    box.append(precos);
+    if (v.vencedor) {
+      const venc = el('p', 'la-vencedor');
+      venc.append(el('strong', null, 'Vencedor: '), fornecedorTexto(v.vencedor), ' · Marca: ', el('span', v.marca ? 'la-marca' : 'la-marca la-sem', v.marca || 'não informada'));
+      box.append(venc);
+    } else if (v.primeiroRecusado) {
+      box.append(el('p', 'la-cancelado', `1º colocado não levou o item (${fornecedorTexto(v.primeiroRecusado)}). O motivo fica no pregão (exige captcha).`));
+    } else if (!v.ruim) box.append(el('p', 'la-apoio', 'Sem resultado publicado para este item.'));
+    if (v.reservas.length) {
+      box.append(el('p', 'la-reservas', 'Cadastro reserva: ' + v.reservas.slice(0, 3).map((p) => `${p.ordem_classificacao}º ${fornecedorTexto(p)} ${moeda(p.valor_homologado)}`).join('; ')));
+    }
+    for (const p of v.cancelados) {
+      box.append(el('p', 'la-cancelado', `Resultado cancelado (${fornecedorTexto(p)})${p.motivo_cancelamento ? ': ' + p.motivo_cancelamento : ''}`));
+    }
+    if (v.participantes.length) {
+      const det = el('details', 'la-participantes');
+      det.append(el('summary', null, `Todos os participantes (${v.participantes.length})`));
+      // Sem classificação no arquivo = recusado, inabilitado ou desistente; o porquê só no pregão (captcha).
+      if (v.participantes.some((p) => !p.classificacao)) det.append(el('p', 'la-fonte', 'Não classificado: proposta recusada, desclassificada, inabilitada ou desistente. O motivo fica no pregão.'))
+      const ol = el('ol', 'la-lista');
+      for (const p of v.participantes) {
+        const final = p.valor_negociado ?? p.valor_lance ?? p.valor_proposta;
+        ol.append(el('li', null, `${p.classificacao ? p.classificacao + 'º · ' : 'não classificado · '}${fornecedorTexto(p)} · proposta ${moeda(p.valor_proposta)} · final ${moeda(final)}`));
+      }
+      det.append(ol);
+      box.append(det);
+    }
+    return box;
+  }
+
+  function desenhar(alvo, visao, { comEdital = false, rodape = '' } = {}) {
+    const raiz = el('div', 'la');
+    if (!visao.compras.length) {
+      raiz.append(el('p', 'la-apoio', 'Nenhuma contratação anterior deste órgão com este produto foi encontrada nos últimos anos.'));
+      alvo.replaceChildren(raiz);
+      return;
+    }
+    const resumo = el('p', 'la-apoio', `${visao.compras.length} contratação(ões) anterior(es)` + (visao.ruins ? ` · ${visao.ruins} item(ns) fracassado(s), deserto(s) ou cancelado(s)` : ''));
+    raiz.append(resumo);
+    const marcas = el('div', 'la-marcas');
+    marcas.append(el('h3', 'la-subtitulo', 'Marcas aceitas por este órgão'));
+    const chipsDe = (g) => {
+      const chips = el('p', 'la-chips');
+      for (const m of g.marcasAceitas) chips.append(el('span', 'la-chip', `${m.marca} · ${m.vitorias} item(ns)${m.ultima ? ' · ' + m.ultima.slice(0, 4) : ''}`));
+      if (g.semMarca) chips.append(el('span', 'la-chip la-sem', `marca não informada · ${g.semMarca}`));
+      if (!g.marcasAceitas.length && !g.semMarca) chips.append(el('span', 'la-apoio', 'Nenhuma marca vencedora registrada.'));
+      return chips;
+    };
+    const produtos = (visao.porProduto || []).filter((g) => g.numero != null);
+    if (produtos.length) {
+      // Por item do edital: só os que têm marca declarada ficam à vista; o resto vai no resumo.
+      const lista = el('ul', 'la-produtos');
+      for (const g of produtos.filter((x) => x.marcasAceitas.length)) {
+        const li = el('li');
+        li.append(el('span', 'la-produto', `Item ${g.numero} do edital${g.descricao ? ' · ' + String(g.descricao).slice(0, 60) : ''}`), chipsDe(g));
+        lista.append(li);
+      }
+      const sem = produtos.filter((x) => !x.marcasAceitas.length).length;
+      if (lista.children.length) marcas.append(lista);
+      if (sem) marcas.append(el('p', 'la-apoio', `${sem} item(ns) do edital sem marca vencedora informada nas compras anteriores.`));
+    } else marcas.append(chipsDe(visao));
+    marcas.append(el('p', 'la-fonte', 'Fonte: marca declarada pelo vencedor na Pesquisa de Preços do Compras.gov (dados abertos).'));
+    raiz.append(marcas);
+    // Edital grande casa dezenas de itens por compra: cada compra abre e fecha; a mais recente vem aberta.
+    visao.compras.forEach(({ compra, itens }, posicao) => {
+      const art = el('article', 'la-compra');
+      const cab = el('div', 'la-compra-topo');
+      cab.append(el('h3', 'la-subtitulo', `${compra.modalidade || 'Contratação'} ${compra.numero || ''}`.trim()));
+      cab.append(el('p', 'la-meta-compra', [compra.unidade_nome, compra.plataforma, compra.situacao, data(compra.data_publicacao) && `publicada em ${data(compra.data_publicacao)}`].filter(Boolean).join(' · ')));
+      const links = el('p', 'la-links');
+      if (compra.link_origem) links.append(link(compra.link_origem, compra.plataforma === 'ComprasNet (antigo)' ? 'Abrir pregão anterior no ComprasNet' : 'Abrir pregão anterior no Compras.gov'));
+      if (compra.link_pncp) links.append(link(compra.link_pncp, 'Ver no PNCP'));
+      cab.append(links);
+      art.append(cab);
+      if (compra.objeto) art.append(el('p', 'la-objeto', String(compra.objeto).slice(0, 300)));
+      art.append(el('p', 'la-aviso', 'Motivos de desclassificação: abra o pregão (exige captcha).'));
+      const lista = el('details', 'la-itens');
+      lista.open = posicao === 0;
+      const ruins = itens.filter((v) => v.ruim).length;
+      lista.append(el('summary', null, `${itens.length} item(ns) deste produto` + (ruins ? ` · ${ruins} fracassado(s)/deserto(s)/cancelado(s)` : '')));
+      for (const v of itens) lista.append(desenharItem(v, comEdital));
+      art.append(lista);
+      raiz.append(art);
+    });
+    raiz.append(el('p', 'la-fonte', 'Fontes: PNCP (itens e resultados), Pesquisa de Preços e arquivo semanal de propostas do Compras.gov (dados abertos). ' + rodape));
+    alvo.replaceChildren(raiz);
+  }
+
+  // O PostgREST devolve no máximo 1.000 linhas por pedido: um edital de 60 itens passa disso só nas participações.
+  // shortcut: teto de 20 páginas (20 mil linhas); acima disso o cartão mostra o que veio.
+  async function lerTudo(cliente, tabela, ids, ordem) {
+    const linhas = [];
+    for (let de = 0; de < 20000; de += 1000) {
+      let q = cliente.from(tabela).select('*').in('id_compra', ids);
+      for (const col of ordem.split(',')) q = q.order(col);
+      const r = await q.range(de, de + 999);
+      if (r.error) return r;
+      linhas.push(...r.data);
+      if (r.data.length < 1000) break;
+    }
+    return { data: linhas, error: null };
+  }
+
+  // ---------- cartão do processo ----------
+  function montar({ alvo, contexto, cliente }) {
+    let vivo = true;
+    const titulo = () => el('h2', 'app-subtitulo', 'Licitação anterior');
+    async function carregar() {
+      if (!cliente || !contexto?.processoId) return;
+      const t = await cliente.from('operacao_esteira_tarefas').select('estado,detalhe,erro').eq('processo_id', contexto.processoId).eq('etapa', 'historico').maybeSingle();
+      if (!vivo) return;
+      if (t.error || !t.data) { alvo.replaceChildren(); return; }
+      const corpo = el('div');
+      alvo.replaceChildren(titulo(), corpo);
+      const tarefa = t.data;
+      if (tarefa.estado !== 'feito') {
+        corpo.append(el('p', 'la-apoio', tarefa.estado === 'falhou' ? 'Não consegui buscar a licitação anterior deste órgão.' : 'Procurando as licitações anteriores deste órgão…'));
+        return;
+      }
+      const d = tarefa.detalhe || {};
+      const ids = Array.isArray(d.compras) ? d.compras.slice(0, 50) : [];
+      if (!ids.length) { desenhar(corpo, montarVisao({})); return; }
+      const [c, i, p] = await Promise.all([['historico_compras', 'id_compra'], ['historico_itens', 'id_compra,numero_item'],
+        ['historico_participacoes', 'id_compra,numero_item,fornecedor_chave']].map(([tab, ordem]) => lerTudo(cliente, tab, ids, ordem)));
+      if (!vivo) return;
+      const erro = c.error || i.error || p.error;
+      if (erro) { if (tabelaAusente(erro)) alvo.replaceChildren(); else corpo.replaceChildren(el('p', 'la-apoio', 'Não consegui carregar a licitação anterior agora.')); return; }
+      desenhar(corpo, montarVisao({ compras: c.data, itens: i.data, participacoes: p.data, casamentos: d.casamentos || [], alvos: d.alvos || [] }),
+        { comEdital: true, rodape: d.gerado_em ? `Montado em ${data(d.gerado_em)}.` : '' });
+    }
+    carregar().catch(() => { if (vivo) alvo.replaceChildren(); });
+    return { fechar() { vivo = false; } };
+  }
+
+  // ---------- tela avulsa ----------
+  function montarPesquisa({ alvo, requisitar }) {
+    const form = el('form', 'la-form');
+    form.noValidate = true;
+    const campo = (rotulo, entrada) => { const l = el('label', 'la-campo', rotulo); l.append(entrada); return l; };
+    const orgao = el('input'); orgao.name = 'orgao'; orgao.placeholder = 'Código UASG, nome ou CNPJ do órgão'; orgao.maxLength = 80; orgao.autocomplete = 'off';
+    const buscarOrgao = el('button', 'la-botao', 'Buscar órgão'); buscarOrgao.type = 'button';
+    const unidade = el('select'); unidade.name = 'uasg';
+    unidade.append(new global.Option('Busque o órgão primeiro', ''));
+    const catmat = el('input'); catmat.name = 'catmat'; catmat.placeholder = 'Ex.: 463574'; catmat.inputMode = 'numeric'; catmat.maxLength = 12;
+    const palavras = el('input'); palavras.name = 'palavras'; palavras.placeholder = 'Ex.: café torrado moído'; palavras.maxLength = 120;
+    const anos = el('select'); anos.name = 'anos';
+    for (const n of [3, 2, 1]) anos.append(new global.Option(`Últimos ${n} ano${n > 1 ? 's' : ''}`, String(n)));
+    const consultar = el('button', 'la-botao la-primario', 'Consultar licitações anteriores'); consultar.type = 'submit';
+    const linhaOrgao = el('div', 'la-linha'); linhaOrgao.append(campo('Órgão', orgao), buscarOrgao);
+    form.append(linhaOrgao, campo('Unidade compradora (UASG)', unidade), campo('Produto: código CATMAT', catmat), campo('ou palavras do produto', palavras), campo('Período', anos), consultar);
+    const estado = el('p', 'la-apoio'); estado.setAttribute('role', 'status'); estado.setAttribute('aria-live', 'polite');
+    const resultado = el('div');
+    alvo.replaceChildren(form, estado, resultado);
+    let ocupado = false;
+    async function chamar(corpo) {
+      try { return await requisitar(corpo); } catch (e) { return { erro: e && e.message ? e.message : 'Não foi possível consultar agora.' }; }
+    }
+    buscarOrgao.addEventListener('click', async () => {
+      if (ocupado) return;
+      ocupado = true; estado.textContent = 'Buscando o órgão…';
+      const r = await chamar({ acao: 'orgaos', q: orgao.value });
+      ocupado = false;
+      unidade.replaceChildren();
+      const lista = Array.isArray(r.orgaos) ? r.orgaos : [];
+      if (!lista.length) { unidade.append(new global.Option(r.erro || 'Nenhuma unidade encontrada', '')); estado.textContent = r.erro || 'Nenhuma unidade encontrada. Tente o código UASG.'; return; }
+      for (const o of lista) unidade.append(new global.Option(`${o.uasg} · ${o.nome}`, o.uasg));
+      estado.textContent = `${lista.length} unidade(s) encontrada(s).`;
+    });
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      if (ocupado) return;
+      if (!unidade.value) { estado.textContent = 'Escolha a unidade compradora.'; return; }
+      ocupado = true; consultar.disabled = true;
+      estado.textContent = 'Consultando PNCP e Compras.gov… pode levar até um minuto.';
+      const r = await chamar({ acao: 'consultar', uasg: unidade.value, catmat: catmat.value, palavras: palavras.value, anos: Number(anos.value) });
+      ocupado = false; consultar.disabled = false;
+      if (r.erro) { estado.textContent = r.erro; resultado.replaceChildren(); return; }
+      estado.textContent = (r.guardado ? 'Resultado guardado' : 'Consulta feita agora') + (r.gerado_em ? ` em ${data(r.gerado_em)}` : '') +
+        (r.situacao === 'parcial' ? '. Os demais participantes (arquivo semanal de propostas) entram na próxima rodada do robô.' : '.');
+      desenhar(resultado, montarVisao(r), { rodape: (r.avisos || []).join(' ') });
+    });
+    return { fechar() { alvo.replaceChildren(); } };
+  }
+
+  const api = { montarVisao, vencedorDe, variacao, chaveMarca, montar, montarPesquisa, desenhar };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else global.LicitaLicitacaoAnterior = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);

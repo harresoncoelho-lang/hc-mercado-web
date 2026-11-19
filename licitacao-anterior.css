@@ -1,0 +1,38 @@
+/* Licitação anterior (licitacao-anterior-ui.js): cartão do processo (sistema.html) e tela avulsa (painel.html).
+   Usa as variáveis de cada página com valor de reserva, para valer nas duas sem mudar o visual existente. */
+#licitacao-anterior:empty { display: none; }
+.la { display: grid; gap: 12px; min-width: 0; }
+.la p { margin: 0; }
+.la-apoio, .la-fonte { color: var(--texto-suave, var(--texto-secundario, #5b6472)); font-size: .9rem; }
+.la-fonte { font-size: .8rem; }
+.la-subtitulo { font-size: 1rem; margin: 0; }
+.la-compra { border: 1px solid var(--borda, #d9dee7); border-radius: 10px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.la-compra-topo { display: grid; gap: 4px; }
+.la-meta-compra, .la-objeto { font-size: .88rem; overflow-wrap: anywhere; }
+.la-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.la-link { font-weight: 600; }
+.la-aviso { font-size: .82rem; color: var(--aviso-texto, #8a5a00); }
+.la-item { border-top: 1px dashed var(--borda, #d9dee7); padding-top: 8px; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.la-item-ruim { border-left: 3px solid var(--erro, #c0392b); padding-left: 8px; }
+.la-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: .8rem; }
+.la-meta span, .la-chip { border: 1px solid var(--borda, #d9dee7); border-radius: 999px; padding: 1px 8px; }
+.la-ruim { color: #fff; background: var(--erro, #c0392b); border-color: transparent !important; font-weight: 600; }
+.la-alta { border-color: var(--ok, #2e7d32) !important; }
+.la-baixa { border-style: dashed !important; }
+.la-precos, .la-vencedor, .la-reservas { font-size: .9rem; }
+.la-cancelado { font-size: .88rem; color: var(--erro, #c0392b); }
+.la-marca { font-weight: 600; }
+.la-sem { font-style: italic; font-weight: 400; }
+.la-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.la-lista { margin: 6px 0 0; padding-left: 20px; font-size: .85rem; display: grid; gap: 2px; }
+.la-form { display: grid; gap: 10px; max-width: 720px; }
+.la-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.la-linha .la-campo { flex: 1 1 240px; }
+.la-campo { display: grid; gap: 4px; font-size: .9rem; }
+.la-campo input, .la-campo select { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; }
+.la-botao { padding: 8px 14px; cursor: pointer; }
+@media (max-width: 600px) { .la-compra { padding: 10px; } .la-linha { display: grid; } }
+.la-itens > summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+.la-itens[open] > summary { margin-bottom: 4px; }
+.la-produtos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.la-produto { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 2px; overflow-wrap: anywhere; }

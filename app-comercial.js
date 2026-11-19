@@ -42,6 +42,8 @@
       : globalThis.LicitaItensProcesso,
     // Sem cliente supabase (harness QA): sem checklist.
     esteira: cliente && globalThis.LicitaChecklistEsteira ? { montar: (o) => globalThis.LicitaChecklistEsteira.montar({ ...o, cliente }) } : null,
+    // Licitação anterior do processo: mesma sessão (RLS) do checklist.
+    anterior: cliente && globalThis.LicitaLicitacaoAnterior ? { montar: (o) => globalThis.LicitaLicitacaoAnterior.montar({ ...o, cliente }) } : null,
     confirmar: (mensagem) => globalThis.confirm(mensagem),
     busca: globalThis.location.search,
   });

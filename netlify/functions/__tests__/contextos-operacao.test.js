@@ -81,7 +81,7 @@ test("devolve só a empresa do vínculo e seus processos, lendo com o token do u
   assert.equal(r.statusCode, 200);
   assert.equal(r.headers["Cache-Control"], "no-store");
   const corpo = JSON.parse(r.body);
-  assert.deepEqual(corpo, { userId: U, empresas: [{ empresaId: EMP_A, razaoSocial: "A" }], contextos: [{ empresaId: EMP_A, processoId: PROC_A, numero: "10/2026", objeto: "Papel A4", status: "triagem", prazo: "2026-12-01T13:00:00+00:00" }], certidoes: [], prazos: [] });
+  assert.deepEqual(corpo, { userId: U, empresas: [{ empresaId: EMP_A, razaoSocial: "A" }], contextos: [{ empresaId: EMP_A, processoId: PROC_A, numero: "10/2026", objeto: "Papel A4", status: "triagem", prazo: "2026-12-01T13:00:00+00:00" }], certidoes: [], prazos: [], sancoes: [] });
   for (const c of chamadas.filter((x) => x.caminho.startsWith("/rest/"))) {
     assert.equal(c.auth, "Bearer TOKEN-U");
     assert.match(c.apikey, /^sb_publishable_/);
@@ -281,4 +281,45 @@ test("prazo ou compromisso com id que não é uuid fica fora (o id vira UID do .
   instalarFetch(b);
   const corpo = JSON.parse((await handler(evento())).body);
   assert.deepEqual(corpo.prazos.map((p) => p.id), [DOC(21)]);
+}));
+
+// Sanções (sancoes_empresas é pública para autenticado: a fonte fictícia devolve o que casa com o filtro).
+function fonteSancoes(b, sancoes, status = 200) {
+  instalarFetch(b);
+  const rls = global.fetch;
+  global.fetch = async (url, op) => {
+    const u = new URL(url);
+    if (u.pathname !== "/rest/v1/sancoes_empresas") return rls(url, op);
+    if (status !== 200) return new Response("{}", { status });
+    return Response.json(filtrar(sancoes, u.searchParams));
+  };
+}
+const SANCOES = [
+  { cadastro: "CEIS", cnpj: "11222333000181", tipo_sancao: "Suspensão", data_inicio: "2025-07-18", data_fim: "2027-07-18", fora_da_lista: false },
+  { cadastro: "CEIS", cnpj: "11222333000181", tipo_sancao: "Suspensão", data_inicio: "2020-01-01", data_fim: "2021-01-01", fora_da_lista: false },
+  { cadastro: "CNEP", cnpj: "11222333000181", tipo_sancao: "Multa", data_inicio: "2025-01-01", data_fim: null, fora_da_lista: true },
+  { cadastro: "CEIS", cnpj: "99888777000166", tipo_sancao: "Inidoneidade", data_inicio: "2025-01-01", data_fim: null, fora_da_lista: false },
+];
+
+test("sanções: só vigentes das empresas autorizadas, pelo CNPJ (com máscara), com o texto do selo", () => comRelogio(async () => {
+  const b = banco();
+  b.operacao_empresas[0].cnpj = "11.222.333/0001-81";
+  b.operacao_empresas[2].cnpj = "99888777000166"; // empresa de outra organização sancionada: não aparece
+  fonteSancoes(b, SANCOES);
+  const corpo = JSON.parse((await handler(evento())).body);
+  assert.deepEqual(corpo.sancoes, [{ empresaId: EMP_A, cadastro: "CEIS", tipo: "Suspensão", dataFim: "2027-07-18",
+    texto: "Empresa com sanção vigente (CEIS) — impedida de contratar até 18/07/2027" }]);
+  assert.equal("cnpj" in corpo.empresas[0], false, "CNPJ não volta no catálogo");
+}));
+
+test("sanções: sem CNPJ é lista vazia; tabela ausente omite o bloco; outra falha vira null", () => comRelogio(async () => {
+  fonteSancoes(banco(), SANCOES);
+  assert.deepEqual(JSON.parse((await handler(evento())).body).sancoes, []);
+  const b = banco(); b.operacao_empresas[0].cnpj = "11222333000181";
+  fonteSancoes(b, SANCOES, 404);
+  const semTabela = JSON.parse((await handler(evento())).body);
+  assert.equal("sancoes" in semTabela, false);
+  assert.ok(Array.isArray(semTabela.contextos) && semTabela.contextos.length > 0, "catálogo continua");
+  fonteSancoes(b, SANCOES, 500);
+  assert.equal(JSON.parse((await handler(evento())).body).sancoes, null);
 }));

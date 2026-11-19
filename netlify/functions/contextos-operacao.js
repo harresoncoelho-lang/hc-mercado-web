@@ -12,7 +12,10 @@
 // - Certidões vencidas ou vencendo em até 30 dias e prazos/agenda dos próximos 7 dias, contados pelo dia de Brasília,
 //   com o mesmo token e o mesmo vínculo. Falha (ou limite de linhas) num desses blocos devolve o bloco como null,
 //   nunca lista truncada, e não derruba o catálogo.
+// - Sanções vigentes (CEIS/CNEP, tabela sancoes_empresas) das empresas autorizadas, pelo CNPJ: mesma regra de bloco.
+//   Tabela ausente (SQL ainda não aplicado) omite o bloco em vez de mostrar erro.
 const {cabecalhosPadrao,exigirUsuarioLogado}=require('./_auth');
+const {sancoesDoCnpj,textoSancao}=require('../../sancoes-ui.js');
 const URL='https://lsqjamqvmrcyrvowndiu.supabase.co';
 const ANON='sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb';
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -38,6 +41,17 @@ function diasDoPrazo(vencimento,hoje){
  if(!Number.isFinite(ms))return null;
  const dias=diaBrasilia(ms)-hoje;
  return dias>=0&&dias<=DIAS_PRAZO?dias:null;
+}
+
+// Sanções vigentes por empresa: [{empresaId,cadastro,tipo,dataFim,texto}], null em falha, undefined se a tabela não existe.
+async function blocoSancoes(empresas,ler,hojeIso){
+ const cnpjs=[...new Set(empresas.map(e=>String(e.cnpj||'').replace(/\D/g,'')).filter(c=>c.length===14))];
+ if(!cnpjs.length)return [];
+ let linhas;
+ try{linhas=await ler(`sancoes_empresas?cnpj=in.${emLista(cnpjs)}&fora_da_lista=eq.false&select=cadastro,cnpj,tipo_sancao,data_inicio,data_fim,fora_da_lista&order=data_fim.desc.nullsfirst`);}
+ catch(e){return e.status===404?undefined:null;}
+ return empresas.flatMap(e=>sancoesDoCnpj(linhas,e.cnpj,hojeIso).vigentes.map(s=>({empresaId:e.id,cadastro:s.cadastro,tipo:texto(s.tipo_sancao,300),dataFim:s.data_fim||null,texto:textoSancao(s,hojeIso)})))
+  .sort((a,b)=>a.cadastro.localeCompare(b.cadastro)); // CEIS (impede contratar) antes de CNEP
 }
 
 exports.handler=async event=>{
@@ -68,7 +82,7 @@ exports.handler=async event=>{
   const organizacoes=[...new Set(membros.map(m=>m.organizacao_id))];
   if(!organizacoes.length)return resposta(200,vazio);
 
-  const empresas=(await ler(`operacao_empresas?organizacao_id=in.${emLista(organizacoes)}&ativo=eq.true&select=id,organizacao_id,razao_social&order=razao_social`))
+  const empresas=(await ler(`operacao_empresas?organizacao_id=in.${emLista(organizacoes)}&ativo=eq.true&select=id,organizacao_id,razao_social,cnpj&order=razao_social`))
    .filter(e=>e&&uuid(e.id)&&membros.some(m=>m.organizacao_id===e.organizacao_id&&(m.empresa_id===null||m.empresa_id===e.id)));
   if(!empresas.length)return resposta(200,vazio);
   const porId=new Map(empresas.map(e=>[e.id,e]));
@@ -97,7 +111,8 @@ exports.handler=async event=>{
     .map(a=>({id:a.id,origem:'agenda',empresaId:a.empresa_id,processoId:null,categoria:texto(a.categoria,40),titulo:texto(a.titulo,200),vencimento:a.vencimento,dias:diasDoPrazo(a.vencimento,hoje)}));
    return [...doProcesso,...daAgenda].filter(p=>p.dias!==null).sort((a,b)=>Date.parse(a.vencimento)-Date.parse(b.vencimento));
   });
-  return resposta(200,{userId,empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos,certidoes,prazos});
+  const sancoes=await blocoSancoes(empresas,ler,new Date(hoje*MS_DIA).toISOString().slice(0,10));
+  return resposta(200,{userId,...(sancoes===undefined?{}:{sancoes}),empresas:empresas.map(e=>({empresaId:e.id,razaoSocial:typeof e.razao_social==='string'?e.razao_social:''})),contextos,certidoes,prazos});
  }catch{
   return resposta(503,{erro:'Não foi possível carregar suas empresas agora. Tente de novo em instantes.'});
  }

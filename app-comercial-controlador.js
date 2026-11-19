@@ -49,7 +49,7 @@
     const empresas = Array.isArray(j.empresas) ? j.empresas.filter((e) => e && typeof e.empresaId === 'string').map((e) => ({ empresaId: e.empresaId, razaoSocial: typeof e.razaoSocial === 'string' ? e.razaoSocial.trim() : '' })) : [];
     // Certidões e prazos: lista, null (o servidor não conseguiu ler) ou ausente (fonte sem esses blocos, como o QA).
     const bloco = (v) => (Array.isArray(v) ? v : v === null ? null : undefined);
-    return { estado: 'ok', sessao: { userId: j.userId, accessToken: accessToken || j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas, certidoes: bloco(j.certidoes), prazos: bloco(j.prazos) } };
+    return { estado: 'ok', sessao: { userId: j.userId, accessToken: accessToken || j.accessToken, contextos: Array.isArray(j.contextos) ? j.contextos : [], empresas, certidoes: bloco(j.certidoes), prazos: bloco(j.prazos), sancoes: bloco(j.sancoes) } };
   }
 
   // Produção (sistema.html): Supabase Auth no navegador, mesmo fluxo do login.html, inclusive recusar e
@@ -105,7 +105,7 @@
 
   // pedirLogin(mensagem): produção não tem formulário próprio; quando a casca cai no login, quem chama redireciona
   // para o login.html. Sem ele (QA), o formulário da própria página continua sendo usado.
-  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, portal = globalThis.LicitaPortalCliente || null, esteira = null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
+  function criarControlador({ doc, fetch, storage, kit, identificacao, itens = null, portal = globalThis.LicitaPortalCliente || null, esteira = null, anterior = null, confirmar = null, autenticacao = null, pedirLogin = null, busca = '' }) {
     const auth = autenticacao || autenticacaoQA(fetch);
     const el = (id) => doc.getElementById(id);
     let epoca = 0;
@@ -118,6 +118,7 @@
     let itensComp = null;
     let portalComp = null;
     let esteiraComp = null;
+    let anteriorComp = null;
     let tela = 'carregando';
     // 'hoje' lista empresas/processos autorizados; 'processo' mostra identificação e kit do contexto atual.
     let visao = 'hoje';
@@ -175,6 +176,8 @@
       if (el('portal-cliente')) el('portal-cliente').hidden = !processo;
       // Checklist da esteira: mesma regra; vazio (banco antigo ou sem esteira) o CSS esconde o cartão.
       if (el('checklist-esteira')) el('checklist-esteira').hidden = !processo;
+      // Licitação anterior: mesma regra do checklist (vazio, o CSS esconde).
+      if (el('licitacao-anterior')) el('licitacao-anterior').hidden = !processo;
       el('empresa-bloco').hidden = !(processo || preparar);
       el('processo-bloco').hidden = !processo || processosDe(atual?.empresaId).length === 0;
       el('hoje').hidden = !hoje;
@@ -235,11 +238,17 @@
       const alvo = el('hoje-alertas');
       if (!alvo) return;
       const certidoes = sessao?.certidoes, prazos = sessao?.prazos;
-      alvo.hidden = certidoes === undefined && prazos === undefined;
+      // Sanções: o bloco só aparece se alguma empresa tiver sanção vigente (ou se a conferência falhou).
+      const sancoes = sessao?.sancoes, comSancao = sancoes === null || (Array.isArray(sancoes) && sancoes.length > 0);
+      alvo.hidden = certidoes === undefined && prazos === undefined && !comSancao;
       if (alvo.hidden) { alvo.replaceChildren(); return; }
       const nomes = new Map(empresasAutorizadas().map((e) => [e.empresaId, e.rotulo]));
       const txt = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
       const filhos = [];
+      if (comSancao) filhos.push(blocoAlerta('hoje-sancoes-titulo', 'Sanções (CEIS/CNEP)', sancoes, '', (s) =>
+        linhaAlerta('atrasado', 'Sanção', txt(s.texto, 300) || 'Empresa com sanção vigente',
+          // CNEP já traz o tipo no texto principal; no CEIS o tipo (suspensão, inidoneidade...) vai no detalhe.
+          [nomes.get(s.empresaId) || 'Empresa', s.cadastro === 'CEIS' && txt(s.tipo, 200), 'Fonte: CGU'].filter(Boolean).join(' · '))));
       if (certidoes !== undefined) filhos.push(blocoAlerta('hoje-certidoes-titulo', 'Certidões vencendo', certidoes, 'Nenhuma certidão vencida ou vencendo nos próximos 30 dias.', (c) => {
         const vencida = c.situacao === 'vencido';
         const empresa = nomes.get(c.empresaId) || 'Empresa';
@@ -352,6 +361,9 @@
       try { esteiraComp?.fechar(); } catch { /* módulo já desmontado */ }
       esteiraComp = null;
       el('checklist-esteira')?.replaceChildren();
+      try { anteriorComp?.fechar(); } catch { /* módulo já desmontado */ }
+      anteriorComp = null;
+      el('licitacao-anterior')?.replaceChildren();
       componente = null;
       ident = null;
       identDe = null;
@@ -524,6 +536,7 @@
         // Mesmo kit e mesmo contexto, mesmo oculto (voltar ao Hoje preserva o kit). Fechado ou contexto trocado: bloqueia.
         aoSalvar: () => { if (epoca === epocaKit && componente !== null && componente === kitDoItem.atual) kitDoItem.atual?.atualizarItens?.(); } });
       if (esteira && el('checklist-esteira')) esteiraComp = esteira.montar({ alvo: el('checklist-esteira'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId }, requisitar: requisitarAutenticado });
+      if (anterior && el('licitacao-anterior')) anteriorComp = anterior.montar({ alvo: el('licitacao-anterior'), contexto: { empresaId: contexto.empresaId, processoId: contexto.processoId } });
       // Portal do cliente: compara a resposta do cliente com os itens que o consultar já trouxe.
       // shortcut: só a primeira página de itens do consultar; item de outra página aparece sem a checagem de "valores mudaram".
       if (portal && el('portal-cliente')) portalComp = portal.montar({ alvo: el('portal-cliente'), requisitar: requisitarAutenticado, confirmar: confirmar || undefined,

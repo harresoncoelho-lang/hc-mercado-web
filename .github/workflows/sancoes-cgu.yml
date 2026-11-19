@@ -1,0 +1,44 @@
+name: Sanções de empresas (CEIS e CNEP)
+
+# Baixa o ZIP diário do CEIS e do CNEP da CGU (sem chave) e grava só pessoa jurídica em
+# sancoes_empresas (scripts/coletar_sancoes_cgu.js). Só o arquivo do dia fica no ar, então roda
+# todo dia. 10:00 UTC = 7h de Brasília; 15:00 UTC (12h) é a segunda chance se a CGU atrasar ou
+# a primeira falhar: o robô pula o que já foi carregado, então rodar de novo é seguro.
+# Não escreve no repositório: só no Supabase.
+concurrency:
+  group: sancoes-cgu
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: "0 10 * * *"
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+    inputs:
+      data_arquivo:
+        description: "AAAAMMDD fixo (vazio = hoje, senão ontem)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Coletar CEIS e CNEP
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATA_ARQUIVO: ${{ github.event.inputs.data_arquivo }}
+          TENTATIVAS: "3"
+          PAUSA_TENTATIVA_MS: "60000"
+          TAMANHO_LOTE_BANCO: "500"
+          FRACAO_MINIMA: "0.5"
+        run: node scripts/coletar_sancoes_cgu.js

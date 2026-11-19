@@ -1,0 +1,6 @@
+/* Selo de sanção (sancoes-ui.js). Vigente usa as cores de erro; só encerradas, neutro. Texto diz a situação além da cor. */
+.sancao-selo{border:1px solid var(--error-border);background:var(--error-bg);color:var(--error-text);border-radius:var(--radius-control);padding:var(--space-8) var(--space-12);display:grid;gap:var(--space-4);font:var(--text-body)}
+.sancao-selo[data-situacao="expirada"]{border-color:var(--border-default);background:var(--surface-sunken);color:var(--text-primary)}
+.sancao-selo-titulo{margin:0;font:var(--text-body);font-weight:600;overflow-wrap:anywhere}
+.sancao-selo ul{margin:0;padding-left:var(--space-16);overflow-wrap:anywhere}
+.sancao-selo-mais{margin:0}

@@ -12,9 +12,9 @@ const APLICAR = fs.readFileSync(path.join(__dirname, '01-aplicar.sql'), 'utf8');
 const VERIFICAR = fs.readFileSync(path.join(__dirname, '02-verificar.sql'), 'utf8');
 const NOVOS = ['operacao_itens_proposta.sql', 'operacao_funil_etapas.sql', 'operacao_portal_cliente.sql',
   'operacao_perfil_empresa.sql', 'operacao_exigencias.sql', 'operacao_esteira.sql', 'operacao_kit_modelos.sql',
-  'importacao_item_pncp_numero_int32.sql', 'operacao_itens_numero_ordem.sql', 'operacao_catalogo_produtos.sql'];
+  'importacao_item_pncp_numero_int32.sql', 'operacao_itens_numero_ordem.sql', 'operacao_catalogo_produtos.sql', 'historico_licitacoes.sql', 'sancoes_empresas.sql', 'pregoes_gravados.sql'];
 const TESTES = ['testar_itens_proposta.sql', 'testar_funil_etapas.sql', 'testar_portal_cliente.sql',
-  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql', 'testar_kit_modelos.sql', 'testar_itens_numero_ordem.sql', 'testar_catalogo_produtos.sql'];
+  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql', 'testar_kit_modelos.sql', 'testar_itens_numero_ordem.sql', 'testar_catalogo_produtos.sql', 'testar_historico_licitacoes.sql', 'testar_sancoes_empresas.sql', 'testar_pregoes_gravados.sql'];
 
 function carregarPGlite() {
   const candidatos = [process.env.PGLITE_MODULE_PATH, '@electric-sql/pglite',

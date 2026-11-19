@@ -42,10 +42,10 @@ insert into public.operacao_processos(id,organizacao_id,empresa_id,objeto,origem
 do $$
 declare p1 uuid:='f7000000-0000-4000-8000-000000000021'; s text; n int; r record;
 begin
- -- Processo novo: 3 tarefas pendentes do criador, 1 pedido 'interesse', 2 prazos 3 dias úteis antes.
+ -- Processo novo: 4 tarefas pendentes (com a 'historico', licitação anterior) do criador, 1 pedido 'interesse', 2 prazos 3 dias úteis antes.
  select string_agg(etapa||'/'||estado,',' order by etapa), count(*) filter (where criado_por='f7000000-0000-4000-8000-000000000001') into s,n
   from public.operacao_esteira_tarefas where processo_id=p1;
- if s is distinct from 'cruzamento/pendente,exigencias/pendente,itens/pendente' or n<>3 then raise exception 'Tarefas do processo novo: % (%)',s,n;end if;
+ if s is distinct from 'cruzamento/pendente,exigencias/pendente,historico/pendente,itens/pendente' or n<>4 then raise exception 'Tarefas do processo novo: % (%)',s,n;end if;
  select string_agg(categoria||'='||titulo||'@'||to_char(vencimento at time zone 'America/Sao_Paulo','YYYY-MM-DD HH24:MI'),',' order by categoria) into s
   from public.operacao_prazos_processo where processo_id=p1 and observacoes='calculado pela regra legal; confira o edital';
  if s is distinct from 'esclarecimento=Esclarecimento@2026-12-07 23:59,impugnacao=Impugnação@2026-12-07 23:59' then raise exception 'Prazos legais: %',s;end if;
@@ -64,7 +64,7 @@ begin
  -- Premissa manual não é sobrescrita (mas a esteira roda).
  select * into r from public.operacao_processos where id='f7000000-0000-4000-8000-000000000022';
  if r.margem_percentual<>30 or r.tributos_percentual is not null or r.premissas_fonte is not null then raise exception 'Premissa manual sobrescrita: %',r;end if;
- if (select count(*) from public.operacao_esteira_tarefas where processo_id=r.id)<>3 then raise exception 'Processo com premissa manual sem tarefas';end if;
+ if (select count(*) from public.operacao_esteira_tarefas where processo_id=r.id)<>4 then raise exception 'Processo com premissa manual sem tarefas';end if;
 
  -- Arquivado e sem ID do PNCP não disparam.
  if exists(select 1 from public.operacao_esteira_tarefas where processo_id in ('f7000000-0000-4000-8000-000000000023','f7000000-0000-4000-8000-000000000024'))
@@ -115,13 +115,13 @@ update public.operacao_processos set status='preparacao' where id='f7000000-0000
 update public.operacao_processos set status='triagem' where id='f7000000-0000-4000-8000-000000000023';
 update public.operacao_processos set status='perdido' where id='f7000000-0000-4000-8000-000000000025';
 do $$ declare r record; begin
- if (select count(*) from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000021')<>3
+ if (select count(*) from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000021')<>4
   or (select count(*) from public.operacao_prazos_processo where processo_id='f7000000-0000-4000-8000-000000000021')<>2
   then raise exception 'Duas execuções duplicaram ou não recriaram';end if;
  select * into r from public.operacao_processos where id='f7000000-0000-4000-8000-000000000021';
  if r.margem_percentual<>12 or r.atualizado_em<>'2020-01-01' then raise exception 'Reexecução: %',r;end if;
- if (select count(*) from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000023')<>3 then raise exception 'Arquivado reaberto não disparou';end if;
- if (select count(*) from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000025')<>3
+ if (select count(*) from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000023')<>4 then raise exception 'Arquivado reaberto não disparou';end if;
+ if (select count(*) from public.operacao_esteira_tarefas where processo_id='f7000000-0000-4000-8000-000000000025')<>4
   or (select count(*) from public.operacao_prazos_processo where processo_id='f7000000-0000-4000-8000-000000000025')<>2
   or (select premissas_fonte from public.operacao_processos where id='f7000000-0000-4000-8000-000000000025')<>'padrao'
   then raise exception 'Status final apagou algo';end if;

@@ -240,6 +240,26 @@ test('bloco que o servidor não leu (null) avisa; catálogo sem os blocos (QA) e
   assert.equal(semBlocos.getElementById('hoje-alertas').hidden, true);
 });
 
+test('Hoje: sanção vigente vira aviso com a empresa; sem sanção (lista vazia) o bloco não aparece', async () => {
+  const C = carregar();
+  const { cliente } = criarCliente();
+  const base = { userId: 'u1', empresas: [{ empresaId: EMP, razaoSocial: 'Empresa A' }], contextos: [], certidoes: [], prazos: [] };
+  const abrir = async (catalogo) => {
+    const dom = criarDom();
+    const fetch = async () => resposta(200, catalogo);
+    const ctrl = C.criarControlador({ doc: dom, fetch, storage: null, autenticacao: C.criarAutenticacaoSupabase({ cliente, fetch }), kit: { montar: () => ({ fechar() {} }) }, identificacao: { montar: () => ({ abrir() {}, limpar() {} }) } });
+    await ctrl.entrar('operador@example.invalid', 'x');
+    return dom.getElementById('hoje-alertas');
+  };
+  const t = textos(await abrir({ ...base, sancoes: [{ empresaId: EMP, cadastro: 'CEIS', tipo: '<i>Suspensão</i>', dataFim: '2027-07-18', texto: 'Empresa com sanção vigente (CEIS) — impedida de contratar até 18/07/2027' }] }));
+  assert.ok(t.includes('Sanções (CEIS/CNEP)') && t.includes('Sanção'));
+  assert.ok(t.includes('Empresa com sanção vigente (CEIS) — impedida de contratar até 18/07/2027'));
+  assert.ok(t.includes('Empresa A · <i>Suspensão</i> · Fonte: CGU'), 'texto do banco vai como texto');
+  assert.ok(!textos(await abrir({ ...base, sancoes: [] })).includes('Sanções (CEIS/CNEP)'));
+  assert.ok(textos(await abrir({ ...base, sancoes: null })).includes('Sanções (CEIS/CNEP)'), 'falha na conferência avisa');
+  assert.equal((await abrir({ ...base, certidoes: undefined, prazos: undefined, sancoes: [] })).hidden, true);
+});
+
 test('textos de situação: dias inválidos não viram texto; link só com uuid', () => {
   const contexto = { globalThis: {} };
   vm.runInNewContext(fs.readFileSync(path.join(raiz, 'app-comercial-core.js'), 'utf8'), contexto);

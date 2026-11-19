@@ -128,7 +128,7 @@ async function main() {
 
   await passo('esteira: tarefas criadas pelo gatilho', null, async () => {
     const t = await banco(`operacao_esteira_tarefas?processo_id=eq.${contexto.proc.id}&select=etapa,estado`);
-    exigir(t.length === 3, `esperava 3 tarefas, veio ${JSON.stringify(t)}`);
+    exigir(t.length === 4, `esperava 4 tarefas, veio ${JSON.stringify(t)}`);
     const fila = await banco(`fila_dossies?numero_controle_pncp=eq.${encodeURIComponent(edital)}&select=origem`);
     return `tarefas ${t.map(x => x.etapa + ':' + x.estado).join(', ')}; fila_dossies=${fila[0]?.origem}`;
   });

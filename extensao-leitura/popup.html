@@ -15,5 +15,13 @@
   <button id="adopt" type="button" hidden>Usar tentativa de leitura do LicitaPlena</button>
   <p id="result" role="status" aria-live="polite">Nenhuma leitura realizada.</p>
   <p>Conferência pontual, não monitoramento. Trocar de página ou contexto exige nova leitura. Nenhuma autorização de escrita é criada.</p>
+  <section aria-labelledby="gravarTitulo">
+    <h2 id="gravarTitulo">Gravar pregão no LicitaPlena</h2>
+    <p>Na página pública "Acompanhar Contratação" do Compras.gov (ou na ata do ComprasNet, depois do captcha), grava o que a página mostra: participantes, marcas, valores e chat. Precisa do LicitaPlena aberto e logado em outra aba.</p>
+    <button id="gravarLer" type="button">Ler esta página e gravar</button>
+    <p id="gravarStatus" role="status" aria-live="polite">Nada gravado ainda.</p>
+    <p>Grava só o que você abriu na página. Não clica, não navega, não envia propostas nem lances e não resolve captcha.</p>
+  </section>
   <script type="module" src="popup.mjs"></script>
+  <script type="module" src="gravar.mjs"></script>
 </body></html>

@@ -25,6 +25,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ds-tokens.css">
+<link rel="stylesheet" href="licitacao-anterior.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
 <script src="resumo-modelo.js?v=953e30c32a3c"></script>
@@ -33,6 +34,7 @@
 <script src="empresa-identificacao-ui.js?v=782a6b926bae"></script>
 <script src="defesa-ui.js?v=18f5e8d4fb00"></script>
 <script src="operacao-edital.js"></script>
+<script src="licitacao-anterior-ui.js"></script>
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
   (function () {
@@ -1891,6 +1893,7 @@
       <button type="button" class="btn-subaba" data-subaba="visao-geral">Visão Geral</button>
       <button type="button" class="btn-subaba" data-subaba="baixa-concorrencia">Baixa Concorrência</button>
       <button type="button" class="btn-subaba" data-subaba="historico-compras">Histórico de Compras</button>
+      <button type="button" class="btn-subaba" data-subaba="licitacao-anterior">Licitação Anterior</button>
       <button type="button" class="btn-subaba" data-subaba="prospeccao-ia">Prospecção de Fornecedores (IA)</button>
     </div>
 
@@ -1993,6 +1996,13 @@
       </div>
     </div>
 
+    <div class="dg-subaba-painel" data-subaba-painel="licitacao-anterior">
+      <div class="conteudo-mercado">
+        <p class="dica-clique" style="margin:0 0 12px;">Escolha o órgão e o produto: veja as contratações anteriores com vencedor, preço homologado, cadastro reserva, itens fracassados, participantes e as marcas aceitas, com o link de cada fonte.</p>
+        <div id="dg-licitacao-anterior"></div>
+      </div>
+    </div>
+
     <div class="dg-subaba-painel" data-subaba-painel="prospeccao-ia">
       <div id="dg-prospeccao-resultado" class="conteudo-mercado"><div class="aviso">Gere um diagnóstico de mercado para encontrar fornecedores que já venceram contratos no seu segmento.</div></div>
     </div>
@@ -2029,6 +2039,26 @@
         if (id === "prospeccao-ia" && typeof renderProspeccaoFornecedores === "function") renderProspeccaoFornecedores();
         try { localStorage.setItem(CHAVE, id); } catch (e) { /* segue sem persistir */ }
       });
+    });
+  })();
+</script>
+
+<script>
+  // Licitação anterior avulsa (licitacao-anterior-ui.js + /api/licitacao-anterior): mesmo conteúdo do cartão
+  // do processo, para qualquer órgão e produto. A função exige login: vai o token da sessão.
+  (function () {
+    const alvo = document.getElementById("dg-licitacao-anterior");
+    if (!alvo || !window.LicitaLicitacaoAnterior) return;
+    window.LicitaLicitacaoAnterior.montarPesquisa({
+      alvo,
+      requisitar: async (corpo) => {
+        const { data } = await window.__sbClient.auth.getSession();
+        const token = data && data.session && data.session.access_token;
+        if (!token) return { erro: "Sua sessão expirou. Entre de novo." };
+        const resp = await fetch("/api/licitacao-anterior", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(corpo) });
+        const json = await resp.json().catch(() => ({}));
+        return resp.ok ? json : { erro: json.erro || "Não foi possível consultar agora." };
+      },
     });
   })();
 </script>

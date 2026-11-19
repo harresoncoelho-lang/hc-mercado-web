@@ -19,7 +19,7 @@ create table if not exists public.operacao_esteira_tarefas (
   organizacao_id uuid not null,
   empresa_id uuid not null,
   processo_id uuid not null,
-  etapa text not null check (etapa in ('itens', 'exigencias', 'cruzamento')),
+  etapa text not null,
   estado text not null default 'pendente' check (estado in ('pendente', 'executando', 'feito', 'aguardando_leitura', 'falhou')),
   tentativas integer not null default 0 check (tentativas >= 0),
   proximo_em timestamptz not null default now(),
@@ -31,6 +31,16 @@ create table if not exists public.operacao_esteira_tarefas (
   foreign key (processo_id, empresa_id, organizacao_id)
     references public.operacao_processos(id, empresa_id, organizacao_id) on delete cascade
 );
+-- Etapas aceitas (a 'historico' = licitação anterior, historico_licitacoes.sql). Recriada por nome para a
+-- reaplicação trocar a regra antiga (que vinha inline no create table) sem apagar linha nenhuma.
+do $$ declare c record; begin
+ for c in select conname from pg_constraint where conrelid = 'public.operacao_esteira_tarefas'::regclass and contype = 'c'
+            and pg_get_constraintdef(oid) like '%etapa%' loop
+  execute format('alter table public.operacao_esteira_tarefas drop constraint %I', c.conname);
+ end loop;
+end $$;
+alter table public.operacao_esteira_tarefas add constraint operacao_esteira_tarefas_etapa_check
+  check (etapa in ('itens', 'exigencias', 'cruzamento', 'historico'));
 create index if not exists operacao_esteira_tarefas_fila_idx
   on public.operacao_esteira_tarefas (proximo_em) where estado in ('pendente', 'aguardando_leitura');
 
@@ -118,7 +128,7 @@ begin
  v_primeira := not exists (select 1 from public.operacao_esteira_tarefas t where t.processo_id = new.id);
  insert into public.operacao_esteira_tarefas (organizacao_id, empresa_id, processo_id, etapa, criado_por)
  select new.organizacao_id, new.empresa_id, new.id, e, coalesce(auth.uid(), new.criado_por)
-   from unnest(array['itens', 'exigencias', 'cruzamento']) e
+   from unnest(array['itens', 'exigencias', 'cruzamento', 'historico']) e
  on conflict do nothing;
  -- 'interesse' (lê todos os anexos, passa à frente na IA) só para edital que o robô coletou e com teto
  -- de 20 processos novos por organização em 24 h; fora disso entra como 'clique', sem rebaixar quem já está.

@@ -42,6 +42,12 @@ import * as m21 from "../../netlify/functions/busca-publica.js";
 // Portal do cliente: página pública (sem login, desligada sem PORTAL_CLIENTE_LIGADO=1) e gestão dos links (logado).
 import * as m22 from "../../netlify/functions/portal-cliente.js";
 import * as m23 from "../../netlify/functions/portal-cliente-links.js";
+// Licitação anterior avulsa (Inteligência de Mercado): logado, cota diária, até 36 chamadas a fontes públicas.
+import * as m24 from "../../netlify/functions/licitacao-anterior.js";
+// Sanções CEIS/CNEP de um CNPJ (logado; lê a tabela sancoes_empresas com a sessão do usuário, cache curto).
+import * as m25 from "../../netlify/functions/sancoes-cnpj.js";
+// Pregão gravado pela extensão (dado público lido na aba do usuário): logado; POST grava, GET lê.
+import * as pregaoGravado from "../../netlify/functions/pregao-gravado.js";
 
 const ROTAS = {
   "vinculo-compra-portal": vinculoCompraPortal,
@@ -52,6 +58,9 @@ const ROTAS = {
   "busca-publica": m21,
   "portal-cliente": m22,
   "portal-cliente-links": m23,
+  "licitacao-anterior": m24,
+  "sancoes-cnpj": m25,
+  "pregao-gravado": pregaoGravado,
   "decisao-oportunidade": m17,
   "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,

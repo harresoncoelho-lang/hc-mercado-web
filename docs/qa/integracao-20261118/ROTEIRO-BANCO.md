@@ -156,10 +156,12 @@ Cada arquivo é de `supabase/`, roda sozinho numa query nova e pode rodar de nov
 | 7 | `operacao_kit_modelos.sql` | Modelos e formato das peças do kit. |
 | 8 | `importacao_item_pncp_numero_int32.sql` | Troca só o corpo de `gravar_importacao_pncp`: o número do item passa de 1..1000000 para 1..2147483647 (inteiro do PNCP). Sem ele, compras da Licitanet (ex. item 8184615) dão HTTP 400. `importacao_item_pncp.sql` e o `01` ficam como estão (fonte preservada por hash); por isso este arquivo vem **depois** do `01`. Se o `01` rodar de novo, rode este de novo. |
 | 9 | `operacao_itens_numero_ordem.sql` | Coluna gerada `numero_ordem` (identificador só com dígitos, senão null) e índice em `operacao_itens_resultado`. A lista de itens pagina por ela; sem a coluna, o servidor volta à ordem por id (1ª página sem os menores números). Reescreve a tabela de itens uma vez (coluna `stored`), com `lock_timeout` de 5 s; não toca `atualizado_em`. |
+| 10 | `sancoes_empresas.sql` | Sanções de empresas do CEIS/CNEP (CGU), carga diária pelo robô `coletar_sancoes_cgu.js`. Só CNPJ (pessoa física barrada por check), leitura para autenticado, escrita só `service_role`, sem delete (histórico com `fora_da_lista`). Não depende das tabelas `operacao_*`; nas listas de `subir.cjs`/`testar-dezembro.cjs` vem logo depois de `historico_licitacoes.sql`. Sem ele, o aviso de sanção do Hoje mostra "não foi possível carregar" e `/api/sancoes-cnpj` responde 503. |
+| 11 | `pregoes_gravados.sql` | Base compartilhada dos pregões gravados pela extensão (modo "Gravar pregão no LicitaPlena"): `pregoes_gravados`, `pregoes_gravados_propostas`, `pregoes_gravados_mensagens` e a RPC `gravar_pregao_gravado` (só `service_role`). Dado público: leitura para autenticado, `anon` sem acesso, escrita só pela RPC; CHECKs recusam CPF. Não depende das tabelas `operacao_*`; nas listas de `subir.cjs`/`testar-dezembro.cjs` vem depois de `sancoes_empresas.sql`. Sem ele, `/api/pregao-gravado` responde 502. Contrato: `docs/pregao-gravado.md`. |
 
 Testes (só no ambiente de teste, tudo em `rollback`): `testar_itens_proposta.sql`, `testar_funil_etapas.sql`,
 `testar_portal_cliente.sql`, `testar_perfil_empresa.sql`, `testar_exigencias.sql`, `testar_esteira.sql`,
-`testar_kit_modelos.sql`, `testar_itens_numero_ordem.sql`.
+`testar_kit_modelos.sql`, `testar_itens_numero_ordem.sql`, `testar_sancoes_empresas.sql`, `testar_pregoes_gravados.sql`.
 
 ---
 

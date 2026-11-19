@@ -15,8 +15,8 @@ export async function empacotarQA(config,destino){
  if(derived!==extensionId)throw Error('ID não corresponde à chave pública');
  if(typeof destino!=='string'||!path.isAbsolute(destino))throw Error('Destino novo absoluto obrigatório');
  const manifest=JSON.parse(await readFile(new URL('manifest.json',source),'utf8'));
- manifest.background={service_worker:'worker-qa.mjs',type:'module'};manifest.key=publicKey;manifest.externally_connectable={matches:[origem+caminho]};
- const files=['adapter.mjs','collector.mjs','ponte-receptor.mjs','ponte-worker.mjs','ponte-cliente.mjs','popup.mjs','popup.html','popup.css'];
+ manifest.background={service_worker:'worker-qa.mjs',type:'module'};manifest.key=publicKey;manifest.externally_connectable={matches:[origem+caminho]};manifest.optional_host_permissions=[...(manifest.optional_host_permissions||[]),'http://127.0.0.1/*']; // site do ambiente-teste só no pacote QA
+ const files=['adapter.mjs','collector.mjs','ponte-receptor.mjs','ponte-worker.mjs','ponte-cliente.mjs','popup.mjs','popup.html','popup.css','gravar.mjs','pregao-leitor.mjs'];
  const content=await Promise.all(files.map(async file=>[file,await readFile(new URL(file,source))]));
  // Toda configuração e leitura validada antes da primeira escrita. Nunca sobrescreve destino.
  await mkdir(destino);
