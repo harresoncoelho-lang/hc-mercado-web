@@ -12,9 +12,9 @@ const APLICAR = fs.readFileSync(path.join(__dirname, '01-aplicar.sql'), 'utf8');
 const VERIFICAR = fs.readFileSync(path.join(__dirname, '02-verificar.sql'), 'utf8');
 const NOVOS = ['operacao_itens_proposta.sql', 'operacao_funil_etapas.sql', 'operacao_portal_cliente.sql',
   'operacao_perfil_empresa.sql', 'operacao_exigencias.sql', 'operacao_esteira.sql', 'operacao_kit_modelos.sql',
-  'importacao_item_pncp_numero_int32.sql', 'operacao_itens_numero_ordem.sql', 'operacao_catalogo_produtos.sql', 'historico_licitacoes.sql', 'sancoes_empresas.sql', 'pregoes_gravados.sql', 'prospeccao.sql', 'analise_cnpj.sql', 'filtros_salvos.sql', 'operacao_contratos_publicos.sql'];
+  'importacao_item_pncp_numero_int32.sql', 'operacao_itens_numero_ordem.sql', 'operacao_catalogo_produtos.sql', 'historico_licitacoes.sql', 'sancoes_empresas.sql', 'pregoes_gravados.sql', 'prospeccao.sql', 'analise_cnpj.sql', 'filtros_salvos.sql', 'operacao_contratos_publicos.sql', 'painel_dashboard_rapido.sql', 'sinapi.sql'];
 const TESTES = ['testar_itens_proposta.sql', 'testar_funil_etapas.sql', 'testar_portal_cliente.sql',
-  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql', 'testar_kit_modelos.sql', 'testar_itens_numero_ordem.sql', 'testar_catalogo_produtos.sql', 'testar_historico_licitacoes.sql', 'testar_sancoes_empresas.sql', 'testar_pregoes_gravados.sql', 'testar_prospeccao.sql', 'testar_analise_cnpj.sql', 'testar_filtros_salvos.sql', 'testar_contratos_publicos.sql'];
+  'testar_perfil_empresa.sql', 'testar_exigencias.sql', 'testar_esteira.sql', 'testar_kit_modelos.sql', 'testar_itens_numero_ordem.sql', 'testar_catalogo_produtos.sql', 'testar_historico_licitacoes.sql', 'testar_sancoes_empresas.sql', 'testar_pregoes_gravados.sql', 'testar_prospeccao.sql', 'testar_analise_cnpj.sql', 'testar_filtros_salvos.sql', 'testar_contratos_publicos.sql', 'testar_sinapi.sql'];
 
 function carregarPGlite() {
   const candidatos = [process.env.PGLITE_MODULE_PATH, '@electric-sql/pglite',
@@ -25,7 +25,8 @@ function carregarPGlite() {
 }
 
 (async () => {
-  const db = new (carregarPGlite())();
+  let extensoes = {}; try { extensoes = { pg_trgm: require('@electric-sql/pglite/contrib/pg_trgm').pg_trgm }; } catch { /* sem pg_trgm */ }
+  const db = new (carregarPGlite())({ extensions: extensoes });
   const log = [];
   const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
   const verificar02 = async () => {
@@ -50,6 +51,7 @@ function carregarPGlite() {
     await db.exec(`create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
       create schema auth; create table auth.users(id uuid primary key, email text);
       create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+      create function auth.role() returns text language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.role',true),''),current_user)$$;
       create schema storage; create table storage.buckets(id text primary key, name text, public boolean);
       create table storage.objects(id uuid primary key default gen_random_uuid(), bucket_id text, name text, owner uuid, metadata jsonb);
       alter table storage.objects enable row level security;
@@ -68,7 +70,7 @@ function carregarPGlite() {
     await db.exec(rls.slice(0, rls.indexOf('-- 3) RLS de "clientes"')));
     await db.exec('grant execute on function public.incrementar_uso(uuid, text) to anon, authenticated;');
     for (const f of ['operacao_licitacoes.sql', 'operacao_acompanhamento.sql', 'limite_cnpjs_operacao.sql', 'acesso_empresa_convites.sql',
-      'operacao_checklist_edital.sql', 'operacao_kanban_sync.sql', 'operacao_itens_valores_unitarios.sql', 'operacao_itens_marca_modelo.sql', 'fila_dossies.sql']) await db.exec(ler(f));
+      'operacao_checklist_edital.sql', 'operacao_kanban_sync.sql', 'operacao_itens_valores_unitarios.sql', 'operacao_itens_marca_modelo.sql', 'fila_dossies.sql', 'schema_dados_mercado.sql', 'painel_objetos_sem_sql.sql']) await db.exec(ler(f)); // os 2 últimos: produção já tem (conferido 20/11)
     const org = id(1), emp = id(11), gestor = id(101);
     await db.query('insert into auth.users values($1,$2)', [gestor, 'gestor@example.invalid']);
     await db.query("insert into clientes(id,nome,email,status) values($1,'Pessoa fictícia','gestor@example.invalid','aprovado')", [gestor]);
