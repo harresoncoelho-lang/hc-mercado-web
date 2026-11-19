@@ -200,7 +200,10 @@
       const storage = sb.storage.from("operacao-documentos");
       let enviado = false, registrado = false;
       try {
-        const { error: uploadError } = await storage.upload(caminho, arquivo, { upsert: false });
+        // Tipo explícito pela extensão: sem Office o navegador manda .docx sem tipo e o bucket recusa (seguranca_aprovacao_20261119.sql, M4).
+        const ext = arquivo.name.split(".").pop().toLowerCase();
+        const contentType = { pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" }[ext];
+        const { error: uploadError } = await storage.upload(caminho, arquivo, { upsert: false, contentType });
         if (uploadError) throw uploadError;
         enviado = true;
         const { error } = await sb.from("operacao_anexos_processo").insert({ organizacao_id: estado.orgId, processo_id: id, tipo: f.get("tipo"), titulo: String(f.get("titulo")).trim(), referencia_numero: f.get("referencia_numero") || null, arquivo_caminho: caminho, arquivo_nome: arquivo.name });

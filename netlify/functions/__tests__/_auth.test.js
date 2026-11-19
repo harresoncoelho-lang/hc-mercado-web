@@ -92,3 +92,41 @@ test('monte-busca-ia falha fechado como ia-edital (sem chave, RPC fora, contagem
     if (chaveAnterior === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = chaveAnterior;
   }
 });
+
+// Teste de ataque 19/11 (M5): proxies públicos com teto diário por IP.
+test('limitarPorIp: só IP da plataforma conta, banco recebe HMAC (nunca o IP), 429 acima do teto e fail-open', async () => {
+  const { limitarPorIp } = require("../_auth");
+  const fetchAnterior = global.fetch, chaveAnterior = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const chamadas = [];
+  try {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'teste-local';
+    let contagem = 1;
+    global.fetch = async (url, op) => { chamadas.push({ url, corpo: JSON.parse(op.body) }); return new Response(JSON.stringify(contagem)); };
+    const evento = ip => ({ headers: { "x-nf-client-connection-ip": ip, "cf-connecting-ip": "10.9.9.9" } });
+    assert.deepEqual(await limitarPorIp(evento('203.0.113.7'), 'pncp-proxy', 2), { ok: true });
+    assert.match(chamadas[0].url, /\/rpc\/incrementar_uso_ip$/);
+    assert.match(chamadas[0].corpo.p_chave, /^[0-9a-f]{64}$/); assert.equal(chamadas[0].corpo.p_funcao, 'pncp-proxy');
+    assert.doesNotMatch(JSON.stringify(chamadas), /203\.0\.113\.7/);
+    await limitarPorIp(evento('203.0.113.8'), 'pncp-proxy', 2);
+    assert.notEqual(chamadas[1].corpo.p_chave, chamadas[0].corpo.p_chave);
+    contagem = 3;
+    const r = await limitarPorIp(evento('203.0.113.7'), 'pncp-proxy', 2);
+    assert.equal(r.ok, false); assert.equal(r.status, 429);
+    // Sem IP confiável (cf-connecting-ip fora do Workers não vale) ou sem chave: não consulta.
+    const antes = chamadas.length;
+    assert.equal((await limitarPorIp({ headers: { "cf-connecting-ip": "1.2.3.4", "x-forwarded-for": "1.2.3.4" } }, 'pncp-proxy', 2)).ok, true);
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    assert.equal((await limitarPorIp(evento('203.0.113.7'), 'pncp-proxy', 2)).ok, true);
+    assert.equal(chamadas.length, antes);
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'teste-local';
+    global.fetch = async () => { throw new Error('rede'); };
+    assert.equal((await limitarPorIp(evento('203.0.113.7'), 'pncp-proxy', 2)).ok, true);
+  } finally {
+    global.fetch = fetchAnterior;
+    if (chaveAnterior === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = chaveAnterior;
+  }
+});
+
+test('B2: origem antiga do Netlify não é mais confiável', () => {
+  assert.equal(origemPermitida({ headers: { origin: 'https://hc-mercado-web.netlify.app' } }), 'https://licitaplena.com.br');
+});

@@ -5,6 +5,7 @@ const {createHash}=require('node:crypto');
 const {falhar,tipoCaminhoLogo,validarLogo,lerAte,LOGO}=require('./_empresa_identificacao');
 const {obterModelo}=require('../../declaracoes-modelos.js');
 const {validarRascunho,documentoPublico}=require('./_kit_documentos_persistencia');
+const {lerCpfRepresentante}=require('./_empresa_identificacao_contexto');
 const LOTE_MAX=30;
 const MARCADOR='[PREENCHER:';
 // Toda variável conhecida; a que ficar sem valor vira marcador visível, nunca some do texto.
@@ -98,8 +99,12 @@ async function gerarLote({c,empresa,processo,perfil,store,body}){
  return {criados,existentes};
 }
 
-// CPF lido só na exportação, com o token de quem exporta (RLS do perfil: só gestor/operador).
-async function lerCpf(c,empresa){return cpf((await opcional(c.rest(`operacao_perfil_empresa?empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=cpf_representante`)))?.cpf_representante);}
+// CPF lido só na exportação. A RLS do perfil, com o token de quem exporta, decide se pode (só gestor/operador veem a
+// linha); a coluna em si só sai pela chave de serviço (seguranca_aprovacao_20261119.sql, M3).
+async function lerCpf(c,empresa){
+ if(!await opcional(c.rest(`operacao_perfil_empresa?empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=empresa_id`)))return null;
+ return cpf(await lerCpfRepresentante(empresa));
+}
 // "Proposta padrão" do perfil (validade, prazo, pagamento) só sugere o preenchimento da proposta nova; o usuário edita antes de salvar.
 async function lerPropostaPadrao(c,empresa){
  const p=(await opcional(c.rest(`operacao_perfil_empresa?empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=proposta_padrao`)))?.proposta_padrao;

@@ -28,18 +28,18 @@ do $$
 declare
  o uuid:='f5000000-0000-4000-8000-00000000000a'; ea uuid:='f5000000-0000-4000-8000-00000000001a';
  eb uuid:='f5000000-0000-4000-8000-00000000001b'; ua uuid:='f5000000-0000-4000-8000-000000000001';
- h text:=repeat('a',64); r public.operacao_perfil_empresa; p public.operacao_premissas_empresa; n int;
+ h text:=repeat('a',64); r record; p public.operacao_premissas_empresa; n int;
 begin
  perform set_config('request.jwt.claim.sub',ua::text,true);
  -- Gestor grava; versao nasce 1 e sobe a cada UPDATE (mesmo tentando forçar).
  insert into public.operacao_perfil_empresa(empresa_id,organizacao_id,nome_fantasia,porte,regime_tributario,aliquota_efetiva,
   cpf_representante,banco,proposta_padrao,logo_caminho,logo_hash,versao)
   values(ea,o,'QA Fantasia','me','simples',6.000,'12345678901','{"agencia":"0001"}',
-  '{"validade":"60 dias","pagamento":"30 dias","prazo_entrega":"10 dias"}',o||'/'||ea||'/perfil/logo-'||h||'.png',h,99) returning * into r;
+  '{"validade":"60 dias","pagamento":"30 dias","prazo_entrega":"10 dias"}',o||'/'||ea||'/perfil/logo-'||h||'.png',h,99) returning versao,atualizado_por,tributos_fonte into r;
  if r.versao<>1 or r.atualizado_por<>ua or r.tributos_fonte<>'manual' then raise exception 'Insert do perfil: %',r;end if;
- update public.operacao_perfil_empresa set telefone='92 99999-0000', versao=1 where empresa_id=ea returning * into r;
+ update public.operacao_perfil_empresa set telefone='92 99999-0000', versao=1 where empresa_id=ea returning versao,atualizado_por,tributos_fonte into r;
  if r.versao<>2 then raise exception 'versao não incrementou: %',r.versao;end if;
- update public.operacao_perfil_empresa set telefone='92 98888-0000' where empresa_id=ea returning * into r;
+ update public.operacao_perfil_empresa set telefone='92 98888-0000' where empresa_id=ea returning versao,atualizado_por,tributos_fonte into r;
  if r.versao<>3 then raise exception 'versao não incrementou de novo: %',r.versao;end if;
 
  -- Logo fora do escopo (outra empresa, fora de perfil/) e campos inválidos falham.
@@ -59,7 +59,7 @@ begin
  begin update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.gif' where empresa_id=ea; raise exception 'Logo .gif aceita';
  exception when check_violation then null; end;
  update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.jpeg' where empresa_id=ea;
- update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.png' where empresa_id=ea returning * into r;
+ update public.operacao_perfil_empresa set logo_caminho=o||'/'||ea||'/perfil/logo-'||h||'.png' where empresa_id=ea returning versao,atualizado_por,tributos_fonte into r;
  begin update public.operacao_perfil_empresa set cpf_representante='123.456.789-01' where empresa_id=ea; raise exception 'CPF com máscara aceito';
  exception when check_violation then null; end;
  -- UF da sede: só 2 letras maiúsculas.
@@ -132,7 +132,10 @@ begin
  if (select count(*) from public.operacao_premissas_empresa where empresa_id=ea)<>50
   or (public.premissa_aplicavel(ea,'limpeza','AM')).margem_percentual<>13 then raise exception 'Papel leitura não lê as premissas';end if;
  perform set_config('request.jwt.claim.sub','f5000000-0000-4000-8000-000000000004',true);
- if (select cpf_representante from public.operacao_perfil_empresa where empresa_id=ea) is distinct from '12345678901' then raise exception 'Operador da empresa não lê o perfil';end if;
+ -- M3 (seguranca_aprovacao_20261119.sql): o CPF não sai pelo PostgREST, nem para o operador; o resto do perfil sim.
+ if (select nome_fantasia from public.operacao_perfil_empresa where empresa_id=ea) is distinct from 'QA Fantasia' then raise exception 'Operador da empresa não lê o perfil';end if;
+ begin perform cpf_representante from public.operacao_perfil_empresa where empresa_id=ea; raise exception 'Operador leu o CPF pelo PostgREST';
+ exception when insufficient_privilege then null; end;
  perform set_config('request.jwt.claim.sub','f5000000-0000-4000-8000-000000000001',true);
  if (select banco->>'agencia' from public.operacao_perfil_empresa where empresa_id=ea) is distinct from '0001' then raise exception 'Gestor não lê o perfil';end if;
 end $$;

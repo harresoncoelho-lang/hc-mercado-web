@@ -3,7 +3,7 @@
 // Por quê exige login e cota: o envio gasta a cota do e-mail transacional (ZeptoMail) e chega à
 // caixa do suporte; sem sessão, qualquer um que descobrisse a URL poderia inundá-la de spam.
 // O honeypot (campo "duvida-empresa", invisível ao usuário) continua como segunda barreira contra robôs.
-const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado, verificarLimiteDiario } = require("./_auth");
 const { ZEPTOMAIL_URL, REMETENTE_PADRAO, NOME_REMETENTE, emailValido, normalizarTokenZepto, mensagemErroZepto } = require("./enviar-resumo-edital").compartilhado;
 
 const LIMITE_DIARIO = 5;
@@ -33,7 +33,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return resposta(event, 204, {});
   if (event.httpMethod !== "POST") return resposta(event, 405, { erro: "Método não permitido." });
 
-  const usuario = await exigirUsuarioLogado(event);
+  const usuario = await exigirUsuarioAprovado(event);
   if (!usuario.ok) return resposta(event, usuario.status, { erro: usuario.erro });
 
   const limite = await verificarLimiteDiario(usuario.userId, "enviar_duvida", LIMITE_DIARIO);

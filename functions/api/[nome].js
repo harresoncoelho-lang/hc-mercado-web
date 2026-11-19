@@ -118,7 +118,7 @@ function copiarEnvParaProcess(env) {
 
 const json404 = () => new Response(JSON.stringify({ erro: "Função não encontrada." }), {
   status: 404,
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff" },
 });
 
 export async function onRequest(context) {

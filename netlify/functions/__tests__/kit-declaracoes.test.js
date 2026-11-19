@@ -21,7 +21,8 @@ function fixture(t,changes={}){
   itens:[{id:ids.item,organizacao_id:ids.org,processo_id:ids.processo,tipo:'item',identificador:'1',descricao:'Caneta',quantidade:'2.000',valor_unitario_proposta:'1.25'}],
   kit:[],userId:'usuario',selectsPerfil:[],logo:PNG,...changes};
  t.mock.method(global,'fetch',async(url,op={})=>{
-  assert.equal(op.headers.Authorization,url.includes('/rpc/gravar_kit')?'Bearer QA_SERVICE':'Bearer QA');let data;
+  // CPF do representante: só a chave de serviço lê a coluna (seguranca_aprovacao_20261119.sql, M3).
+  assert.equal(op.headers.Authorization,url.includes('/rpc/gravar_kit')||url.includes('select=cpf_representante')?'Bearer QA_SERVICE':'Bearer QA');let data;
   if(url.includes('/auth/v1/user'))data={id:state.userId};
   else if(url.includes('/rpc/gravar_kit_declaracao_modelo')){
    if(state.semSql)return new Response('{}',{status:404});

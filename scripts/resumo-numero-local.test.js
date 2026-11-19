@@ -6,7 +6,7 @@ test('ficha básica usa número e ano publicados na compra, preservando zeros se
  finally{global.fetch=original;}
 });
 test('título identifica explicitamente controle PNCP quando número do edital não existe',()=>{
- const html=fs.readFileSync(path.join(__dirname,'../painel.html'),'utf8');const inicio=html.indexOf('  function renderizarCartoesTopoIA(');const fim=html.indexOf('  // Cria uma seção',inicio);const elementos={'modal-ia-cartoes-topo':{style:{}},'modal-ia-titulo':{}};
- const contexto={document:{getElementById:id=>elementos[id]},ResumoModelo:{montar:()=>({cards:[],numero:'88124961000159-1-000125/2026'})},iaEditalAtual:{},escapeHtml:x=>x};
+ const html=fs.readFileSync(path.join(__dirname,'../painel.html'),'utf8');const inicio=html.indexOf('  function iconeResumo(');const fim=html.indexOf('  // Cria uma seção',inicio);const elementos={'modal-ia-cartoes-topo':{style:{}},'modal-ia-titulo':{}};
+ const contexto={document:{getElementById:id=>elementos[id]},ResumoModelo:{montarFicha:()=>({cartoes:{},numero:'88124961000159-1-000125/2026'})},iaEditalAtual:{},escapeHtml:x=>x};
  vm.runInNewContext(html.slice(inicio,fim)+'\nrenderizarCartoesTopoIA({});',contexto);assert.equal(elementos['modal-ia-titulo'].textContent,'Resumo do Edital — PNCP 88124961000159-1-000125/2026');
 });

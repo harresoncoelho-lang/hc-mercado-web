@@ -1,6 +1,7 @@
 // Netlify Function: consulta o registro completo de uma compra no PNCP. A busca rápida
 // do portal retorna somente um resumo; este proxy preenche modo de disputa, amparo legal,
 // SRP, valores, processo e demais campos oficiais sem expor o navegador ao bloqueio CORS.
+const { cabecalhosPadrao, limitarPorIp } = require("./_auth");
 const BASE_URL = "https://pncp.gov.br/api/consulta/v1/orgaos";
 const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -38,7 +39,10 @@ function camposDaDisputa(dados) {
 }
 
 exports.handler = async (event) => {
-  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
+  // Proxy público: CORS só do nosso domínio e teto diário por IP (teste de ataque 19/11, M5).
+  const headers = cabecalhosPadrao(event);
+  const limite = await limitarPorIp(event, "pncp-detalhe");
+  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
   const q = event.queryStringParameters || {};
   const cnpj = String(q.cnpj || "").replace(/\D/g, "");
   const ano = Number.parseInt(q.ano, 10);

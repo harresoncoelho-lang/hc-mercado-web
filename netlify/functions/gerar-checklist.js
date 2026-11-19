@@ -2,7 +2,7 @@
 // renomeado como .doc, mas isso fazia cada cliente renderizar de um jeito e
 // deixava o documento com aparência improvisada.
 const AdmZip = require("adm-zip");
-const { cabecalhosPadrao, exigirUsuarioLogado } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado } = require("./_auth");
 
 
 const ResumoModelo = require("../../resumo-modelo");
@@ -93,7 +93,8 @@ function conteudoDocumento(edital, resumo) {
     },
   };
   const identificacao = resumo.identificacao || {};
-  const modelo = ResumoModelo.montar(resumo, edital, resumo.consideracoes);
+  // Mesma ordem de seções da gaveta do painel (estrutura ConLicitação); o e-mail segue em montar().
+  const modelo = ResumoModelo.montarFicha(resumo, edital, resumo.consideracoes);
   const numero = modelo.numero || "Não informado";
   const rotuloNumero = /^\d{14}-\d-\d+\/\d{4}$/.test(numero) ? "Controle PNCP" : "Número da licitação";
   const objeto = util(identificacao.objeto) || util(edital.objeto) || "Não informado";
@@ -170,7 +171,7 @@ function textoXmlValido(texto) {
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return responder(event, 204, "");
   if (event.httpMethod !== "POST") return responder(event, 405, JSON.stringify({ erro: "Método não permitido." }));
-  const usuario = await exigirUsuarioLogado(event);
+  const usuario = await exigirUsuarioAprovado(event);
   if (!usuario.ok) return responder(event, usuario.status, JSON.stringify({ erro: usuario.erro }));
   let dados;
   try { dados = JSON.parse(event.body || "{}"); } catch (e) { return responder(event, 400, JSON.stringify({ erro: "Dados do checklist inválidos." })); }

@@ -19,7 +19,6 @@ const SUPABASE_ANON_KEY = "sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb";
 const ORIGENS_PERMITIDAS = [
   "https://licitaplena.com.br",
   "https://www.licitaplena.com.br",
-  "https://hc-mercado-web.netlify.app",
   "https://licitaplena.pages.dev",
 ];
 
@@ -134,4 +133,39 @@ async function exigirUsuarioAprovado(event) {
   return cadastro.ok ? usuario : cadastro;
 }
 
-module.exports = { cabecalhosPadrao, exigirUsuarioLogado, exigirClienteAprovado, exigirUsuarioAprovado, verificarLimiteDiario, origemPermitida };
+// Proxies públicos (pncp-*, comprasgov-*): o painel chama sem token, então o teto é diário por IP (teste de ataque
+// 19/11, M5: script anônimo esgotava a cota do Cloudflare ou fazia o PNCP/Compras.gov bloquear nosso IP de saída).
+// IP: só o cabeçalho que a própria plataforma define (mesma regra de portal-cliente.js): cf-connecting-ip no runtime
+// do Workers, x-nf-client-connection-ip fora dele. O banco recebe HMAC-SHA256(chave de serviço, IP), nunca o IP.
+// Sem IP confiável (ambiente local) ou sem chave de serviço não limita; falha do contador também não bloqueia
+// (fail-open, como verificarLimiteDiario fora da IA): o teto protege contra abuso, não é controle de acesso.
+const LIMITE_PROXY_POR_IP = 3000;
+function ipConfiavel(event) {
+  const h = event.headers || {};
+  const ip = globalThis.navigator?.userAgent === "Cloudflare-Workers" ? h["cf-connecting-ip"] : h["x-nf-client-connection-ip"];
+  return typeof ip === "string" && ip.trim() ? ip.trim() : null;
+}
+async function limitarPorIp(event, nomeFuncao, limite = LIMITE_PROXY_POR_IP) {
+  const ip = ipConfiavel(event);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!ip || !serviceKey) return { ok: true };
+  try {
+    const chave = require("node:crypto").createHmac("sha256", serviceKey).update(`ip:${ip}`).digest("hex");
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/incrementar_uso_ip`, {
+      method: "POST",
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_chave: chave, p_funcao: nomeFuncao }),
+      signal: globalThis.AbortSignal.timeout(3000),
+    });
+    if (!resp.ok) return { ok: true };
+    const contagem = await resp.json();
+    if (typeof contagem === "number" && contagem > limite) {
+      return { ok: false, status: 429, erro: "Muitas consultas a partir desta rede hoje. Tente de novo amanhã." };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: true };
+  }
+}
+
+module.exports = { cabecalhosPadrao, exigirUsuarioLogado, exigirClienteAprovado, exigirUsuarioAprovado, verificarLimiteDiario, origemPermitida, limitarPorIp };

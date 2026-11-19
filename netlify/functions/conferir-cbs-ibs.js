@@ -6,7 +6,7 @@
 // GET /api/conferir-cbs-ibs?ano=2026&uf=AM  (Authorization: Bearer <sessão>)
 // Logado e aprovado: a API oficial tem firewall que bloqueia o IP após rajadas (visto ao testar), então não
 // vira proxy aberto. 2 subrequisições, 8 s cada; qualquer falha fecha com "não foi possível conferir agora".
-const { cabecalhosPadrao, exigirUsuarioAprovado } = require('./_auth');
+const { cabecalhosPadrao, exigirUsuarioAprovado, verificarLimiteDiario } = require('./_auth');
 const { ALIQUOTAS } = require('../../reforma-tributaria.js');
 
 const BASE = 'https://piloto-cbs.tributos.gov.br/servico/calculadora-consumo/api/calculadora';
@@ -60,6 +60,9 @@ exports.handler = async (event) => {
   if (!Object.hasOwn(UFS, uf)) return resposta(400, { erro: 'UF inválida. Use a sigla, ex.: AM.' });
   const auth = await exigirUsuarioAprovado(event);
   if (!auth.ok) return resposta(auth.status, { erro: auth.erro });
+  // Teto diário por usuário: rajada de um usuário faria a Receita bloquear o IP de saída de todos (teste de ataque 19/11, M5).
+  const limite = await verificarLimiteDiario(auth.userId, 'conferir-cbs-ibs', 30);
+  if (!limite.ok) return resposta(limite.status, { erro: limite.erro });
   const r = await conferir(ano, uf, (url) => fetch(url, { headers: { Accept: 'application/json' }, signal: globalThis.AbortSignal.timeout(8000) }));
   return resposta(r.ok ? 200 : 503, r);
 };

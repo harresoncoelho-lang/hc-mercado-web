@@ -155,7 +155,7 @@ test("módulos do resumo têm versão por conteúdo para evitar JS antigo no nav
   const fs = require("node:fs"), path = require("node:path"), { createHash } = require("node:crypto");
   const raiz = path.join(__dirname, "..");
   const painel = fs.readFileSync(path.join(raiz, "painel.html"), "utf8");
-  for (const arquivo of ["resumo-modelo.js", "capag.js", "defesa-licitante.js", "defesa-ui.js"]) {
+  for (const arquivo of ["resumo-modelo.js", "resumo-email.js", "capag.js", "defesa-licitante.js", "defesa-ui.js"]) {
     const hash = createHash("sha256").update(fs.readFileSync(path.join(raiz, arquivo))).digest("hex").slice(0, 12);
     assert.ok(painel.includes(`src="${arquivo}?v=${hash}"`), arquivo);
   }

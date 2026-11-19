@@ -114,9 +114,9 @@ test("listar lê com o token do usuário e nunca pede colunas de hash", async ()
   });
 });
 
-test("o link usa a origem canônica mesmo vindo de outra origem da allowlist (ex.: netlify.app antigo)", async () => {
+test("o link usa a origem canônica mesmo vindo de outra origem da allowlist (ex.: pages.dev)", async () => {
   await comSupabase(async () => {
-    const r = await handler(evento(criar(), { origin: "https://hc-mercado-web.netlify.app" }));
+    const r = await handler(evento(criar(), { origin: "https://licitaplena.pages.dev" }));
     assert.match(JSON.parse(r.body).link, /^https:\/\/licitaplena\.com\.br\/cliente#t=/);
   });
 });

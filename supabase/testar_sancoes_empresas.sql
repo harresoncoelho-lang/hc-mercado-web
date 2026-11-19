@@ -23,8 +23,14 @@ do $$ begin
  begin delete from public.sancoes_empresas where codigo_sancao='900001'; raise exception 'service_role apagou histórico';
  exception when insufficient_privilege then null; end;
 end $$;
+-- seguranca_aprovacao_20261119.sql (M1): só cadastro aprovado lê; JWT sem cadastro aprovado vê 0.
+reset role;
+insert into auth.users(id,email) values ('e1900000-0000-4000-8000-0000000005a1','san-a@qa.invalid');
+insert into public.clientes(id,nome,email,status) values ('e1900000-0000-4000-8000-0000000005a1','QA san A','san-a@qa.invalid','aprovado');
 set local role authenticated;
 do $$ begin
+ if exists(select 1 from public.sancoes_empresas) then raise exception 'autenticado sem cadastro aprovado leu'; end if;
+ perform set_config('request.jwt.claim.sub','e1900000-0000-4000-8000-0000000005a1',true);
  if (select count(*) from public.sancoes_empresas where cnpj='11222333000181')<>2 then raise exception 'autenticado não lê'; end if;
  begin insert into public.sancoes_empresas(cadastro,codigo_sancao,cnpj,data_carga) values('CEIS','900005','11222333000181','2026-11-19'); raise exception 'autenticado gravou';
  exception when insufficient_privilege then null; end;

@@ -24,6 +24,7 @@ test("sem dossiê pronto, o endpoint enfileira o pedido e devolve a ficha oficia
   const pedidosFila = [], proibidas = [];
   const responder = (corpo, status = 200) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status });
   global.fetch = async (url, opcoes = {}) => {
+    if (url.includes("/rest/v1/clientes?")) return responder([{ status: "aprovado" }]);
     if (url.includes("/auth/v1/user")) return responder({ id: "usuario-teste" });
     if (url.includes("/rest/v1/fila_dossies")) { pedidosFila.push(JSON.parse(opcoes.body)); return responder("", 201); }
     if (url.includes("/rest/v1/dossies_editais")) return responder([]);
@@ -72,6 +73,7 @@ test("dossiê do Gemini com prazo em conferência é entregue ao cliente sem mar
   const pedidosFila = [];
   const responder = (corpo, status = 200) => new globalThis.Response(typeof corpo === "string" ? corpo : JSON.stringify(corpo), { status });
   global.fetch = async (url, opcoes = {}) => {
+    if (url.includes("/rest/v1/clientes?")) return responder([{ status: "aprovado" }]);
     if (url.includes("/auth/v1/user")) return responder({ id: "usuario-teste" });
     if (url.includes("/rest/v1/fila_dossies")) { pedidosFila.push(opcoes.body); return responder("", 201); }
     if (url.includes("/rest/v1/dossies_editais")) return responder([{ dossie, versao: dossie.versao }]);

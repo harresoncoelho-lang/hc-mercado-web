@@ -426,12 +426,8 @@
   .modal-ia-fundo { background: var(--scrim); }
   .modal-ia { background: var(--surface-raised); border-color: var(--border-default); border-radius: var(--radius-modal); box-shadow: var(--shadow-overlay); }
   .modal-ia-acoes-rodape { border-color: var(--border-default); }
-  /* O documento do resumo continua em papel claro nos dois temas, como o resumo já utilizado. */
-  #modal-ia-fundo .modal-ia { color-scheme: light; border-radius: 0; }
-  #modal-ia-fundo :is(button,a,input,textarea,summary):focus-visible { outline-color: #2255e0; }
-  #modal-ia-fundo [data-resumo-secao^="CAPAG"] { border-color: #b5c8f5; }
-  #modal-ia-fundo [data-resumo-secao^="CAPAG"] > summary { background: #e8efff; color: #071b70; }
-  #modal-ia-fundo .defesa-central > .secao-ia-titulo { background: #071b70; color: #fff; border-left: 0; }
+  /* Resumo do Edital: gaveta na estrutura do ConLicitação, claro/escuro pelos tokens (estilos em painel.html). */
+  #modal-ia-fundo .modal-ia { border-radius: 0; }
   .defesa-botao-destaque { box-shadow: none; }
 
   /* ---- 15. Fluxo e informação (melhorias de 18/11/2026) ---- */

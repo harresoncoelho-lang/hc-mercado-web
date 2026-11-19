@@ -11,7 +11,9 @@ function jpeg(w,h){const app=Buffer.from([0xff,0xe0,0,16,...Buffer.from('JFIF\0'
 function fixture(t,changes={}){
  const state={papel:'gestor',perfil:{empresa_id:ids.empresa,organizacao_id:ids.org,nome_fantasia:'QA',cpf_representante:CPF,banco:BANCO,proposta_padrao:{},logo_caminho:null,logo_hash:null,versao:3},premissas:[{segmento:'*',uf:'*',margem_percentual:20,margem_minima_percentual:10}],semTabela:false,objeto:null,escritas:[],...changes};
  t.mock.method(global,'fetch',async(url,op={})=>{
-  assert.equal(op.headers.Authorization,'Bearer QA');let data;
+  // CPF do representante: só a chave de serviço lê a coluna (seguranca_aprovacao_20261119.sql, M3).
+  const servico=url.includes('select=cpf_representante');if(servico)state.leiturasCpf=(state.leiturasCpf||0)+1;
+  assert.equal(op.headers.Authorization,servico?'Bearer QA_SERVICE':'Bearer QA');let data;
   if(state.semTabela&&/operacao_(perfil|premissas)_empresa/.test(url))return new Response(JSON.stringify({code:'PGRST205',message:'Could not find the table'}),{status:404});
   if(url.includes('/auth/v1/user'))data={id:'usuario'};
   else if(url.includes('/clientes?'))data=[{status:'aprovado'}];
@@ -22,6 +24,7 @@ function fixture(t,changes={}){
   else if(url.includes('/operacao_membros?'))data=[{usuario_id:'usuario',organizacao_id:ids.org,empresa_id:null,papel:state.papel}];
   else if(url.includes('/operacao_perfil_empresa')){
    if(op.method==='POST'){const row=JSON.parse(op.body);state.escritas.push(['perfil',row]);state.perfil={...state.perfil,...row,versao:(state.perfil?.versao||0)+1};data=[state.perfil];}
+   else if(op.method==='PATCH'){state.cpfPatch=JSON.parse(op.body);state.perfil={...state.perfil,...state.cpfPatch};data=[state.perfil];}
    else data=state.papel==='leitura'||!state.perfil?[]:[state.perfil];
   }
   else if(url.includes('/operacao_premissas_empresa')){if(op.method==='DELETE'){state.escritas.push(['remover',decodeURIComponent(url.split('?')[1])]);data=[];}else if(op.method==='POST'){const rows=JSON.parse(op.body);state.escritas.push(['premissas',rows]);data=rows;}else data=state.premissas;}
@@ -30,7 +33,7 @@ function fixture(t,changes={}){
   else throw new Error('URL inesperada '+url);
   return new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}});
  });
- const old=process.env.IDENTIFICACAO_EMPRESA_LOCAL;process.env.IDENTIFICACAO_EMPRESA_LOCAL='1';t.after(()=>{if(old===undefined)delete process.env.IDENTIFICACAO_EMPRESA_LOCAL;else process.env.IDENTIFICACAO_EMPRESA_LOCAL=old;});
+ for(const [k,v] of [['IDENTIFICACAO_EMPRESA_LOCAL','1'],['SUPABASE_SERVICE_ROLE_KEY','QA_SERVICE']]){const old=process.env[k];process.env[k]=v;t.after(()=>{if(old===undefined)delete process.env[k];else process.env[k]=old;});}
  const run=async body=>{const r=await handler({httpMethod:'POST',headers:{authorization:'Bearer QA'},body:JSON.stringify({empresaId:ids.empresa,...body})});return {...r,json:JSON.parse(r.body)};};
  return {state,run};
 }
@@ -62,7 +65,7 @@ test('salvarPerfil grava perfil e premissas normalizados em um upsert cada',asyn
  const r=await f.run({acao:'salvarPerfil',perfil:{nome_fantasia:' Loja  QA ',telefone:'(92) 3333-4444',email:'QA@Exemplo.com',inscricao_estadual:'ISENTO',inscricao_municipal:'12345',porte:'epp',regime_tributario:'simples',aliquota_efetiva:'6,5',cpf_representante:'529.982.247-25',banco:BANCO,proposta_padrao:{validade:'60 dias',pagamento:'30 dias',prazo_entrega:'10 dias'}},premissas:[{segmento:' Informática ',uf:'am',margem_percentual:25,margem_minima_percentual:'10'},{}]});
  assert.equal(r.statusCode,200);assert.equal(r.json.perfil.cpf_representante,'***.***.***-25');
  const [[,perfil],[,premissas]]=f.state.escritas;
- assert.equal(perfil.nome_fantasia,'Loja QA');assert.equal(perfil.email,'qa@exemplo.com');assert.equal(perfil.aliquota_efetiva,6.5);assert.equal(perfil.cpf_representante,CPF);assert.equal(perfil.empresa_id,ids.empresa);assert.equal(perfil.organizacao_id,ids.org);
+ assert.equal(perfil.nome_fantasia,'Loja QA');assert.equal(perfil.email,'qa@exemplo.com');assert.equal(perfil.aliquota_efetiva,6.5);assert.equal('cpf_representante' in perfil,false);assert.deepEqual(f.state.cpfPatch,{cpf_representante:CPF});assert.equal(perfil.empresa_id,ids.empresa);assert.equal(perfil.organizacao_id,ids.org);
  assert.deepEqual(premissas.map(p=>[p.segmento,p.uf,p.margem_minima_percentual]),[['informática','AM',10],['*','*',null]]);
  assert.equal(premissas[0].empresa_id,ids.empresa);assert.equal(r.json.premissas.length,2);
 });
@@ -173,4 +176,14 @@ test('uf_sede: salva normalizada, recusa fora da lista e sugere a UF do endereç
  assert.equal((await f.run({acao:'lerPerfil'})).json.ufSedeSugerida,null);
  f.state.identificacao[0].invalidado_em=null;f.state.perfil.uf_sede='PA';
  assert.equal((await f.run({acao:'lerPerfil'})).json.ufSedeSugerida,null);
+});
+
+test('M3 (19/11): o token do usuário nunca pede cpf_representante; o CPF vem só pela chave de serviço',async t=>{
+ const f=fixture(t);const urls=[];const fetchMock=global.fetch;t.mock.method(global,'fetch',async(url,op)=>{urls.push([String(url),op.headers.Authorization]);return fetchMock(url,op);});
+ const r=await f.run({acao:'lerPerfil'});assert.equal(r.statusCode,200);assert.equal(r.json.perfil.cpf_representante,'***.***.***-25');
+ const perfilUsuario=urls.filter(([u,a])=>u.includes('/operacao_perfil_empresa')&&a==='Bearer QA');
+ assert.ok(perfilUsuario.length>0&&perfilUsuario.every(([u])=>!u.includes('cpf')&&!u.includes('select=*')),'leitura do usuário pediu o CPF');
+ assert.equal(f.state.leiturasCpf,1);
+ const s=await f.run({acao:'salvarPerfil',perfil:{nome_fantasia:'QA'}});assert.equal(s.statusCode,200);assert.equal(s.json.perfil.cpf_representante,'***.***.***-25');
+ assert.ok(urls.filter(([u])=>u.includes('on_conflict=empresa_id')&&u.includes('operacao_perfil_empresa')).every(([u])=>u.includes('select=')&&!u.includes('cpf')),'upsert devolveu o CPF');
 });

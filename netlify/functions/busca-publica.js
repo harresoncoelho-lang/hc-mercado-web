@@ -12,6 +12,7 @@
 //
 // Uso: GET /api/busca-publica?termo=uniformes&uf=AM
 const { cabecalhosPadrao } = require("./_auth");
+const { nomePortal, linkDisputa } = require("../../portal-origem.js");
 
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const LIMITE_RESULTADOS = 6;
@@ -49,7 +50,7 @@ function dataIso(deslocamentoDias = 0) {
 
 function montarUrl(termo, uf) {
   const p = new URLSearchParams();
-  p.set("select", "numero_controle_pncp,objeto,uf,publicacao,encerramento,orgao:dado->>orgao,municipio:dado->>municipio,modalidade:dado->>modalidadeNome,valor:dado->>valorTotalEstimado");
+  p.set("select", "numero_controle_pncp,objeto,uf,publicacao,encerramento,orgao:dado->>orgao,municipio:dado->>municipio,modalidade:dado->>modalidadeNome,valor:dado->>valorTotalEstimado,usuario_nome:dado->>usuarioNome,link_sistema_origem:dado->>linkSistemaOrigem");
   p.set("and", filtroObjeto(termo));
   p.set("or", `(encerramento.gte.${dataIso()},and(encerramento.is.null,publicacao.gte.${dataIso(-DIAS_SEM_ENCERRAMENTO)}))`);
   if (uf) p.set("uf", `eq.${uf}`);
@@ -75,6 +76,9 @@ function paraPublico(linha) {
     publicacao: linha.publicacao || null,
     encerramento: linha.encerramento || null,
     link: linkPncp(linha.numero_controle_pncp),
+    // Portal da disputa já normalizado e com link só http(s): a página pública não reprocessa.
+    portal: nomePortal(linha.usuario_nome),
+    linkDisputa: linkDisputa(linha.link_sistema_origem),
   };
 }
 

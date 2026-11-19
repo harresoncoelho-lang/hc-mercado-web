@@ -10,7 +10,7 @@
 const BASE_URL = "https://api.portaldatransparencia.gov.br/api-de-dados";
 const FASE_PAGAMENTO = 3;
 const ANOS_A_CONSULTAR = 4; // ano atual + 3 anteriores
-const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado, verificarLimiteDiario } = require("./_auth");
 
 async function consultarAno(cnpj, ano, token) {
   try {
@@ -32,7 +32,7 @@ exports.handler = async (event) => {
   const headers = cabecalhosPadrao(event);
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers, body: "" };
 
-  const sessao = await exigirUsuarioLogado(event);
+  const sessao = await exigirUsuarioAprovado(event);
   if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
   const limite = await verificarLimiteDiario(sessao.userId, "despesas-fornecedor", 60);
   if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };

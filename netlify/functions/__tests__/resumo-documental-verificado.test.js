@@ -15,6 +15,7 @@ test('HTTP resumo devolve fonte verificada com hash, sem aprovar síntese nem al
   const chamadas = [];
   global.fetch = async (url, opcoes = {}) => {
     chamadas.push({ url, method: opcoes.method || 'GET' });
+    if (url.includes('/rest/v1/clientes?')) return new Response(JSON.stringify([{ status: 'aprovado' }]));
     if (url.includes('/auth/v1/user')) return new Response(JSON.stringify({ id: 'cliente' }));
     if (url.includes('/dossies_editais')) return new Response(JSON.stringify([{ dossie, versao: 17 }]));
     if (url.includes('pncp.gov.br')) return new Response('{}', { status: 503 });

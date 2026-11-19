@@ -27,6 +27,8 @@
     const el = (tag, texto) => { const e = doc.createElement(tag); if (texto) e.textContent = texto; return e; };
     const secao = el("details"); secao.className = "secao-ia defesa-central"; secao.open = true;
     const sumario = el("summary", "Possíveis questionamentos"); sumario.className = "secao-ia-titulo"; secao.append(sumario);
+    // Cabeçalho igual às demais seções do resumo (ícone do sprite Phosphor + seta), texto fixo.
+    sumario.innerHTML = "<span class='resumo-icone'><svg class='icone-ph' aria-hidden='true'><use href='#ph-warning'></use></svg></span><span>Possíveis questionamentos</span><span class='resumo-seta'><svg class='icone-ph' aria-hidden='true'><use href='#ph-caret-up'></use></svg></span>";
     secao.append(el("p", "Escolha um ponto para abrir a Central de Defesa. Uma sugestão não comprova irregularidade. A análise só começa quando você solicitar."));
     const dialogo = el("dialog"); dialogo.id = "defesa-dialogo"; dialogo.className = "defesa-dialogo";
     dialogo.setAttribute("aria-labelledby", "defesa-dialogo-titulo");
@@ -248,7 +250,10 @@
     if (pontos.length) secao.append(el("p", "Abra um ponto para conferir seu contexto. Sugestões sem trecho identificado precisam de verificação documental; não são evidências."));
     if (!pontos.length) secao.append(el("p", "Nenhum ponto com evidência estruturada foi identificado nesta análise. Isso não confirma ausência de problemas."));
     for (const ponto of pontos) {
-      const card = el("article"); card.className = "defesa-ponto"; card.append(el("p", "Ponto a verificar"), el("h4", ponto.titulo || "Ponto a conferir"), el("p", ponto.descricao || (raiz.DefesaLicitante.temEvidencias(ponto) ? "Confira os trechos documentais vinculados antes de analisar." : "Sugestão ainda sem evidência documental confirmada.")));
+      // "[Presença Irregular] título..." vira selo + título, como na referência; sem selo, "Ponto a verificar".
+      const marcador = /^\[([^\]]{2,40})\]\s*/.exec(ponto.titulo || "");
+      const selo = el("span", marcador ? marcador[1] : "Ponto a verificar"); selo.className = "defesa-selo";
+      const card = el("article"); card.className = "defesa-ponto"; card.append(selo, el("h4", (marcador ? ponto.titulo.slice(marcador[0].length) : ponto.titulo) || "Ponto a conferir"), el("p", ponto.descricao || (raiz.DefesaLicitante.temEvidencias(ponto) ? "Confira os trechos documentais vinculados antes de analisar." : "Sugestão ainda sem evidência documental confirmada.")));
       if (typeof ponto.motivo === "string" && ponto.motivo.trim()) card.append(el("p", ponto.motivo));
       const provas = el("details"); provas.append(el("summary", "Trecho do edital"));
       for (const e of Array.isArray(ponto.evidencias) ? ponto.evidencias : []) {

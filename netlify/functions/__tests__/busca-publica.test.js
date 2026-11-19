@@ -16,6 +16,7 @@ const linha = (n) => ({
   municipio: "Manaus",
   modalidade: "Pregão - Eletrônico",
   valor: "184320.5",
+  ...(n === 1 ? { usuario_nome: "BLL Compras", link_sistema_origem: "https://bllcompras.com/Process/ProcessView?param1=1" } : {}),
 });
 
 async function comFetch(fn, { chave = "chave-teste", resposta } = {}) {
@@ -68,7 +69,11 @@ test("devolve no máximo 6 resultados só com colunas públicas e link do PNCP",
     assert.equal(r.headers["Access-Control-Allow-Origin"], "https://licitaplena.pages.dev");
     const { resultados } = JSON.parse(r.body);
     assert.equal(resultados.length, 6);
-    assert.deepEqual(Object.keys(resultados[0]).sort(), ["encerramento", "link", "modalidade", "municipio", "objeto", "orgao", "publicacao", "uf", "valorEstimado"]);
+    assert.deepEqual(Object.keys(resultados[0]).sort(), ["encerramento", "link", "linkDisputa", "modalidade", "municipio", "objeto", "orgao", "portal", "publicacao", "uf", "valorEstimado"]);
+    assert.equal(resultados[0].portal, "BLL");
+    assert.equal(resultados[0].linkDisputa, "https://bllcompras.com/Process/ProcessView?param1=1");
+    assert.equal(resultados[1].portal, null); // registro gravado antes do campo: nada a mostrar
+    assert.equal(resultados[1].linkDisputa, null);
     assert.equal(resultados[0].valorEstimado, 184320.5);
     assert.equal(resultados[0].link, "https://pncp.gov.br/app/editais/04477782000105/2026/1");
     const url = new URL(chamadas[0].url);

@@ -66,6 +66,8 @@ function resultadoParaResponse(resultado, opcoes = {}) {
   // Em /*, o netlify.toml põe `no-cache`, mas para convenios-publico a regra mais específica
   // libera cache curto; aqui o handler é a única fonte, então o padrão só entra se ele não definiu.
   if (opcoes.cacheControlPadrao && !headers.has("cache-control")) headers.set("cache-control", opcoes.cacheControlPadrao);
+  // O _headers do Pages não vale para /api/*: sem isto as respostas das functions saíam sem nosniff (teste 19/11, B3).
+  if (!headers.has("x-content-type-options")) headers.set("x-content-type-options", "nosniff");
 
   if (STATUS_SEM_CORPO.has(status) || r.body === undefined || r.body === null || r.body === "") {
     return new Response(STATUS_SEM_CORPO.has(status) ? null : "", { status, headers });
@@ -85,7 +87,7 @@ async function executarHandler(handler, request, opcoes = {}) {
     console.error("adaptador-cloudflare: falha no handler", e?.name || "erro");
     return new Response(JSON.stringify({ erro: "Erro interno ao processar a requisição." }), {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff" },
     });
   }
 }

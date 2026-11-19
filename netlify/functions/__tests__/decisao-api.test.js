@@ -6,6 +6,7 @@ async function ambiente(fn,{provedor=200,resultado={empresa:'Exemplo',decisao:nu
  process.env.DECISAO_CLIENTE_ATIVA='1';process.env.SUPABASE_SERVICE_ROLE_KEY='teste';process.env.ZEPTOMAIL_TOKEN='teste';
  global.fetch=async(url,options={})=>{
   const body=options.body?JSON.parse(options.body):null;chamadas.push({url,body});
+  if(url.includes('/rest/v1/clientes?'))return new Response(JSON.stringify([{status:'aprovado'}]));
   if(url.includes('/auth/v1/user'))return new Response(JSON.stringify({id:usuario,email:'assessor@example.com'}));
   if(url.includes('incrementar_uso'))return new Response('1');
   if(url.includes('api.zeptomail')){if(provedor==='timeout')throw Error('timeout');return new Response('{}',{status:provedor});}

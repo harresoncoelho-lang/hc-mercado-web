@@ -67,6 +67,7 @@
   .chip.er { background: var(--error-bg); color: var(--error-text); border-color: var(--error-border); }
   .chip.in { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
   .chip.ne { background: var(--surface-sunken); color: var(--text-secondary); border-color: var(--border-default); }
+  .chip-portal { white-space: normal; height: auto; min-height: 24px; max-width: 100%; overflow-wrap: anywhere; }
 
   .msg { display: flex; gap: 8px; align-items: flex-start; padding: 12px 16px; border-radius: var(--radius-card); border: 1px solid; margin: 0; }
   .msg.wa { background: var(--attention-bg); border-color: var(--attention-border); color: var(--attention-text); }
@@ -850,7 +851,10 @@
       const local = [r.municipio, r.uf].filter(Boolean).join("/");
       const meta = [r.orgao, local, r.modalidade].filter(Boolean).map(escapeHtml).join(" · ");
       const link = r.link ? `<a href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">Ver no PNCP<span class="sr"> (abre em nova aba)</span></a>` : "";
-      return `<li class="op"><p class="op-obj">${escapeHtml(r.objeto)}</p><p class="op-meta">${meta}</p><div class="op-pe">${chipEncerramento(r.encerramento)}${link}</div></li>`;
+      // Portal da disputa: nome e link já normalizados/validados pela function (só http/https).
+      const portal = r.portal ? `<span class="chip in chip-portal">Portal: ${escapeHtml(r.portal)}</span>` : "";
+      const disputa = r.linkDisputa ? `<a href="${escapeHtml(r.linkDisputa)}" target="_blank" rel="noopener noreferrer">Acessar local da disputa<span class="sr"> (abre em nova aba)</span></a>` : "";
+      return `<li class="op"><p class="op-obj">${escapeHtml(r.objeto)}</p><p class="op-meta">${meta}</p><div class="op-pe">${chipEncerramento(r.encerramento)}${portal}${link}${disputa}</div></li>`;
     }
 
     async function executarBusca() {

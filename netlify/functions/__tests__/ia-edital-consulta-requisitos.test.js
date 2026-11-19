@@ -14,6 +14,7 @@ async function consultar({ dossie = null, filaFalha = false, vezes = 1 } = {}) {
   delete process.env.DOSSIES_EDITAIS_CHAVE;
   const fila = new Map(), pedidosFila = [], proibidas = [];
   global.fetch = async (url, opcoes = {}) => {
+    if (url.includes("/rest/v1/clientes?")) return new Response(JSON.stringify([{ status: "aprovado" }]));
     if (url.includes("/auth/v1/user")) return new Response(JSON.stringify({ id: "cliente" }));
     if (url.includes("/rest/v1/dossies_editais")) return new Response(JSON.stringify(dossie ? [{ dossie, versao: dossie.versao }] : []));
     if (url.includes("/rest/v1/fila_dossies")) {

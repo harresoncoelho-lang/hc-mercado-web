@@ -386,6 +386,25 @@
       el('kit').replaceChildren();
       el('identificacao').replaceChildren();
       el('contexto-atual').textContent = '';
+      mostrarPortal(null);
+    }
+
+    // Portal da disputa no cabeçalho do processo: o que o processo guarda (sistema) e, se veio do PNCP,
+    // o nome e o link "Acessar local da disputa" do detalhe oficial (usuarioNome/linkSistemaOrigem).
+    async function mostrarPortal(processo) {
+      const alvo = el('contexto-portal'), P = globalThis.PortalOrigem;
+      if (!alvo || !P) return;
+      const pintar = (r) => { alvo.innerHTML = P.htmlPortal(r); alvo.hidden = !alvo.innerHTML; };
+      const base = { sistema: processo?.sistema };
+      pintar(base);
+      const m = /^https:\/\/pncp\.gov\.br\/app\/editais\/(\d{14})\/(\d{4})\/(\d{1,7})$/.exec(processo?.urlOrigem || '');
+      if (!m || typeof fetch !== 'function') return;
+      const e = epoca;
+      try {
+        const r = await fetch(`/api/pncp-detalhe?cnpj=${m[1]}&ano=${m[2]}&sequencial=${m[3]}`);
+        const d = r.ok ? await r.json() : null;
+        if (e === epoca && d?.detalhe) pintar({ ...base, ...d.detalhe });
+      } catch { /* sem detalhe: fica o que o processo já guarda */ }
     }
 
     async function consultarSessao(comCatalogo) {
@@ -539,6 +558,7 @@
       identDe = { empresaId: contexto.empresaId, modo: 'processo' };
       visao = 'processo';
       el('contexto-atual').textContent = contexto.rotulo;
+      mostrarPortal(consulta?.processo);
       el('empresa-ativa').value = contexto.empresaId;
       preencherProcessos(contexto.empresaId);
       el('processo-ativo').value = contexto.processoId;
@@ -684,6 +704,7 @@
       identDe = { empresaId, modo: 'preparar' };
       visao = 'preparar';
       el('contexto-atual').textContent = 'Preparar empresa: ' + e.rotulo;
+      mostrarPortal(null);
       el('empresa-ativa').value = empresaId;
       ident = identificacao.montar({ alvo: el('identificacao'), obterSessao });
       ident.abrir(empresaId, sessao.userId);

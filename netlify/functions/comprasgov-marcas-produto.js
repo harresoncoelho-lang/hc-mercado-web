@@ -8,6 +8,7 @@
 // Cloudflare (plano gratuito): 1 + MAX_PDMS subrequisições (limite 50) e 10 ms de CPU, por isso
 // poucos PDMs bem escolhidos e no máximo 200 linhas lidas por busca (cada linha traz o objeto da compra inteiro).
 
+const { cabecalhosPadrao, limitarPorIp } = require("./_auth");
 const CATALOGO_URL = "https://cnbs.estaleiro.serpro.gov.br/cnbs-api/material/v1/palavra";
 const PRECO_URL = "https://dadosabertos.compras.gov.br/modulo-pesquisa-preco/1_consultarMaterial";
 const LINK_COMPRA = "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing?destino=acompanhamento-compra&compra=";
@@ -222,7 +223,10 @@ async function buscarJson(url, signal) {
 }
 
 exports.handler = async (event) => {
-  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
+  // Proxy público: CORS só do nosso domínio e teto diário por IP (teste de ataque 19/11, M5).
+  const headers = cabecalhosPadrao(event);
+  const limite = await limitarPorIp(event, "comprasgov-marcas-produto");
+  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
   const termo = textoSeguro(event.queryStringParameters?.termo, 100);
   const uf = textoSeguro(event.queryStringParameters?.uf, 2).toUpperCase();
   if (termo.length < 2) return { statusCode: 400, headers, body: JSON.stringify({ ok: false, erro: "Informe ao menos 2 caracteres do produto." }) };

@@ -62,8 +62,8 @@ test("exportações do edital usam DOCX real e a marca visual oficial", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "painel.html"), "utf8");
   assert.match(html, /Gerar Checklist \.docx/);
   assert.match(html, /\/api\/gerar-checklist/);
-  assert.match(html, /<strong>LicitaPlena<\/strong>/);
-  assert.doesNotMatch(html.slice(html.indexOf("function montarHtmlImpressaoResumo"), html.indexOf("function montarResumoParaCliente")), /marca-sinal/);
+  // Impressão/PDF reaproveita o HTML do e-mail aprovado (resumo-email.js), sem bloco de decisão.
+  assert.match(html.slice(html.indexOf("function montarHtmlImpressaoResumo"), html.indexOf("async function baixarChecklistDocx")), /ResumoEmail\.montarHtml\([^;]*, "", "logo\.png/);
 });
 
 test("texto preparado para e-mail preserva requisitos e cobertura da leitura", () => {

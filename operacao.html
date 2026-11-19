@@ -283,7 +283,11 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
       if (botao) no.append(botao);
     });
   }
-  async function enviarArquivo(file) { if (!file?.name) return {}; const seguro = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-"); const caminho = `${estado.orgId}/${estado.empresaId}/${crypto.randomUUID()}-${seguro}`; const { error } = await sb.storage.from("operacao-documentos").upload(caminho, file, { upsert: false }); if (error) throw error; return { arquivo_caminho: caminho, arquivo_nome: file.name }; }
+  // Mesmos tipos e teto do bucket (supabase/seguranca_aprovacao_20261119.sql, M4). O tipo vai explícito: sem Office
+  // instalado o navegador manda .docx/.xlsx sem tipo e o bucket recusaria.
+  async function enviarArquivo(file) { if (!file?.name) return {}; const tipoArquivo = ({ pdf: "application/pdf", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })[(file.name.split(".").pop() || "").toLowerCase()]; if (!tipoArquivo || file.size > 15 * 1024 * 1024) throw new Error("envie PDF, Word, Excel ou imagem de até 15 MB."); const seguro = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "-"); const caminho = `${estado.orgId}/${estado.empresaId}/${crypto.randomUUID()}-${seguro}`; const { error } = await sb.storage.from("operacao-documentos").upload(caminho, file, { upsert: false, contentType: tipoArquivo }); if (error) throw error; return { arquivo_caminho: caminho, arquivo_nome: file.name }; }
   // PDF único: pdf-lib sob demanda (versão exata + SRI); arquivos baixados com a sessão do usuário, nada é enviado.
   let pdfLib;
   function carregarPdfLib() {

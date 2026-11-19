@@ -6,6 +6,7 @@ async function ambiente(nome,acao){
  process.env.SUPABASE_SERVICE_ROLE_KEY='chave-unitaria-sem-servico';process.env.LEITURA_DOCUMENTAL_LOCAL='1';delete process.env.LEITURA_OCR_LOCAL;
  global.fetch=async(url,op={})=>{
   const u=new URL(url);
+  if(u.pathname==='/rest/v1/clientes')return{ok:true,json:async()=>[{status:'aprovado'}]};
   if(u.pathname==='/auth/v1/user')return{ok:true,json:async()=>({id:'usuario-teste'})};
   if(u.hostname==='pncp.gov.br'){
    if(u.pathname.endsWith('/arquivos'))return{ok:true,json:async()=>docs};

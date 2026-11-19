@@ -12,6 +12,7 @@ async function perguntar({ dossie, numero = "04285896000153-1-000061/2026", text
   global.fetch = async (url, opcoes = {}) => {
     chamadas.push({ url, body: opcoes.body && JSON.parse(opcoes.body) });
     const resposta = (corpo) => new Response(JSON.stringify(corpo));
+    if (url.includes("/rest/v1/clientes?")) return resposta([{ status: "aprovado" }]);
     if (url.includes("/auth/v1/user")) return resposta({ id: "usuario-teste" });
     if (url.includes("/rest/v1/dossies_editais")) return resposta(dossie ? [{ dossie, versao: 17 }] : []);
     if (url.includes("/rpc/incrementar_uso")) return resposta(1);

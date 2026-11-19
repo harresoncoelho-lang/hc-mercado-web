@@ -6,7 +6,9 @@
 
 const CATALOGO = "https://cnbs.estaleiro.serpro.gov.br/cnbs-api/material/v1";
 const PESQUISA = "https://pesqpreco.estaleiro.serpro.gov.br/pesquisa-precos-backend-semlogin/api/itens-compra/buscar";
-const CABECALHOS = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
+const { origemPermitida, limitarPorIp } = require("./_auth");
+// A tela chama na mesma origem; CORS fica só no domínio canônico (teste de ataque 19/11, M5).
+const CABECALHOS = { "Content-Type": "application/json", "Access-Control-Allow-Origin": origemPermitida({}) };
 
 function texto(valor, limite = 160) {
   return String(valor || "").trim().replace(/\s+/g, " ").slice(0, limite);
@@ -28,6 +30,8 @@ async function obterJson(url, signal) {
 }
 
 exports.handler = async (event) => {
+  const limite = await limitarPorIp(event, "comprasgov-precos");
+  if (!limite.ok) return resposta(limite.status, { ok: false, erro: limite.erro });
   const parametros = event.queryStringParameters || {};
   const acao = texto(parametros.acao, 24);
   const controlador = new AbortController();

@@ -5,7 +5,7 @@ const { handler } = require("../gerar-checklist");
 
 async function exportar(minuta) {
   const anterior = global.fetch;
-  global.fetch = async () => new Response(JSON.stringify({ id: "usuario-teste" }));
+  global.fetch = async (url) => new Response(JSON.stringify(String(url).includes("/rest/v1/clientes?") ? [{ status: "aprovado" }] : { id: "usuario-teste" }));
   try { return await handler({ httpMethod: "POST", headers: { authorization: "Bearer teste" }, body: JSON.stringify({ minuta }) }); }
   finally { global.fetch = anterior; }
 }

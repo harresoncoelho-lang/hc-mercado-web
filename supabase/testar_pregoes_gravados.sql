@@ -146,6 +146,8 @@ end $$;
 
 -- Cliente logado: lê as colunas públicas (dado compartilhado), não vê quem gravou, não escreve nem chama a RPC.
 reset role;
+-- seguranca_aprovacao_20261119.sql (M1): a leitura direta exige cadastro aprovado.
+insert into public.clientes(id,nome,email,status) values ('f7000000-0000-4000-8000-000000000002','QA pregao B','pregao-b@qa.invalid','aprovado');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f7000000-0000-4000-8000-000000000002',true);
 do $$ begin

@@ -28,16 +28,18 @@
 <link rel="stylesheet" href="licitacao-anterior.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
-<script src="resumo-modelo.js?v=e1323d60b45b"></script>
+<script src="resumo-modelo.js?v=31e52fa09b74"></script>
+<script src="resumo-email.js?v=bac81f5d9b2d"></script>
 <script src="capag.js?v=167fac74e421"></script>
 <script src="defesa-licitante.js?v=0fc91f5a970b"></script>
 <script src="empresa-identificacao-ui.js?v=782a6b926bae"></script>
-<script src="defesa-ui.js?v=18f5e8d4fb00"></script>
+<script src="defesa-ui.js?v=56a6e32aae57"></script>
 <script src="operacao-edital.js"></script>
 <script src="licitacao-anterior-ui.js"></script>
 <script src="sancoes-ui.js"></script>
 <script src="analise-cnpj-ui.js"></script>
 <script src="busca-avancada.js"></script>
+<script src="portal-origem.js"></script>
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
   (function () {
@@ -546,6 +548,11 @@
 
   .link-pncp { color: var(--chip-texto-medio); text-decoration: none; font-size: 12px; }
   .link-pncp:hover { text-decoration: underline; }
+  /* Portal da disputa (portal-origem.js): selo + link, quebra linha no celular. */
+  .portal-origem { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 8px 0 0; min-width: 0; }
+  .portal-selo { display: inline-block; max-width: 100%; overflow-wrap: anywhere; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--chip-fundo); color: var(--chip-texto); border: 1px solid var(--chip-borda); }
+  .portal-link { font-size: 12px; font-weight: 700; color: var(--azul-texto); text-decoration: none; }
+  .portal-link:hover, .portal-link:focus-visible { text-decoration: underline; }
 
   .ficha-empresa {
     background: var(--cartao); border-radius: 8px; padding: 20px; margin-bottom: 24px;
@@ -912,27 +919,101 @@
   @media (max-width: 640px) { .modal-ia { max-width: 100%; } }
   .msg-ia { background: var(--fundo-fraco); border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; color: var(--texto); }
 
+  /* ---- Resumo do Edital: gaveta à direita na estrutura do ConLicitação, com os tokens do Design System (ds-tokens.css) ---- */
   #modal-ia-fundo { padding:0; justify-content:flex-end; }
-  #modal-ia-fundo .modal-ia { width:85%; max-width:1080px; height:100vh; max-height:100vh; border-radius:0; padding:0; background:#fff; color:#252525; }
-  #modal-ia-fundo .modal-ia-topo { padding:20px 28px 14px; border-bottom:1px solid #ddd; flex-shrink:0; }
-  #modal-ia-alternar-pergunta { margin-left:auto; margin-right:16px; padding:9px 12px; background:white; border:1px solid #ddd; border-radius:4px; color:#454545; cursor:pointer; }
-  #modal-ia-form:not([hidden]) { display:flex; }
-  #modal-ia-fundo .modal-ia-corpo { flex:1; overflow-y:auto; padding:18px 28px 26px; }
+  #modal-ia-fundo .modal-ia { width:min(1083px,100%); max-width:none; height:100vh; height:100dvh; max-height:none; border:0; border-radius:0; padding:0; background:var(--surface-raised); color:var(--text-primary); box-shadow:var(--shadow-overlay); font-family:var(--font-sans); }
+  #modal-ia-fundo .modal-ia-topo { gap:12px; padding:18px 28px; margin:0; border-bottom:1px solid var(--border-default); flex-shrink:0; }
+  .resumo-cabecalho-texto { flex:1; min-width:0; }
+  #modal-ia-titulo { margin:0; font-size:22.5px; line-height:1.3; font-weight:600; color:var(--text-primary); overflow-wrap:anywhere; }
+  #modal-ia-subtitulo { margin:4px 0 0; font:var(--text-body); color:var(--text-secondary); overflow-wrap:anywhere; }
+  .resumo-botao { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:8px 14px; border:1px solid var(--border-strong); border-radius:var(--radius-control); background:var(--surface-default); color:var(--text-primary); font:500 14px/20px var(--font-sans); cursor:pointer; text-align:center; }
+  .resumo-botao:hover:not(:disabled) { border-color:var(--action-strong); color:var(--action-text); }
+  .resumo-botao.primario { background:var(--action-strong); border-color:var(--action-strong); color:var(--action-on); }
+  .resumo-botao.primario:hover:not(:disabled) { background:var(--action-strong-hover); border-color:var(--action-strong-hover); color:var(--action-on); }
+  .resumo-botao.pequeno { min-height:32px; padding:4px 10px; font-size:13px; margin-top:10px; }
+  .resumo-botao:disabled { opacity:.55; cursor:not-allowed; }
+  .resumo-botao .icone-ph { font-size:18px; }
+  #modal-ia-fechar { display:inline-flex; align-items:center; justify-content:center; width:40px; height:40px; padding:0; border:0; border-radius:var(--radius-control); background:none; color:var(--text-secondary); font-size:20px; cursor:pointer; flex-shrink:0; }
+  #modal-ia-fechar:hover { background:var(--surface-sunken); color:var(--text-primary); }
+  #modal-ia-fundo :is(.resumo-botao, #modal-ia-fechar, summary, textarea, input, a):focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }
+  #modal-ia-form:not([hidden]) { display:flex; gap:8px; margin:0 0 16px; }
+  #modal-ia-pergunta { flex:1; min-width:0; padding:10px 12px; border:1px solid var(--border-strong); border-radius:var(--radius-control); background:var(--surface-default); color:var(--text-primary); font:var(--text-body); }
+  #modal-ia-fundo .modal-ia-corpo { flex:1; overflow-y:auto; padding:20px 28px 28px; }
   #modal-ia-fundo .modal-ia-conversa { overflow:visible; display:block; padding:0; }
-  #modal-ia-fundo .msg-ia[data-resumo-estrutura] { background:transparent; border:0; padding:0; }
-  #modal-ia-fundo .modal-ia-cartoes-topo { grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:18px 0 24px; }
-  #modal-ia-fundo .modal-ia-cartao-topo { background:white; border:1px solid #e5e5e5; border-radius:5px; padding:16px; }
-  #modal-ia-fundo .modal-ia-cartao-topo dt { color:#777; text-transform:none; font-size:12px; margin-bottom:8px; }
-  #modal-ia-fundo .modal-ia-cartao-topo dd { color:#252525; font-size:16px; font-weight:600; }
-  #modal-ia-fundo .secao-ia { margin:0 0 10px; padding:0; border:1px solid #e3e3e3; border-radius:4px; overflow:hidden; }
-  #modal-ia-fundo .secao-ia-titulo { list-style:none; display:flex; align-items:center; padding:13px 16px; margin:0; background:#f3f3f3; color:#252525; cursor:pointer; font-size:14px; font-weight:600; }
-  #modal-ia-fundo .resumo-penalidades > .secao-ia-titulo { background:#fceaea; }
-  #modal-ia-fundo .resumo-critica > .secao-ia-titulo { background:#fff6d9; }
+  #modal-ia-fundo .msg-ia { background:var(--surface-sunken); border-color:var(--border-default); color:var(--text-primary); margin-bottom:12px; }
+  #modal-ia-fundo .msg-ia[data-resumo-estrutura] { background:transparent; border:0; padding:0; margin:0; }
+  #modal-ia-fundo .modal-ia-cartoes-topo { grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:0 0 20px; }
+  #modal-ia-fundo .modal-ia-cartao-topo { background:var(--surface-default); border:1px solid var(--border-default); border-radius:var(--radius-card); padding:16px; min-width:0; }
+  .resumo-cartao-rotulo { display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:14px; line-height:20px; }
+  .resumo-cartao-rotulo .icone-ph { font-size:18px; }
+  .resumo-cartao-valor { margin-top:6px; color:var(--text-primary); font-size:18px; font-weight:700; line-height:1.35; overflow-wrap:anywhere; }
+  .resumo-selo { display:inline-block; margin-top:8px; padding:2px 10px; border:1px solid var(--info-border); border-radius:999px; background:var(--info-bg); color:var(--info-text); font-size:12.5px; font-weight:600; line-height:18px; }
+  #modal-ia-fundo .secao-ia { margin:0 0 16px; padding:0; border:1px solid var(--border-default); border-radius:var(--radius-card); overflow:hidden; background:var(--surface-default); }
+  #modal-ia-fundo .secao-ia-titulo { list-style:none; display:flex; align-items:center; gap:10px; padding:13px 22px; margin:0; background:var(--surface-sunken); color:var(--text-primary); cursor:pointer; font-size:18px; font-weight:600; line-height:1.4; }
   #modal-ia-fundo .secao-ia-titulo::-webkit-details-marker { display:none; }
-  #modal-ia-fundo .secao-ia-titulo::after { content:'⌄'; margin-left:auto; color:#777; }
-  #modal-ia-fundo details[open] > .secao-ia-titulo::after { transform:rotate(180deg); }
-  #modal-ia-fundo .defesa-central { border-radius:var(--raio); border-color:#cbd5e1; }
-  #modal-ia-fundo .defesa-central > .secao-ia-titulo { background:#141f2e; color:#eef3f8; border-left:4px solid var(--laranja); }
+  #modal-ia-fundo .secao-ia-titulo > .icone-ph, #modal-ia-fundo .resumo-icone { display:inline-flex; color:var(--text-secondary); font-size:20px; }
+  #modal-ia-fundo .secao-ia-titulo > span:not(.resumo-icone):not(.resumo-seta) { flex:1; min-width:0; overflow-wrap:anywhere; }
+  #modal-ia-fundo .secao-ia-titulo .resumo-seta { display:inline-flex; margin-left:auto; font-size:16px; color:var(--text-secondary); transition:transform .15s; }
+  #modal-ia-fundo details:not([open]) > .secao-ia-titulo .resumo-seta { transform:rotate(180deg); }
+  #modal-ia-fundo .secao-ia.destaque { border-color:var(--attention-border); background:var(--attention-bg); }
+  #modal-ia-fundo .secao-ia.destaque > .secao-ia-titulo { background:var(--attention-bg); border-bottom:1px solid var(--attention-border); }
+  #modal-ia-fundo .secao-ia.destaque .resumo-icone { color:var(--attention-text); }
+  #modal-ia-fundo .resumo-oculto { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  #modal-ia-fundo .secao-ia.apoio > .secao-ia-titulo { font-size:15px; padding:10px 22px; }
+  #modal-ia-fundo .resumo-campos { display:grid; grid-template-columns:1fr 1fr; column-gap:32px; margin:0; padding:10px 22px 16px; }
+  #modal-ia-fundo .resumo-campo { padding:10px 0; min-width:0; }
+  #modal-ia-fundo .resumo-campo.longo { grid-column:1/-1; }
+  #modal-ia-fundo .resumo-campo dt { margin:0 0 4px; color:var(--text-secondary); font-size:14px; font-weight:500; line-height:20px; }
+  #modal-ia-fundo .resumo-campo dd { margin:0; color:var(--text-primary); font-size:15px; line-height:1.55; white-space:pre-line; overflow-wrap:anywhere; }
+  #modal-ia-fundo .resumo-campo dd.vazio { color:var(--text-secondary); }
+  #modal-ia-fundo .resumo-campo dd a { color:var(--action-text); }
+  #modal-ia-fundo .resumo-campo ul { margin:0; padding-left:20px; }
+  #modal-ia-fundo .resumo-campo li { margin:0 0 6px; }
+  #modal-ia-fundo .resumo-garantias { display:grid; gap:10px; padding:16px 22px; }
+  #modal-ia-fundo .resumo-garantia { padding:12px 14px; border:1px solid var(--border-default); border-radius:var(--radius-control); background:var(--surface-sunken); overflow-wrap:anywhere; }
+  #modal-ia-fundo .resumo-garantia strong { display:block; color:var(--text-primary); font-size:15px; font-weight:600; }
+  #modal-ia-fundo .resumo-garantia span { display:block; margin-top:2px; color:var(--text-secondary); font-size:13px; line-height:1.45; white-space:pre-line; }
+  #modal-ia-fundo .resumo-consideracoes { padding:16px 22px; }
+  #modal-ia-fundo .resumo-consideracoes label { display:block; margin:0 0 8px; color:var(--text-secondary); font-size:14px; }
+  #modal-ia-fundo .modal-ia-consideracoes { margin:0; width:100%; min-height:120px; padding:10px 12px; border:1px solid var(--border-strong); border-radius:var(--radius-control); background:var(--surface-default); color:var(--text-primary); font:var(--text-body); }
+  .resumo-salvar-linha { display:flex; align-items:center; gap:12px; margin-top:10px; flex-wrap:wrap; }
+  #modal-ia-consideracoes-status { color:var(--success-text); font-size:13px; }
+  .resumo-gerado { margin:8px 0 0; color:var(--text-secondary); font-size:13px; }
+  .resumo-gerado:empty { display:none; }
+  #modal-ia-fundo .modal-ia-acoes-rodape { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:0; padding:14px 28px; flex-shrink:0; justify-content:flex-end; border-top:1px solid var(--border-default); background:var(--surface-raised); }
+  #modal-ia-fundo .modal-ia-acoes-rodape .resumo-botao { font-weight:500; }
+  #modal-ia-fundo .resumo-botao.resumo-link { margin-right:auto; padding-left:0; padding-right:0; border-color:transparent; background:none; color:var(--action-text); }
+  #modal-ia-fundo .resumo-botao.resumo-link:hover:not(:disabled) { border-color:transparent; text-decoration:underline; }
+  /* Central de Defesa dentro da seção amarela "Possíveis questionamentos". */
+  #modal-ia-fundo .defesa-central { border-color:var(--attention-border); background:var(--attention-bg); color:var(--text-primary); }
+  #modal-ia-fundo .defesa-central > .secao-ia-titulo { background:var(--attention-bg); color:var(--text-primary); border-left:0; border-bottom:1px solid var(--attention-border); }
+  #modal-ia-fundo .defesa-central > p { margin:14px 22px; color:var(--text-secondary); font-size:14px; }
+  #modal-ia-fundo .defesa-ponto { margin:14px 22px; padding:16px; border:1px solid var(--border-default); background:var(--surface-default); }
+  #modal-ia-fundo .defesa-ponto h4 { color:var(--text-primary); font-size:15px; }
+  #modal-ia-fundo .defesa-ponto p { color:var(--text-primary); }
+  #modal-ia-fundo .defesa-ponto details { margin-top:8px; padding:4px 12px; border:1px solid var(--border-default); border-radius:var(--radius-control); background:var(--surface-sunken); }
+  #modal-ia-fundo .defesa-ponto summary { color:var(--action-text); }
+  #modal-ia-fundo .defesa-selo { display:inline-block; margin:0 0 6px; padding:2px 8px; border-radius:4px; background:var(--text-primary); color:var(--surface-default); font-size:12px; font-weight:600; }
+  #modal-ia-fundo .defesa-botao, #modal-ia-fundo .defesa-botao-destaque { min-height:40px; border:1px solid var(--border-strong); background:var(--surface-default); color:var(--text-primary); box-shadow:none; font-weight:500; }
+  #modal-ia-fundo .defesa-botao:hover:not(:disabled) { border-color:var(--action-strong); background:var(--surface-default); color:var(--action-text); }
+  #modal-ia-fundo .defesa-central > .defesa-botao { margin:0 22px 16px; }
+  @media(max-width:700px) {
+    #modal-ia-fundo .modal-ia { width:100%; }
+    #modal-ia-fundo .modal-ia-topo { padding:12px 16px; gap:8px; }
+    #modal-ia-titulo { font-size:18px; }
+    #modal-ia-alternar-pergunta { padding:8px 10px; }
+    #modal-ia-alternar-pergunta .resumo-rotulo-longo { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    #modal-ia-fundo .modal-ia-corpo { padding:16px; }
+    #modal-ia-fundo .modal-ia-cartoes-topo { grid-template-columns:1fr; gap:10px; }
+    #modal-ia-fundo .secao-ia-titulo { padding:12px 14px; font-size:16px; }
+    #modal-ia-fundo .resumo-campos { grid-template-columns:1fr; padding:6px 14px 12px; }
+    #modal-ia-fundo .resumo-garantias, #modal-ia-fundo .resumo-consideracoes { padding:12px 14px; }
+    #modal-ia-fundo .defesa-ponto, #modal-ia-fundo .defesa-central > p { margin:12px 14px; }
+    #modal-ia-fundo .defesa-central > .defesa-botao { margin:0 14px 14px; width:calc(100% - 28px); }
+    #modal-ia-fundo .modal-ia-acoes-rodape { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px 12px; }
+    #modal-ia-fundo .modal-ia-acoes-rodape .resumo-botao { min-height:44px; padding:6px 8px; font-size:12.5px; line-height:16px; }
+    #modal-ia-fundo .resumo-botao.resumo-link { margin:0; padding:6px 8px; }
+  }
   .defesa-central > p, .defesa-editor { margin:16px; line-height:1.6; }
   .defesa-status:empty { display:none; }
   .defesa-status { padding:10px 12px; background:#eef5ff; color:#153e6a; border-radius:var(--raio-pq); }
@@ -959,18 +1040,6 @@
   .defesa-revisao input { flex-shrink:0; width:20px; height:20px; margin:3px 0; accent-color:#173e67; }
   .defesa-revisao label { cursor:pointer; }
   @media(max-width:620px) { .defesa-acoes { flex-direction:column; } .defesa-botao { width:100%; } .defesa-ponto, .defesa-editor, .defesa-central > p { margin:12px; } .defesa-ponto { padding:12px; } }
-  #modal-ia-fundo .resumo-campos { display:grid; grid-template-columns:1fr 1fr; column-gap:34px; margin:0; padding:8px 18px 13px; }
-  #modal-ia-fundo .resumo-campo { padding:11px 0; min-width:0; }
-  #modal-ia-fundo .resumo-campo.longo { grid-column:1/-1; }
-  #modal-ia-fundo .resumo-campo dt { font-size:12px; color:#777; margin-bottom:6px; }
-  #modal-ia-fundo .resumo-campo dd { margin:0; color:#252525; line-height:1.55; white-space:pre-line; }
-  #modal-ia-fundo .resumo-campo ul { margin:0; padding-left:18px; }
-  #modal-ia-fundo .resumo-campo li { margin:0 0 7px; }
-  #modal-ia-fundo .modal-ia-acoes-rodape { padding:14px 28px; margin:0; flex-shrink:0; justify-content:flex-end; border-color:#ddd; }
-  #modal-ia-fundo .modal-ia-acoes-rodape button { background:white; color:#454545; border:1px solid #ddd; border-radius:4px; font-weight:400; }
-  #modal-ia-baixar { margin-right:auto; }
-  #modal-ia-fundo .modal-ia-consideracoes { margin:12px; width:calc(100% - 24px); background:white; color:#252525; border-color:#ddd; }
-  @media(max-width:700px) { #modal-ia-fundo .modal-ia { width:100%; } #modal-ia-fundo .modal-ia-corpo { padding:16px; } #modal-ia-fundo .resumo-campos { grid-template-columns:1fr; } #modal-ia-fundo .modal-ia-cartao-topo { padding:10px; } #modal-ia-fundo .modal-ia-cartao-topo dd { font-size:13px; } }
 
   .msg-ia.msg-usuario { background: rgba(46,141,255,0.1); border-color: rgba(46,141,255,0.3); align-self: flex-end; max-width: 85%; }
   .msg-ia.msg-carregando { color: var(--texto-fraco); font-style: italic; }
@@ -1184,7 +1253,8 @@
   .boletim-card:hover { box-shadow: var(--sombra-forte); }
   .boletim-card.lido { border-left-color: var(--borda); opacity: 0.82; }
   .boletim-card.favorito { border-left-color: var(--laranja); }
-  .boletim-card.oculto { display: none; }
+  .boletim-card.oculto, .boletim-card.oculto-portal { display: none; }
+  .boletim-filtro-portal { min-height: 36px; max-width: 100%; padding: 4px 10px; border-radius: var(--raio-pq); border: 1px solid var(--input-borda); background: var(--cartao); color: var(--texto); font-size: 13px; }
 
   .boletim-topo {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -1450,7 +1520,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="painel-design.css?v=6">
+<link rel="stylesheet" href="painel-design.css?v=7">
 <script src="contatos-resumo.js?v=1" defer></script>
 <script src="decisoes-resumo.js?v=1" defer></script>
 </head>
@@ -1507,6 +1577,12 @@
 <symbol id="ph-rocket-launch" viewBox="0 0 256 256"><path d="M101.85,191.14C97.34,201,82.29,224,40,224a8,8,0,0,1-8-8c0-42.29,23-57.34,32.86-61.85a8,8,0,0,1,6.64,14.56c-6.43,2.93-20.62,12.36-23.12,38.91,26.55-2.5,36-16.69,38.91-23.12a8,8,0,1,1,14.56,6.64Zm122-144a16,16,0,0,0-15-15c-12.58-.75-44.73.4-71.4,27.07h0L88,108.7A8,8,0,0,1,76.67,97.39l26.56-26.57A4,4,0,0,0,100.41,64H74.35A15.9,15.9,0,0,0,63,68.68L28.7,103a16,16,0,0,0,9.07,27.16l38.47,5.37,44.21,44.21,5.37,38.49a15.94,15.94,0,0,0,10.78,12.92,16.11,16.11,0,0,0,5.1.83A15.91,15.91,0,0,0,153,227.3L187.32,193A16,16,0,0,0,192,181.65V155.59a4,4,0,0,0-6.83-2.82l-26.57,26.56a8,8,0,0,1-11.71-.42,8.2,8.2,0,0,1,.6-11.1l49.27-49.27h0C223.45,91.86,224.6,59.71,223.85,47.12Z"/></symbol>
 <symbol id="ph-scales" viewBox="0 0 256 256"><path d="M239.43,133l-32-80A8,8,0,0,0,200,48a8.27,8.27,0,0,0-1.73.21L136,62V40a8,8,0,0,0-16,0V65.58L54.27,80.21A8,8,0,0,0,48.57,85l-32,80a7.92,7.92,0,0,0-.57,3c0,23.31,24.54,32,40,32s40-8.69,40-32a7.92,7.92,0,0,0-.57-3L66.92,93.77,120,82V208H104a8,8,0,0,0,0,16h48a8,8,0,0,0,0-16H136V78.42L187,67.1,160.57,133a7.92,7.92,0,0,0-.57,3c0,23.31,24.54,32,40,32s40-8.69,40-32A7.92,7.92,0,0,0,239.43,133Zm-160,35H32.62L56,109.54Zm97.24-32L200,77.54,223.38,136Z"/></symbol>
 <symbol id="ph-star" viewBox="0 0 256 256"><path d="M234.29,114.85l-45,38.83L203,211.75a16.4,16.4,0,0,1-24.5,17.82L128,198.49,77.47,229.57A16.4,16.4,0,0,1,53,211.75l13.76-58.07-45-38.83A16.46,16.46,0,0,1,31.08,86l59-4.76,22.76-55.08a16.36,16.36,0,0,1,30.27,0l22.75,55.08,59,4.76a16.46,16.46,0,0,1,9.37,28.86Z"/></symbol>
+<symbol id="ph-shield-check" viewBox="0 0 256 256"><path d="M208,40H48A16,16,0,0,0,32,56v56c0,52.72,25.52,84.67,46.93,102.19,23.06,18.86,46,25.26,47,25.53a8,8,0,0,0,4.2,0c1-.27,23.91-6.67,47-25.53C198.48,196.67,224,164.72,224,112V56A16,16,0,0,0,208,40Zm0,72c0,37.07-13.66,67.16-40.6,89.42A129.3,129.3,0,0,1,128,223.62a128.25,128.25,0,0,1-38.92-21.81C61.82,179.51,48,149.3,48,112l0-56,160,0ZM82.34,141.66a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32l-56,56a8,8,0,0,1-11.32,0Z"/></symbol>
+<symbol id="ph-seal-check" viewBox="0 0 256 256"><path d="M225.86,102.82c-3.77-3.94-7.67-8-9.14-11.57-1.36-3.27-1.44-8.69-1.52-13.94-.15-9.76-.31-20.82-8-28.51s-18.75-7.85-28.51-8c-5.25-.08-10.67-.16-13.94-1.52-3.56-1.47-7.63-5.37-11.57-9.14C146.28,23.51,138.44,16,128,16s-18.27,7.51-25.18,14.14c-3.94,3.77-8,7.67-11.57,9.14C88,40.64,82.56,40.72,77.31,40.8c-9.76.15-20.82.31-28.51,8S41,67.55,40.8,77.31c-.08,5.25-.16,10.67-1.52,13.94-1.47,3.56-5.37,7.63-9.14,11.57C23.51,109.72,16,117.56,16,128s7.51,18.27,14.14,25.18c3.77,3.94,7.67,8,9.14,11.57,1.36,3.27,1.44,8.69,1.52,13.94.15,9.76.31,20.82,8,28.51s18.75,7.85,28.51,8c5.25.08,10.67.16,13.94,1.52,3.56,1.47,7.63,5.37,11.57,9.14C109.72,232.49,117.56,240,128,240s18.27-7.51,25.18-14.14c3.94-3.77,8-7.67,11.57-9.14,3.27-1.36,8.69-1.44,13.94-1.52,9.76-.15,20.82-.31,28.51-8s7.85-18.75,8-28.51c.08-5.25.16-10.67,1.52-13.94,1.47-3.56,5.37-7.63,9.14-11.57C232.49,146.28,240,138.44,240,128S232.49,109.73,225.86,102.82Zm-11.55,39.29c-4.79,5-9.75,10.17-12.38,16.52-2.52,6.1-2.63,13.07-2.73,19.82-.1,7-.21,14.33-3.32,17.43s-10.39,3.22-17.43,3.32c-6.75.1-13.72.21-19.82,2.73-6.35,2.63-11.52,7.59-16.52,12.38S132,224,128,224s-9.15-4.92-14.11-9.69-10.17-9.75-16.52-12.38c-6.1-2.52-13.07-2.63-19.82-2.73-7-.1-14.33-.21-17.43-3.32s-3.22-10.39-3.32-17.43c-.1-6.75-.21-13.72-2.73-19.82-2.63-6.35-7.59-11.52-12.38-16.52S32,132,32,128s4.92-9.15,9.69-14.11,9.75-10.17,12.38-16.52c2.52-6.1,2.63-13.07,2.73-19.82.1-7,.21-14.33,3.32-17.43S70.51,56.9,77.55,56.8c6.75-.1,13.72-.21,19.82-2.73,6.35-2.63,11.52-7.59,16.52-12.38S124,32,128,32s9.15,4.92,14.11,9.69,10.17,9.75,16.52,12.38c6.1,2.52,13.07,2.63,19.82,2.73,7,.1,14.33.21,17.43,3.32s3.22,10.39,3.32,17.43c.1,6.75.21,13.72,2.73,19.82,2.63,6.35,7.59,11.52,12.38,16.52S224,124,224,128,219.08,137.15,214.31,142.11ZM173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z"/></symbol>
+<symbol id="ph-gavel" viewBox="0 0 256 256"><path d="M243.32,116.69l-16-16a16,16,0,0,0-20.84-1.53L156.84,49.52a16,16,0,0,0-1.52-20.84l-16-16a16,16,0,0,0-22.63,0l-64,64a16,16,0,0,0,0,22.63l16,16a16,16,0,0,0,20.83,1.52L96.69,124,31.31,189.38A25,25,0,0,0,66.63,224.7L132,159.32l7.17,7.16a16,16,0,0,0,1.52,20.84l16,16a16,16,0,0,0,22.63,0l64-64A16,16,0,0,0,243.32,116.69ZM80,104,64,88l64-64,16,16ZM55.32,213.38a9,9,0,0,1-12.69,0,9,9,0,0,1,0-12.68L108,135.32,120.69,148ZM101,105.66,145.66,61,195,110.34,150.35,155ZM168,192l-16-16,4-4h0l56-56h0l4-4,16,16Z"/></symbol>
+<symbol id="ph-currency-dollar" viewBox="0 0 256 256"><path d="M152,120H136V56h8a32,32,0,0,1,32,32,8,8,0,0,0,16,0,48.05,48.05,0,0,0-48-48h-8V24a8,8,0,0,0-16,0V40h-8a48,48,0,0,0,0,96h8v64H104a32,32,0,0,1-32-32,8,8,0,0,0-16,0,48.05,48.05,0,0,0,48,48h16v16a8,8,0,0,0,16,0V216h16a48,48,0,0,0,0-96Zm-40,0a32,32,0,0,1,0-64h8v64Zm40,80H136V136h16a32,32,0,0,1,0,64Z"/></symbol>
+<symbol id="ph-sparkle" viewBox="0 0 256 256"><path d="M197.58,129.06,146,110l-19-51.62a15.92,15.92,0,0,0-29.88,0L78,110l-51.62,19a15.92,15.92,0,0,0,0,29.88L78,178l19,51.62a15.92,15.92,0,0,0,29.88,0L146,178l51.62-19a15.92,15.92,0,0,0,0-29.88ZM137,164.22a8,8,0,0,0-4.74,4.74L112,223.85,91.78,169A8,8,0,0,0,87,164.22L32.15,144,87,123.78A8,8,0,0,0,91.78,119L112,64.15,132.22,119a8,8,0,0,0,4.74,4.74L191.85,144ZM144,40a8,8,0,0,1,8-8h16V16a8,8,0,0,1,16,0V32h16a8,8,0,0,1,0,16H184V64a8,8,0,0,1-16,0V48H152A8,8,0,0,1,144,40ZM248,88a8,8,0,0,1-8,8h-8v8a8,8,0,0,1-16,0V96h-8a8,8,0,0,1,0-16h8V72a8,8,0,0,1,16,0v8h8A8,8,0,0,1,248,88Z"/></symbol>
+<symbol id="ph-caret-up" viewBox="0 0 256 256"><path d="M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z"/></symbol>
 <symbol id="ph-sun" viewBox="0 0 256 256"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm8,24a64,64,0,1,0,64,64A64.07,64.07,0,0,0,128,64ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/></symbol>
 <symbol id="ph-timer" viewBox="0 0 256 256"><path d="M128,40a96,96,0,1,0,96,96A96.11,96.11,0,0,0,128,40Zm45.66,61.66-40,40a8,8,0,0,1-11.32-11.32l40-40a8,8,0,0,1,11.32,11.32ZM96,16a8,8,0,0,1,8-8h48a8,8,0,0,1,0,16H104A8,8,0,0,1,96,16Z"/></symbol>
 <symbol id="ph-toolbox" viewBox="0 0 256 256"><path d="M224,64H176V56a24,24,0,0,0-24-24H104A24,24,0,0,0,80,56v8H32A16,16,0,0,0,16,80v28a4,4,0,0,0,4,4H64V96.27A8.17,8.17,0,0,1,71.47,88,8,8,0,0,1,80,96v16h96V96.27A8.17,8.17,0,0,1,183.47,88,8,8,0,0,1,192,96v16h44a4,4,0,0,0,4-4V80A16,16,0,0,0,224,64Zm-64,0H96V56a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8Zm80,68v60a16,16,0,0,1-16,16H32a16,16,0,0,1-16-16V132a4,4,0,0,1,4-4H64v16a8,8,0,0,0,8.53,8A8.17,8.17,0,0,0,80,143.73V128h96v16a8,8,0,0,0,8.53,8,8.17,8.17,0,0,0,7.47-8.25V128h44A4,4,0,0,1,240,132Z"/></symbol>
@@ -2450,36 +2526,42 @@
 </div>
 
 <div class="modal-ia-fundo" id="modal-ia-fundo">
-  <div class="modal-ia">
+  <div class="modal-ia" role="dialog" aria-modal="true" aria-labelledby="modal-ia-titulo">
     <div class="modal-ia-topo">
-      <h3 id="modal-ia-titulo" style="margin:0;">Resumo do Edital</h3>
-      <button type="button" id="modal-ia-alternar-pergunta" aria-expanded="false" aria-controls="modal-ia-form">Pergunte ao Edital</button>
-      <button type="button" id="modal-ia-fechar" title="Fechar" style="background:none;border:none;color:var(--texto-fraco);font-size:22px;cursor:pointer;line-height:1;">✕</button>
+      <div class="resumo-cabecalho-texto">
+        <h3 id="modal-ia-titulo">Resumo do Edital</h3>
+        <p id="modal-ia-subtitulo" hidden></p>
+      </div>
+      <button type="button" class="resumo-botao" id="modal-ia-alternar-pergunta" aria-expanded="false" aria-controls="modal-ia-form"><svg class='icone-ph' aria-hidden="true"><use href='#ph-sparkle'></use></svg><span class="resumo-rotulo-longo">Pergunte ao Edital</span></button>
+      <button type="button" id="modal-ia-fechar" title="Fechar" aria-label="Fechar resumo"><span aria-hidden="true">✕</span></button>
     </div>
     <div class="modal-ia-corpo">
-    <form id="modal-ia-form" hidden style="gap:8px;margin-top:12px;">
-      <input id="modal-ia-pergunta" placeholder="Pergunte algo sobre este edital..." style="flex:1;padding:10px 12px;background:var(--fundo-fraco);border:1px solid var(--borda);border-radius:8px;color:var(--texto);font-size:14px;font-family:inherit;">
-      <button type="submit" class="btn-buscar" id="modal-ia-enviar" style="padding:10px 18px;">Perguntar</button>
+    <form id="modal-ia-form" hidden>
+      <input id="modal-ia-pergunta" aria-label="Pergunta sobre o edital" placeholder="Pergunte algo sobre este edital...">
+      <button type="submit" class="resumo-botao primario" id="modal-ia-enviar">Perguntar</button>
     </form>
-    <p class="modal-ia-objeto" id="modal-ia-objeto" style="color:var(--texto-fraco);font-size:13px;margin:0 0 8px;"></p>
+    <p class="modal-ia-objeto" id="modal-ia-objeto" hidden></p>
     <div class="modal-ia-cartoes-topo" id="modal-ia-cartoes-topo" style="display:none;"></div>
     <div class="modal-ia-conversa" id="modal-ia-conversa"></div>
     <div id="modal-ia-defesa"></div>
 
-    <details class="secao-ia" open>
-      <summary class="secao-ia-titulo">Análise e Considerações do Licitante</summary>
-      <textarea class="modal-ia-consideracoes" id="modal-ia-consideracoes" placeholder="Escreva aqui suas considerações sobre esta oportunidade..."></textarea>
+    <details class="secao-ia" id="modal-ia-secao-consideracoes" data-resumo-secao="Análise e Considerações do Licitante" open>
+      <summary class="secao-ia-titulo"><svg class='icone-ph' aria-hidden="true"><use href='#ph-star'></use></svg><span>Análise e Considerações do Licitante</span><svg class='icone-ph resumo-seta' aria-hidden="true"><use href='#ph-caret-up'></use></svg></summary>
+      <div class="resumo-consideracoes">
+        <label for="modal-ia-consideracoes">Escreva suas considerações após a análise dessa oportunidade</label>
+        <textarea class="modal-ia-consideracoes" id="modal-ia-consideracoes" rows="6"></textarea>
+        <div class="resumo-salvar-linha"><button type="button" class="resumo-botao primario" id="modal-ia-salvar-consideracoes">Salvar</button><span id="modal-ia-consideracoes-status" role="status"></span></div>
+      </div>
     </details>
 
-    <p class="dica-clique" style="margin:10px 0 0;">Resumo elaborado a partir dos dados públicos e dos documentos disponíveis — confira as referências e eventuais pendências de leitura.</p>
-
-
+    <p class="resumo-gerado" id="modal-ia-gerado-em"></p>
+    <p class="dica-clique resumo-gerado">Resumo elaborado a partir dos dados públicos e dos documentos disponíveis — confira as referências e eventuais pendências de leitura.</p>
     </div>
     <div class="modal-ia-acoes-rodape">
-      <button type="button" id="modal-ia-baixar"><svg class='icone-ph'><use href='#ph-download-simple'></use></svg> Baixar Edital Completo</button>
-      <button type="button" id="modal-ia-checklist-email"><svg class='icone-ph'><use href='#ph-envelope-simple'></use></svg> Enviar Checklist por E-mail</button>
-      <button type="button" id="modal-ia-checklist-doc"><svg class='icone-ph'><use href='#ph-file-text'></use></svg> Gerar Checklist .docx</button>
-      <button type="button" id="modal-ia-imprimir"><svg class='icone-ph'><use href='#ph-printer'></use></svg> Imprimir Checklist</button>
+      <button type="button" class="resumo-botao resumo-link" id="modal-ia-baixar"><svg class='icone-ph' aria-hidden="true"><use href='#ph-download-simple'></use></svg> Baixar Edital Completo</button>
+      <button type="button" class="resumo-botao" id="modal-ia-checklist-email"><svg class='icone-ph' aria-hidden="true"><use href='#ph-envelope-simple'></use></svg> Enviar Checklist por E-mail</button>
+      <button type="button" class="resumo-botao" id="modal-ia-checklist-doc"><svg class='icone-ph' aria-hidden="true"><use href='#ph-file-text'></use></svg> Gerar Checklist .docx</button>
+      <button type="button" class="resumo-botao primario" id="modal-ia-imprimir"><svg class='icone-ph' aria-hidden="true"><use href='#ph-printer'></use></svg> Imprimir Checklist</button>
     </div>
   </div>
 </div>
@@ -2951,15 +3033,28 @@
     return div;
   }
 
+  function iconeResumo(nome) {
+    return `<svg class='icone-ph' aria-hidden='true'><use href='#ph-${nome}'></use></svg>`;
+  }
+
+  // Cartões do topo como no ConLicitação: valor, modalidade + selo do modo de disputa,
+  // data da sessão + selo "Em N dias".
   function renderizarCartoesTopoIA(est) {
     const alvo = document.getElementById("modal-ia-cartoes-topo");
-    const modelo = ResumoModelo.montar(est, iaEditalAtual || {});
+    const modelo = ResumoModelo.montarFicha(est, iaEditalAtual || {});
+    const c = modelo.cartoes;
+    const cartao = (icone, rotulo, valor, selo) => `<div class="modal-ia-cartao-topo"><div class="resumo-cartao-rotulo">${iconeResumo(icone)}${escapeHtml(rotulo)}</div><div class="resumo-cartao-valor">${escapeHtml(valor)}</div>${selo ? `<span class="resumo-selo">${escapeHtml(selo)}</span>` : ""}</div>`;
     alvo.style.display = "grid";
-    alvo.innerHTML = modelo.cards.map(([rotulo, valor]) => `<div class="modal-ia-cartao-topo"><dt>${escapeHtml(rotulo)}</dt><dd>${escapeHtml(valor)}</dd></div>`).join("");
+    alvo.innerHTML = cartao("currency-dollar", "Valor Estimado", c.valor) + cartao("file-text", "Modalidade", c.modalidade, c.modoDisputa) + cartao("calendar", "Data da Sessão", c.data, c.dias);
     const numeroOficial = iaEditalAtual?.numeroCompra && iaEditalAtual?.anoCompra
       ? `${iaEditalAtual.numeroCompra}/${iaEditalAtual.anoCompra}` : modelo.numero;
     document.getElementById("modal-ia-titulo").textContent = /^\d{14}-\d-\d+\/\d{4}$/.test(numeroOficial || "")
       ? `Resumo do Edital — PNCP ${numeroOficial}` : `Resumo do Edital ${numeroOficial || ""}`.trim();
+    const subtitulo = document.getElementById("modal-ia-subtitulo");
+    if (subtitulo) {
+      subtitulo.textContent = modelo.controlePncp ? `Nº de controle PNCP: ${modelo.controlePncp}` : "";
+      subtitulo.hidden = !modelo.controlePncp;
+    }
   }
 
   // Cria uma seção fixa (sempre aberta, sem seta/clique) — igual ao padrão ConLicitação
@@ -3209,35 +3304,81 @@
     wrap.dataset.resumoEstrutura = "1";
 
     const modelo = ResumoModelo.montarVisual(iaEstruturaAtual, iaEditalAtual || {});
-    for (const def of modelo.secoes.filter((s) => s.titulo !== "Análise e Considerações do Licitante")) {
+    // Ícones vêm do sprite Phosphor e os nomes são fixos no modelo (nunca dado do edital).
+    const svg = (nome, classe = "") => `<svg class='icone-ph ${classe}' aria-hidden='true'><use href='#ph-${nome}'></use></svg>`;
+    const defesa = document.getElementById("modal-ia-defesa");
+    const consideracoes = document.getElementById("modal-ia-secao-consideracoes");
+    for (const def of modelo.secoes) {
+      // A Central de Defesa já é a seção "Possíveis questionamentos" (com trecho do edital e
+      // Pedir esclarecimentos/Impugnar); a caixa de considerações é fixa para não perder o texto.
+      if (def.id === "questionamentos" && defesa) { wrap.appendChild(defesa); continue; }
+      if (def.id === "consideracoes") { if (consideracoes && consideracoes !== conversa) wrap.appendChild(consideracoes); continue; }
       const secao = document.createElement("details");
-      secao.className = "secao-ia" + (def.titulo === "Penalidades e multas" ? " resumo-penalidades" : def.titulo === "Análise crítica" ? " resumo-critica" : "");
+      secao.className = "secao-ia" + (def.destaque ? " destaque" : "") + (def.apoio ? " apoio" : "");
       secao.dataset.resumoSecao = def.titulo;
       secao.open = !def.recolhida;
       const titulo = document.createElement("summary");
       titulo.className = "secao-ia-titulo";
       const icone = document.createElement("span");
-      icone.setAttribute("aria-hidden", "true"); icone.textContent = "▤"; icone.style.cssText = "color:#75818c;margin-right:10px";
-      titulo.append(icone, document.createTextNode(def.titulo));
+      icone.innerHTML = svg(def.icone || "info");
+      icone.className = "resumo-icone";
+      const nome = document.createElement("span");
+      nome.textContent = def.titulo;
+      const seta = document.createElement("span");
+      seta.className = "resumo-seta";
+      seta.innerHTML = svg("caret-up");
+      titulo.append(icone, nome, seta);
       secao.appendChild(titulo);
       const preencher = () => {
       if (secao.dataset.preenchida) return;
       secao.dataset.preenchida = "1";
+      if (def.id === "garantias") {
+        // Seguro Garantia: quatro caixas empilhadas ("Exige / Não exige ...") com o detalhe embaixo.
+        const caixas = document.createElement("div");
+        caixas.className = "resumo-garantias";
+        for (const campo of def.campos) {
+          const caixa = document.createElement("div");
+          caixa.className = "resumo-garantia";
+          const forte = document.createElement("strong"); forte.textContent = campo.rotulo;
+          const detalhe = document.createElement("span"); detalhe.textContent = campo.valor;
+          caixa.append(forte, detalhe); caixas.appendChild(caixa);
+        }
+        secao.appendChild(caixas);
+        return;
+      }
       const dl = document.createElement("dl");
       dl.className = "resumo-campos";
       const campos = def.campos.length ? def.campos : [{ rotulo: "Informação", valor: "Não informado" }];
       for (const campo of campos) {
         const bloco = document.createElement("div");
-        bloco.className = "resumo-campo" + (Array.isArray(campo.valor) || campo.rotulo === "Objeto" || campo.valor.length > 210 ? " longo" : "");
+        bloco.className = "resumo-campo" + (campo.longo || campo.semRotulo || Array.isArray(campo.valor) || campo.rotulo === "Objeto" || String(campo.valor).length > 210 ? " longo" : "");
         const dt = document.createElement("dt"); dt.textContent = campo.rotulo;
+        if (campo.semRotulo) dt.className = "resumo-oculto";
         const dd = document.createElement("dd");
+        if (campo.valor === "Não informado") dd.className = "vazio";
         if (Array.isArray(campo.valor)) {
           const ul = document.createElement("ul");
           campo.valor.forEach(valor => { const li = document.createElement("li"); li.textContent = valor; ul.appendChild(li); });
           dd.appendChild(ul);
         } else if (campo.rotulo === "Fonte CAPAG" && String(campo.valor).startsWith("https://www.tesourotransparente.gov.br/")) {
           const link = document.createElement("a"); link.href = campo.valor; link.textContent = "Consultar base oficial do Tesouro"; link.target = "_blank"; link.rel = "noopener noreferrer"; dd.append(link);
+        } else if (campo.link && /^https?:\/\//i.test(campo.link)) {
+          const link = document.createElement("a"); link.href = campo.link; link.target = "_blank"; link.rel = "noopener noreferrer";
+          link.textContent = campo.valor === campo.link ? "Acessar portal" : campo.valor; dd.append(link);
         } else dd.textContent = campo.valor;
+        if (campo.acao === "integridade") {
+          const botao = document.createElement("button");
+          botao.type = "button"; botao.className = "resumo-botao pequeno"; botao.textContent = "Programa de Integridade";
+          botao.title = "Abrir o Pergunte ao Edital com esta dúvida (a pergunta só é enviada quando você confirmar)";
+          botao.addEventListener("click", () => {
+            const form = document.getElementById("modal-ia-form");
+            if (form.hidden) document.getElementById("modal-ia-alternar-pergunta").click();
+            const pergunta = document.getElementById("modal-ia-pergunta");
+            pergunta.value = "O edital exige Programa de Integridade? Em que condições e prazos?";
+            pergunta.focus();
+          });
+          dd.appendChild(document.createElement("br")); dd.appendChild(botao);
+        }
         bloco.append(dt, dd); dl.appendChild(bloco);
       }
       secao.appendChild(dl);
@@ -3245,8 +3386,8 @@
       if (def.titulo === "Cobertura da análise" && est.coberturaLeitura?.parcial && est.fonteLida) {
         const botao = document.createElement("button");
         botao.type = "button";
-        botao.className = "btn-ia-edital";
-        botao.style.margin = "4px 0 12px";
+        botao.className = "resumo-botao pequeno";
+        botao.style.margin = "0 22px 14px";
         botao.dataset.novaLeitura = "1";
         botao.textContent = "Tentar ler de novo";
         botao.addEventListener("click", () => { botao.disabled = true; void chamarIA("resumo", null, { novaLeitura: true }); });
@@ -3258,11 +3399,15 @@
       wrap.appendChild(secao);
     }
 
-    const defesa = document.getElementById("modal-ia-defesa");
-    if (defesa) wrap.insertBefore(defesa, [...wrap.children].find(secao => secao.dataset.resumoSecao === "Análise crítica") || null);
+    if (defesa && defesa.parentNode !== wrap) wrap.insertBefore(defesa, [...wrap.children].find(secao => secao.dataset.resumoSecao === "Análise crítica") || null);
     if (anterior) anterior.replaceWith(wrap);
     else conversa.appendChild(wrap);
     atualizarCentralDefesa();
+    const geradoEm = document.getElementById("modal-ia-gerado-em");
+    if (geradoEm && geradoEm !== conversa) {
+      const data = est.geradoEm ? new Date(est.geradoEm) : null;
+      geradoEm.textContent = data && !Number.isNaN(data.getTime()) ? `Resumo gerado em ${data.toLocaleDateString("pt-BR")} às ${data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "";
+    }
     document.querySelector("#modal-ia-fundo .modal-ia-corpo").scrollTop = 0;
   }
 
@@ -3382,6 +3527,9 @@
     const conversa = document.getElementById("modal-ia-conversa");
     // O resumo posiciona o host antes da análise crítica; preserve-o ao limpar a conversa.
     if (defesa && conversa?.parentNode) conversa.parentNode.insertBefore(defesa, conversa.nextSibling);
+    // A caixa de considerações também é posicionada dentro do resumo; volta para depois da Central.
+    const consideracoes = document.getElementById("modal-ia-secao-consideracoes");
+    if (consideracoes && defesa?.parentNode) defesa.parentNode.insertBefore(consideracoes, defesa.nextSibling);
     clearTimeout(iaTemporizadorResumo);
     iaTemporizadorResumo = null;
     if (iaRequisicaoAtual) iaRequisicaoAtual.abort();
@@ -3499,6 +3647,7 @@
         estruturaRecebida.modoDegradado = Boolean(dados.modoDegradado);
         estruturaRecebida.metodoResumo = dados.metodoResumo || estruturaRecebida.metodoResumo;
         estruturaRecebida.aviso = dados.aviso || estruturaRecebida.aviso;
+        if (dados.geradoEm) estruturaRecebida.geradoEm = dados.geradoEm;
         renderizarEstruturaIA(estruturaRecebida);
         if (opcoes.novaLeitura) {
           const aviso = escreverMensagemIA(dados.dossieEmPreparacao ? "Nova leitura pedida. O resumo se atualiza sozinho quando o robô terminar, em geral dentro de 1 hora." : "Este edital foi lido há menos de 1 hora. Peça a nova leitura mais tarde.", "");
@@ -3916,13 +4065,35 @@
     </style></head><body><header><div class="marca">LicitaPlena</div><div class="meta">Checklist operacional do edital · Nº ${numero}</div></header><h1>Checklist de Licitação</h1>${blocos}<footer>Gerado pelo LicitaPlena a partir do dossiê disponível. Confirme sempre o edital e anexos oficiais antes de decidir.</footer></body></html>`;
   }
 
+  // Mesmo recorte do edital enviado ao e-mail (enviar-resumo-edital): impressão e e-mail
+  // precisam montar o corpo a partir dos mesmos dados.
+  function editalParaResumo(e) {
+    return e ? {
+      objeto: e.objeto, orgao: e.orgao, municipio: e.municipio, uf: e.uf, numeroControlePNCP: e.numeroControlePNCP,
+      modalidade: e.modalidade, modoDisputa: e.modoDisputa, criterioJulgamento: e.criterioJulgamento, regimeExecucao: e.regimeExecucao,
+      valor: e.valor, encerramento: e.encerramento, inicioRecebimento: e.inicioRecebimento, publicacao: e.publicacao,
+    } : null;
+  }
+
+  function resumoParaEnvio(est) {
+    return est ? {
+      ...est,
+      consideracoes: document.getElementById("modal-ia-consideracoes")?.value || "",
+      totalItensPncp: Array.isArray(est.itensPncp) ? est.itensPncp.length : 0,
+      itensPncp: Array.isArray(est.itensPncp) ? est.itensPncp : [],
+    } : null;
+  }
+
+  // Impressão/PDF: o MESMO HTML do e-mail aprovado pelo dono (resumo-email.js), sem o bloco
+  // "Deseja participar?" (links pessoais) e sem destinatário; só ganha A4 e a data de emissão.
   function montarHtmlImpressaoResumo(edital, est) {
-    const consideracoes = document.getElementById("modal-ia-consideracoes")?.value || "";
-    const modelo = ResumoModelo.montar(est || {}, edital, consideracoes);
-    const secoes = modelo.secoes.map(secao => `<section><h2>${escapeHtml(secao.titulo)}</h2><dl>${(secao.campos.length ? secao.campos : [{rotulo: "Informação", valor: "Não informado"}]).map(campo => `<div class="campo ${Array.isArray(campo.valor) || campo.rotulo === "Objeto" ? "longo" : ""}"><dt>${escapeHtml(campo.rotulo)}</dt><dd>${Array.isArray(campo.valor) ? `<ul>${campo.valor.map(v => `<li>${escapeHtml(v)}</li>`).join("")}</ul>` : escapeHtml(campo.valor)}</dd></div>`).join("")}</dl></section>`).join("");
-    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Resumo do Edital - LicitaPlena</title><style>
-      @page{size:A4;margin:14mm}body{font:10pt/1.5 Arial;color:#252525}header{border-bottom:2px solid #173b60;padding-bottom:12px}h1{font-size:20pt}h2{font-size:11pt;background:#f3f3f3;padding:9px;break-after:avoid}dl{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin:0 8px 18px}.campo{break-inside:avoid}.longo{grid-column:1/-1}dt{color:#777;font-size:9pt;margin-bottom:4px}dd{margin:0;white-space:pre-line}ul{padding-left:16px;margin:0}li{margin-bottom:5px}.cards{display:flex;gap:12px;margin:16px 0}.card{flex:1;border:1px solid #ddd;padding:10px}.card span{display:block;color:#777;font-size:9pt}.aviso,footer{color:#777;font-size:9pt}
-      </style></head><body><header><strong>LicitaPlena</strong><h1>Resumo do Edital ${escapeHtml(modelo.numero)}</h1></header><p>${escapeHtml(modelo.objeto)}</p><div class="cards">${modelo.cards.map(([k,v]) => `<div class="card"><span>${escapeHtml(k)}</span><strong>${escapeHtml(v)}</strong></div>`).join("")}</div><p class="aviso">${escapeHtml(avisoCoberturaLeitura(est))}</p>${secoes}<footer>Resumo elaborado com base nos documentos disponíveis. Confira as referências e pendências indicadas.</footer></body></html>`;
+    const link = linkPncp(edital.numeroControlePNCP) || edital.link || "";
+    const html = ResumoEmail.montarHtml(montarResumoParaCliente(edital, est), link, resumoParaEnvio(est), editalParaResumo(edital), "", "logo.png?v=20260908");
+    const agora = new Date();
+    const emitido = `Emitido em ${agora.toLocaleDateString("pt-BR")} às ${agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+    return html
+      .replace("</head>", "<title>Resumo do Edital - LicitaPlena</title><style>@page{size:A4;margin:10mm}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.lp-emitido{max-width:960px;margin:12px auto 0;padding:0 12px;color:#66778e;font:12px Arial,sans-serif;text-align:right}@media print{td[align=center]{padding:0!important}}</style></head>")
+      .replace(/<body([^>]*)>/, (abertura) => `${abertura}<p class="lp-emitido">${escapeHtml(emitido)}</p>`);
   }
 
   async function baixarChecklistDocx(edital, est, botao) {
@@ -4011,6 +4182,15 @@
       temporizadorConsidera = setTimeout(() => definirNoMapa("anotacoes-licitacao", idEdital, considera.value.trim(), empresaIdConsideracoes), 500);
     };
     considera.onblur = () => definirNoMapa("anotacoes-licitacao", idEdital, considera.value.trim(), empresaIdConsideracoes);
+    // "Salvar" grava na mesma anotação do edital usada no Kanban e na lista (por empresa).
+    const salvarConsideracoes = document.getElementById("modal-ia-salvar-consideracoes");
+    const statusConsideracoes = document.getElementById("modal-ia-consideracoes-status");
+    if (statusConsideracoes) statusConsideracoes.textContent = "";
+    if (salvarConsideracoes) salvarConsideracoes.onclick = () => {
+      clearTimeout(temporizadorConsidera);
+      definirNoMapa("anotacoes-licitacao", idEdital, considera.value.trim(), empresaIdConsideracoes);
+      if (statusConsideracoes) statusConsideracoes.textContent = "Considerações salvas.";
+    };
 
     document.getElementById("modal-ia-baixar").onclick = () => baixarEditalDireto(edital, document.getElementById("modal-ia-baixar"));
     document.getElementById("modal-ia-checklist-email").onclick = () => {
@@ -4103,21 +4283,7 @@
     const assunto = document.getElementById("modal-enviar-resumo-assunto").value.trim();
     let texto = document.getElementById("modal-enviar-resumo-texto").value.trim();
     const linkEdital = linkPncp(iaEditalAtual && iaEditalAtual.numeroControlePNCP) || iaEditalAtual && iaEditalAtual.link || "";
-    const editalResumo = iaEditalAtual ? {
-      objeto: iaEditalAtual.objeto,
-      orgao: iaEditalAtual.orgao,
-      municipio: iaEditalAtual.municipio,
-      uf: iaEditalAtual.uf,
-      numeroControlePNCP: iaEditalAtual.numeroControlePNCP,
-      modalidade: iaEditalAtual.modalidade,
-      modoDisputa: iaEditalAtual.modoDisputa,
-      criterioJulgamento: iaEditalAtual.criterioJulgamento,
-      regimeExecucao: iaEditalAtual.regimeExecucao,
-      valor: iaEditalAtual.valor,
-      encerramento: iaEditalAtual.encerramento,
-      inicioRecebimento: iaEditalAtual.inicioRecebimento,
-      publicacao: iaEditalAtual.publicacao,
-    } : null;
+    const editalResumo = editalParaResumo(iaEditalAtual);
     aviso.style.display = "none";
     botao.disabled = true;
     botao.textContent = "Carregando itens...";
@@ -4133,12 +4299,7 @@
         document.getElementById("modal-enviar-resumo-texto").value = texto;
       }
       botao.textContent = "Enviando...";
-      const resumoEstruturado = iaEstruturaAtual ? {
-        ...iaEstruturaAtual,
-        consideracoes: document.getElementById("modal-ia-consideracoes")?.value || "",
-        totalItensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp.length : 0,
-        itensPncp: Array.isArray(iaEstruturaAtual.itensPncp) ? iaEstruturaAtual.itensPncp : [],
-      } : null;
+      const resumoEstruturado = resumoParaEnvio(iaEstruturaAtual);
       const token = await obterTokenSessao();
       conferirContextoEnvio();
       const resp = await fetch("/api/enviar-resumo-edital", {
@@ -4836,6 +4997,8 @@
       link: edital.link || null,
       valor: edital.valor || null,
       fonte: edital.fonte || null,
+      usuarioNome: edital.usuarioNome || null,
+      linkSistemaOrigem: edital.linkSistemaOrigem || null,
       valorTotalEstimado: edital.valorTotalEstimado ?? null,
       numeroCompra: edital.numeroCompra || null,
       anoCompra: edital.anoCompra || null,
@@ -5382,6 +5545,7 @@
         <p class="kanban-card-meta"><svg class='icone-ph'><use href='#ph-bank'></use></svg> ${escapeHtml(edital.orgao || "Órgão não informado")}</p>
         <p class="kanban-card-meta"><svg class='icone-ph'><use href='#ph-map-pin'></use></svg> ${escapeHtml([edital.municipio, edital.uf].filter(Boolean).join(" / ") || "Não informado")}</p>
         ${prazoHtml}${seloHtml}
+        ${PortalOrigem.htmlPortal(edital)}
         <select class="kanban-card-mover" data-id="${escapeHtml(id)}" title="Mover para outra coluna">${opcoesMoverHtml}</select>
         <textarea class="kanban-card-anotacao" data-id="${escapeHtml(id)}" placeholder="Anotações (ex: liguei dia X, aguardando retorno...)" rows="2">${escapeHtml(anotacaoAtual || "")}</textarea>
         ${linkSistema ? `<a class="kanban-btn-sistema" href="${escapeHtml(linkSistema)}">Abrir no sistema</a>` : ""}
@@ -5775,6 +5939,9 @@
     "valorTotalEstimado", "valorTotalHomologado", "numeroCompra", "anoCompra", "processo",
     "tipoInstrumentoConvocatorioNome", "codigoUnidade", "esferaId",
   ];
+  // Portal da disputa: completa do robô, mas fora de CAMPOS_DETALHE_PNCP (muitas compras não têm link,
+  // e isso dispararia o detalhe preguiçoso em quase todo cartão).
+  const CAMPOS_PORTAL_PNCP = ["usuarioNome", "linkSistemaOrigem"];
   function mesclarComCacheRobo(resultadosAoVivo, registrosCache, ufs, palavras) {
     const doRoboPorChave = new Map();
     registrosCache
@@ -5786,7 +5953,7 @@
       if (!doRobo) return r;
       doRoboPorChave.delete(r.numeroControlePNCP); // já usado pra completar, não duplica abaixo
       const completo = { ...r };
-      for (const campo of CAMPOS_DETALHE_PNCP) {
+      for (const campo of [...CAMPOS_DETALHE_PNCP, ...CAMPOS_PORTAL_PNCP]) {
         if ((completo[campo] === null || completo[campo] === undefined) && doRobo[campo] !== null && doRobo[campo] !== undefined) {
           completo[campo] = doRobo[campo];
         }
@@ -6176,6 +6343,8 @@
             situacaoCompraNome: item.situacao_nome || null,
             codigoUnidade: item.unidade_codigo || null,
             esferaId: item.esfera_id || null,
+            usuarioNome: item.usuario_nome || null,
+            linkSistemaOrigem: item.link_sistema_origem || null,
           };
           // Uma contratação pode atender mais de um termo do filtro. Mantemos uma única
           // cópia, usando o identificador oficial como chave estável.
@@ -6381,7 +6550,7 @@
       const prazoChip = prazoTexto
         ? `<span class="boletim-prazo prazo-${classePrazoKanban(r.encerramento)}"><svg class='icone-ph' aria-hidden="true"><use href='#ph-timer'></use></svg> ${escapeHtml(prazoTexto)}</span>`
         : `<span class="boletim-prazo prazo-sem">Prazo não informado</span>`;
-      html += `<div class="${classes.join(" ")}" data-id="${idAttr}" data-idx="${i}" data-encerramento="${escapeHtml(r.encerramento || "")}">
+      html += `<div class="${classes.join(" ")}" data-id="${idAttr}" data-idx="${i}" data-encerramento="${escapeHtml(r.encerramento || "")}" data-portal="${escapeHtml(PortalOrigem.portalDe(r).nome || "")}">
         <div class="boletim-topo">
           <span class="boletim-numero">${i + 1}</span>
           ${prazoChip}
@@ -6400,6 +6569,7 @@
             <div><dt>${r.fonte ? "Abertura" : "Data fim de recebimento de propostas"}</dt><dd>${escapeHtml(formatarPrazoPropostas(r.encerramento))}</dd></div>
             ${r.fonte ? "" : campoBoletimMeta("Valor total estimado", formatarMoedaItem(r.valorTotalEstimado), "valorTotalEstimado")}
           </dl>
+          <div data-portal-origem>${PortalOrigem.htmlPortal(r)}</div>
           <div class="boletim-rodape">
             <div class="boletim-acoes-principais">
               <button class="btn-ia-edital" type="button" title="Resumo documental e perguntas sobre este edital"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumir edital</button>
@@ -6480,6 +6650,8 @@
     card.querySelectorAll("[data-detalhe-campo]").forEach((el) => {
       el.textContent = textoCampoDetalhePncp(el.dataset.detalheCampo, edital);
     });
+    const portal = card.querySelector("[data-portal-origem]");
+    if (portal) portal.innerHTML = PortalOrigem.htmlPortal(edital);
   }
 
   async function enriquecerEditalComDetalhePncp(edital) {
@@ -6779,10 +6951,12 @@
     const visiveis = resultadosOriginais.filter((r) => !semInteresse.has(idOportunidade(r)));
     const resultados = opcoes.porPrazo ? ordenarPorPrazo(visiveis) : visiveis;
     resultadosPlanilha.set(alvo.id, resultados);
+    let portalFiltro = "";
     const renderizar = (modoFiltro) => {
       const lidos = lerConjunto("lidos");
       const naoLidos = resultados.filter((r) => !lidos.has(idOportunidade(r))).length;
       const vencendo = resultados.filter((r) => venceEmAteDias(r.encerramento, 3)).length;
+      const portais = [...new Set(resultados.map((r) => PortalOrigem.portalDe(r).nome).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
       let html = avisoHtml + `<div class="caixa-interna">
         <div class="cartoes" style="margin-bottom:0;">
           <div class="cartao"><h3>Oportunidades encontradas</h3><div class="valor">${resultados.length}</div></div>
@@ -6795,6 +6969,7 @@
           <button class="btn-filtro-rapido" data-modo="nao-lidos">Não lidos (${naoLidos})</button>
           <button class="btn-filtro-rapido" data-modo="favoritos">Favoritos</button>
           <button class="btn-filtro-rapido" data-modo="vence-3">Vencem em 3 dias (${vencendo})</button>
+          ${portais.length > 1 ? `<select class="boletim-filtro-portal" aria-label="Filtrar por portal da disputa"><option value="">Todos os portais</option>${portais.map((p) => `<option value="${escapeHtml(p)}"${p === portalFiltro ? " selected" : ""}>${escapeHtml(p)}</option>`).join("")}</select>` : ""}
         </div>
       </div>`;
       // A lista inteira de cards fica sobre um fundo cinza (.caixa-interna) — os cards
@@ -6827,6 +7002,11 @@
         });
       });
       aplicarFiltroRapidoBoletim(listaEl, modoFiltro);
+      // Filtro por portal soma com o filtro rápido (classe própria, não desfaz o outro).
+      const aplicarPortal = () => listaEl.querySelectorAll(".boletim-card").forEach((card) =>
+        card.classList.toggle("oculto-portal", Boolean(portalFiltro) && card.dataset.portal !== portalFiltro));
+      alvo.querySelector(".boletim-filtro-portal")?.addEventListener("change", (ev) => { portalFiltro = ev.target.value; aplicarPortal(); });
+      aplicarPortal();
     };
     renderizar("todos");
   }

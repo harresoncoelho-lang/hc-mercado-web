@@ -23,4 +23,12 @@ async function carregarContextoIdentificacao(event,userId,empresaId){
  };
  return {empresa,documentos,perfis,documento,baixar,perfilPublico,validarPerfil,request,rest};
 }
-module.exports={carregarContextoIdentificacao};
+// CPF do representante: o papel authenticated não tem SELECT na coluna (seguranca_aprovacao_20261119.sql, M3). Quem chama
+// já conferiu com o token do usuário que ele é gestor/operador da empresa; aqui só a leitura da coluna, com a chave de serviço.
+async function lerCpfRepresentante(empresa){
+ const svc=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!svc)falhar('CPF do representante indisponível neste ambiente.',503);
+ const r=await fetch(`${URL}/rest/v1/operacao_perfil_empresa?empresa_id=eq.${encodeURIComponent(empresa.id)}&organizacao_id=eq.${encodeURIComponent(empresa.organizacao_id)}&select=cpf_representante`,{headers:{apikey:svc,Authorization:'Bearer '+svc},signal:globalThis.AbortSignal.timeout(8000)});
+ if(!r.ok)falhar('Serviço de documentos indisponível.',503);
+ return (await r.json())[0]?.cpf_representante??null;
+}
+module.exports={carregarContextoIdentificacao,lerCpfRepresentante};

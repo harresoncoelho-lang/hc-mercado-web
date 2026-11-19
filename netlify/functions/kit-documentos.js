@@ -19,7 +19,7 @@ async function carregarEscopo(event,userId,body){
  if(empresa.id!==body.empresaId||!uuid(empresa.organizacao_id))falhar('Empresa indisponível.',404);
  const membros=await rest(`operacao_membros?usuario_id=eq.${userId}&organizacao_id=eq.${empresa.organizacao_id}&select=usuario_id,organizacao_id,empresa_id,papel`);
  if(!membros.some(m=>m.usuario_id===userId&&m.organizacao_id===empresa.organizacao_id&&['gestor','operador'].includes(m.papel)&&(m.empresa_id===null||m.empresa_id===empresa.id)))falhar('Acesso não autorizado.',403);
- const processos=await rest(`operacao_processos?id=eq.${body.processoId}&empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=id,empresa_id,organizacao_id,numero,orgao,documentos_exigidos,atualizado_em`);
+ const processos=await rest(`operacao_processos?id=eq.${body.processoId}&empresa_id=eq.${empresa.id}&organizacao_id=eq.${empresa.organizacao_id}&select=id,empresa_id,organizacao_id,numero,orgao,sistema,url_origem,documentos_exigidos,atualizado_em`);
  const processo=processos[0];if(!processo||processo.id!==body.processoId||processo.empresa_id!==empresa.id||processo.organizacao_id!==empresa.organizacao_id)falhar('Processo indisponível.',404);
  return {c,empresa,processo};
 }
@@ -37,7 +37,7 @@ async function identificacaoKit(c){
  }
  return {perfil,pendencias};
 }
-function consulta(empresa,processo,perfil,itens,pendencias){return {empresa:{id:empresa.id,razaoSocial:empresa.razao_social,cnpj:empresa.cnpj},processo:{id:processo.id,numero:processo.numero,orgao:processo.orgao},identificacao:{status:perfil&&!perfil.invalidado_em?'confirmado':'pendente'},itens:itens.map(i=>({id:i.id,tipo:i.tipo,identificador:i.identificador,descricao:i.descricao,quantidade:i.quantidade,valorUnitario:i.valor_unitario_proposta,marca:i.marca,modelo:i.modelo,unidade:i.unidade,fabricante:i.fabricante,custoUnitario:i.custo_unitario,valorUnitarioMinimo:i.valor_unitario_minimo,codigoCatalogo:i.codigo_catalogo,precoReferencia:i.preco_referencia,precoReferenciaEm:i.preco_referencia_em,origemPncp:origemPncp(i)})),requisitos:Array.isArray(processo.documentos_exigidos)?processo.documentos_exigidos.filter(v=>typeof v==='string'):[],pendencias};}
+function consulta(empresa,processo,perfil,itens,pendencias){return {empresa:{id:empresa.id,razaoSocial:empresa.razao_social,cnpj:empresa.cnpj},processo:{id:processo.id,numero:processo.numero,orgao:processo.orgao,sistema:processo.sistema||null,urlOrigem:processo.url_origem||null},identificacao:{status:perfil&&!perfil.invalidado_em?'confirmado':'pendente'},itens:itens.map(i=>({id:i.id,tipo:i.tipo,identificador:i.identificador,descricao:i.descricao,quantidade:i.quantidade,valorUnitario:i.valor_unitario_proposta,marca:i.marca,modelo:i.modelo,unidade:i.unidade,fabricante:i.fabricante,custoUnitario:i.custo_unitario,valorUnitarioMinimo:i.valor_unitario_minimo,codigoCatalogo:i.codigo_catalogo,precoReferencia:i.preco_referencia,precoReferenciaEm:i.preco_referencia_em,origemPncp:origemPncp(i)})),requisitos:Array.isArray(processo.documentos_exigidos)?processo.documentos_exigidos.filter(v=>typeof v==='string'):[],pendencias};}
 function prepararPeca(ctx,payload,documento){
  const resultado=preparar(ctx,payload);
  // O hash legado conserva o usuário/fontes; a peça salva acrescenta sua identidade e versão.

@@ -52,7 +52,7 @@ const TIMEOUT_ARQUIVO_PNCP_MS = Number(process.env.TIMEOUT_ARQUIVO_PNCP_MS) || 3
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
 const VERSAO_RESUMO = 17;
 const VERSAO_VALIDACAO_CATALOGO = 17;
-const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado, verificarLimiteDiario } = require("../_auth");
 const { responderComFallback, haProvedorConfigurado } = require("../_ia_provedores");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
@@ -465,7 +465,7 @@ const SCHEMA_ESTRUTURA = `{
   "detalhes": {"valorEstimado": "", "prazoEntrega": "", "margemPreferencia": "", "exigeVisitaTecnica": "", "exigeAmostra": "", "garantia": "", "criterioJulgamento": "", "tipoAnalise": "", "regimeExecucao": "", "preferenciaMeEpp": "", "restricoesRegionalidade": "", "provaConceito": ""},
   "garantias": {"proposta": "", "contrato": "", "adicional": "", "retomada": ""},
   "entregaExecucao": {"prazo": "", "local": "", "condicoes": ""},
-  "prazos": {"limiteEnvioPropostas": "", "prazoDocumentoComplementar": "", "prazoDocumentoOriginal": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": ""},
+  "prazos": {"limiteEnvioPropostas": "", "prazoDocumentoComplementar": "", "prazoDocumentoOriginal": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": "", "tipoFornecimento": "", "prazoManifestacaoRecurso": "", "prazoContratualArp": ""},
   "criteriosProposta": {"validadeProposta": "", "criteriosDesempate": "", "exigenciasPropostaComercial": "", "propostasLancesPor": "", "programaIntegridade": ""},
   "itens": {"totalItens": "", "descricaoGeral": "", "categoriasPrincipais": "", "observacoes": ""},
   "documentosHabilitacao": ["lista de documentos exigidos, um por item ; não crie combinações, variações ou alternativas de certidões — só registre uma exigência que esteja literalmente identificável no texto"],
@@ -481,7 +481,7 @@ const SCHEMA_ESTRUTURA = `{
   "documentosConsultados": ["nomes dos documentos efetivamente lidos"],
   "pendenciasParaConferencia": ["itens que NÃO foram localizados no material lido e precisam ser conferidos no edital oficial; não use esta lista para repetir dados encontrados"],
   "questionamentosSugeridos": ["perguntas objetivas para esclarecimento/impugnação apenas quando houver ambiguidade, conflito ou ausência material relevante"],
-  "possiveisQuestionamentos": ["cada item deve trazer: título — motivo concreto — referência ao trecho ou cláusula; só inclua se houver base no texto"],
+  "possiveisQuestionamentos": ["cada item no formato: [tipo do achado, ex.: Presença Irregular] título — explicação com o artigo da lei aplicável — referência ao trecho ou cláusula do edital; só inclua se houver base no texto"],
   "outrasInformacoesRelevantes": ["lista de TODOS os pontos importantes do texto que não se encaixam nos campos acima — não limite a quantidade, inclua tudo que for relevante pra quem vai decidir participar"],
   "analiseCritica": {"conflitoObjetoMinuta": "", "conflitoPrazoVigenciaArp": "", "conflitoPrazosEntrega": "", "permiteSubcontratacao": "", "previsaoReajuste": "", "permiteRenovacao": "", "estabeleceCondicoesPagamento": ""},
   "resumoGeral": "resumo corrido e DETALHADO (8 a 14 frases), cobrindo objeto completo, órgão, valor, modalidade, datas/prazos, principais exigências de habilitação, forma de disputa e critério de julgamento — não é pra ser curto, é pra ser uma análise completa da oportunidade, como um analista de licitações faria pra um cliente"
@@ -1244,7 +1244,7 @@ exports.handler = async (event) => {
   const chaveRobo = process.env.DOSSIES_EDITAIS_CHAVE;
   const cabecalhosRecebidos = event.headers || {};
   const ehRoboInterno = Boolean(chaveRobo && cabecalhosRecebidos["x-licitaplena-dossies-chave"] === chaveRobo);
-  const sessao = ehRoboInterno ? { ok: true, userId: require("../_resumo_gateway").USUARIO_ROBO } : await exigirUsuarioLogado(event);
+  const sessao = ehRoboInterno ? { ok: true, userId: require("../_resumo_gateway").USUARIO_ROBO } : await exigirUsuarioAprovado(event);
   if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
   let body;
   try {
@@ -1429,6 +1429,7 @@ exports.handler = async (event) => {
             versao: cache.versao,
             revisaoPrazos: Boolean(cache.revisaoPrazos),
             prazosEmConferencia: Boolean(cache.prazosEmConferencia),
+            geradoEm: cache.geradoEm || null,
             doCache: true,
             ...(novaLeitura ? { dossieEmPreparacao: true } : {}),
             erro: null,

@@ -244,6 +244,12 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .curva-barra{display:block;height:6px;margin-top:var(--space-4);background:var(--surface-sunken);border-radius:3px;overflow:hidden}
 .curva-barra span{display:block;height:100%;background:var(--action-strong)}
 
+/* Portal da disputa no cabeçalho do processo (portal-origem.js): selo + link, quebra linha no celular. */
+#contexto-portal{margin:calc(-1 * var(--space-16)) 0 var(--space-24)}
+.portal-origem{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-8) var(--space-12);min-width:0}
+.portal-selo{display:inline-block;max-width:100%;overflow-wrap:anywhere;padding:2px var(--space-8);border-radius:999px;border:1px solid var(--border-default);background:var(--surface-sunken);color:var(--text-primary);font:var(--text-label)}
+.portal-link{font:var(--text-label);font-weight:600;color:var(--action-text)}
+
 /* Identificação da empresa (empresa-identificacao-ui.js). Markup real: #identificacao > details > summary, p, p[role=status], label+campo em pares, select, input file, botões .defesa-botao, div de sugestões, checkbox e label.
    Desktop (641px+): duas colunas label | campo; textos, botões, arquivo, tipo e sugestões ocupam a largura toda; checkbox e label ficam na mesma linha.
    Mobile: uma coluna, rótulo acima do campo; checkbox e label na mesma linha.

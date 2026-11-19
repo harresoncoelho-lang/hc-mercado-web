@@ -296,7 +296,7 @@ test('lerPremissas devolve as premissas do processo por GET próprio; sem permis
  const get=f.calls.map(([u])=>u).filter(u=>/margem_minima_percentual/.test(u));
  assert.equal(get.length,1);assert.match(get[0],new RegExp(`id=eq\\.${ids.processo}&empresa_id=eq\\.${ids.empresa}&organizacao_id=eq\\.${ids.org}&`));
  // O select do carregarEscopo (que entra no hash) não ganhou as colunas de premissa.
- assert.ok(f.calls.some(([u])=>u.endsWith('select=id,empresa_id,organizacao_id,numero,orgao,documentos_exigidos,atualizado_em')));
+ assert.ok(f.calls.some(([u])=>u.endsWith('select=id,empresa_id,organizacao_id,numero,orgao,sistema,url_origem,documentos_exigidos,atualizado_em')));
  f.state.membro.papel='leitura';const negado=await f.run({acao:'lerPremissas'});
  assert.equal(negado.statusCode,403);assert.equal(negado.json.premissas,undefined);
  f.state.membro=null;assert.equal((await f.run({acao:'lerPremissas'})).statusCode,403);
