@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const L = require("../_licitacao_anterior");
-const { validarConsulta, chaveConsulta } = require("../licitacao-anterior");
+const { validarConsulta, chaveConsulta, handler } = require("../licitacao-anterior");
 
 test("casamento: CATMAT igual é alto, PDM igual é médio, CATMAT diferente sem PDM não casa", () => {
   assert.equal(L.casar({ catmat: "463574" }, { catmat: "463574" }).confianca, "alta");
@@ -38,6 +38,56 @@ test("fornecedor pessoa física nunca guarda CPF nem nome", () => {
   assert.equal(L.fornecedor("11111111000191", "BRUNA ALMEIDA 97048143215", "x").fornecedor_nome, "BRUNA ALMEIDA");
   assert.equal(L.fornecedor("11111111000191", "FULANO 123.456.789-01 ME", "x").fornecedor_nome, "FULANO ME");
   assert.equal(L.fornecedor("58206106000191", "58.206.106 THIAGO", "x").fornecedor_nome, "58.206.106 THIAGO");
+  // Variações com espaço e barra (revisão de 19/11): também saem.
+  assert.equal(L.fornecedor("11111111000191", "FULANA DE TAL 970 481 432 15", "x").fornecedor_nome, "FULANA DE TAL");
+  assert.equal(L.fornecedor("11111111000191", "FULANA 970.481.432/15 ME", "x").fornecedor_nome, "FULANA ME");
+});
+
+test("link de origem: só https e host oficial; outro host cai no link do Compras.gov", () => {
+  assert.equal(L.linkOficial("https://cnetmobile.estaleiro.serpro.gov.br/x?compra=1"), "https://cnetmobile.estaleiro.serpro.gov.br/x?compra=1");
+  for (const ruim of ["http://pncp.gov.br/app", "javascript:alert(1)", "https://pncp.gov.br.mal.com/x", "https://u:s@pncp.gov.br/", "https://evil.com/?pncp.gov.br", null, "lixo"]) assert.equal(L.linkOficial(ruim), null, ruim);
+  const base = { item_url: "/compras/12345678000195/2025/7", numero_controle_pncp: "x" };
+  const oficial = "https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing?destino=acompanhamento-compra&compra=78882005900332025";
+  assert.equal(L.compraDaBusca({ ...base, link_sistema_origem: "https://golpe.com/?compra=78882005900332025" }).link_origem, oficial);
+  assert.equal(L.compraDaBusca({ ...base, link_sistema_origem: "javascript:alert(1)//?compra=78882005900332025" }).link_origem, oficial);
+  assert.equal(L.compraDaBusca({ ...base, link_sistema_origem: "https://golpe.com/x" }).link_origem, null);
+});
+
+const U = "22222222-2222-4222-8222-222222222222";
+async function comFetchHandler(status, limiteUso, fn) {
+  const anterior = global.fetch, chaveAnterior = process.env.SUPABASE_SERVICE_ROLE_KEY, chamadas = [];
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "srv";
+  global.fetch = async (url, op = {}) => {
+    const u = new URL(url);
+    chamadas.push(u.pathname);
+    if (u.pathname === "/auth/v1/user") return Response.json({ id: U });
+    if (u.pathname === "/rest/v1/clientes") return Response.json([{ status }]);
+    if (u.pathname === "/rest/v1/rpc/incrementar_uso") { chamadas.push(JSON.parse(op.body).p_funcao); return Response.json(limiteUso); }
+    return Response.json({ items: [{ codigo: "788820", nome: "BASE NAVAL" }] });
+  };
+  try { return await fn(chamadas); } finally {
+    global.fetch = anterior;
+    if (chaveAnterior === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = chaveAnterior;
+  }
+}
+const pedido = (corpo) => ({ httpMethod: "POST", headers: { authorization: "Bearer T" }, body: JSON.stringify(corpo) });
+
+test("handler: cadastro não aprovado 403 antes de qualquer fonte; órgãos com cota própria", async () => {
+  await comFetchHandler("pendente", 1, async (chamadas) => {
+    assert.equal((await handler(pedido({ acao: "orgaos", q: "base naval" }))).statusCode, 403);
+    assert.equal((await handler(pedido({ acao: "consultar", uasg: "788820", catmat: "1" }))).statusCode, 403);
+    assert.ok(!chamadas.some((c) => c.startsWith("/api/")));
+  });
+  await comFetchHandler("aprovado", 1, async (chamadas) => {
+    const r = await handler(pedido({ acao: "orgaos", q: "base naval" }));
+    assert.equal(r.statusCode, 200);
+    assert.deepEqual(JSON.parse(r.body).orgaos, [{ uasg: "788820", nome: "BASE NAVAL" }]);
+    assert.ok(chamadas.includes("licitacao-anterior-orgaos"));
+  });
+  await comFetchHandler("aprovado", 301, async (chamadas) => {
+    assert.equal((await handler(pedido({ acao: "orgaos", q: "base naval" }))).statusCode, 429);
+    assert.ok(!chamadas.some((c) => c.startsWith("/api/")));
+  });
 });
 
 test("id do Compras.gov: decifra e lê o texto do idCompraItem (o número JSON perde precisão)", () => {

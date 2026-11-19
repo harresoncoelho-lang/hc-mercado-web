@@ -75,11 +75,14 @@ test("normalização: pessoa física sem nome, CPF mascarado em texto, URL sem p
   const d = base();
   d.url = `${ITEM}&captcha=TOKEN_SECRETO`;
   d.itens[0].propostas.push({ chave: "pf:1", cnpj: null, nome: "Fulano de Tal" });
-  d.itens[0].mensagens.push({ texto: "CPF 123.456.789-09 e 12345678909", tipo: "outro", motivo: "ver 123.456.789-09" });
+  d.itens[0].mensagens.push({ texto: "CPF 123.456.789-09 e 12345678909, 123 456 789 09 e 123.456.789/09", tipo: "outro", motivo: "ver 123.456.789-09" });
+  d.itens[0].propostas[0].nome = "FULANA DE TAL 12345678909";
   const v = validarPregao(d);
   assert.equal(v.erro, undefined);
   assert.equal(v.dados.itens[0].propostas[1].nome, "Pessoa física");
-  assert.doesNotMatch(JSON.stringify(v.dados), /123\.456|12345678909|Fulano|TOKEN_SECRETO/);
+  assert.doesNotMatch(JSON.stringify(v.dados), /123\.456|12345678909|123 456|Fulano|TOKEN_SECRETO/);
+  assert.equal(v.dados.itens[0].propostas[0].nome, "FULANA DE TAL ***.***.***-**");
+  assert.equal(v.dados.semHttps, false);
   assert.equal(v.dados.url, ITEM);
 });
 
@@ -104,7 +107,7 @@ test("handler: login obrigatório, método, compra do GET e chave de serviço", 
     assert.equal((await handler({ httpMethod: "POST", headers: {} })).statusCode, 401);
     assert.equal((await handler(evento("DELETE"))).statusCode, 405);
   } finally { f.restaurar(); }
-  const g = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }]]);
+  const g = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rest\/v1\/clientes/, 200, [{ status: "aprovado" }]]]);
   try {
     assert.equal((await handler(evento("GET", { queryStringParameters: { compra: "1;drop" } }))).statusCode, 400);
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -114,7 +117,7 @@ test("handler: login obrigatório, método, compra do GET e chave de serviço", 
 
 test("handler POST: valida antes de gastar cota e grava pela RPC com o usuário da sessão", async () => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = "chave-teste";
-  const f = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rpc\/incrementar_uso/, 200, 1], [/rpc\/gravar_pregao_gravado/, 200, { propostas: 3, mensagens_novas: 4 }]]);
+  const f = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rest\/v1\/clientes/, 200, [{ status: "aprovado" }]], [/rpc\/incrementar_uso/, 200, 1], [/rpc\/gravar_pregao_gravado/, 200, { propostas: 3, mensagens_novas: 4 }]]);
   try {
     const ruim = await handler(evento("POST", { body: JSON.stringify({ ...base(), compra: "x" }) }));
     assert.equal(ruim.statusCode, 400);
@@ -133,7 +136,7 @@ test("handler POST: valida antes de gastar cota e grava pela RPC com o usuário 
 
 test("handler GET: devolve pregão com propostas e mensagens, sem id de quem gravou", async () => {
   process.env.SUPABASE_SERVICE_ROLE_KEY = "chave-teste";
-  const f = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }],
+  const f = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rest\/v1\/clientes/, 200, [{ status: "aprovado" }]],
     [/pregoes_gravados\?/, 200, [{ id_compra: "19302805900082025", fonte: "comprasgov", itens: { 1: { descricao: "x" } } }]],
     [/pregoes_gravados_propostas\?/, 200, [{ numero_item: 1, cnpj: "33442649000111", marca: "santa cruz" }]],
     [/pregoes_gravados_mensagens\?/, 200, [{ numero_item: 1, tipo: "recusa", motivo: "m" }]]]);
@@ -145,4 +148,55 @@ test("handler GET: devolve pregão com propostas e mensagens, sem id de quem gra
     assert.equal(pregao.mensagens[0].tipo, "recusa");
     for (const c of f.chamadas.filter((x) => /rest\/v1\/pregoes/.test(x.url))) assert.doesNotMatch(c.url, /gravado_por|atualizado_por/);
   } finally { f.restaurar(); delete process.env.SUPABASE_SERVICE_ROLE_KEY; }
+});
+
+test("B6: só a ata do ComprasNet aceita http, e a leitura sai marcada sem HTTPS", () => {
+  const d = base();
+  d.url = "http://comprasnet.gov.br/livre/pregao/AtaEletronico.asp?co_no_uasg=158142";
+  assert.equal(validarPregao(d).dados.semHttps, true);
+  d.url = "http://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras/acompanhamento-compra?compra=19302805900082025";
+  assert.match(validarPregao(d).erro || "", /url/);
+});
+
+test("A1/M1: cadastro não aprovado (pendente, suspenso, sem linha) não grava nem lê", async () => {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "chave-teste";
+  for (const clientes of [[{ status: "pendente" }], [{ status: "suspenso" }], []]) {
+    const f = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rest\/v1\/clientes/, 200, clientes], [/rpc\//, 200, {}], [/pregoes/, 200, []]]);
+    try {
+      assert.equal((await handler(evento("POST", { body: JSON.stringify(base()) }))).statusCode, 403);
+      assert.equal((await handler(evento("GET", { queryStringParameters: { compra: "19302805900082025" } }))).statusCode, 403);
+      assert.equal(f.chamadas.some((c) => /rpc\/|pregoes/.test(c.url)), false);
+    } finally { f.restaurar(); }
+  }
+  const caiu = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rest\/v1\/clientes/, 500, {}]]);
+  try { assert.equal((await handler(evento("POST", { body: JSON.stringify(base()) }))).statusCode, 503); } finally { caiu.restaurar(); delete process.env.SUPABASE_SERVICE_ROLE_KEY; }
+});
+
+test("B5: GET tem cota própria, filtro por item, teto de linhas e selo não verificado", async () => {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "chave-teste";
+  const muitas = Array.from({ length: 2000 }, (_, i) => ({ numero_item: 1, cnpj: String(i), leituras_concordantes: i ? 1 : 2 }));
+  const f = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rest\/v1\/clientes/, 200, [{ status: "aprovado" }]], [/rpc\/incrementar_uso/, 200, 1],
+    [/pregoes_gravados\?/, 200, [{ id_compra: "19302805900082025", leituras_concordantes: 1, fonte_sem_https: true, itens: { 1: { leituras_concordantes: 3 } } }]],
+    [/pregoes_gravados_propostas\?/, 200, muitas], [/pregoes_gravados_mensagens\?/, 200, []]]);
+  try {
+    assert.equal((await handler(evento("GET", { queryStringParameters: { compra: "19302805900082025", item: "1;x" } }))).statusCode, 400);
+    const r = await handler(evento("GET", { queryStringParameters: { compra: "19302805900082025", item: "1" } }));
+    const { pregao } = JSON.parse(r.body);
+    assert.equal(pregao.truncado, true);
+    assert.equal(pregao.verificado, false);
+    assert.equal(pregao.fonte_sem_https, true);
+    assert.equal(pregao.itens[1].verificado, true);
+    assert.deepEqual([pregao.propostas[0].verificado, pregao.propostas[1].verificado], [true, false]);
+    const cota = f.chamadas.find((c) => /incrementar_uso/.test(c.url));
+    assert.equal(JSON.parse(cota.op.body).p_funcao, "pregao-gravado-leitura");
+    for (const c of f.chamadas.filter((x) => /pregoes_gravados_(propostas|mensagens)\?/.test(x.url))) {
+      assert.match(c.url, /numero_item=eq\.1&/);
+      assert.match(c.url, /limit=2000$/);
+    }
+  } finally { f.restaurar(); }
+  const estourou = comFetch([[/auth\/v1\/user/, 200, { id: "u1" }], [/rest\/v1\/clientes/, 200, [{ status: "aprovado" }]], [/rpc\/incrementar_uso/, 200, 2001], [/pregoes/, 200, []]]);
+  try {
+    assert.equal((await handler(evento("GET", { queryStringParameters: { compra: "19302805900082025" } }))).statusCode, 429);
+    assert.equal(estourou.chamadas.some((c) => /pregoes/.test(c.url)), false);
+  } finally { estourou.restaurar(); delete process.env.SUPABASE_SERVICE_ROLE_KEY; }
 });

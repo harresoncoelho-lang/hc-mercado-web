@@ -104,3 +104,64 @@ test("CNPJ sem resultado no PNCP: nada de compra, mas os meses do arquivo entram
   assert.equal(r.compras.length, 0);
   assert.equal(r.meses[0], "2026/11");
 });
+
+// Handler com fetch falso: login, cadastro, cota (incrementar_uso) e contagens da fila.
+async function comFetch({ status = "aprovado", uso = 1, parcial = 0, doSolicitante = 0, org = "o1" }, fn) {
+  const anterior = global.fetch, chamadas = [], envAnterior = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "srv";
+  global.fetch = async (url, op = {}) => {
+    const u = new URL(url);
+    chamadas.push(`${op.method || "GET"} ${u.pathname}${u.search}`);
+    if (u.pathname === "/auth/v1/user") return Response.json({ id: "u1" });
+    if (u.pathname === "/rest/v1/clientes") return Response.json([{ status }]);
+    if (u.pathname === "/rest/v1/rpc/incrementar_uso") return Response.json(uso);
+    if (u.pathname === "/rest/v1/operacao_membros") return Response.json(org ? [{ organizacao_id: org }] : []);
+    if (u.pathname === "/rest/v1/historico_cnpj_consultas" && op.headers?.Prefer === "count=exact") {
+      return new Response("[]", { headers: { "content-range": `*/${u.searchParams.get("solicitante") ? doSolicitante : parcial}` } });
+    }
+    if (u.pathname === "/rest/v1/historico_cnpj_consultas") return Response.json([]);
+    return Response.json({ items: [] });
+  };
+  try { return await fn(chamadas); } finally { global.fetch = anterior; process.env.SUPABASE_SERVICE_ROLE_KEY = envAnterior; }
+}
+const { handler } = require("../analise-cnpj");
+const pedido = (corpo) => ({ httpMethod: "POST", headers: { authorization: "Bearer T" }, body: JSON.stringify(corpo) });
+
+test("handler: cadastro não aprovado recebe 403 antes de qualquer fonte", async () => {
+  await comFetch({ status: "pendente" }, async (chamadas) => {
+    const r = await handler(pedido({ acao: "buscar", q: "pereira" }));
+    assert.equal(r.statusCode, 403);
+    assert.ok(!chamadas.some((c) => c.includes("/api/search")));
+  });
+});
+
+test("handler: busca por nome tem cota diária", async () => {
+  await comFetch({ uso: 101 }, async (chamadas) => {
+    const r = await handler(pedido({ acao: "buscar", q: "pereira" }));
+    assert.equal(r.statusCode, 429);
+    assert.ok(!chamadas.some((c) => c.includes("/api/search")));
+  });
+  await comFetch({ uso: 1 }, async () => assert.equal((await handler(pedido({ acao: "buscar", q: "pereira" }))).statusCode, 200));
+});
+
+test("handler: fila cheia (global ou da organização) recusa antes de coletar e de gastar cota", async () => {
+  await comFetch({ parcial: 200 }, async (chamadas) => {
+    const r = await handler(pedido({ acao: "coletar", cnpj: "48885922000150" }));
+    assert.equal(r.statusCode, 429);
+    assert.match(JSON.parse(r.body).erro, /fila de análises está cheia/);
+    assert.ok(!chamadas.some((c) => c.includes("incrementar_uso")));
+  });
+  await comFetch({ doSolicitante: 10 }, async (chamadas) => {
+    const r = await handler(pedido({ acao: "coletar", cnpj: "48885922000150" }));
+    assert.equal(r.statusCode, 429);
+    assert.match(JSON.parse(r.body).erro, /organização já pediu 10/);
+    assert.ok(chamadas.some((c) => c.includes("solicitante=eq.o1")));
+  });
+  await comFetch({ org: null }, async (chamadas) => {
+    const r = await handler(pedido({ acao: "coletar", cnpj: "48885922000150" }));
+    assert.equal(r.statusCode, 200);
+    assert.ok(chamadas.some((c) => c.includes("solicitante=eq.u1"))); // sem organização: o próprio usuário
+    const gravou = chamadas.find((c) => c.startsWith("POST /rest/v1/historico_cnpj_consultas"));
+    assert.ok(gravou);
+  });
+});

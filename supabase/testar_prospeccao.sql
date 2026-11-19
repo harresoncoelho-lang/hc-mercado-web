@@ -33,6 +33,26 @@ do $$ begin
  exception when insufficient_privilege then null; end;
 end $$;
 reset role;
+-- Dado antigo com CPF (gravado antes do CHECK): a limpeza do .sql tira só o CPF e é idempotente.
+alter table public.prospeccao_itens drop constraint prospeccao_itens_fornecedor_sem_cpf;
+insert into public.prospeccao_itens(id,tipo,fonte,link,fornecedor_cnpj,fornecedor_nome) values('ata:QA-8','ata','pncp','https://pncp.gov.br/app/atas/8','12345678000195','FULANA DE TAL 97048143215');
+do $$ declare n int; begin
+ update public.prospeccao_itens set fornecedor_nome = nullif(btrim(regexp_replace(regexp_replace(fornecedor_nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '') where fornecedor_nome ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+ get diagnostics n = row_count;
+ if n <> 1 then raise exception 'limpeza de CPF tocou % linhas', n; end if;
+ if (select fornecedor_nome from public.prospeccao_itens where id='ata:QA-8') <> 'FULANA DE TAL' then raise exception 'limpeza de CPF errada'; end if;
+ update public.prospeccao_itens set fornecedor_nome = nullif(btrim(regexp_replace(regexp_replace(fornecedor_nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '') where fornecedor_nome ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+ get diagnostics n = row_count;
+ if n <> 0 then raise exception 'limpeza de CPF não é idempotente'; end if;
+end $$;
+alter table public.prospeccao_itens add constraint prospeccao_itens_fornecedor_sem_cpf check (fornecedor_nome !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
+do $$ declare v text; begin
+ foreach v in array array['FULANA 97048143215','FULANA 970.481.432-15','FULANA 970 481 432 15','FULANA 970.481.432/15'] loop
+  begin update public.prospeccao_itens set fornecedor_nome = v where id='ata:QA-8'; raise exception 'CPF aceito em prospeccao_itens.fornecedor_nome: %', v;
+  exception when check_violation then null; end;
+ end loop;
+ update public.prospeccao_itens set fornecedor_nome = 'EMPRESA 11.222.333/0001-81 LTDA' where id='ata:QA-8'; -- CNPJ formatado não é CPF
+end $$;
 do $$ begin
  if has_table_privilege('anon','public.prospeccao_itens','SELECT') then raise exception 'anon lê prospecção'; end if;
 end $$;

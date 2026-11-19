@@ -7,7 +7,7 @@
 // trabalho pesado (varrer PNCP/Compras.gov) já foi feito pelo robô. Lê com o token do PRÓPRIO usuário,
 // e a RLS (authenticated) é a barreira. Sem verificarLimiteDiario: a mesma leitura já é possível direto
 // pelo PostgREST com a sessão (mesmo raciocínio de sancoes-cnpj.js).
-const { cabecalhosPadrao, exigirUsuarioLogado } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado } = require("./_auth");
 
 const URL_SB = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const ANON = "sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb";
@@ -56,7 +56,7 @@ exports.handler = async (event) => {
   const resposta = (status, body) => ({ statusCode: status, headers: status === 200 ? headers : { ...headers, "Cache-Control": "no-store" }, body: JSON.stringify(body) });
   if (event.httpMethod === "OPTIONS") return resposta(204, {});
   if (event.httpMethod !== "GET") return resposta(405, { erro: "Método não permitido." });
-  const auth = await exigirUsuarioLogado(event);
+  const auth = await exigirUsuarioAprovado(event);
   if (!auth.ok) return resposta(auth.status, { erro: auth.erro });
   const filtro = validar(event.queryStringParameters || {});
   if (filtro.erro) return resposta(400, { erro: filtro.erro });

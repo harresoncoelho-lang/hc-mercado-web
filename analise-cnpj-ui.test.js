@@ -57,3 +57,12 @@ test("motivos gravados: tipo da mensagem e situação da proposta, sem contar o 
   assert.equal(m.lista[0].texto, "Item 12.3.2 do edital");
   assert.equal(m.lista[0].descricao, "Café");
 });
+
+test("motivos gravados: selo 'não verificado' até 2 leituras de organizações diferentes concordarem", () => {
+  const m = U.motivosGravados([
+    { id_compra: "1", numero_item: 2, tipo: "inabilitacao", texto: "x" },
+    { id_compra: "1", numero_item: 3, tipo: "recusa", texto: "y", leituras_concordantes: 2 },
+  ], [{ id_compra: "1", numero_item: 5, situacao: "Inabilitada", leituras_concordantes: 1 }, { id_compra: "1", numero_item: 6, situacao: "Aceita" }]);
+  assert.deepEqual(m.lista.map((x) => [x.verificado, x.leituras]), [[false, 1], [true, 2]]);
+  assert.equal(m.naoVerificados, 2);
+});

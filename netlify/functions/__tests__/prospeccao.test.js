@@ -40,3 +40,22 @@ test("handler: sem sessão responde 401 sem tocar a tabela; método errado 405",
   const post = await handler({ httpMethod: "POST", headers: {} });
   assert.equal(post.statusCode, 405);
 });
+
+test("handler: só cadastro aprovado lê a tabela (pendente 403), com o token do próprio usuário", async () => {
+  const anterior = global.fetch;
+  for (const [status, esperado] of [["pendente", 403], ["aprovado", 200]]) {
+    const lidas = [];
+    global.fetch = async (url, op = {}) => {
+      const u = new URL(url);
+      if (u.pathname === "/auth/v1/user") return Response.json({ id: "u1" });
+      if (u.pathname === "/rest/v1/clientes") return Response.json([{ status }]);
+      lidas.push(op.headers.Authorization);
+      return Response.json([]);
+    };
+    try {
+      const r = await handler({ httpMethod: "GET", headers: { authorization: "Bearer T" }, queryStringParameters: { tipo: "pca" } });
+      assert.equal(r.statusCode, esperado);
+      assert.deepEqual(lidas, esperado === 200 ? ["Bearer T"] : []);
+    } finally { global.fetch = anterior; }
+  }
+});

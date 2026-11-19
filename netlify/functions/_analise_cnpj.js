@@ -10,6 +10,7 @@
 //   - repositorio.dados.gov.br/seges/comprasgov/propostas (CSV ";" zipado, semanal, só itens homologados).
 // Grava nas tabelas historico_* (compartilhadas com a "Licitação anterior"). CPF nunca entra.
 const L = require("./_licitacao_anterior");
+const { semCpf } = require("./_cpf");
 
 const PNCP = "https://pncp.gov.br";
 const digitos = (v) => String(v ?? "").replace(/\D/g, "");
@@ -56,7 +57,7 @@ async function sugerirFornecedores(b, termo) {
   for (const it of r?.items || []) {
     const cnpj = digitos(it.ni);
     if (cnpj.length !== 14 || !/^\d{1,12}$/.test(String(it.id || ""))) continue;
-    const atual = porCnpj.get(cnpj) || { cnpj, nome: texto(it.nome, 300), total: 0, ids: [] };
+    const atual = porCnpj.get(cnpj) || { cnpj, nome: texto(semCpf(it.nome, " "), 300), total: 0, ids: [] };
     if (!atual.ids.includes(String(it.id))) atual.ids.push(String(it.id));
     atual.total = Math.max(atual.total, Number(it.total) || 0);
     porCnpj.set(cnpj, atual);

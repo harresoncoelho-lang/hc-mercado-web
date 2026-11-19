@@ -92,3 +92,22 @@ test("consultas avulsas: completa participantes e marca 'completo'; erro marca '
   await H.completarConsultas({ rest, lerMes: async () => { throw new Error("HTTP 503"); } });
   assert.deepEqual(patches, ["falhou"]);
 });
+
+test("arquivo de propostas: teto no CSV descompactado (fluxo real) e no ZIP baixado", async () => {
+  const AdmZip = require("adm-zip");
+  const z = new AdmZip(); z.addFile("p.csv", Buffer.from("a;b\n".repeat(500000)));
+  const zip = z.toBuffer();
+  const filtro = { linha() {} };
+  const fetchImpl = async () => new Response(zip);
+  await assert.rejects(H.lerMesPropostas("2025/09", filtro, { fetchImpl, maxCsv: 100000 }), /CSV passou de/);
+  await assert.rejects(H.lerMesPropostas("2025/09", filtro, { fetchImpl, maxZip: 100 }), /grande demais/);
+  const ok = await H.lerMesPropostas("2025/09", filtro, { fetchImpl });
+  assert.equal(ok.linhas, 500000);
+});
+
+test("consultas avulsas: cada rodada pede a limpeza do cache de 30 dias", async () => {
+  const rpcs = [];
+  const rest = async (caminho, op = {}) => { if (caminho.startsWith("rpc/")) rpcs.push([caminho, JSON.parse(op.body)]); return resposta(caminho.startsWith("rpc/") ? 4 : []); };
+  assert.equal(await H.completarConsultas({ rest, lerMes: async () => ({}) }), 0);
+  assert.deepEqual(rpcs, [["rpc/historico_limpar_cache", { p_dias: 30 }]]);
+});

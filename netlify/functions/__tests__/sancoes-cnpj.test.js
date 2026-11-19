@@ -1,4 +1,4 @@
-// /api/sancoes-cnpj: só logado, lê com o token do próprio usuário, CNPJ validado, falha fechado.
+// /api/sancoes-cnpj: só logado com cadastro aprovado, lê com o token do próprio usuário, CNPJ validado, falha fechado.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { handler } = require("../sancoes-cnpj");
@@ -9,12 +9,14 @@ const LINHAS = [
   { cadastro: "CNEP", codigo_sancao: "2", cnpj: "11222333000181", data_fim: "2020-01-01", fora_da_lista: false, data_carga: "2026-11-18" },
 ];
 
+let statusCadastro = "aprovado";
 async function comFetch(responder, fn) {
   const anterior = global.fetch, chamadas = [];
   global.fetch = async (url, op = {}) => {
     const u = new URL(url);
     chamadas.push({ url: u, auth: op.headers?.Authorization });
     if (u.pathname === "/auth/v1/user") return op.headers.Authorization === "Bearer TOKEN-U" ? Response.json({ id: U }) : new Response("{}", { status: 401 });
+    if (u.pathname === "/rest/v1/clientes") return Response.json(u.searchParams.get("id") === `eq.${U}` ? [{ status: statusCadastro }] : []);
     return responder(u);
   };
   try { return await fn(chamadas); } finally { global.fetch = anterior; }
@@ -40,8 +42,22 @@ test("sem login, CNPJ inválido ou método errado: recusa sem ler a tabela", () 
   assert.equal((await handler(evento("123"))).statusCode, 400);
   assert.equal((await handler(evento(undefined))).statusCode, 400);
   assert.equal((await handler(evento("11222333000181", { authorization: "Bearer TOKEN-U" }, "POST"))).statusCode, 405);
-  assert.ok(!chamadas.some((c) => c.url.pathname.startsWith("/rest/")));
+  assert.ok(!chamadas.some((c) => c.url.pathname === "/rest/v1/sancoes_empresas"));
 }));
+
+test("cadastro pendente ou suspenso: 403 sem ler a tabela; falha ao conferir: 503", async () => {
+  for (const [status, esperado] of [["pendente", 403], ["suspenso", 403]]) {
+    statusCadastro = status;
+    await comFetch(() => Response.json(LINHAS), async (chamadas) => {
+      assert.equal((await handler(evento("11222333000181"))).statusCode, esperado);
+      assert.ok(!chamadas.some((c) => c.url.pathname === "/rest/v1/sancoes_empresas"));
+    });
+  }
+  statusCadastro = "aprovado";
+  const anterior = global.fetch;
+  global.fetch = async (url) => (new URL(url).pathname === "/auth/v1/user" ? Response.json({ id: U }) : new Response("{}", { status: 500 }));
+  try { assert.equal((await handler(evento("11222333000181"))).statusCode, 503); } finally { global.fetch = anterior; }
+});
 
 test("falha da tabela ou lista no teto: 503 sem cache (nunca 'sem sanção' errado)", async () => {
   for (const responder of [() => new Response("{}", { status: 500 }), () => Response.json(Array.from({ length: 500 }, () => LINHAS[0]))]) {

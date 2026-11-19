@@ -51,6 +51,14 @@ create index if not exists prospeccao_itens_catmat_idx on public.prospeccao_iten
 -- shortcut: o ILIKE em busca faz varredura dentro de (tipo, uf); com dezenas de milhares de linhas por UF é rápido.
 -- Se a tabela passar de algumas centenas de milhares, criar índice gin_trgm_ops em busca (extensão pg_trgm).
 
+-- LGPD: razão social de MEI vem com o CPF do titular ("FULANA DE TAL 97048143215"). Limpeza única e idempotente
+-- do que já foi gravado (só toca linha que ainda tem CPF), depois o CHECK recusa CPF daqui para frente. Mesma forma
+-- da regex de netlify/functions/_cpf.js (lá \s cobre mais: o robô sempre limpa antes do CHECK).
+update public.prospeccao_itens set fornecedor_nome = nullif(btrim(regexp_replace(regexp_replace(fornecedor_nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '')
+ where fornecedor_nome ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+alter table public.prospeccao_itens drop constraint if exists prospeccao_itens_fornecedor_sem_cpf;
+alter table public.prospeccao_itens add constraint prospeccao_itens_fornecedor_sem_cpf check (fornecedor_nome !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
+
 alter table public.prospeccao_itens enable row level security;
 revoke all on public.prospeccao_itens from anon, authenticated;
 grant select on public.prospeccao_itens to authenticated;

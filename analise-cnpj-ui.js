@@ -72,23 +72,32 @@
   }
 
   // Pregões gravados pela extensão: mensagens do pregoeiro por tipo e situação da proposta lida na página.
+  // Lido por um usuário do LicitaPlena, não pelo robô: só é "verificado" com 2+ organizações concordando
+  // (leituras_concordantes, supabase/pregoes_gravados.sql). Abaixo disso a tela mostra o selo.
   const DESCLASS = /desclassific|recusad/i, INABIL = /inabilit/i;
+  const leituras = (x) => Number(x?.leituras_concordantes) || 1;
+  const seloNaoVerificado = (n) => `lido por usuário, não verificado (${n} leitura${n === 1 ? '' : 's'} concordando)`;
   function motivosGravados(mensagens, propostas) {
     const desclass = new Set(), inabil = new Set(), lista = [];
+    let naoVerificados = 0;
     for (const m of Array.isArray(mensagens) ? mensagens : []) {
       if (!['recusa', 'desclassificacao', 'inabilitacao'].includes(m.tipo)) continue;
       const k = `${m.id_compra}|${m.numero_item}`;
       (m.tipo === 'inabilitacao' ? inabil : desclass).add(k);
       const pg = m.pregoes_gravados || {};
+      if (leituras(m) < 2) naoVerificados += 1;
       lista.push({ chave: k, id_compra: m.id_compra, numero_item: m.numero_item, tipo: m.tipo, texto: m.motivo || m.texto, data: m.data_hora,
-        url: pg.url || null, orgao: pg.orgao || null, descricao: pg.itens?.[String(m.numero_item)]?.descricao || null });
+        url: pg.url || null, orgao: pg.orgao || null, descricao: pg.itens?.[String(m.numero_item)]?.descricao || null,
+        leituras: leituras(m), verificado: leituras(m) >= 2 });
     }
     for (const p of Array.isArray(propostas) ? propostas : []) {
       const k = `${p.id_compra}|${p.numero_item}`;
-      if (INABIL.test(p.situacao || '')) inabil.add(k);
-      else if (DESCLASS.test(p.situacao || '')) desclass.add(k);
+      const conta = INABIL.test(p.situacao || '') ? inabil : DESCLASS.test(p.situacao || '') ? desclass : null;
+      if (!conta) continue;
+      conta.add(k);
+      if (leituras(p) < 2) naoVerificados += 1;
     }
-    return { desclassificacoes: desclass.size, inabilitacoes: inabil.size, lista, chaves: new Set([...desclass, ...inabil]) };
+    return { desclassificacoes: desclass.size, inabilitacoes: inabil.size, lista, chaves: new Set([...desclass, ...inabil]), naoVerificados };
   }
 
   // ---------- Tela ----------
@@ -130,6 +139,7 @@
       cartao(doc, 'Inabilitações (pregões gravados)', String(mot.inabilitacoes)),
       cartao(doc, 'Propostas recusadas (arquivo do Compras.gov)', String(recusasSemGravacao.length)),
       cartao(doc, 'Itens fracassados sendo o 1º colocado', String(r.fracassados1.length))));
+    if (mot.naoVerificados) caixa.append(el(doc, 'p', { class: 'aviso', texto: `Desclassificações/inabilitações de pregões gravados: ${mot.naoVerificados} registro(s) lido(s) por usuário, não verificado(s) — confira no pregão.` }));
     caixa.append(el(doc, 'p', { class: 'dica-clique', texto: 'Recusada = situação "2" no arquivo semanal de propostas do Compras.gov: o governo não publica o significado nem distingue desclassificação de inabilitação. Grave o pregão pela extensão para ter o motivo literal.' }));
     return caixa;
   }
@@ -180,7 +190,7 @@
     const caixa = el(doc, 'div', { class: 'acn-motivos' }, el(doc, 'h3', { texto: 'Motivos de desclassificação / inabilitação' }));
     const linhas = mot.lista.map((m) => el(doc, 'tr', {}, el(doc, 'td', { texto: `${m.numero_item}. ${m.descricao || ''}`.trim() }), el(doc, 'td', { texto: ROTULO[m.tipo] }),
       el(doc, 'td', { texto: m.texto }), el(doc, 'td', { texto: m.orgao || `Compra ${m.id_compra}` }), el(doc, 'td', { texto: dataBr(m.data) }),
-      el(doc, 'td', {}, link(doc, m.url, 'Pregão gravado'))));
+      el(doc, 'td', {}, link(doc, m.url, 'Pregão gravado'), m.verificado ? null : el(doc, 'small', { class: 'selo-nao-verificado', texto: seloNaoVerificado(m.leituras) }))));
     for (const p of r.recusadas.filter((x) => !mot.chaves.has(`${x.id_compra}|${x.numero_item}`)).slice(0, MAX_LINHAS)) {
       linhas.push(el(doc, 'tr', {}, el(doc, 'td', { texto: `${p.numero_item}. ${p.descricao || ''}`.trim() }), el(doc, 'td', { texto: 'Recusada (arquivo)' }),
         el(doc, 'td', { texto: 'Motivo não registrado — abra o pregão' }), el(doc, 'td', { texto: p.orgao_nome || (p.uasg ? `UASG ${p.uasg}` : '—') }),
@@ -215,9 +225,9 @@
     }
     // Tabelas da extensão ausentes (banco sem pregoes_gravados.sql): sem motivos gravados, o resto segue.
     const [msg, prop] = await Promise.all([
-      sb.from('pregoes_gravados_mensagens').select('id_compra,numero_item,data_hora,texto,tipo,motivo,pregoes_gravados(url,orgao,itens)')
+      sb.from('pregoes_gravados_mensagens').select('id_compra,numero_item,data_hora,texto,tipo,motivo,leituras_concordantes,pregoes_gravados(url,orgao,itens)')
         .eq('fornecedor_chave', cnpj).in('tipo', ['recusa', 'desclassificacao', 'inabilitacao']).order('data_hora', { ascending: false }).limit(500),
-      sb.from('pregoes_gravados_propostas').select('id_compra,numero_item,situacao').eq('cnpj', cnpj).limit(5000),
+      sb.from('pregoes_gravados_propostas').select('id_compra,numero_item,situacao,leituras_concordantes').eq('cnpj', cnpj).limit(5000),
     ]);
     return { linhas, mensagens: msg.error ? [] : msg.data, propostas: prop.error ? [] : prop.data };
   }

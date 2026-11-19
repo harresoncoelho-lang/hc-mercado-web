@@ -5,7 +5,7 @@
 // Resposta: { cnpj, vigentes:[...], expiradas:[...], cargaEm } ; cache privado curto (dado muda 1x/dia).
 // Sem verificarLimiteDiario: a mesma leitura já é possível direto pelo PostgREST com a sessão, e o
 // contador custaria uma escrita a cada consulta.
-const { cabecalhosPadrao, exigirUsuarioLogado } = require('./_auth');
+const { cabecalhosPadrao, exigirUsuarioAprovado } = require('./_auth');
 const { sancoesDoCnpj } = require('../../sancoes-ui.js');
 
 const URL_SB = 'https://lsqjamqvmrcyrvowndiu.supabase.co';
@@ -20,7 +20,7 @@ exports.handler = async (event) => {
   const resposta = (status, body) => ({ statusCode: status, headers: status === 200 ? headers : { ...headers, 'Cache-Control': 'no-store' }, body: JSON.stringify(body) });
   if (event.httpMethod === 'OPTIONS') return resposta(204, {});
   if (event.httpMethod !== 'GET') return resposta(405, { erro: 'Método não permitido.' });
-  const auth = await exigirUsuarioLogado(event);
+  const auth = await exigirUsuarioAprovado(event);
   if (!auth.ok) return resposta(auth.status, { erro: auth.erro });
   const cnpj = String(event.queryStringParameters?.cnpj || '').replace(/\D/g, '');
   if (cnpj.length !== 14) return resposta(400, { erro: 'Informe um CNPJ válido de 14 dígitos (parâmetro cnpj).' });

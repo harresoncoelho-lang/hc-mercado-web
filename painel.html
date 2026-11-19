@@ -1594,6 +1594,7 @@
   <button data-alvo="boletim" title="Boletim"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-clipboard-text'></use></svg></span><span class="nav-label">Boletim</span></button>
   <button data-alvo="oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg></span><span class="nav-label">Encontrar Licitações</span></button>
   <button data-alvo="diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-chart-bar'></use></svg></span><span class="nav-label">Inteligência de Mercado</span></button>
+  <a href="prospeccao.html" title="Prospecção"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-chart-bar'></use></svg></span><span class="nav-label">Prospecção</span></a>
   <button data-alvo="empresa" title="Analisar concorrente"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-buildings'></use></svg></span><span class="nav-label">Analisar concorrente</span></button>
   <button data-alvo="transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-handshake'></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></button>
   <button data-alvo="precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class='icone-ph'><use href='#ph-coins'></use></svg></span><span class="nav-label">Pesquisa de Preços</span></button>
@@ -9258,7 +9259,7 @@
       b.className = "btn-imprimir";
       b.style.margin = "2px 4px 2px 0";
       b.textContent = e.razao_social || e.cnpj;
-      b.addEventListener("click", () => { document.getElementById("emp-cnpj").value = String(e.cnpj).replace(/D/g, ""); document.getElementById("emp-buscar").click(); });
+      b.addEventListener("click", () => { document.getElementById("emp-cnpj").value = String(e.cnpj).replace(/\D/g, ""); document.getElementById("emp-buscar").click(); });
       caixa.append(b);
     }
   })().catch(() => {});
@@ -9273,7 +9274,7 @@
 
     const termo = document.getElementById("emp-cnpj").value.trim();
     // Nome (não é um CNPJ de 14 dígitos): lista as empresas com resultado no PNCP para escolher.
-    if (cnpj.length !== 14 && termo.replace(/d/g, "").trim().length >= 3 && window.LicitaAnaliseCnpj) {
+    if (cnpj.length !== 14 && termo.replace(/\d/g, "").trim().length >= 3 && window.LicitaAnaliseCnpj) {
       btn.disabled = true;
       alvo.innerHTML = '<div class="carregando">Procurando empresas com esse nome no PNCP...</div>';
       const r = await requisitarAnaliseCnpj({ acao: "buscar", q: termo }).catch((e) => ({ erro: String(e.message || e) }));

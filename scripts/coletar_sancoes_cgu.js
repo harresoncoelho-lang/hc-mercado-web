@@ -10,8 +10,10 @@
 // na leitura e nunca saem da memória do robô. "OBSERVAÇÕES" e "NOME INFORMADO PELO ÓRGÃO" também não são gravados
 // (texto livre, pode citar sócio ou servidor).
 //
-// Histórico: nada é apagado. O que sumiu do arquivo do dia fica com fora_da_lista = true (e a data), e volta a
-// false se reaparecer. Arquivo já carregado (mesma data ou mais antiga) é pulado: rodar duas vezes no dia é seguro.
+// Histórico: o que sumiu do arquivo do dia fica com fora_da_lista = true (e a data), e volta a false se reaparecer.
+// Prazo de guarda (politica-privacidade.html): fora da lista há mais de 5 anos é apagado (RPC sancoes_empresas_expurgar).
+// Arquivo já carregado (mesma data ou mais antiga) é pulado: rodar duas vezes no dia é seguro.
+// Arquivo com linha inválida (layout quebrado) grava o que leu, mas não marca sumiço naquele dia.
 //
 // Variáveis (todas opcionais):
 //   SUPABASE_SERVICE_ROLE_KEY  obrigatória para gravar (scripts/supabase_dados.js)
@@ -20,12 +22,15 @@
 //   PAUSA_TENTATIVA_MS         20000
 //   TAMANHO_LOTE_BANCO         500
 //   FRACAO_MINIMA              0.5 — se o arquivo novo tiver menos que isso das sanções ativas, não marca sumiço
+const zlib = require("node:zlib");
 const AdmZip = require("adm-zip");
 const { restFetch, upsertEmLotes } = require("./supabase_dados");
+const { semCpf } = require("../netlify/functions/_cpf");
 
 const BASE = "https://dadosabertos-download.cgu.gov.br/PortalDaTransparencia/saida";
 const CADASTROS = ["CEIS", "CNEP"];
 const MAX_BYTES_ZIP = 100 * 1024 * 1024;
+const MAX_BYTES_CSV = 4 * MAX_BYTES_ZIP;
 const MAX_FUNDAMENTACAO = 1000;
 const TABELA = "sancoes_empresas";
 
@@ -73,6 +78,8 @@ function valorBr(v) {
   return t && Number.isFinite(Number(t)) ? Number(t) : null;
 }
 const txt = (v, max = 500) => { const t = (v || "").trim(); return t && t !== "Sem Informação" ? t.slice(0, max) : null; };
+// Razão social de MEI traz o CPF do titular ("FULANA DE TAL 97048143215"): o CPF sai, o resto é público.
+const nome = (v) => txt(semCpf(v, " ").replace(/\s+/g, " "), 300);
 
 // Bytes do CSV (Windows-1252) -> { linhas (só PJ, prontas para gravar), descartadasPF, invalidas }.
 function lerSancoes(bytes, cadastroEsperado, dataCarga) {
@@ -104,7 +111,7 @@ function lerSancoes(bytes, cadastroEsperado, dataCarga) {
       cadastro: cadastroEsperado,
       codigo_sancao: codigo,
       cnpj,
-      razao_social: txt(r[c.razao], 300) || txt(r[c.nome], 300),
+      razao_social: nome(r[c.razao]) || nome(r[c.nome]),
       tipo_sancao: txt(r[c.categoria], 300),
       orgao_sancionador: txt(r[c.orgao], 300),
       uf_orgao: /^[A-Z]{2}$/.test((r[c.uf] || "").trim()) ? r[c.uf].trim() : null,
@@ -124,13 +131,47 @@ function lerSancoes(bytes, cadastroEsperado, dataCarga) {
   return { linhas: [...porChave.values()], descartadasPF, invalidas };
 }
 
+// Descompacta com teto no tamanho REAL (o header do ZIP pode mentir: zip-bomb). Exportada para outros robôs.
+function inflarComTeto(entrada, max) {
+  const dados = entrada.getCompressedData();
+  if (entrada.header.method === 0) {
+    if (dados.length > max) throw new Error("CSV grande demais");
+    return dados;
+  }
+  if (entrada.header.method !== 8) throw new Error(`compressão ${entrada.header.method} não suportada`);
+  let saida;
+  try { saida = zlib.inflateRawSync(dados, { maxOutputLength: max }); } catch (e) {
+    if (e.code === "ERR_BUFFER_TOO_LARGE" || e instanceof RangeError) throw new Error("CSV grande demais");
+    throw e;
+  }
+  if (saida.length !== entrada.header.size || zlib.crc32(saida) !== entrada.header.crc >>> 0) throw new Error("CSV corrompido (tamanho/CRC não batem com o ZIP)");
+  return saida;
+}
+
 // ZIP (Buffer) -> bytes do único .csv dentro.
-function csvDoZip(buf) {
+function csvDoZip(buf, max = MAX_BYTES_CSV) {
   if (buf.length < 4 || buf.readUInt32LE(0) !== 0x04034b50) throw new Error("resposta não é ZIP");
   const entradas = new AdmZip(buf).getEntries().filter((e) => !e.isDirectory && /\.csv$/i.test(e.entryName));
   if (entradas.length !== 1) throw new Error(`ZIP com ${entradas.length} CSV (esperado 1)`);
-  if (entradas[0].header.size > 4 * MAX_BYTES_ZIP) throw new Error("CSV grande demais");
-  return entradas[0].getData();
+  if (entradas[0].header.size > max) throw new Error("CSV grande demais");
+  return inflarComTeto(entradas[0], max);
+}
+
+// Corpo da resposta com teto: recusa pelo Content-Length e, se o servidor não mandar ou mentir, para de ler no teto.
+async function corpoComTeto(r, max) {
+  const declarado = Number(r.headers?.get?.("content-length"));
+  if (declarado > max) throw new Error("download grande demais");
+  if (!r.body?.getReader) { const b = Buffer.from(await r.arrayBuffer()); if (b.length > max) throw new Error("download grande demais"); return b; }
+  const leitor = r.body.getReader(), pedacos = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+    total += value.length;
+    if (total > max) { await leitor.cancel().catch(() => {}); throw new Error("download grande demais"); }
+    pedacos.push(value);
+  }
+  return Buffer.concat(pedacos);
 }
 
 // Baixa o ZIP do dia; null se a CGU responde 403/404 (arquivo do dia ainda não saiu ou já saiu do ar).
@@ -141,9 +182,7 @@ async function baixarZip(cadastro, dia, { fetch = globalThis.fetch, tentativas =
       const r = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (compatible; LicitaPlena-robo)" }, signal: globalThis.AbortSignal.timeout(180000) });
       if (r.status === 403 || r.status === 404) return null;
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length > MAX_BYTES_ZIP) throw new Error("ZIP grande demais");
-      return buf;
+      return await corpoComTeto(r, MAX_BYTES_ZIP);
     } catch (e) {
       if (t >= tentativas) throw new Error(`${url}: ${e.message}`);
       console.warn(`${cadastro} ${dia}: tentativa ${t} falhou (${e.message}); de novo em ${pausaMs} ms`);
@@ -173,6 +212,8 @@ async function coletarCadastro(cadastro, dias, deps) {
   const { linhas, descartadasPF, invalidas } = lerSancoes(csvDoZip(zip), cadastro, dataCarga);
   if (!linhas.length) throw new Error(`${cadastro} ${dataCarga}: arquivo sem nenhuma pessoa jurídica; nada gravado`);
   await upsert(TABELA, linhas, "cadastro,codigo_sancao", tamanhoLote);
+  // Linha inválida = arquivo quebrado ou layout mudou: a sanção dela pode estar ali e não ter sido lida.
+  if (invalidas) throw new Error(`${cadastro} ${dataCarga}: ${linhas.length} PJ gravadas, ${invalidas} linha(s) inválida(s); sumiço NÃO marcado (conferir o arquivo)`);
   // Arquivo muito menor que o histórico ativo = provável arquivo truncado: grava, mas não marca sumiço.
   if (antes.ativas && linhas.length < antes.ativas * fracaoMinima) {
     throw new Error(`${cadastro} ${dataCarga}: ${linhas.length} PJ contra ${antes.ativas} ativas; sumiço NÃO marcado (conferir o arquivo)`);
@@ -198,9 +239,12 @@ async function main(env = process.env, deps = {}) {
   for (const cadastro of CADASTROS) {
     try { console.log(await coletarCadastro(cadastro, dias, opcoes)); } catch (e) { erros.push(e.message); console.error(e.message); }
   }
-  if (erros.length) throw new Error(`${erros.length} cadastro(s) com falha`);
+  // Prazo de guarda: fora da lista há mais de 5 anos sai (a função no banco decide o corte).
+  try { console.log(`sanções expurgadas (fora da lista > 5 anos): ${await (await opcoes.rest("rpc/sancoes_empresas_expurgar", { method: "POST", body: "{}" })).json()}`); }
+  catch (e) { erros.push(e.message); console.error(e.message); }
+  if (erros.length) throw new Error(`${erros.length} etapa(s) com falha`);
 }
 
 if (require.main === module) main().catch((e) => { console.error("coletar_sancoes_cgu:", e.message); process.exit(1); });
 
-module.exports = { lerCsv, lerSancoes, csvDoZip, baixarZip, coletarCadastro, diaBrasilia, dataIso, valorBr, main };
+module.exports = { lerCsv, lerSancoes, csvDoZip, inflarComTeto, corpoComTeto, baixarZip, coletarCadastro, diaBrasilia, dataIso, valorBr, main };

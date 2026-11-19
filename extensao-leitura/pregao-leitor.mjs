@@ -14,7 +14,8 @@ export function lerPaginaPregao(entrada) {
     return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
   });
   const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const semCpf = s => s.replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{11}\b/g, '***.***.***-**');
+  // Mesma regra de netlify/functions/_cpf.js: com ou sem pontuação, com espaço ou "/" antes do dígito.
+  const semCpf = s => s.replace(/\b\d{3}[.\s]?\d{3}[.\s]?\d{3}[-\s/]?\d{2}\b/g, '***.***.***-**');
   const curto = (s, n) => { const t = semCpf(String(s ?? '').replace(/\s+/g, ' ').trim()).slice(0, n); return t && t !== '-' ? t : null; };
   const num = s => {
     const m = /-?\d[\d.]*(,\d+)?/.exec(String(s || ''));

@@ -25,6 +25,27 @@ do $$ begin
  if to_regclass('public.historico_participacoes_ni_idx') is null then raise exception 'Índice por CNPJ do fornecedor ausente'; end if;
 end $$;
 
+-- Dado antigo com CPF (gravado antes do CHECK): a limpeza do .sql tira só o CPF e é idempotente.
+alter table public.historico_participacoes drop constraint historico_participacoes_nome_sem_cpf;
+insert into public.historico_participacoes(id_compra,numero_item,fornecedor_chave,fornecedor_ni,fornecedor_nome) values('78882005900332025',108,'12345678000195','12345678000195','FULANA DE TAL 970 481 432 15');
+do $$ declare n int; begin
+ update public.historico_participacoes set fornecedor_nome = nullif(btrim(regexp_replace(regexp_replace(fornecedor_nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '') where fornecedor_nome ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+ get diagnostics n = row_count;
+ if n <> 1 then raise exception 'limpeza de CPF tocou % linhas', n; end if;
+ if (select fornecedor_nome from public.historico_participacoes where numero_item=108 and fornecedor_chave='12345678000195') <> 'FULANA DE TAL' then raise exception 'limpeza de CPF errada'; end if;
+ update public.historico_participacoes set fornecedor_nome = nullif(btrim(regexp_replace(regexp_replace(fornecedor_nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '') where fornecedor_nome ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+ get diagnostics n = row_count;
+ if n <> 0 then raise exception 'limpeza de CPF não é idempotente'; end if;
+end $$;
+alter table public.historico_participacoes add constraint historico_participacoes_nome_sem_cpf check (fornecedor_nome !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
+do $$ declare v text; begin
+ foreach v in array array['FULANA 97048143215','FULANA 970.481.432-15','FULANA 970 481 432 15','FULANA 970.481.432/15'] loop
+  begin update public.historico_participacoes set fornecedor_nome = v where numero_item=108 and fornecedor_chave='12345678000195'; raise exception 'CPF aceito em historico_participacoes.fornecedor_nome: %', v;
+  exception when check_violation then null; end;
+ end loop;
+ update public.historico_participacoes set fornecedor_nome = 'EMPRESA 11.222.333/0001-81 LTDA' where numero_item=108 and fornecedor_chave='12345678000195'; -- CNPJ formatado não é CPF
+end $$;
+delete from public.historico_participacoes where numero_item=108 and fornecedor_chave='12345678000195';
 -- Usuário logado lê; não escreve. Anônimo não lê.
 set local role authenticated;
 do $$ begin
@@ -35,6 +56,9 @@ do $$ begin
  begin update public.historico_participacoes set marca='Outra'; raise exception 'Logado alterou marca';
  exception when insufficient_privilege then null; end;
  begin delete from public.historico_consultas; raise exception 'Logado apagou consulta';
+ exception when insufficient_privilege then null; end;
+ -- Cache de consultas não é lido por tela nenhuma: logado não lê (só a função, com service_role).
+ begin perform 1 from public.historico_consultas; raise exception 'Logado leu historico_consultas';
  exception when insufficient_privilege then null; end;
 end $$;
 reset role;

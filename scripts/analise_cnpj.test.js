@@ -54,3 +54,29 @@ test("robô: prazo da rodada esgotado não lê nada", async () => {
   assert.equal(c.meses, 0);
   assert.equal(c.compras, 0);
 });
+
+test("robô: 3ª falha no mesmo mês marca 'falhou' (não trava a fila); mês novo recomeça a contagem", async () => {
+  const agora = () => Date.UTC(2026, 10, 19);
+  const quebra = async () => { throw new Error("HTTP 503"); };
+  const filas = [{ cnpj: "48885922000150", compras_pendentes: [], meses_pendentes: ["2026/10"], meses_lidos: [], tentativas: 2, mes_falhas: "2026-11" }];
+  const { rest, escritas } = bancoFalso(filas);
+  await completarAnalises({ rest, lerMes: quebra, agora, esperar: async () => {} });
+  const patch = escritas.find((e) => e.metodo === "PATCH");
+  assert.equal(patch.corpo.situacao, "falhou");
+  assert.equal(patch.corpo.tentativas, 3);
+  assert.match(patch.corpo.erro, /falhou 3 vezes/);
+
+  const velhas = [{ cnpj: "48885922000150", compras_pendentes: [], meses_pendentes: ["2026/10"], meses_lidos: [], tentativas: 2, mes_falhas: "2026-10" }];
+  const b2 = bancoFalso(velhas);
+  await completarAnalises({ rest: b2.rest, lerMes: quebra, agora, esperar: async () => {} });
+  const p2 = b2.escritas.find((e) => e.metodo === "PATCH");
+  assert.deepEqual([p2.corpo.tentativas, p2.corpo.mes_falhas, p2.corpo.situacao], [1, "2026-11", undefined]);
+});
+
+test("robô: poda historico_participacoes dos CNPJs da rodada (teto de linhas e meses)", async () => {
+  const filas = [{ cnpj: "48885922000150", compras_pendentes: [], meses_pendentes: [], meses_lidos: [] }];
+  const { rest, escritas } = bancoFalso(filas);
+  await completarAnalises({ rest, lerMes: async () => ({}), esperar: async () => {} });
+  const poda = escritas.find((e) => e.caminho === "rpc/historico_participacoes_podar");
+  assert.deepEqual(poda.corpo, { p_cnpjs: ["48885922000150"], p_max_linhas: 5000, p_meses: 37 });
+});

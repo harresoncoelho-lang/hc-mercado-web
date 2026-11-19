@@ -99,8 +99,16 @@ create table if not exists public.historico_consultas (
 );
 create index if not exists historico_consultas_fila_idx on public.historico_consultas (gerado_em) where situacao = 'parcial';
 
+-- LGPD: razão social de MEI vem com o CPF do titular ("FULANA DE TAL 97048143215"). Limpeza única e idempotente
+-- do que já foi gravado (só toca linha que ainda tem CPF), depois o CHECK recusa CPF daqui para frente. Mesma forma
+-- da regex de netlify/functions/_cpf.js (lá \s cobre mais: o robô sempre limpa antes do CHECK).
+update public.historico_participacoes set fornecedor_nome = nullif(btrim(regexp_replace(regexp_replace(fornecedor_nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '')
+ where fornecedor_nome ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+alter table public.historico_participacoes drop constraint if exists historico_participacoes_nome_sem_cpf;
+alter table public.historico_participacoes add constraint historico_participacoes_nome_sem_cpf check (fornecedor_nome !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
+
 do $$ declare t text; begin
- foreach t in array array['historico_compras', 'historico_itens', 'historico_participacoes', 'historico_consultas'] loop
+ foreach t in array array['historico_compras', 'historico_itens', 'historico_participacoes'] loop
   execute format('alter table public.%I enable row level security', t);
   execute format('revoke all on public.%I from public, anon, authenticated', t);
   execute format('grant select on public.%I to authenticated', t);
@@ -110,6 +118,13 @@ do $$ declare t text; begin
   execute format('create policy %I on public.%I for select to authenticated using (true)', t || '_leitura', t);
  end loop;
 end $$;
+
+-- Cache das consultas avulsas: só a função (service_role) e o robô leem. Nenhuma tela lê direto (guarda quem
+-- perguntou o quê e casamentos internos); o resultado chega pela função /api/licitacao-anterior.
+alter table public.historico_consultas enable row level security;
+revoke all on public.historico_consultas from public, anon, authenticated;
+grant all on public.historico_consultas to service_role;
+drop policy if exists historico_consultas_leitura on public.historico_consultas;
 
 -- Processos que já estavam na esteira antes desta etapa existir ganham a tarefa 'historico' (uma vez).
 insert into public.operacao_esteira_tarefas (organizacao_id, empresa_id, processo_id, etapa, criado_por)

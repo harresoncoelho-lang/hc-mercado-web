@@ -7,7 +7,9 @@
 //                       a função no Cloudflare não baixa o arquivo de propostas (90 MB por mês).
 // Env opcionais: ANOS_HISTORICO (3), PAUSA_MS_HISTORICO (400 entre chamadas às fontes),
 // MAX_COMPRAS_HISTORICO (12), MAX_CATMATS_HISTORICO (80), MESES_PROPOSTAS_HISTORICO (4 arquivos por tarefa),
-// PROPOSTAS_HISTORICO ("0" desliga o arquivo de propostas).
+// PROPOSTAS_HISTORICO ("0" desliga o arquivo de propostas), MAX_MB_ZIP_PROPOSTAS (500), MAX_MB_CSV_PROPOSTAS (5000:
+// teto do CSV descompactado, contado no fluxo real, não no header do ZIP), TIMEOUT_MS_PROPOSTAS (600000 = 10 min),
+// DIAS_CACHE_CONSULTAS (30: consulta avulsa guardada há mais que isso é apagada, prazo da política de privacidade).
 // Recorte do arquivo de propostas: só as linhas das compras/itens casados (no teste real, 1 compra de
 // 233 itens tinha 3.041 propostas no mês; os 2 itens de café, 14). Nada do resto do arquivo é gravado.
 const L = require("../netlify/functions/_licitacao_anterior");
@@ -19,9 +21,14 @@ const MAX_COMPRAS = Math.max(1, Number(process.env.MAX_COMPRAS_HISTORICO || 12))
 const MAX_CATMATS = Math.max(1, Number(process.env.MAX_CATMATS_HISTORICO || 80));
 const MESES_PROPOSTAS = Math.max(0, Number(process.env.MESES_PROPOSTAS_HISTORICO ?? 4));
 const PROPOSTAS_LIGADO = process.env.PROPOSTAS_HISTORICO !== "0";
+const MAX_ZIP = Math.max(1, Number(process.env.MAX_MB_ZIP_PROPOSTAS || 500)) * 1024 * 1024;
+const MAX_CSV = Math.max(1, Number(process.env.MAX_MB_CSV_PROPOSTAS || 5000)) * 1024 * 1024;
+const TIMEOUT_MS = Math.max(1000, Number(process.env.TIMEOUT_MS_PROPOSTAS || 600000));
+const DIAS_CACHE = Math.max(1, Number(process.env.DIAS_CACHE_CONSULTAS || 30));
 const PROPOSTAS = "https://repositorio.dados.gov.br/seges/comprasgov/propostas";
 const MAX_CASAMENTOS_DETALHE = 1500;
 const q = encodeURIComponent;
+const { corpoComTeto } = require("./coletar_sancoes_cgu");
 
 class ErroHistorico extends Error {}
 
@@ -38,18 +45,20 @@ async function pncpJson(fetchPncp, url) {
 
 // Baixa um mês do arquivo de propostas e passa as linhas ao filtro sem descompactar o CSV inteiro (1,2 GB).
 // shortcut: o zip (~90 MB) fica inteiro na memória para achar a entrada; serve no GitHub Actions (7 GB).
-async function lerMesPropostas(mes, filtro, { fetchImpl = (...a) => fetch(...a) } = {}) {
+async function lerMesPropostas(mes, filtro, { fetchImpl = (...a) => fetch(...a), maxZip = MAX_ZIP, maxCsv = MAX_CSV } = {}) {
   const AdmZip = require("adm-zip");
   const zlib = require("node:zlib");
   const [ano, mm] = mes.split("/");
-  const r = await fetchImpl(`${PROPOSTAS}/${ano}/${mm}/propostas-${ano}-${mm}.csv.zip`, { headers: { "User-Agent": L.UA } });
+  const r = await fetchImpl(`${PROPOSTAS}/${ano}/${mm}/propostas-${ano}-${mm}.csv.zip`, { headers: { "User-Agent": L.UA }, signal: globalThis.AbortSignal.timeout(TIMEOUT_MS) });
   if (r.status === 404) return { mes, linhas: 0, bytes: 0 };
   if (!r.ok) throw new Error(`Arquivo de propostas ${mes}: HTTP ${r.status}`);
-  const zip = Buffer.from(await r.arrayBuffer());
+  const zip = await corpoComTeto(r, maxZip);
   const entrada = new AdmZip(zip).getEntries().find((e) => e.entryName.endsWith(".csv"));
   if (!entrada) throw new Error(`Arquivo de propostas ${mes} sem CSV`);
-  let resto = "", linhas = 0;
+  let resto = "", linhas = 0, bytesCsv = 0;
   const consumir = (pedaco) => {
+    bytesCsv += pedaco.length;
+    if (bytesCsv > maxCsv) throw new Error(`Arquivo de propostas ${mes}: CSV passou de ${Math.round(maxCsv / 1048576)} MB descompactado`);
     resto += pedaco.toString("utf8");
     let i;
     while ((i = resto.indexOf("\n")) >= 0) { filtro.linha(resto.slice(0, i)); resto = resto.slice(i + 1); linhas++; }
@@ -58,7 +67,7 @@ async function lerMesPropostas(mes, filtro, { fetchImpl = (...a) => fetch(...a) 
   else {
     await new Promise((ok, falha) => {
       const s = zlib.createInflateRaw();
-      s.on("data", consumir).on("end", ok).on("error", falha);
+      s.on("data", (p) => { try { consumir(p); } catch (e) { s.destroy(e); } }).on("end", ok).on("error", falha);
       s.end(entrada.getCompressedData());
     });
   }
@@ -128,6 +137,9 @@ async function etapaHistorico(tarefa, { rest, fetchPncp = (...a) => fetch(...a),
 
 // Consultas avulsas pendentes: completa participantes pelo arquivo de propostas e marca 'completo'.
 async function completarConsultas({ rest, fetchPncp = (...a) => fetch(...a), lerMes, limite = 3 }) {
+  // A esteira chama isto a cada rodada: o prazo de guarda do cache vai junto (falha só avisa, não trava a fila).
+  try { console.log(`[historico] cache de consultas: ${JSON.stringify(await limparCacheConsultas(rest))} apagadas (> ${DIAS_CACHE} dias)`); }
+  catch (e) { console.warn(`[historico] limpeza do cache: ${String(e.message || e).slice(0, 200)}`); }
   const pendentes = await (await rest(`historico_consultas?situacao=eq.parcial&select=chave,compras,casamentos&order=gerado_em.asc&limit=${limite}`)).json();
   let feitas = 0;
   for (const c of pendentes) {
@@ -145,4 +157,10 @@ async function completarConsultas({ rest, fetchPncp = (...a) => fetch(...a), ler
   return feitas;
 }
 
-module.exports = { etapaHistorico, completarConsultas, propostasDosCasados, lerMesPropostas, ErroHistorico };
+// Prazo de guarda do cache de consultas (historico_consultas e historico_cnpj_consultas): RPC só do service_role.
+async function limparCacheConsultas(rest, dias = DIAS_CACHE) {
+  const r = await rest("rpc/historico_limpar_cache", { method: "POST", body: JSON.stringify({ p_dias: dias }) });
+  return r.json();
+}
+
+module.exports = { etapaHistorico, completarConsultas, limparCacheConsultas, propostasDosCasados, lerMesPropostas, ErroHistorico };

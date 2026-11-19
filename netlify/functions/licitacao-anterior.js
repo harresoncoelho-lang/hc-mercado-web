@@ -3,15 +3,17 @@
 // item, marca e participantes. Mesmo núcleo do robô da esteira (_licitacao_anterior.js).
 //   POST {acao:"orgaos", q}                                  -> unidades compradoras (código ou nome; CNPJ do órgão)
 //   POST {acao:"consultar", uasg, catmat?, palavras?, anos}  -> resultado
-// Login obrigatório e cota diária (são até 40 chamadas a fontes públicas por consulta). Resultado guardado
+// Login com cadastro aprovado e cota diária (são até 40 chamadas a fontes públicas por consulta). Resultado guardado
 // em historico_consultas por 7 dias (dado público, compartilhado): a segunda pessoa que pergunta o mesmo
 // não gasta fonte nem cota. Os participantes de quem perdeu vêm do arquivo semanal de propostas, que só o
 // robô baixa: a consulta nova fica 'parcial' e o robô da esteira completa na rodada seguinte.
-const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado, verificarLimiteDiario } = require("./_auth");
 const L = require("./_licitacao_anterior");
 
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const LIMITE_DIARIO = 30;
+// Busca de órgão é autocompletar (1 chamada ao PNCP por tecla parada): cota própria, folgada.
+const LIMITE_DIARIO_ORGAOS = 300;
 const VALIDADE_MS = 7 * 24 * 3600 * 1000;
 const PNCP = "https://pncp.gov.br";
 
@@ -89,10 +91,14 @@ exports.handler = async (event) => {
   if (String(event.body || "").length > 2000) return responder(413, { erro: "Pedido muito grande." });
   let dados;
   try { dados = JSON.parse(event.body || "{}"); } catch { return responder(400, { erro: "Pedido inválido." }); }
-  const usuario = await exigirUsuarioLogado(event);
+  const usuario = await exigirUsuarioAprovado(event);
   if (!usuario.ok) return responder(usuario.status, { erro: usuario.erro });
   try {
-    if (dados?.acao === "orgaos") return responder(200, { orgaos: await buscarOrgaos(dados.q) });
+    if (dados?.acao === "orgaos") {
+      const cotaOrgaos = await verificarLimiteDiario(usuario.userId, "licitacao-anterior-orgaos", LIMITE_DIARIO_ORGAOS);
+      if (!cotaOrgaos.ok) return responder(429, { erro: cotaOrgaos.erro || "Limite diário de buscas de órgão atingido. Tente amanhã." });
+      return responder(200, { orgaos: await buscarOrgaos(dados.q) });
+    }
     if (dados?.acao !== "consultar") return responder(400, { erro: "Ação inválida." });
     const c = validarConsulta(dados);
     if (c.erro) return responder(400, { erro: c.erro });

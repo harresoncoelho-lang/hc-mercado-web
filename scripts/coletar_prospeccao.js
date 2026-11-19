@@ -30,6 +30,7 @@
 //   LIMITE_MINUTOS             50 — passou disso, o PCA para e não limpa (fica o da véspera)
 //   TAMANHO_LOTE_BANCO         500
 const { restFetch, upsertEmLotes } = require("./supabase_dados");
+const { semCpf } = require("../netlify/functions/_cpf");
 
 const PNCP = "https://pncp.gov.br";
 const CG = "https://dadosabertos.compras.gov.br";
@@ -51,6 +52,8 @@ const catmat = (v) => (/^\d{1,12}$/.test(String(v ?? "").trim()) ? String(v).tri
 // fica fora: "papel" casava "X PAPELARIA LTDA" em ata de cadeira (visto no E2E de 19/11/2026).
 const normalizar = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 const busca = (...partes) => normalizar(partes.filter(Boolean).join(" ")).slice(0, 2000);
+// Razão social de MEI traz o CPF do titular ("FULANA DE TAL 97048143215"): o CPF sai, o resto é público.
+const nomeFornecedor = (v) => txt(semCpf(v, " "), 300);
 
 // AAAA-MM-DD de Brasília (UTC-3 fixo), deslocado em dias.
 function hojeBrasilia(agora = Date.now(), deslocamento = 0) {
@@ -69,7 +72,7 @@ function linhaContrato(doc, coletadoEm) {
     quantidade: null, valor_unitario: null, valor_total: numero(doc.valor_global),
     data_inicio: dia(doc.data_inicio_vigencia), data_ref: dia(doc.data_fim_vigencia),
     // LGPD: fornecedor pessoa física (CPF) não é gravado.
-    fornecedor_cnpj: cnpjOuNulo(doc.fornecedor_ni), fornecedor_nome: cnpjOuNulo(doc.fornecedor_ni) ? txt(doc.fornecedor_nome, 300) : null,
+    fornecedor_cnpj: cnpjOuNulo(doc.fornecedor_ni), fornecedor_nome: cnpjOuNulo(doc.fornecedor_ni) ? nomeFornecedor(doc.fornecedor_nome) : null,
     saldo: null, maximo_adesao: null, permite_adesao: null,
     link: `${PNCP}/app${doc.item_url}`, busca: busca(doc.description, doc.orgao_nome), coletado_em: coletadoEm,
   };
@@ -104,7 +107,7 @@ function linhaItemAta(item, ata, coletadoEm) {
     descricao: txt(item.descricaoItem, 600), catmat: catmat(item.codigoItem),
     quantidade: qtd, valor_unitario: numero(item.valorUnitario), valor_total: numero(item.valorTotal),
     data_inicio: dia(item.dataVigenciaInicial) || ata.data_inicio, data_ref: dia(item.dataVigenciaFinal) || ata.data_ref,
-    fornecedor_cnpj: forn, fornecedor_nome: forn ? txt(item.nomeRazaoSocialFornecedor, 300) : null,
+    fornecedor_cnpj: forn, fornecedor_nome: forn ? nomeFornecedor(item.nomeRazaoSocialFornecedor) : null,
     saldo: qtd === null ? null : Math.max(0, qtd - empenhada), maximo_adesao: numero(item.maximoAdesao),
     busca: busca(ata.objeto, item.descricaoItem, ata.orgao_nome), coletado_em: coletadoEm,
   };

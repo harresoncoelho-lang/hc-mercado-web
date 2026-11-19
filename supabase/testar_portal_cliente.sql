@@ -60,10 +60,13 @@ begin
  if lido->'empresa'->>'razao_social'<>'QA portal empresa A' or lido->'processo'->>'numero'<>'QA-1' or (lido->>'total_itens')::int<>2
     or jsonb_array_length(lido->'itens')<>2 then raise exception 'Leitura incompleta: %',lido;end if;
  if lido->'itens'->0->>'valor_unitario_minimo'<>'11.00' or lido->'itens'->0->>'id'<>i1::text then raise exception 'Mínimo ausente com mostrar_minimo=true';end if;
- if lido::text ~* '(cnpj|11222333000181|organizacao_id|custo|margem|777\.77|8\.88|token|ip_hash|QA outro processo|Item de outr)' then raise exception 'Leitura vazou dado: %',lido;end if;
+ -- expira_em sai da varredura e os valores ficam entre \y: o timestamp com microssegundos (ex. ...:08.881234) casava
+ -- com 8\.88 e falhava ~0,4% das rodadas (B9, revisão 19/11). Não era vazamento: era o relógio.
+ if (lido->>'expira_em')::timestamptz not between now() + interval '29 days' and now() + interval '31 days' then raise exception 'expira_em fora de 30 dias: %',lido->>'expira_em';end if;
+ if (lido - 'expira_em')::text ~* '(cnpj|11222333000181|organizacao_id|custo|margem|\y777\.77\y|\y8\.88\y|token|ip_hash|QA outro processo|Item de outr)' then raise exception 'Leitura vazou dado: %',lido;end if;
  if (select ultimo_acesso_em from public.operacao_links_cliente where token_hash=h1) is null then raise exception 'ultimo_acesso_em não atualizado';end if;
  res:=public.portal_ler(h2,ip,1);
- if res::text like '%valor_unitario_minimo%' or res::text like '%11.00%' then raise exception 'mostrar_minimo=false devolveu o mínimo';end if;
+ if (res - 'expira_em')::text like '%valor_unitario_minimo%' or (res - 'expira_em')::text ~ '\y11\.00\y' then raise exception 'mostrar_minimo=false devolveu o mínimo';end if;
  if res::text ~* 'cnpj' then raise exception 'Resposta contém cnpj';end if;
  if jsonb_array_length(public.portal_ler(h1,ip,2)->'itens')<>0 then raise exception 'Página 2 deveria vir vazia';end if;
  v1:=lido->'itens'->0->>'versao'; v2:=lido->'itens'->1->>'versao';

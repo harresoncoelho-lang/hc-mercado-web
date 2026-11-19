@@ -3,14 +3,21 @@
 // e guarda na base compartilhada pregoes_gravados* (supabase/pregoes_gravados.sql). Dado público e caro de obter
 // (captcha a cada abertura): uma vez gravado, qualquer cliente logado lê sem abrir o portal de novo.
 //   POST {versao:1, fonte, compra, url, cabecalho, itens[], mensagens[]} -> {ok, compra, propostas, mensagens_novas}
-//   GET  ?compra=<17 dígitos>                                            -> {ok, pregao: {...} | null}
-// Contrato completo: docs/pregao-gravado.md. Login obrigatório; cota diária só na gravação.
+//   GET  ?compra=<17 dígitos>[&item=<n>]                                 -> {ok, pregao: {...} | null}
+// Contrato completo: docs/pregao-gravado.md. Login e cadastro aprovado obrigatórios (conta pendente/suspensa
+// não grava nem lê); cota diária separada para gravação e leitura.
+// Revisão de segurança 19/11 (A1): cada usuário grava a SUA leitura (pregoes_gravados_leituras); o valor mostrado
+// é consolidado no banco e só troca um valor já gravado quando 2+ organizações concordam. Tudo sai marcado
+// origem "usuario" e verificado=false até haver 2 leituras concordantes.
 // CPF nunca é aceito: participante sem CNPJ chega como "pf:<n>" com nome "Pessoa física"; CPF em texto é
 // mascarado de novo aqui (a extensão já mascara, mas o servidor não confia nela).
-const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado, verificarLimiteDiario } = require("./_auth");
+const { semCpf } = require("./_cpf");
 
 const SUPABASE_URL = "https://lsqjamqvmrcyrvowndiu.supabase.co";
 const LIMITE_DIARIO = 400; // ~1 gravação por item aberto; um pregão grande tem dezenas de itens
+const LIMITE_DIARIO_LEITURA = 2000; // leitura é barata, mas sem teto vira raspagem da base inteira
+const MAX_LINHAS_GET = 2000; // por tabela; pregão maior que isso é lido item a item (?item=N)
 const MAX_CORPO = 2_000_000;
 const MAX_ITENS = 300;
 const MAX_PROPOSTAS = 1000;
@@ -28,8 +35,6 @@ function cnpjValido(c) {
   };
   return dv(12) === Number(c[12]) && dv(13) === Number(c[13]);
 }
-
-const semCpf = (s) => s.replace(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{11}\b/g, "***.***.***-**");
 
 // Validação na fronteira: tipo, tamanho e formato de cada campo. Devolve {erro} ou {dados} já normalizado.
 function validarPregao(d) {
@@ -76,10 +81,14 @@ function validarPregao(d) {
   if (!["comprasgov", "comprasnet"].includes(d.fonte)) falha("fonte", "deve ser comprasgov ou comprasnet");
   const compra = typeof d.compra === "string" && /^\d{17}$/.test(d.compra) && Number(d.compra.slice(13)) >= 1990 && Number(d.compra.slice(13)) <= 2100 ? d.compra : falha("compra", "identificador de 17 dígitos (UASG+modalidade+número+ano) inválido");
   let url = null;
+  let semHttps = false;
   if (d.url !== undefined && d.url !== null) {
     try {
       const u = new URL(d.url);
       if (!ORIGENS_URL.has(u.hostname) || u.username || u.password) throw new Error();
+      // B6: só a ata do ComprasNet antigo é aceita em http (o próprio site não tem https); a leitura fica marcada.
+      if (u.protocol !== "https:" && !(u.protocol === "http:" && u.hostname.endsWith("comprasnet.gov.br"))) throw new Error();
+      semHttps = u.protocol === "http:";
       // Só o identificador da compra fica; nada de token de captcha ou outro parâmetro.
       url = `${u.origin}${u.pathname}${compra && u.searchParams.get("compra") === compra ? `?compra=${compra}` : ""}`.slice(0, 500);
     } catch { falha("url", "deve ser página do Compras.gov ou do ComprasNet"); }
@@ -127,7 +136,7 @@ function validarPregao(d) {
   const mensagens = lista(d.mensagens, "mensagens", MAX_MENSAGENS).map((m, j) => mensagem(m, `mensagens[${j}]`));
   if (!itens.length && !mensagens.length) falha("itens", "nada para gravar");
   if (erros.length) return { erro: `Pedido inválido: ${erros.slice(0, 5).join("; ")}` };
-  return { dados: { versao: 1, fonte: d.fonte, compra, url, cabecalho, itens, mensagens } };
+  return { dados: { versao: 1, fonte: d.fonte, compra, url, semHttps, cabecalho, itens, mensagens } };
 }
 
 async function rest(caminho, opcoes = {}) {
@@ -138,15 +147,20 @@ async function rest(caminho, opcoes = {}) {
   return r.json();
 }
 
-// Leitura para o cartão "Licitação anterior": sem id de usuário (quem gravou fica só no banco).
-async function lerPregao(compra) {
+// Leitura para o cartão "Licitação anterior": sem id de usuário (quem gravou fica só no banco). Teto por tabela;
+// truncado=true avisa que faltou linha e o cliente pede item a item (?item=N).
+const comSelo = (x) => ({ ...x, verificado: (x.leituras_concordantes || 0) >= 2 });
+async function lerPregao(compra, item = null) {
+  const filtroItem = item === null ? "" : `&numero_item=eq.${item}`;
   const [pregoes, propostas, mensagens] = await Promise.all([
-    rest(`pregoes_gravados?id_compra=eq.${compra}&select=id_compra,fonte,url,uasg,orgao,numero,ano,modalidade,itens,gravado_em,atualizado_em`),
-    rest(`pregoes_gravados_propostas?id_compra=eq.${compra}&select=numero_item,fornecedor_chave,cnpj,nome,uf,me_epp,situacao,valor_ofertado,valor_negociado,valor_proposta,valor_total,quantidade,marca,fabricante,modelo,lances,chat_lido,proposta_lida,atualizado_em&order=numero_item,valor_ofertado.nullslast&limit=20000`),
-    rest(`pregoes_gravados_mensagens?id_compra=eq.${compra}&select=numero_item,fornecedor_chave,data_hora,autor,texto,tipo,motivo&order=numero_item,data_hora&limit=20000`),
+    rest(`pregoes_gravados?id_compra=eq.${compra}&select=id_compra,fonte,url,uasg,orgao,numero,ano,modalidade,itens,origem,fonte_sem_https,leituras_concordantes,gravado_em,atualizado_em`),
+    rest(`pregoes_gravados_propostas?id_compra=eq.${compra}${filtroItem}&select=numero_item,fornecedor_chave,cnpj,nome,uf,me_epp,situacao,valor_ofertado,valor_negociado,valor_proposta,valor_total,quantidade,marca,fabricante,modelo,lances,chat_lido,proposta_lida,origem,leituras_concordantes,atualizado_em&order=numero_item,valor_ofertado.nullslast&limit=${MAX_LINHAS_GET}`),
+    rest(`pregoes_gravados_mensagens?id_compra=eq.${compra}${filtroItem}&select=numero_item,fornecedor_chave,data_hora,autor,texto,tipo,motivo,origem,leituras_concordantes&order=numero_item,data_hora&limit=${MAX_LINHAS_GET}`),
   ]);
   if (!pregoes.length) return null;
-  return { ...pregoes[0], propostas, mensagens };
+  const itens = Object.fromEntries(Object.entries(pregoes[0].itens || {}).map(([n, i]) => [n, comSelo(i)]));
+  return { ...comSelo(pregoes[0]), itens, propostas: propostas.map(comSelo), mensagens: mensagens.map(comSelo),
+    truncado: propostas.length >= MAX_LINHAS_GET || mensagens.length >= MAX_LINHAS_GET };
 }
 
 exports.handler = async (event) => {
@@ -154,7 +168,7 @@ exports.handler = async (event) => {
   const responder = (statusCode, body) => ({ statusCode, headers, body: JSON.stringify(body) });
   if (event.httpMethod === "OPTIONS") return responder(204, {});
   if (!["GET", "POST"].includes(event.httpMethod)) return responder(405, { erro: "Método não permitido." });
-  const auth = await exigirUsuarioLogado(event);
+  const auth = await exigirUsuarioAprovado(event);
   if (!auth.ok) return responder(auth.status, { erro: auth.erro });
   // Sem chave de serviço não há onde gravar nem de onde ler: não há "modo sem banco" útil aqui.
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return responder(503, { erro: "Gravação de pregões indisponível neste ambiente." });
@@ -163,7 +177,11 @@ exports.handler = async (event) => {
     if (event.httpMethod === "GET") {
       const compra = String(event.queryStringParameters?.compra || "");
       if (!/^\d{17}$/.test(compra)) return responder(400, { erro: "Informe compra com 17 dígitos." });
-      return responder(200, { ok: true, pregao: await lerPregao(compra) });
+      const item = event.queryStringParameters?.item;
+      if (item !== undefined && !/^\d{1,5}$/.test(String(item))) return responder(400, { erro: "Item inválido." });
+      const cota = await verificarLimiteDiario(auth.userId, "pregao-gravado-leitura", LIMITE_DIARIO_LEITURA);
+      if (!cota.ok) return responder(cota.status, { erro: cota.erro });
+      return responder(200, { ok: true, pregao: await lerPregao(compra, item === undefined ? null : Number(item)) });
     }
     if (String(event.body || "").length > MAX_CORPO) return responder(413, { erro: "Página grande demais para uma gravação; grave item por item." });
     let corpo;

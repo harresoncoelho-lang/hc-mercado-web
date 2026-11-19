@@ -108,4 +108,30 @@ async function verificarLimiteDiario(userId, nomeFuncao, limite) {
   }
 }
 
-module.exports = { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario, origemPermitida };
+// Cadastro aprovado (clientes.status), como login.html e criar-processo.js: conta suspensa ou pendente com JWT
+// ainda válido não usa ferramenta nem grava na base compartilhada. Lê com o token do próprio usuário (a RLS de
+// clientes só mostra a própria linha), então não depende da chave de serviço e falha fechado.
+async function exigirClienteAprovado(event, userId) {
+  const auth = event.headers?.authorization || event.headers?.Authorization || "";
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${encodeURIComponent(userId)}&select=status`, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: auth }, signal: globalThis.AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) return { ok: false, status: 503, erro: "Não foi possível conferir seu cadastro agora. Tente novamente em instantes." };
+    const linhas = await resp.json();
+    if (!Array.isArray(linhas) || linhas[0]?.status !== "aprovado") return { ok: false, status: 403, erro: "Acesso não autorizado." };
+    return { ok: true };
+  } catch {
+    return { ok: false, status: 503, erro: "Não foi possível conferir seu cadastro agora. Tente novamente em instantes." };
+  }
+}
+
+// Login + cadastro aprovado numa chamada só (o que todo endpoint de ferramenta precisa).
+async function exigirUsuarioAprovado(event) {
+  const usuario = await exigirUsuarioLogado(event);
+  if (!usuario.ok) return usuario;
+  const cadastro = await exigirClienteAprovado(event, usuario.userId);
+  return cadastro.ok ? usuario : cadastro;
+}
+
+module.exports = { cabecalhosPadrao, exigirUsuarioLogado, exigirClienteAprovado, exigirUsuarioAprovado, verificarLimiteDiario, origemPermitida };

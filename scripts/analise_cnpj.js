@@ -8,7 +8,9 @@
 //   3) compra que veio só do arquivo ganha órgão, UF e data pelos dados abertos (1 chamada por compra).
 // Env opcionais: LOTE_ANALISE_CNPJ (5 CNPJs por rodada), MAX_COMPRAS_ANALISE_CNPJ (40 compras por CNPJ e rodada),
 // MAX_ITENS_PNCP_ANALISE_CNPJ (60 itens por compra fora do Compras.gov), MAX_CABECALHOS_ANALISE_CNPJ (80 por mês),
-// PAUSA_MS_ANALISE_CNPJ (400 entre chamadas às fontes).
+// PAUSA_MS_ANALISE_CNPJ (400 entre chamadas às fontes), MAX_FALHAS_ANALISE_CNPJ (3 falhas no mesmo mês -> 'falhou',
+// para um arquivo quebrado não travar a fila), MAX_LINHAS_ANALISE_CNPJ (5000 participações por CNPJ) e
+// MESES_GUARDA_ANALISE_CNPJ (37: cobre os 3 anos da "Licitação anterior", que lê as mesmas linhas).
 const L = require("../netlify/functions/_licitacao_anterior");
 const A = require("../netlify/functions/_analise_cnpj");
 const { lerMesPropostas } = require("./historico_licitacoes");
@@ -18,12 +20,26 @@ const MAX_COMPRAS = Math.max(1, Number(process.env.MAX_COMPRAS_ANALISE_CNPJ || 4
 const MAX_ITENS_PNCP = Math.max(1, Number(process.env.MAX_ITENS_PNCP_ANALISE_CNPJ || 60));
 const MAX_CABECALHOS = Math.max(0, Number(process.env.MAX_CABECALHOS_ANALISE_CNPJ ?? 80));
 const PAUSA_MS = Math.max(0, Number(process.env.PAUSA_MS_ANALISE_CNPJ ?? 400));
+const MAX_FALHAS = Math.max(1, Number(process.env.MAX_FALHAS_ANALISE_CNPJ || 3));
+const MAX_LINHAS = Math.max(100, Number(process.env.MAX_LINHAS_ANALISE_CNPJ || 5000));
+const MESES_GUARDA = Math.max(37, Number(process.env.MESES_GUARDA_ANALISE_CNPJ || 37));
 const DADOS_ABERTOS = "https://dadosabertos.compras.gov.br/modulo-contratacoes";
 const listaIn = (ids) => ids.map((x) => `"${String(x).replace(/[^0-9A-Za-z/-]/g, "")}"`).join(",");
 
 async function patchFila(rest, cnpj, campos) {
   await rest(`historico_cnpj_consultas?cnpj=eq.${cnpj}`, { method: "PATCH", headers: { Prefer: "return=minimal" },
     body: JSON.stringify({ ...campos, atualizado_em: new Date().toISOString() }) });
+}
+
+// Falha de leitura de um mês: conta por mês corrente; na MAX_FALHAS-ésima a análise sai da fila como 'falhou'
+// (a tela oferece refazer; a função aceita 'falhou' como cache vencido).
+async function registrarFalha(rest, f, erro, agora) {
+  const mes = new Date(agora()).toISOString().slice(0, 7);
+  f.tentativas = f.mes_falhas === mes ? (f.tentativas || 0) + 1 : 1;
+  f.mes_falhas = mes;
+  const campos = { tentativas: f.tentativas, mes_falhas: mes };
+  if (f.tentativas >= MAX_FALHAS) Object.assign(f, campos, { situacao: "falhou" });
+  await patchFila(rest, f.cnpj, f.situacao === "falhou" ? { ...campos, situacao: "falhou", erro: `Arquivo de propostas falhou ${f.tentativas} vezes: ${erro}`.slice(0, 300) } : campos);
 }
 
 async function comprasPendentes(rest, b, fila, { agora, prazoFinal }) {
@@ -78,13 +94,16 @@ async function completarAnalises({ rest, fetchPncp = (...a) => fetch(...a), lerM
   const meses = [...new Set(filas.flatMap((f) => f.meses_pendentes))].sort().reverse();
   for (const mes of meses) {
     if (agora() >= prazoFinal) break;
-    const daqui = filas.filter((f) => f.meses_pendentes.includes(mes));
+    const daqui = filas.filter((f) => f.situacao !== "falhou" && f.meses_pendentes.includes(mes));
+    if (!daqui.length) continue;
     const filtro = A.criarFiltroCnpjs(new Set(daqui.map((f) => f.cnpj)));
     try {
       await lerMes(mes, filtro, { fetchImpl: fetchPncp });
     } catch (e) {
-      console.warn(`[analise-cnpj] propostas ${mes}: ${String(e.message || e).slice(0, 200)}`);
-      continue; // fica pendente para a próxima rodada
+      const msg = String(e.message || e).slice(0, 200);
+      console.warn(`[analise-cnpj] propostas ${mes}: ${msg}`);
+      for (const f of daqui) await registrarFalha(rest, f, msg, agora);
+      continue; // fica pendente para a próxima rodada (até MAX_FALHAS no mês)
     }
     const res = filtro.resultado();
     await A.gravarDoArquivo(rest, res);
@@ -97,12 +116,19 @@ async function completarAnalises({ rest, fetchPncp = (...a) => fetch(...a), lerM
       await patchFila(rest, f.cnpj, { meses_pendentes: f.meses_pendentes, meses_lidos: f.meses_lidos });
     }
   }
+  // Teto de linhas por CNPJ e prazo de guarda em historico_participacoes; o tamanho vai para o log.
+  try {
+    const poda = await (await rest("rpc/historico_participacoes_podar", { method: "POST",
+      body: JSON.stringify({ p_cnpjs: filas.map((f) => f.cnpj), p_max_linhas: MAX_LINHAS, p_meses: MESES_GUARDA }) })).json();
+    for (const p of poda || []) console.log(`[analise-cnpj] ${p.cnpj}: ${p.linhas} participações guardadas, ${p.apagadas} apagadas (teto ${MAX_LINHAS}, ${MESES_GUARDA} meses)`);
+    contagem.podadas = (poda || []).reduce((s, p) => s + Number(p.apagadas || 0), 0);
+  } catch (e) { console.warn(`[analise-cnpj] poda: ${String(e.message || e).slice(0, 200)}`); }
   for (const f of filas) {
-    if (f.compras_pendentes.length || f.meses_pendentes.length) continue;
+    if (f.situacao === "falhou" || f.compras_pendentes.length || f.meses_pendentes.length) continue;
     await patchFila(rest, f.cnpj, { situacao: "completo", erro: null });
     contagem.completos++;
   }
   return contagem;
 }
 
-module.exports = { completarAnalises };
+module.exports = { completarAnalises, MAX_FALHAS };

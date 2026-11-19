@@ -12,6 +12,10 @@
 --      50 subrequisições) coleta o começo e o robô da esteira completa o resto (compras do PNCP e o arquivo
 --      de propostas mês a mês, que tem as disputas PERDIDAS).
 --   analise_cnpj_participacoes(cnpj)      RPC de leitura (security invoker: vale a RLS de quem chama).
+--   historico_participacoes_podar(...)    teto de linhas por CNPJ e prazo de guarda (robô, service_role).
+--   historico_limpar_cache(dias)          prazo de guarda do cache de consultas: 30 dias (robô, service_role).
+-- A fila (historico_cnpj_consultas) guarda quem pediu (solicitante = organização ou usuário), para o teto por
+-- organização; por isso nenhuma tela lê a tabela direto: o estado chega pela função /api/analise-cnpj.
 -- Escrita só pelo service_role (função e robô). CPF nunca entra: fornecedor_ni só aceita 14 dígitos.
 begin;
 do $$ begin
@@ -35,15 +39,22 @@ create table if not exists public.historico_cnpj_consultas (
   gerado_em timestamptz not null default now(),
   atualizado_em timestamptz not null default now()
 );
+alter table public.historico_cnpj_consultas add column if not exists solicitante uuid;
+alter table public.historico_cnpj_consultas add column if not exists tentativas integer not null default 0 check (tentativas >= 0);
+alter table public.historico_cnpj_consultas add column if not exists mes_falhas text check (mes_falhas ~ '^\d{4}-\d{2}$');
+create index if not exists historico_cnpj_consultas_solicitante_idx on public.historico_cnpj_consultas (solicitante, gerado_em);
+-- LGPD: nome do PNCP pode ser razão social de MEI com o CPF do titular. Limpeza única e idempotente, depois CHECK.
+update public.historico_cnpj_consultas set nome = nullif(btrim(regexp_replace(regexp_replace(nome, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '')
+ where nome ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+alter table public.historico_cnpj_consultas drop constraint if exists historico_cnpj_consultas_nome_sem_cpf;
+alter table public.historico_cnpj_consultas add constraint historico_cnpj_consultas_nome_sem_cpf check (nome !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
 create index if not exists historico_cnpj_consultas_fila_idx on public.historico_cnpj_consultas (gerado_em) where situacao = 'parcial';
 
 alter table public.historico_cnpj_consultas enable row level security;
 revoke all on public.historico_cnpj_consultas from public, anon, authenticated;
-grant select on public.historico_cnpj_consultas to authenticated;
 grant all on public.historico_cnpj_consultas to service_role;
+-- Sem leitura para logado: a fila guarda quem pediu. A tela recebe o estado pela função (service_role).
 drop policy if exists historico_cnpj_consultas_leitura on public.historico_cnpj_consultas;
--- Só o estado da coleta de um CNPJ público (nada de quem pediu): qualquer logado lê.
-create policy historico_cnpj_consultas_leitura on public.historico_cnpj_consultas for select to authenticated using (true);
 
 -- Motivos gravados pela extensão, por fornecedor (a tela lê pregoes_gravados_mensagens por CNPJ).
 do $$ begin
@@ -89,6 +100,48 @@ language sql stable security invoker set search_path = public as $$
 $$;
 revoke all on function public.analise_cnpj_participacoes(text) from public, anon;
 grant execute on function public.analise_cnpj_participacoes(text) to authenticated, service_role;
+
+-- Teto por CNPJ em historico_participacoes (o arquivo de propostas de 24 meses de um fornecedor grande passa de
+-- dezenas de milhares de linhas): guarda as p_max_linhas mais recentes e nada mais velho que p_meses (mínimo 37,
+-- os 3 anos da "Licitação anterior", que lê as mesmas linhas). Devolve o tamanho por CNPJ para o log do robô.
+create or replace function public.historico_participacoes_podar(p_cnpjs text[], p_max_linhas integer default 5000, p_meses integer default 37)
+returns table (cnpj text, linhas bigint, apagadas bigint)
+language plpgsql security definer set search_path = '' as $$
+declare c text; n bigint;
+begin
+  foreach c in array coalesce(p_cnpjs, '{}') loop
+    continue when c !~ '^\d{14}$';
+    with ordenadas as (
+      select p.ctid as linha, row_number() over (order by coalesce(p.data_resultado, h.data_publicacao) desc nulls last, p.atualizado_em desc) as pos,
+             coalesce(p.data_resultado, h.data_publicacao) as quando
+        from public.historico_participacoes p
+        left join public.historico_compras h on h.id_compra = p.id_compra
+       where p.fornecedor_ni = c)
+    delete from public.historico_participacoes p using ordenadas o
+     where p.ctid = o.linha and (o.pos > greatest(p_max_linhas, 100) or o.quando < (current_date - make_interval(months => greatest(p_meses, 37))));
+    get diagnostics n = row_count;
+    cnpj := c; apagadas := n;
+    select count(*) into linhas from public.historico_participacoes x where x.fornecedor_ni = c;
+    return next;
+  end loop;
+end $$;
+revoke all on function public.historico_participacoes_podar(text[], integer, integer) from public, anon, authenticated;
+grant execute on function public.historico_participacoes_podar(text[], integer, integer) to service_role;
+
+-- Prazo de guarda do cache de consultas (politica-privacidade.html): apaga o que foi gerado há mais de p_dias
+-- (mínimo 8, acima da validade de 7 dias do cache). Os dados públicos das compras ficam; só o cache sai.
+create or replace function public.historico_limpar_cache(p_dias integer default 30)
+returns integer language plpgsql security definer set search_path = '' as $$
+declare a integer; b integer; corte timestamptz := now() - make_interval(days => greatest(coalesce(p_dias, 30), 8));
+begin
+  delete from public.historico_consultas where gerado_em < corte;
+  get diagnostics a = row_count;
+  delete from public.historico_cnpj_consultas where gerado_em < corte;
+  get diagnostics b = row_count;
+  return a + b;
+end $$;
+revoke all on function public.historico_limpar_cache(integer) from public, anon, authenticated;
+grant execute on function public.historico_limpar_cache(integer) to service_role;
 
 notify pgrst, 'reload schema';
 commit;

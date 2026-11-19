@@ -84,7 +84,7 @@ Decisão do dono: nada pago (sem Integra Compras) e **nunca contornar captcha**.
 
 Páginas suportadas (somente leitura):
 - Compras.gov novo, página pública `https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/compras/acompanhamento-compra?compra=<id>` (lista de itens) e `/item/{n}?compra=<id>` (propostas do item). O navegador do usuário resolve o hCaptcha invisível como em qualquer visita.
-- ComprasNet antigo, ata completa `comprasnet.gov.br/livre/pregao/AtaEletronico.asp?...`, depois que o usuário digita o captcha de imagem.
+- ComprasNet antigo, ata completa `comprasnet.gov.br/livre/pregao/AtaEletronico.asp?...`, depois que o usuário digita o captcha de imagem. Essa ata é aceita também em **http** porque o próprio site antigo não tem https; risco: numa rede hostil a página pode ser alterada no caminho. A gravação vinda de http fica marcada como "fonte sem HTTPS" (`fonte_sem_https`). O Compras.gov novo só é lido em https.
 
 Botão do popup (seção "Gravar pregão no LicitaPlena"):
 1. **Ler esta página e gravar** — lê o HTML que a página já montou (`pregao-leitor.mjs`, `lerPaginaPregao`): por item, participantes (CNPJ, nome, UF, ME/EPP, situação), valores ofertado/negociado/proposta/total, quantidade, **marca/fabricante e modelo** de cada proposta aberta e o **chat** de cada fornecedor aberto (data/hora, texto, tipo e motivo; recusa, desclassificação e inabilitação aparecem destacadas). Na ata antiga lê também lances (inclusive os excluídos) e "Troca de Mensagens". O que não está aberto na tela volta como "não lido" e o popup lista os passos para o próprio usuário clicar, por exemplo `Abra o item 1 → fornecedor CHIKUT ... (26153737000138) → Chat e Proposta` ou `Abra o item 6 ("Visualizar propostas") → em cada fornecedor, Chat e Proposta`; depois ele clica de novo e a gravação mescla com a anterior.
@@ -95,7 +95,9 @@ O que a extensão **não** faz: não chama as APIs do portal por conta própria,
 
 Envio: a extensão procura uma aba aberta do LicitaPlena (`licitaplena.com.br`, `www.`, `licitaplena.pages.dev`; o pacote QA acrescenta `http://127.0.0.1/*` do ambiente de teste) e executa nela `enviarNaPagina`, que pega a sessão Supabase que a própria página guarda (`sb-*-auth-token`) e faz `POST /api/pregao-gravado` na mesma origem. O token não sai daquela aba nem passa pelo popup; o CSP do popup continua `connect-src 'none'`. Sem aba logada, o popup pede para abrir o LicitaPlena.
 
-Privacidade: CPF nunca é gravado. Participante sem CNPJ vira `pf:<n>` com nome "Pessoa física"; CPF em texto livre é mascarado na extensão e de novo no servidor, e os CHECKs do banco recusam CPF formatado. Nome de MEI entra só porque é a razão social pública do CNPJ.
+Confiança: o que a extensão grava é "lido por usuário, não verificado" até 2 organizações lerem o mesmo valor; uma leitura nunca sobrescreve a de outro (ver `docs/pregao-gravado.md`). Só cliente com cadastro aprovado grava.
+
+Privacidade: CPF nunca é gravado. Participante sem CNPJ vira `pf:<n>` com nome "Pessoa física"; CPF em texto livre (com ou sem pontuação, espaço ou "/") é mascarado na extensão e de novo no servidor, e os CHECKs do banco recusam CPF. Nome de MEI entra só porque é a razão social pública do CNPJ.
 
 Permissões: além de `activeTab` + `scripting`, o manifesto declara `optional_host_permissions` só para o LicitaPlena de produção (enviar). O Chrome pede a autorização no primeiro clique; nada é concedido na instalação. `http://127.0.0.1/*` (site do ambiente de teste) entra só no pacote gerado por `scripts/empacotar-extensao-leitura-qa.mjs`.
 

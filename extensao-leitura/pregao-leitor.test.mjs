@@ -78,12 +78,12 @@ test('só lê páginas públicas suportadas; captcha visível ou página vazia n
 test('CPF em participante do Compras.gov ou em mensagem é descartado/mascarado', () => {
   const html = fixture('comprasgov-item-19302805900082025-1.html')
     .replace(' 33.561.486/0001-96 ', ' 123.456.789-09 ').replace(' RAIO DE LUZ COMERCIAL DE TINTAS E SERVICOS DE CONSTRUCAO LTDA', ' FULANO DE TAL')
-    .replace('Envio do atestado', 'Contato CPF 123.456.789-09. Envio do atestado');
+    .replace('Envio do atestado', 'Contato CPF 123.456.789-09, 123 456 789 09 e 123.456.789/09. Envio do atestado');
   const r = ler(ITEM, html);
   const pf = r.itens[0].propostas[1];
   assert.deepEqual([pf.chave, pf.cnpj, pf.nome, pf.marca], ['pf:1', null, 'Pessoa física', 'São Caetano']);
   semCpf(r);
-  assert.doesNotMatch(JSON.stringify(r), /FULANO/);
+  assert.doesNotMatch(JSON.stringify(r), /FULANO|123 456 789|789\/09/);
 });
 
 test('envio na aba do LicitaPlena usa a sessão da página, sem expor token na resposta', async () => {

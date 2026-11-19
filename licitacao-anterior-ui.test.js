@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { montarVisao, vencedorDe, variacao } = require("./licitacao-anterior-ui.js");
+const { montarVisao, vencedorDe, variacao, linkOficial } = require("./licitacao-anterior-ui.js");
 
 const compra = (id, data) => ({ id_compra: id, numero: id.slice(8, 13), data_publicacao: data, plataforma: "Compras.gov.br" });
 const item = (id, n, situacao, estimado) => ({ id_compra: id, numero_item: n, situacao_item: situacao, valor_estimado: estimado, descricao: "Café" });
@@ -52,4 +52,10 @@ test("visão: só itens casados, mais nova primeiro, fracassado contado, marcas 
 
 test("visão vazia não quebra", () => {
   assert.deepEqual(montarVisao({}), { compras: [], marcasAceitas: [], semMarca: 0, porProduto: [], ruins: 0 });
+});
+
+test("link na tela: só https em host oficial; o resto não vira href", () => {
+  assert.equal(linkOficial("https://pncp.gov.br/app/editais/1/2025/3"), "https://pncp.gov.br/app/editais/1/2025/3");
+  assert.equal(linkOficial("https://www.comprasnet.gov.br/x"), "https://www.comprasnet.gov.br/x");
+  for (const ruim of ["javascript:alert(1)", "http://pncp.gov.br/x", "https://pncp.gov.br.evil.com/", "data:text/html,x", "", undefined]) assert.equal(linkOficial(ruim), null, String(ruim));
 });

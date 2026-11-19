@@ -133,3 +133,47 @@ test("nenhum arquivo disponível e falha de rede com nova tentativa", async () =
   assert.ok(buf.length > 0);
   await assert.rejects(robo.baixarZip("CEIS", "20261119", { fetch: async () => new Response("x", { status: 500 }), tentativas: 2, pausaMs: 0 }), /HTTP 500/);
 });
+
+test("razão social de MEI com CPF do titular: o CPF sai, o nome fica (todas as formas)", () => {
+  const t = new TextDecoder("windows-1252").decode(amostra("CEIS")).split(/\r?\n/);
+  for (const cpf of ["97048143215", "970.481.432-15", "970 481 432 15", "970.481.432/15"]) {
+    const csv = `${t[0]}\r\n${t[1].split("SNE PARTNER SERVICE LTDA").join(`FULANA DE TAL ${cpf}`)}\r\n`;
+    const [l] = robo.lerSancoes(Buffer.from(csv, "latin1"), "CEIS", "2026-11-19").linhas;
+    assert.equal(l.razao_social, "FULANA DE TAL", cpf);
+  }
+});
+
+test("linha inválida no arquivo: grava o que leu, mas não marca sumiço naquele dia", async () => {
+  const b = bancoFalso([antiga("111")]);
+  const t = new TextDecoder("windows-1252").decode(amostra("CEIS")).split(/\r?\n/).filter(Boolean);
+  const quebrado = Buffer.from(`${[...t, '"CEIS";"curta"'].join("\r\n")}\r\n`, "latin1");
+  await assert.rejects(robo.coletarCadastro("CEIS", ["20261119"], { ...b, fetch: fetchCom({ "20261119_CEIS.zip": zipDe(quebrado) }), fracaoMinima: 0.5, tentativas: 1 }),
+    /1 linha\(s\) inválida\(s\); sumiço NÃO marcado/);
+  assert.equal(b.patches.length, 0);
+  assert.equal(b.linhas.get("CEIS|111").fora_da_lista, false);
+  assert.equal(b.linhas.get("CEIS|356526").data_carga, "2026-11-19"); // o que leu foi gravado
+});
+
+test("ZIP: teto no tamanho real descompactado, mesmo com header mentindo", () => {
+  const z = new AdmZip(); z.addFile("x.csv", Buffer.alloc(3e6, 0x41));
+  assert.throws(() => robo.csvDoZip(z.toBuffer(), 1e6), /grande demais/);
+  const zlib = require("node:zlib");
+  const mentiroso = { getCompressedData: () => zlib.deflateRawSync(Buffer.alloc(3e6, 0x41)), header: { method: 8, size: 10, crc: 0 } };
+  assert.throws(() => robo.inflarComTeto(mentiroso, 1e6), /grande demais/); // header diz 10 bytes, real 3 MB
+  assert.throws(() => robo.inflarComTeto(mentiroso, 1e7), /corrompido/);
+});
+
+test("download: recusa pelo Content-Length e para de ler no teto quando ele falta", async () => {
+  await assert.rejects(robo.corpoComTeto(new Response("x", { headers: { "content-length": "999" } }), 10), /grande demais/);
+  const fluxo = new ReadableStream({ pull(c) { c.enqueue(new Uint8Array(8)); } }); // sem fim e sem tamanho
+  await assert.rejects(robo.corpoComTeto(new Response(fluxo), 100), /grande demais/);
+  assert.equal((await robo.corpoComTeto(new Response("abc"), 10)).toString(), "abc");
+});
+
+test("main: chama o expurgo de 5 anos depois dos cadastros", async () => {
+  const b = bancoFalso();
+  const rpcs = [];
+  const rest = async (caminho, op) => (caminho.startsWith("rpc/") ? (rpcs.push(caminho), { json: async () => 2 }) : b.rest(caminho, op));
+  await robo.main({ DATA_ARQUIVO: "20261119" }, { ...b, rest, fetch: fetchCom({ "20261119_CEIS.zip": zipDe(amostra("CEIS")), "20261119_CNEP.zip": zipDe(amostra("CNEP")) }), tentativas: 1 });
+  assert.deepEqual(rpcs, ["rpc/sancoes_empresas_expurgar"]);
+});

@@ -7,7 +7,9 @@
 -- usuário autenticado (dado público da CGU). anon não lê.
 --
 -- LGPD: só pessoa jurídica. O check de 14 dígitos barra CPF mesmo que o robô falhe.
--- Histórico: nada é apagado; o que sumiu do arquivo do dia fica fora_da_lista = true.
+-- Histórico: o que sumiu do arquivo do dia fica fora_da_lista = true. Prazo de guarda: fora da lista há mais
+-- de 5 anos é apagado por sancoes_empresas_expurgar() (só service_role; chamada pelo robô). Ver
+-- politica-privacidade.html, "Dados públicos de licitações e de terceiros".
 -- ============================================================================
 begin;
 
@@ -53,6 +55,27 @@ create trigger sancoes_empresas_tocar before update on public.sancoes_empresas
   for each row execute function public.sancoes_empresas_tocar();
 revoke all on function public.sancoes_empresas_tocar() from public, anon, authenticated;
 
+-- LGPD: razão social de MEI vem com o CPF do titular ("FULANA DE TAL 97048143215"). Limpeza única e idempotente
+-- do que já foi gravado (só toca linha que ainda tem CPF), depois o CHECK recusa CPF daqui para frente. Mesma forma
+-- da regex de netlify/functions/_cpf.js (lá \s cobre mais: o robô sempre limpa antes do CHECK).
+update public.sancoes_empresas set razao_social = nullif(btrim(regexp_replace(regexp_replace(razao_social, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '')
+ where razao_social ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y';
+alter table public.sancoes_empresas drop constraint if exists sancoes_empresas_razao_sem_cpf;
+alter table public.sancoes_empresas add constraint sancoes_empresas_razao_sem_cpf check (razao_social !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
+
+-- Prazo de guarda: sanção fora da lista da CGU há mais de 5 anos sai. Security definer porque o service_role
+-- não tem delete na tabela (nenhum outro caminho apaga histórico). Devolve quantas linhas saíram.
+create or replace function public.sancoes_empresas_expurgar() returns integer
+language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  delete from public.sancoes_empresas where fora_da_lista and fora_da_lista_em < now() - interval '5 years';
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.sancoes_empresas_expurgar() from public, anon, authenticated;
+grant execute on function public.sancoes_empresas_expurgar() to service_role;
+
 alter table public.sancoes_empresas enable row level security;
 revoke all on public.sancoes_empresas from anon, authenticated;
 grant select on public.sancoes_empresas to authenticated;
@@ -62,6 +85,6 @@ grant select, insert, update on public.sancoes_empresas to service_role;
 drop policy if exists sancoes_empresas_select_autenticado on public.sancoes_empresas;
 create policy sancoes_empresas_select_autenticado on public.sancoes_empresas
   for select to authenticated using (true);
--- Sem policy de escrita: só service_role (bypassrls) grava. Sem delete para ninguém (histórico).
+-- Sem policy de escrita: só service_role (bypassrls) grava. Sem delete direto para ninguém: só o expurgo de 5 anos.
 
 commit;

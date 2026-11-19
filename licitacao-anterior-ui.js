@@ -112,6 +112,15 @@
     if (texto !== undefined && texto !== null) n.textContent = texto;
     return n;
   }
+  // link_origem vem de dado externo (PNCP): só https e hosts oficiais (mesma lista de _licitacao_anterior.js).
+  const HOSTS_OFICIAIS = ['pncp.gov.br', 'dadosabertos.compras.gov.br', 'contratos.comprasnet.gov.br',
+    'cnetmobile.estaleiro.serpro.gov.br', 'comprasnet.gov.br', 'www.comprasnet.gov.br'];
+  function linkOficial(u) {
+    try {
+      const url = new globalThis.URL(String(u || ''));
+      return url.protocol === 'https:' && HOSTS_OFICIAIS.includes(url.hostname) && !url.username && !url.password ? url.href : null;
+    } catch { return null; }
+  }
   function link(href, texto) {
     const a = el('a', 'la-link', texto);
     a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
@@ -209,8 +218,9 @@
       cab.append(el('h3', 'la-subtitulo', `${compra.modalidade || 'Contratação'} ${compra.numero || ''}`.trim()));
       cab.append(el('p', 'la-meta-compra', [compra.unidade_nome, compra.plataforma, compra.situacao, data(compra.data_publicacao) && `publicada em ${data(compra.data_publicacao)}`].filter(Boolean).join(' · ')));
       const links = el('p', 'la-links');
-      if (compra.link_origem) links.append(link(compra.link_origem, compra.plataforma === 'ComprasNet (antigo)' ? 'Abrir pregão anterior no ComprasNet' : 'Abrir pregão anterior no Compras.gov'));
-      if (compra.link_pncp) links.append(link(compra.link_pncp, 'Ver no PNCP'));
+      const origem = linkOficial(compra.link_origem), pncp = linkOficial(compra.link_pncp);
+      if (origem) links.append(link(origem, compra.plataforma === 'ComprasNet (antigo)' ? 'Abrir pregão anterior no ComprasNet' : 'Abrir pregão anterior no Compras.gov'));
+      if (pncp) links.append(link(pncp, 'Ver no PNCP'));
       cab.append(links);
       art.append(cab);
       if (compra.objeto) art.append(el('p', 'la-objeto', String(compra.objeto).slice(0, 300)));
@@ -323,7 +333,7 @@
     return { fechar() { alvo.replaceChildren(); } };
   }
 
-  const api = { montarVisao, vencedorDe, variacao, chaveMarca, montar, montarPesquisa, desenhar };
+  const api = { montarVisao, vencedorDe, variacao, chaveMarca, montar, montarPesquisa, desenhar, linkOficial };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.LicitaLicitacaoAnterior = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

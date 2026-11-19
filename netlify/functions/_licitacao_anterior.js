@@ -15,6 +15,7 @@
 // O que fica de fora e por quê: o motivo de desclassificação, o chat e a ata completa estão na página
 // pública do Compras.gov, que exige hCaptcha em cada chamada (etapa 4, pela extensão com a pessoa na frente).
 const { marcaUtil, separarMarcaModelo } = require("./comprasgov-marcas-produto");
+const { semCpf } = require("./_cpf");
 
 const PNCP = "https://pncp.gov.br";
 const PESQUISA = "https://dadosabertos.compras.gov.br/modulo-pesquisa-preco/1_consultarMaterial";
@@ -96,7 +97,7 @@ const chaveMarca = (m) => semAcento(m).replace(/[^a-z0-9]+/g, " ").trim();
 function fornecedor(ni, nome, sufixoPf) {
   const d = digitos(ni);
   // Razão social de MEI vem com o CPF do titular no fim ("FULANA DE TAL 97048143215"): o CPF sai, o resto é público.
-  if (d.length === 14) return { fornecedor_chave: d, fornecedor_ni: d, fornecedor_nome: texto(String(nome || "").replace(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g, " "), 300) };
+  if (d.length === 14) return { fornecedor_chave: d, fornecedor_ni: d, fornecedor_nome: texto(semCpf(nome, " "), 300) };
   return { fornecedor_chave: `pf:${sufixoPf}`.slice(0, 40), fornecedor_ni: null, fornecedor_nome: "Pessoa física" };
 }
 
@@ -111,6 +112,16 @@ function decifrarIdCompra(id) {
   const m = /^(\d{6})(\d{2})(\d{5})(\d{4})$/.exec(String(id || ""));
   if (!m) return null;
   return { uasg: m[1], modalidade: Number(m[2]), numero: m[3], ano: Number(m[4]), lei14133: m[3][0] === "9" };
+}
+// link_sistema_origem vem do PNCP (cadastrado pelo órgão) e vira href na tela: só https e hosts oficiais.
+// Mesma lista de licitacao-anterior-ui.js (última barreira antes do href).
+const HOSTS_OFICIAIS = new Set(["pncp.gov.br", "dadosabertos.compras.gov.br", "contratos.comprasnet.gov.br",
+  "cnetmobile.estaleiro.serpro.gov.br", "comprasnet.gov.br", "www.comprasnet.gov.br"]);
+function linkOficial(u) {
+  try {
+    const url = new URL(String(u || ""));
+    return url.protocol === "https:" && HOSTS_OFICIAIS.has(url.hostname) && !url.username && !url.password ? url.href.slice(0, 500) : null;
+  } catch { return null; }
 }
 function linkCompraGov(id) {
   return decifrarIdCompra(id) ? `https://cnetmobile.estaleiro.serpro.gov.br/comprasnet-web/public/landing?destino=acompanhamento-compra&compra=${id}` : null;
@@ -221,7 +232,7 @@ function compraDaBusca(i) {
     uasg: digitos(i.unidade_codigo) || null, unidade_nome: texto(i.unidade_nome, 300), ano: Number(m[2]), numero: texto(i.numero || i.title, 40),
     modalidade: texto(i.modalidade_licitacao_nome, 80), plataforma: texto(i.usuario_nome, 80) || (idDoLink(i.link_sistema_origem) ? "Compras.gov.br" : null),
     situacao: texto(i.situacao_nome, 80), objeto: texto(i.description, 1000), data_publicacao: texto(i.data_publicacao_pncp, 10),
-    link_origem: texto(i.link_sistema_origem, 500) || linkCompraGov(id), link_pncp: `${PNCP}/app/editais/${m[1]}/${m[2]}/${m[3]}`,
+    link_origem: linkOficial(i.link_sistema_origem) || linkCompraGov(id), link_pncp: `${PNCP}/app/editais/${m[1]}/${m[2]}/${m[3]}`,
     _ref: { cnpj: m[1], ano: m[2], seq: m[3] },
   };
 }
@@ -461,5 +472,5 @@ async function gravar(rest, { compras, itens, participacoes }) {
 }
 
 module.exports = { UA, coletar, catalogoDaCompra, gravar, upsertPorColunas, casar, melhorCasamento, palavras, normalizarMarca, chaveMarca, fornecedor, lerLinhaCsv, criarFiltroPropostas,
-  mesesDePropostas, decifrarIdCompra, linkCompraGov, idDaLinhaPesquisa, compraDaBusca, SemOrcamento, MAX_PROPOSTAS_ITEM,
+  mesesDePropostas, decifrarIdCompra, linkCompraGov, linkOficial, idDaLinhaPesquisa, compraDaBusca, SemOrcamento, MAX_PROPOSTAS_ITEM,
   criarBuscador, fonteDadosAbertos, fontePncp, participacaoDoResultado, PORTES };
