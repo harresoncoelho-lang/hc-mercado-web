@@ -117,7 +117,7 @@ for (const c of cenarios) {
   test(`/app ${c.nome}: login, descoberta, empresa→processo, identificação, lista e proposta`, async t => {
     const porta = await servidorQA(t);
     const base = `http://127.0.0.1:${porta}`;
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
     t.after(() => browser.close());
     const ctx = await browser.newContext({ viewport: { width: c.largura, height: 844 }, deviceScaleFactor: 2 });
     await ctx.addInitScript(tema => { try { localStorage.setItem('licitaplena.tema', tema); } catch { /* sem storage */ } }, c.tema);
@@ -181,7 +181,7 @@ for (const c of cenarios) {
 test('/app 390-claro: cancelar confirm preserva rascunho e seletor; aceitar descarta', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
   t.after(() => browser.close());
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
@@ -216,7 +216,7 @@ test('/app 390-claro: cancelar confirm preserva rascunho e seletor; aceitar desc
 test('/app teclado 390-claro: Hoje abre processo com Enter, volta com teclado e abre o segundo processo', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
   t.after(() => browser.close());
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
@@ -250,7 +250,7 @@ for (const c of cenarios) {
   test(`/app ${c.nome}: preparar empresa sem processo (sem kit), voltar preservando e medir Novo processo`, async t => {
     const porta = await servidorQA(t);
     const base = `http://127.0.0.1:${porta}`;
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
     t.after(() => browser.close());
     const ctx = await browser.newContext({ viewport: { width: c.largura, height: 844 }, deviceScaleFactor: 2 });
     await ctx.addInitScript(tema => { try { localStorage.setItem('licitaplena.tema', tema); } catch { /* sem storage */ } }, c.tema);
@@ -297,7 +297,7 @@ for (const c of cenarios) {
 test('/app teclado 390-claro: Preparar empresa e Novo processo funcionam só pelo teclado', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
   t.after(() => browser.close());
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
@@ -334,7 +334,7 @@ for (const c of cenarios) {
   test(`/app ${c.nome}: itens do processo (mock) — cadastro, total exato, negativo recusado e isolamento por CNPJ`, async t => {
     const porta = await servidorQA(t);
     const base = `http://127.0.0.1:${porta}`;
-    const browser = await chromium.launch();
+    const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
     t.after(() => browser.close());
     const ctx = await browser.newContext({ viewport: { width: c.largura, height: 844 }, deviceScaleFactor: 2 });
     await ctx.addInitScript(tema => { try { localStorage.setItem('licitaplena.tema', tema); } catch { /* sem storage */ } }, c.tema);
@@ -397,7 +397,7 @@ for (const c of cenarios) {
 test('/app teclado 390-claro: formulário de itens sem mouse (foco, digitação, Tab e Enter envia)', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
   t.after(() => browser.close());
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
@@ -456,7 +456,7 @@ async function salvarItemNovo(page, descricao) {
 test('/app 390-claro: item salvo renova o catálogo do kit, preserva rascunho e invalida a prévia (mock)', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch(); t.after(() => browser.close());
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' }); t.after(() => browser.close());
   const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })).newPage();
   simular(page, new Map(), []);
   await abrirComKit(page, base);
@@ -483,7 +483,7 @@ test('/app 390-claro: item salvo renova o catálogo do kit, preserva rascunho e 
 test('/app 390-claro: resposta antiga do kit é ignorada após trocar de processo durante atualização (mock)', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch(); t.after(() => browser.close());
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' }); t.after(() => browser.close());
   const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })).newPage();
   simular(page, new Map(), []);
   await abrirComKit(page, base);
@@ -521,7 +521,7 @@ function segurarKit(page) {
 test('/app 390-claro: atualização durante SALVAR (sucesso): exportação não liberada, drena após a gravação, rascunho preservado (mock)', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch(); t.after(() => browser.close());
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' }); t.after(() => browser.close());
   const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })).newPage();
   simular(page, new Map(), []);
   await abrirComKit(page, base);
@@ -544,7 +544,7 @@ test('/app 390-claro: atualização durante SALVAR (sucesso): exportação não 
 test('/app 390-claro: atualização durante SALVAR com falha: ocupado libera, drena, rascunho preservado e nova tentativa salva (mock)', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch(); t.after(() => browser.close());
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' }); t.after(() => browser.close());
   const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })).newPage();
   simular(page, new Map(), []);
   await abrirComKit(page, base);
@@ -569,7 +569,7 @@ test('/app 390-claro: atualização durante SALVAR com falha: ocupado libera, dr
 test('/app 390-claro: atualização durante PREPARAR: prévia antiga não libera exportação; drena após a prévia (mock)', async t => {
   const porta = await servidorQA(t);
   const base = `http://127.0.0.1:${porta}`;
-  const browser = await chromium.launch(); t.after(() => browser.close());
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' }); t.after(() => browser.close());
   const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })).newPage();
   simular(page, new Map(), []);
   await abrirComKit(page, base);

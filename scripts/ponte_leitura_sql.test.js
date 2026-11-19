@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-const {PGlite}=require(path.resolve(__dirname,'../../qa-postgres/node_modules/@electric-sql/pglite'));
+const {PGlite}=require('@electric-sql/pglite');
 // PGlite em memória executa SQL real, mas serializa operações: não ensaia locks entre sessões.
 // Usa migrações preservadas do repositório, não comprova paridade com banco remoto atual.
 test('canal leitura SQL real: nonce, recibo, replay, revisão e cancelamento',async()=>{

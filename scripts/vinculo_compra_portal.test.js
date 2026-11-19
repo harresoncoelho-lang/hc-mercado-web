@@ -47,7 +47,7 @@ test('SQL contém CAS e invalidação de CNPJ/organização; contrato estático,
 });
 
 test('migração real PGlite efêmera: confirmar, replay CAS, CNPJ/processo invalidado e acesso negado',async()=>{
- const {PGlite}=require('C:/Users/harre/AppData/Local/LicitaPlena/qa-postgres/node_modules/@electric-sql/pglite');
+ const {PGlite}=require('@electric-sql/pglite');
  const db=new PGlite();
  try{
   await db.exec(`create role anon; create role authenticated; create schema auth;

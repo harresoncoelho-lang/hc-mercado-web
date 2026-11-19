@@ -46,8 +46,9 @@ test('auditoria TCP recusa internet e auxiliar com passthrough',()=>{
   delete config.services[2].worker.globalOutbound;assert.throws(()=>auditarConfig(config),/internet|saída explícita/);
   config.services[2].worker.globalOutbound={name:'router'};config.services[2].worker.compatibilityFlags=['connect_pass_through'];assert.throws(()=>auditarConfig(config),/connect_pass_through/);
 });
-test('opções usam o schema nativo Miniflare 5 sem iniciar runtime',()=>{
-  const {opcoesWorker}=require(arquivo);const {CACHE}=require('./preparar-cloudflare.cjs');const {MiniflareOptionsSchema}=require(path.join(CACHE,'miniflare'));const options=opcoesWorker('export default {fetch(){return new Response()}}',false,()=>new Response('{}'));
+test('opções usam o schema nativo Miniflare 5 sem iniciar runtime',(t)=>{
+  const {CACHE}=require('./preparar-cloudflare.cjs');if(!fs.existsSync(path.join(CACHE,'miniflare')))return t.skip('miniflare ausente em '+CACHE+' (cache npx do wrangler não existe nesta máquina)');
+  const {opcoesWorker}=require(arquivo);const {MiniflareOptionsSchema}=require(path.join(CACHE,'miniflare'));const options=opcoesWorker('export default {fetch(){return new Response()}}',false,()=>new Response('{}'));
   assert.doesNotThrow(()=>MiniflareOptionsSchema.parse(options));assert.equal(options.workers[1].dev.outboundService.worker,'fixture-router');assert.deepEqual(options.workers[1].config.compatibilityFlags,[]);
 });
 test('dispose pendente não impede guarda de encerramento independente',async()=>{

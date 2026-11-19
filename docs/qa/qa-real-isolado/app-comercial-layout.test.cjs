@@ -10,7 +10,7 @@ const raiz = path.resolve(__dirname, '..', '..', '..');
 const SHOTS = process.env.LAYOUT_SHOTS_DIR || null;
 
 async function medir(largura) {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.PW_CHANNEL || 'msedge' });
   try {
     const page = await browser.newPage({ viewport: { width: largura, height: 900 } });
     const css = fs.readFileSync(path.join(raiz, 'ds-tokens.css'), 'utf8') + '\n' + fs.readFileSync(path.join(raiz, 'app-comercial.css'), 'utf8');
