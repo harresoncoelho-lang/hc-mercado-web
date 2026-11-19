@@ -207,6 +207,17 @@ test("oportunidades coleta além de 20 páginas antes de confirmar a UF", async 
   assert.equal(resultado.coberturaPorUf.AM.registrosColetados, 23);
 });
 
+test("oportunidades guardam o portal da disputa (usuarioNome e linkSistemaOrigem)", async () => {
+  const ambiente = ambienteOportunidades(null, async () => ({ numeroPagina: 1, totalPaginas: 1, totalRegistros: 2, data: [
+    { numeroControlePNCP: "a", objetoCompra: "A", usuarioNome: "BLL Compras", linkSistemaOrigem: "https://bllcompras.com/x" },
+    { numeroControlePNCP: "b", objetoCompra: "B" }] }));
+  const [comPortal, semPortal] = (await ambiente.coletarOportunidadesAbertas("ignorado")).registros;
+  assert.equal(comPortal.usuarioNome, "BLL Compras");
+  assert.equal(comPortal.linkSistemaOrigem, "https://bllcompras.com/x");
+  assert.equal(semPortal.usuarioNome, null);
+  assert.equal(semPortal.linkSistemaOrigem, null);
+});
+
 for (const mudou of [false, true]) {
   test(`oportunidades ${mudou ? "invalida cursor quando fonte muda" : "retoma após orçamento sem perder páginas"}`, async () => {
     let restante = 15000;

@@ -714,6 +714,9 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
           processo: item.processo || null,
           codigoUnidade: (item.unidadeOrgao && item.unidadeOrgao.codigoUnidade) || null,
           esferaId: (item.orgaoEntidade && item.orgaoEntidade.esferaId) || null,
+          // Portal da disputa (selo "Portal: X" e link "Acessar local da disputa" nos cartões).
+          usuarioNome: item.usuarioNome || null,
+          linkSistemaOrigem: item.linkSistemaOrigem || null,
         });
       }
       pagina += 1;
