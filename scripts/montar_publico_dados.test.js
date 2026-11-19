@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const PUBLICOS = ["capag-municipios.json", "convenios.json", "sistema_s_am.json", "mercado_meta.json", "contratos_meta.json"];
+const PUBLICOS = ["capag-municipios.json", "convenios.json", "sistema_s_am.json", "mercado_meta.json", "contratos_meta.json", "municipios-centroides.json"];
 
 function comFixture(verificar) {
   const raiz = fs.mkdtempSync(path.join(os.tmpdir(), "licitaplena-publico-dados-"));

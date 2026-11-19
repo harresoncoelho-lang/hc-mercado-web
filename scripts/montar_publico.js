@@ -25,7 +25,7 @@ function arquivosDaRaiz() {
 
 function arquivosDeDados() {
   // O histórico por destinatário e futuros arquivos internos não pertencem ao site público.
-  return ["capag-municipios.json", "convenios.json", "sistema_s_am.json", "mercado_meta.json", "contratos_meta.json"];
+  return ["capag-municipios.json", "convenios.json", "sistema_s_am.json", "mercado_meta.json", "contratos_meta.json", "municipios-centroides.json"];
 }
 
 function montarPublico() {

@@ -52,6 +52,8 @@ import * as pregaoGravado from "../../netlify/functions/pregao-gravado.js";
 import * as m26 from "../../netlify/functions/prospeccao.js";
 // Análise por CNPJ (Analisar concorrente): logado, cota diária, ~27 subrequisições; o pesado fica na fila do robô.
 import * as analiseCnpj from "../../netlify/functions/analise-cnpj.js";
+// Monte minha busca com IA (Encontrar Licitações): logado, 10 usos/dia, 1 chamada à IA; nada é gravado.
+import * as monteBuscaIa from "../../netlify/functions/monte-busca-ia.js";
 
 const ROTAS = {
   "vinculo-compra-portal": vinculoCompraPortal,
@@ -67,6 +69,7 @@ const ROTAS = {
   "pregao-gravado": pregaoGravado,
   prospeccao: m26,
   "analise-cnpj": analiseCnpj,
+  "monte-busca-ia": monteBuscaIa,
   "decisao-oportunidade": m17,
   "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,

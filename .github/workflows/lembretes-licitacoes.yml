@@ -2,8 +2,9 @@ name: Lembretes de licitação
 
 on:
   schedule:
-    # Roda 1x/dia, 08:00 no horário de Brasília (UTC-4, sem horário de verão).
-    - cron: "0 12 * * *"
+    # De hora em hora: o usuário escolhe a hora do aviso (horário de Brasília). O script avisa o que já
+    # passou do momento e ainda não venceu, então um atraso do GitHub não perde lembrete.
+    - cron: "0 * * * *"
   workflow_dispatch: {}
 
 jobs:
@@ -21,6 +22,8 @@ jobs:
 
       - name: Verificar lembretes e enviar e-mails
         env:
+          # ZeptoMail (o mesmo token do site); sem ele o script cai no Gmail SMTP abaixo.
+          ZEPTOMAIL_TOKEN: ${{ secrets.ZEPTOMAIL_TOKEN }}
           EMAIL_REMETENTE: ${{ secrets.EMAIL_REMETENTE }}
           EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

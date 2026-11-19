@@ -506,6 +506,26 @@
   .op-receber-boletim .btn-imprimir { white-space: normal; text-align: left; max-width: 100%; height: auto; min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
   .op-receber-boletim .dica-clique { flex: 1 1 240px; }
 
+  /* Encontrar Licitações: onde buscar (região/raio), filtros salvos e "Monte minha busca com IA". */
+  .op-ferramentas { display: grid; gap: 12px; margin: 12px 0 0; min-width: 0; }
+  .op-linha { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 12px; min-width: 0; }
+  .op-linha .campo { flex: 0 1 160px; min-width: 120px; }
+  .op-linha .campo-largo { flex: 1 1 240px; }
+  .op-linha-dica { flex: 1 1 100%; margin: 0; }
+  .op-linha .btn-imprimir, .op-linha .btn-buscar { height: auto; min-height: 36px; white-space: normal; }
+  .op-salvos-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; flex: 1 1 100%; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 8px; }
+  .op-salvos-form[hidden] { display: none; }
+  .op-salvos-form label { font: var(--text-label); color: var(--text-primary); }
+  .op-salvos-form input { flex: 1 1 220px; min-width: 0; }
+  .op-ia > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; gap: 6px; color: var(--action-text); font-weight: 600; font-size: 13px; }
+  .op-ia[open] > summary { margin-bottom: 10px; }
+  .op-ia-grupo { border: 1px solid var(--border-default); border-radius: 8px; margin: 10px 0 0; padding: 8px 12px; min-width: 0; }
+  .op-ia-grupo legend { font: var(--text-label); color: var(--text-secondary); padding: 0 6px; }
+  .op-ia-grupo div { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  .op-ia-opcao { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); }
+  #op-ia-usar { margin-top: 12px; }
+  @media (max-width: 600px) { .op-linha .campo { flex: 1 1 100%; } }
+
   /* Convênios: o Raio-X é outro assunto, em bloco próprio. */
   .bloco-separado { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-default); }
   .bloco-separado-titulo { margin: 0 0 4px; font: var(--text-section); color: var(--text-primary); }

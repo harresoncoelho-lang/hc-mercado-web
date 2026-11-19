@@ -38,6 +38,8 @@ function criarContexto({ palavras = "expediente", armazenado = {} } = {}) {
       createElement: () => ({ style: {} }),
     },
     ufsDoSelect: () => ["AM"],
+    lerRaio: async () => null,
+    BA: { textoExcluido: () => false, dentroDoRaio: () => true },
     normalizarUfs: (ufs) => ufs,
     ufEstaSelecionada: () => true,
     classificarEsfera: () => "",
@@ -59,7 +61,7 @@ function criarContexto({ palavras = "expediente", armazenado = {} } = {}) {
 // Grava um resultado anterior com a mesma chave de filtro que a busca vai calcular.
 function comResultadoSalvo(idadeMs, ids) {
   const ambiente = criarContexto();
-  const chaveFiltro = JSON.stringify(ambiente.contexto.salvarFiltroOportunidades(["AM"], "", "", "", "expediente", "", { esfera: "", valorMin: "", valorMax: "", codigo: "", orgaoTexto: "" }));
+  const chaveFiltro = JSON.stringify(ambiente.contexto.salvarFiltroOportunidades(["AM"], "", "", "", "expediente", "", { excluir: "", regiao: "", raio: null, esfera: "", valorMin: "", valorMax: "", codigo: "", orgaoTexto: "" }));
   return criarContexto({ armazenado: { hc_oportunidades_resultado: JSON.stringify({ chaveFiltro, salvoEm: Date.now() - idadeMs, resultados: ids.map(registro), aviso: "" }) } });
 }
 const tique = () => new Promise((resolve) => setImmediate(resolve));

@@ -37,6 +37,7 @@
 <script src="licitacao-anterior-ui.js"></script>
 <script src="sancoes-ui.js"></script>
 <script src="analise-cnpj-ui.js"></script>
+<script src="busca-avancada.js"></script>
 <script>
   // Guarda de acesso: só entra quem tiver login aprovado. Roda antes do resto da página carregar.
   (function () {
@@ -1449,7 +1450,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="painel-design.css?v=4">
+<link rel="stylesheet" href="painel-design.css?v=5">
 <script src="contatos-resumo.js?v=1" defer></script>
 <script src="decisoes-resumo.js?v=1" defer></script>
 </head>
@@ -1823,7 +1824,63 @@
         <select id="op-uf" class="select-uf select-uf-multiplo" multiple aria-describedby="op-uf-ajuda"></select>
         <p id="op-uf-ajuda" class="dica-multiplos">Selecione um ou mais estados. Sem seleção, pesquisa todos.</p>
       </div>
+      <div class="campo">
+        <label for="op-excluir">Não quero ver (opcional)</label>
+        <input id="op-excluir" placeholder="Ex: obra, veículo" maxlength="600">
+      </div>
       <button class="btn-buscar" id="op-buscar">Buscar oportunidades</button>
+    </div>
+    <div class="op-ferramentas" id="op-ferramentas">
+      <div class="op-linha" id="op-onde">
+        <div class="campo">
+          <label for="op-regiao">Região</label>
+          <select id="op-regiao"><option value="">Qualquer</option><option>Norte</option><option>Nordeste</option><option>Centro-Oeste</option><option>Sudeste</option><option>Sul</option></select>
+        </div>
+        <div class="campo">
+          <label for="op-raio-km">Raio (km)</label>
+          <input id="op-raio-km" type="number" min="1" max="3000" step="1" inputmode="numeric" placeholder="Ex: 200">
+        </div>
+        <div class="campo campo-largo">
+          <label for="op-raio-cidade">A partir da cidade</label>
+          <input id="op-raio-cidade" list="op-raio-cidades" autocomplete="off" placeholder="Digite a cidade, ex: Manaus">
+          <datalist id="op-raio-cidades"></datalist>
+        </div>
+        <p class="dica-clique op-linha-dica" id="op-onde-status" role="status" aria-live="polite">Com raio e cidade, a busca ignora os estados marcados e olha todos os que ficam dentro do raio (distância até a sede do município).</p>
+      </div>
+      <div class="op-linha" id="op-salvos">
+        <div class="campo campo-largo">
+          <label for="op-salvos-lista">Meus filtros salvos</label>
+          <select id="op-salvos-lista"><option value="">Nenhum salvo ainda</option></select>
+        </div>
+        <button type="button" class="btn-imprimir" id="op-salvos-salvar"><svg class='icone-ph'><use href='#ph-star'></use></svg> Salvar este filtro</button>
+        <button type="button" class="btn-imprimir" id="op-salvos-renomear" hidden><svg class='icone-ph'><use href='#ph-pencil-simple'></use></svg> Renomear</button>
+        <button type="button" class="btn-imprimir" id="op-salvos-apagar" hidden><svg class='icone-ph'><use href='#ph-x'></use></svg> Apagar</button>
+        <button type="button" class="btn-imprimir" id="op-sem-interesse-restaurar" hidden></button>
+        <form class="op-salvos-form" id="op-salvos-form" hidden>
+          <label for="op-salvos-nome">Nome do filtro</label>
+          <input id="op-salvos-nome" maxlength="60" placeholder="Ex: Limpeza no Amazonas" autocomplete="off">
+          <button type="submit" class="btn-buscar" id="op-salvos-confirmar">Salvar</button>
+          <button type="button" class="btn-imprimir" id="op-salvos-cancelar">Cancelar</button>
+        </form>
+        <p class="dica-clique op-linha-dica" id="op-salvos-status" role="status" aria-live="polite"></p>
+      </div>
+      <details class="op-ia" id="op-ia">
+        <summary><svg class='icone-ph'><use href='#ph-robot'></use></svg> Monte minha busca com IA</summary>
+        <div class="op-linha">
+          <div class="campo campo-largo">
+            <label for="op-ia-descricao">O que sua empresa vende?</label>
+            <input id="op-ia-descricao" maxlength="300" placeholder="Ex: vendo material de limpeza e descartáveis" autocomplete="off">
+          </div>
+          <button type="button" class="btn-buscar" id="op-ia-sugerir">Sugerir palavras</button>
+          <p class="dica-clique op-linha-dica" id="op-ia-status" role="status" aria-live="polite">Não escreva nome, telefone, e-mail ou CNPJ: só o que vende. Você confere a sugestão antes de usar.</p>
+        </div>
+        <div id="op-ia-resultado" hidden>
+          <fieldset class="op-ia-grupo"><legend>Palavras a procurar</legend><div id="op-ia-palavras"></div></fieldset>
+          <fieldset class="op-ia-grupo"><legend>Outras formas de escrever</legend><div id="op-ia-variacoes"></div></fieldset>
+          <fieldset class="op-ia-grupo"><legend>Esconder editais com</legend><div id="op-ia-exclusoes"></div></fieldset>
+          <button type="button" class="btn-buscar" id="op-ia-usar">Usar na busca</button>
+        </div>
+      </details>
     </div>
     <details class="painel-filtros-avancados" id="op-mais-filtros" style="margin:8px 2px 0;">
       <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--azul-texto,#1c63c7);"><svg class='icone-ph'><use href='#ph-magnifying-glass'></use></svg> Mais filtros (município, datas, UASG, esfera, valor, órgão)</summary>
@@ -2487,13 +2544,21 @@
     </div>
     <p id="modal-lembrete-objeto" class="dica-clique" style="margin:0 0 10px;"></p>
     <div class="campo">
-      <label for="lembrete-dias-antes">Avisar quantos dias antes do prazo final de propostas?</label>
+      <label for="lembrete-dias-antes">Avisar quanto tempo antes do prazo final de propostas?</label>
       <select id="lembrete-dias-antes">
+        <option value="0">No próprio dia do prazo</option>
         <option value="1">1 dia antes</option>
         <option value="2">2 dias antes</option>
         <option value="3" selected>3 dias antes</option>
+        <option value="5">5 dias antes</option>
         <option value="7">7 dias antes</option>
+        <option value="15">15 dias antes</option>
       </select>
+    </div>
+    <div class="campo">
+      <label for="lembrete-hora">A que horas? (horário de Brasília)</label>
+      <select id="lembrete-hora"></select>
+      <p id="lembrete-quando" class="dica-clique" role="status" style="margin:6px 0 0;"></p>
     </div>
     <div class="campo">
       <label for="lembrete-nota">Nota (opcional)</label>
@@ -3639,6 +3704,8 @@
     lembreteEmEdicao = edital;
     document.getElementById("modal-lembrete-objeto").textContent = edital.objeto || "";
     document.getElementById("lembrete-dias-antes").value = "3";
+    document.getElementById("lembrete-hora").value = "8";
+    atualizarQuandoLembrete();
     document.getElementById("lembrete-nota").value = "";
     const aviso = document.getElementById("modal-lembrete-aviso");
     aviso.style.display = "none";
@@ -3646,6 +3713,17 @@
     document.getElementById("modal-lembrete-fundo").classList.add("aberto");
   }
 
+  document.getElementById("lembrete-hora").innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")}:00</option>`).join("");
+  // Mostra quando o e-mail sai de fato; o robô roda de hora em hora, então um momento que já passou sai na próxima hora cheia.
+  function atualizarQuandoLembrete() {
+    const alvo = document.getElementById("lembrete-quando");
+    if (!lembreteEmEdicao) return;
+    const ms = window.BuscaAvancada.momentoDoAviso(lembreteEmEdicao.encerramento, Number(document.getElementById("lembrete-dias-antes").value), Number(document.getElementById("lembrete-hora").value));
+    const fmt = (t) => new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" });
+    const prazo = new Date(lembreteEmEdicao.encerramento).getTime();
+    alvo.textContent = ms === null ? "" : Date.now() >= prazo ? "O prazo desta licitação já passou." : ms <= Date.now() ? `Esse momento (${fmt(ms)}) já passou: o aviso sai na próxima hora cheia.` : `Você recebe o e-mail em ${fmt(ms)}.`;
+  }
+  ["lembrete-dias-antes", "lembrete-hora"].forEach((id) => document.getElementById(id).addEventListener("change", atualizarQuandoLembrete));
   document.getElementById("modal-lembrete-fechar").addEventListener("click", () => {
     document.getElementById("modal-lembrete-fundo").classList.remove("aberto");
   });
@@ -3669,6 +3747,7 @@
         objeto_resumo: (lembreteEmEdicao.objeto || "").slice(0, 200),
         data_final_proposta: lembreteEmEdicao.encerramento,
         dias_antes: diasAntes,
+        hora_aviso: Number(document.getElementById("lembrete-hora").value),
         nota: nota || null,
       });
       if (error) throw error;
@@ -6307,6 +6386,7 @@
               <button class="btn-ia-edital" type="button" title="Resumo documental e perguntas sobre este edital"><svg class='icone-ph'><use href='#ph-robot'></use></svg> Resumir edital</button>
               <button class="btn-ia-edital btn-acompanhar" type="button" aria-expanded="false" aria-controls="acomp-${lote}-${i}" title="Marcar o status deste edital no Funil da empresa selecionada">${escapeHtml(rotuloBotaoAcompanhar(statusAtual))}</button>
               <button class="btn-ia-edital btn-anotar" type="button" aria-expanded="${anotacaoAtual ? "true" : "false"}" aria-controls="anot-${lote}-${i}">${anotacaoAtual ? "Anotação" : "+ Anotar"}</button>
+              ${r.numeroControlePNCP ? `<button class="btn-ia-edital btn-sem-interesse" type="button" title="Não mostrar mais este edital nas minhas buscas"><svg class='icone-ph'><use href='#ph-eye'></use></svg> Sem interesse</button>` : ""}
             </div>
             ${r.link ? `<a class="link-pncp" href="${escapeHtml(r.link)}" target="_blank" rel="noopener">${r.fonte ? `Ver edital completo (${escapeHtml(r.fonte)}) <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>` : "Ver edital completo no PNCP <svg class='icone-ph'><use href='#ph-arrow-square-out'></use></svg>"}</a>` : "<span></span>"}
           </div>
@@ -6672,8 +6752,13 @@
   // Renderiza um painel completo de cards de boletim (resumo + filtros rápidos + lista)
   // dentro do elemento `alvo`. Reaproveitado tanto pelo Boletim (filtro salvo, automático)
   // quanto pelo Encontrar Licitações (busca manual) — mesma UI, fontes de dados diferentes.
+  // "Sem interesse": editais que a conta descartou somem de toda lista (Boletim e busca). Ver descartarEdital.
+  const semInteresse = new Set();
+  const paineisRenderizados = new Map();
   function renderizarPainelBoletim(alvo, resultadosOriginais, avisoHtml, opcoes = {}) {
-    const resultados = opcoes.porPrazo ? ordenarPorPrazo(resultadosOriginais) : resultadosOriginais;
+    paineisRenderizados.set(alvo, [alvo, resultadosOriginais, avisoHtml, opcoes]);
+    const visiveis = resultadosOriginais.filter((r) => !semInteresse.has(idOportunidade(r)));
+    const resultados = opcoes.porPrazo ? ordenarPorPrazo(visiveis) : visiveis;
     resultadosPlanilha.set(alvo.id, resultados);
     const renderizar = (modoFiltro) => {
       const lidos = lerConjunto("lidos");
@@ -6709,6 +6794,10 @@
       const listaEl = alvo.querySelector(".lista-boletim");
       ligarAcoesBoletim(listaEl, resultados, () => renderizar(modoFiltro));
       habilitarEnriquecimentoDetalhesPncp(listaEl, resultados);
+      listaEl.querySelectorAll(".btn-sem-interesse").forEach((btn) => btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        void descartarEdital(resultados[Number(btn.closest(".boletim-card").dataset.idx)]);
+      }));
 
       alvo.querySelectorAll(".btn-filtro-rapido").forEach((btn) => {
         btn.classList.toggle("ativo", btn.dataset.modo === modoFiltro);
@@ -7337,9 +7426,214 @@
     nota.hidden = !texto;
   }
 
+  // ---- Busca avançada (Encontrar Licitações): raio/região, filtros salvos com nome, "sem interesse"
+  // e "Monte minha busca com IA". As regras puras (distância, limpeza do filtro, sugestão da IA) estão
+  // em busca-avancada.js, com teste. Persistência por conta no Supabase (supabase/filtros_salvos.sql, RLS). ----
+  const BA = window.BuscaAvancada;
+  const $op = (id) => document.getElementById(id);
+  let promessaCentroides = null;
+  function carregarCentroides() {
+    if (!promessaCentroides) {
+      promessaCentroides = fetch("data/municipios-centroides.json")
+        .then((r) => { if (!r.ok) throw new Error("base de municípios indisponível"); return r.json(); })
+        .then((base) => BA.criarIndice(base));
+      promessaCentroides.catch(() => { promessaCentroides = null; });
+    }
+    return promessaCentroides;
+  }
+  // null = busca sem raio. Erro com texto pronto para o usuário quando o raio está incompleto ou inválido.
+  async function lerRaio() {
+    const km = Number($op("op-raio-km").value);
+    const texto = $op("op-raio-cidade").value.trim();
+    const status = $op("op-onde-status");
+    if (!km && !texto) return null;
+    if (!(km >= 1 && km <= 3000) || !texto) throw new Error("Para buscar por raio, informe os km (de 1 a 3000) e a cidade de partida.");
+    const indice = await carregarCentroides().catch(() => { throw new Error("Não consegui carregar a lista de municípios. Tente de novo."); });
+    const origem = BA.origemDoTexto(indice, texto);
+    if (!origem) throw new Error("Não achei essa cidade. Escolha uma da lista, como Manaus - AM.");
+    const ufs = BA.ufsNoRaio(indice, origem, km);
+    $op("op-raio-cidade").value = `${origem.municipio} - ${origem.uf}`;
+    status.textContent = `Raio de ${Math.round(km)} km de ${origem.municipio}-${origem.uf}: consultando ${ufs.join(", ")}.`;
+    return { indice, origem, km: Math.round(km), ufs };
+  }
+  $op("op-regiao").addEventListener("change", (ev) => {
+    if (ev.target.value) definirUfsNoSelect($op("op-uf"), BA.REGIOES[ev.target.value]);
+  });
+  $op("op-raio-cidade").addEventListener("input", async (ev) => {
+    try { $op("op-raio-cidades").innerHTML = BA.sugerirCidades(await carregarCentroides(), ev.target.value).map((c) => `<option value="${escapeHtml(c)}"></option>`).join(""); } catch (e) { /* sem sugestão: a busca avisa */ }
+  });
+
+  // Filtro da tela no formato salvo (só campos permitidos; datas, UASG e código não entram).
+  function filtroDaTela() {
+    const m = /^(.+?)\s*-\s*([A-Za-z]{2})$/.exec($op("op-raio-cidade").value.trim());
+    return BA.limparFiltro({
+      palavrasRaw: $op("op-palavras").value, excluir: $op("op-excluir").value, ufs: ufsDoSelect($op("op-uf")), regiao: $op("op-regiao").value,
+      raio: m ? { municipio: m[1], uf: m[2], km: $op("op-raio-km").value } : null,
+      municipio: $op("op-municipio").value, esfera: $op("op-esfera").value, valorMin: $op("op-valor-min").value, valorMax: $op("op-valor-max").value, orgaoTexto: $op("op-orgao").value,
+    });
+  }
+
+  let filtrosSalvos = [];
+  let modoSalvos = null; // "novo" | "renomear" | "apagar"
+  const filtroEscolhido = () => filtrosSalvos.find((f) => f.id === $op("op-salvos-lista").value) || null;
+  function desenharFiltrosSalvos(idSelecionado) {
+    const lista = $op("op-salvos-lista");
+    lista.innerHTML = filtrosSalvos.length
+      ? `<option value="">Escolha um filtro (${filtrosSalvos.length})</option>` + filtrosSalvos.map((f) => `<option value="${escapeHtml(f.id)}">${escapeHtml(f.nome)} · ${escapeHtml(BA.resumoFiltro(f.filtro).slice(0, 70))}</option>`).join("")
+      : '<option value="">Nenhum salvo ainda</option>';
+    lista.value = filtrosSalvos.some((f) => f.id === idSelecionado) ? idSelecionado : "";
+    $op("op-salvos-renomear").hidden = $op("op-salvos-apagar").hidden = !lista.value;
+  }
+  function abrirFormSalvos(modo) {
+    const f = filtroEscolhido();
+    modoSalvos = modo;
+    const form = $op("op-salvos-form"), campo = $op("op-salvos-nome");
+    form.hidden = false;
+    form.querySelector("label").textContent = modo === "apagar" ? `Apagar o filtro "${f.nome}"? Isso não afeta seu Boletim.` : "Nome do filtro";
+    campo.hidden = modo === "apagar";
+    campo.value = modo === "renomear" ? f.nome : modo === "novo" && f ? f.nome : "";
+    $op("op-salvos-confirmar").textContent = modo === "apagar" ? "Apagar" : "Salvar";
+    (modo === "apagar" ? $op("op-salvos-confirmar") : campo).focus();
+  }
+  const fecharFormSalvos = () => { modoSalvos = null; $op("op-salvos-form").hidden = true; };
+  const mensagemSalvos = (t) => { $op("op-salvos-status").textContent = t; };
+  async function carregarFiltrosSalvos() {
+    const { data, error } = await window.__sbClient.from("filtros_salvos").select("id, nome, filtro").order("nome");
+    if (error) { mensagemSalvos("Não foi possível carregar seus filtros salvos agora."); return; }
+    filtrosSalvos = data || [];
+    desenharFiltrosSalvos($op("op-salvos-lista").value);
+  }
+  $op("op-salvos-lista").addEventListener("change", async () => {
+    const f = filtroEscolhido();
+    fecharFormSalvos();
+    $op("op-salvos-renomear").hidden = $op("op-salvos-apagar").hidden = !f;
+    if (!f) return;
+    mensagemSalvos(`Filtro "${f.nome}" aplicado.`);
+    await restaurarOportunidades({ dataDe: "", dataAte: "", uasg: "", codigo: "", ...f.filtro });
+  });
+  $op("op-salvos-salvar").addEventListener("click", () => {
+    if (!$op("op-palavras").value.trim()) { mostrarErroCampo($op("op-palavras"), $op("op-palavras-erro"), true); return; }
+    abrirFormSalvos("novo");
+  });
+  $op("op-salvos-renomear").addEventListener("click", () => abrirFormSalvos("renomear"));
+  $op("op-salvos-apagar").addEventListener("click", () => abrirFormSalvos("apagar"));
+  $op("op-salvos-cancelar").addEventListener("click", fecharFormSalvos);
+  $op("op-salvos-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const sb = window.__sbClient, modo = modoSalvos, escolhido = filtroEscolhido();
+    const nome = modo === "apagar" ? null : BA.nomeValido($op("op-salvos-nome").value);
+    if (modo !== "apagar" && !nome) { mensagemSalvos("Dê um nome ao filtro (até 60 letras)."); return; }
+    $op("op-salvos-confirmar").disabled = true;
+    try {
+      let idFinal = escolhido && escolhido.id, aviso;
+      if (modo === "apagar") {
+        const { error } = await sb.from("filtros_salvos").delete().eq("id", escolhido.id);
+        if (error) throw error;
+        idFinal = null; aviso = `Filtro "${escolhido.nome}" apagado.`;
+      } else if (modo === "renomear") {
+        const { error } = await sb.from("filtros_salvos").update({ nome }).eq("id", escolhido.id);
+        if (error) throw error;
+        aviso = `Filtro renomeado para "${nome}".`;
+      } else {
+        await lerRaio().catch(() => null); // normaliza "Manaus" para "Manaus - AM" antes de guardar
+        const filtro = filtroDaTela();
+        const igual = filtrosSalvos.find((f) => BA.norm(f.nome) === BA.norm(nome));
+        const { data, error } = igual
+          ? await sb.from("filtros_salvos").update({ filtro }).eq("id", igual.id).select("id").single()
+          : await sb.from("filtros_salvos").insert({ nome, filtro }).select("id").single();
+        if (error) throw error;
+        idFinal = data.id; aviso = igual ? `Filtro "${nome}" atualizado.` : `Filtro "${nome}" salvo.`;
+      }
+      await carregarFiltrosSalvos();
+      desenharFiltrosSalvos(idFinal);
+      fecharFormSalvos();
+      mensagemSalvos(aviso);
+    } catch (erro) {
+      mensagemSalvos(erro.code === "23505" ? "Já existe um filtro com esse nome." : /Limite de 20/.test(erro.message || "") ? "Você já tem 20 filtros salvos. Apague um para salvar outro." : "Não foi possível salvar agora. Tente de novo em instantes.");
+    } finally {
+      $op("op-salvos-confirmar").disabled = false;
+    }
+  });
+
+  // "Sem interesse": grava por conta e some de todas as listas na hora.
+  function desenharBotaoRestaurar() {
+    const b = $op("op-sem-interesse-restaurar");
+    b.hidden = semInteresse.size === 0;
+    b.textContent = `Restaurar ${semInteresse.size} edital(is) sem interesse`;
+  }
+  function redesenharPaineis() {
+    paineisRenderizados.forEach((args, alvo) => { if (alvo.isConnected) renderizarPainelBoletim(...args); else paineisRenderizados.delete(alvo); });
+  }
+  async function carregarSemInteresse() {
+    const { data, error } = await window.__sbClient.from("editais_sem_interesse").select("numero_controle").range(0, 4999);
+    if (error) return;
+    semInteresse.clear();
+    (data || []).forEach((l) => semInteresse.add(l.numero_controle));
+    desenharBotaoRestaurar();
+    if (semInteresse.size) redesenharPaineis();
+  }
+  async function descartarEdital(r) {
+    const id = r && r.numeroControlePNCP;
+    if (!id) return;
+    const { error } = await window.__sbClient.from("editais_sem_interesse").insert({ numero_controle: id, objeto_resumo: (r.objeto || "").slice(0, 200) });
+    if (error && error.code !== "23505") { avisarSincronizacaoOperacional("Não foi possível descartar este edital agora. Tente de novo.", true); return; }
+    semInteresse.add(id);
+    desenharBotaoRestaurar();
+    redesenharPaineis();
+    avisarSincronizacaoOperacional('Edital descartado: não aparece mais nas suas buscas. Para voltar atrás, use "Restaurar" nos filtros.');
+  }
+  $op("op-sem-interesse-restaurar").addEventListener("click", async () => {
+    const botao = $op("op-sem-interesse-restaurar");
+    botao.disabled = true;
+    const { error } = await window.__sbClient.from("editais_sem_interesse").delete().eq("cliente_id", window.__clienteIdAtual);
+    botao.disabled = false;
+    if (error) { avisarSincronizacaoOperacional("Não foi possível restaurar agora. Tente de novo.", true); return; }
+    semInteresse.clear();
+    desenharBotaoRestaurar();
+    redesenharPaineis();
+    avisarSincronizacaoOperacional("Editais restaurados nas suas buscas.");
+  });
+  if (window.__clientePronto) window.__clientePronto.then((c) => { if (c && window.__sbClient) { void carregarFiltrosSalvos(); void carregarSemInteresse(); } });
+
+  // "Monte minha busca com IA": a sugestão só vai para os campos quando o usuário confirma em "Usar na busca".
+  const iaCaixas = (id, lista) => { $op(id).innerHTML = lista.map((t) => `<label class="op-ia-opcao"><input type="checkbox" checked value="${escapeHtml(t)}"> ${escapeHtml(t)}</label>`).join("") || '<span class="dica-clique">Nada sugerido.</span>'; };
+  const iaMarcados = (id) => Array.from($op(id).querySelectorAll("input:checked")).map((c) => c.value);
+  $op("op-ia-sugerir").addEventListener("click", async () => {
+    const botao = $op("op-ia-sugerir"), status = $op("op-ia-status");
+    const descricao = $op("op-ia-descricao").value.trim();
+    if (descricao.length < 5) { status.textContent = "Conte em uma frase o que sua empresa vende, por exemplo: material de limpeza e descartáveis."; return; }
+    botao.disabled = true;
+    status.textContent = "Pensando nas palavras...";
+    try {
+      const { data: { session } } = await window.__sbClient.auth.getSession();
+      const resp = await fetch("/api/monte-busca-ia", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token || ""}` }, body: JSON.stringify({ descricao }) });
+      const dados = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(dados.erro || "A IA não respondeu agora.");
+      iaCaixas("op-ia-palavras", dados.palavras || []);
+      iaCaixas("op-ia-variacoes", dados.variacoes || []);
+      iaCaixas("op-ia-exclusoes", dados.exclusoes || []);
+      $op("op-ia-resultado").hidden = false;
+      status.textContent = "Desmarque o que não serve e clique em Usar na busca. Nada é salvo antes disso.";
+    } catch (erro) {
+      status.textContent = erro.message;
+    } finally {
+      botao.disabled = false;
+    }
+  });
+  $op("op-ia-usar").addEventListener("click", () => {
+    const palavras = [...iaMarcados("op-ia-palavras"), ...iaMarcados("op-ia-variacoes")];
+    if (!palavras.length) { $op("op-ia-status").textContent = "Marque pelo menos uma palavra para procurar."; return; }
+    $op("op-palavras").value = palavras.join(", ");
+    $op("op-excluir").value = iaMarcados("op-ia-exclusoes").join(", ");
+    mostrarErroCampo($op("op-palavras"), $op("op-palavras-erro"), false);
+    $op("op-ia-status").textContent = 'Palavras aplicadas. Clique em "Buscar oportunidades" e, se gostar, em "Salvar este filtro".';
+    $op("op-buscar").focus();
+  });
+
   async function buscarOportunidades({ restauracao = false } = {}) {
     opJaBuscado = true;
-    const ufs = ufsDoSelect(document.getElementById("op-uf"));
+    let ufs = ufsDoSelect(document.getElementById("op-uf"));
+    const excluirFiltro = document.getElementById("op-excluir").value.trim();
     const municipioFiltro = document.getElementById("op-municipio").value.trim().toLowerCase();
     const dataDe = document.getElementById("op-data-de").value;
     const dataAte = document.getElementById("op-data-ate").value;
@@ -7360,7 +7654,20 @@
       return;
     }
     const palavras = palavrasRaw.split(",").map((p) => p.trim()).filter(Boolean);
+    let raio = null;
+    try {
+      // Sem raio preenchido não há await: o "Buscando..." continua aparecendo no mesmo instante do clique.
+      if (document.getElementById("op-raio-km").value || document.getElementById("op-raio-cidade").value.trim()) raio = await lerRaio();
+    } catch (erro) {
+      alvo.innerHTML = `<div class="aviso">${escapeHtml(erro.message)}</div>`;
+      return;
+    }
+    // Com raio, os estados consultados são os que têm município dentro dele (o campo Estado é ignorado).
+    if (raio) ufs = raio.ufs;
     const chaveFiltro = JSON.stringify(salvarFiltroOportunidades(ufs, document.getElementById("op-municipio").value, dataDe, dataAte, palavrasRaw, uasgFiltro, {
+      excluir: excluirFiltro,
+      regiao: document.getElementById("op-regiao").value,
+      raio: raio ? { municipio: raio.origem.municipio, uf: raio.origem.uf, km: raio.km } : null,
       esfera: esferaFiltro,
       valorMin: valorMinRaw,
       valorMax: valorMaxRaw,
@@ -7407,6 +7714,17 @@
         .concat(await buscarExtrasSistemaS(ufs, palavras))
         .filter((r) => ufEstaSelecionada(r.uf, ufs));
 
+      if (excluirFiltro) resultados = resultados.filter((r) => !BA.textoExcluido(r.objeto, excluirFiltro));
+      if (raio) {
+        // Município do edital fora da base (ex.: Sistema S só traz a UF) não dá para medir: fica de fora, e avisamos.
+        let semMunicipio = 0;
+        resultados = resultados.filter((r) => {
+          const dentro = BA.dentroDoRaio(raio.indice, raio.origem, raio.km, r.municipio, r.uf);
+          if (dentro === null) semMunicipio += 1;
+          return dentro === true;
+        });
+        if (semMunicipio) avisoFonte += `<div class="aviso">${semMunicipio} oportunidade(s) sem município identificado ficaram de fora do raio de ${raio.km} km.</div>`;
+      }
       if (municipioFiltro) {
         // Registros do Sistema S/AM não têm município discriminado (só UF) — mantém
         // esses passando direto pelo filtro em vez de escondê-los por falta de dado.
@@ -7528,9 +7846,13 @@
 
   // Restaura o último filtro salvo apenas quando a ferramenta é aberta. Consultas de
   // ferramentas escondidas durante o login só competem por rede e atrasam a primeira tela.
-  async function restaurarOportunidades() {
-    const filtro = lerFiltroOportunidades();
+  async function restaurarOportunidades(explicito) {
+    const filtro = explicito || lerFiltroOportunidades();
     if (!filtro || !filtro.palavrasRaw) return;
+    document.getElementById("op-excluir").value = filtro.excluir || "";
+    document.getElementById("op-regiao").value = filtro.regiao || "";
+    document.getElementById("op-raio-km").value = filtro.raio ? filtro.raio.km : "";
+    document.getElementById("op-raio-cidade").value = filtro.raio ? `${filtro.raio.municipio} - ${filtro.raio.uf}` : "";
     definirUfsNoSelect(document.getElementById("op-uf"), filtro.ufs || filtro.uf);
     document.getElementById("op-data-de").value = filtro.dataDe || "";
     document.getElementById("op-data-ate").value = filtro.dataAte || "";
@@ -7546,12 +7868,13 @@
         const municipios = await carregarTodosMunicipios();
         renderOpcoesMunicipio(document.getElementById("op-municipio"), filtro.ufs || filtro.uf, municipios);
         document.getElementById("op-municipio").value = filtro.municipio;
-      } catch (e) { /* segue sem restaurar o município se a lista não carregar a tempo */ }
+      } catch (e) { /* segue sem restaurar o município se a lista não carregar a tempo */ }    } else if (explicito) {
+      document.getElementById("op-municipio").value = "";
     }
     // Antes da busca: com resultado salvo, a lista aparece na hora e a conferência ao
     // vivo pode levar até um minuto; os chips não podem esperar por ela.
     atualizarSeletorUfs(document.getElementById("op-uf"));
-    await buscarOportunidades({ restauracao: true });
+    await buscarOportunidades({ restauracao: !explicito });
   }
   document.querySelector('nav button[data-alvo="oportunidades"]').addEventListener("click", () => {
     // A aba pode voltar do cache visual do navegador: força os chips a espelharem
@@ -10545,7 +10868,7 @@ window.__preencherIdentidadeUsuario();
         abrirModalConta("<svg class='icone-ph'><use href='#ph-bell'></use></svg> Meus lembretes", `<p class="itens-vazio">Carregando...</p>`);
         const { data: lembretes, error } = await window.__sbClient
           .from("lembretes")
-          .select("id, numero_controle_pncp, objeto_resumo, data_final_proposta, dias_antes, nota, enviado")
+          .select("id, numero_controle_pncp, objeto_resumo, data_final_proposta, dias_antes, hora_aviso, nota, enviado")
           .eq("enviado", false)
           .order("data_final_proposta", { ascending: true });
         if (error || !lembretes || lembretes.length === 0) {
@@ -10556,7 +10879,7 @@ window.__preencherIdentidadeUsuario();
               const dataProposta = formatarPrazoPropostas(l.data_final_proposta).split(" (")[0];
               return `<div style="padding:10px 0;border-bottom:1px solid #eef1f6;">
                 <p style="margin:0 0 4px;font-size:13px;font-weight:600;">${escapeHtml(l.objeto_resumo || l.numero_controle_pncp)}</p>
-                <p style="margin:0 0 4px;font-size:12.5px;color:#64748b;">Aviso ${l.dias_antes} dia(s) antes do prazo (${escapeHtml(dataProposta)})</p>
+                <p style="margin:0 0 4px;font-size:12.5px;color:#64748b;">Aviso ${l.dias_antes ? `${l.dias_antes} dia(s) antes` : "no dia"} às ${String(l.hora_aviso ?? 8).padStart(2, "0")}:00 · prazo ${escapeHtml(dataProposta)}</p>
                 ${l.nota ? `<p style="margin:0 0 6px;font-size:12.5px;"><svg class='icone-ph'><use href='#ph-note-pencil'></use></svg> ${escapeHtml(l.nota)}</p>` : ""}
                 <button type="button" class="btn-cancelar-lembrete" data-id="${escapeHtml(l.id)}" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:12.5px;padding:0;">✕ Cancelar lembrete</button>
               </div>`;
