@@ -1,7 +1,7 @@
 // Popup, seção "Preencher proposta". Lote do LicitaPlena (aba logada) ou planilha CSV; preenche a página de cadastro
 // que o usuário já abriu. Não clica Salvar, não aceita termo/declarações, não resolve captcha, não navega.
 // Lote e diário ficam no globalThis.localStorage do popup, por compra, para retomar se o portal cair.
-import { buscarLoteNaPagina, compraDaUrl, lerCsv, lerDiario, preencherPaginaCadastro, progresso, registrarDiario, resumirPreenchimento } from './preencher-proposta.mjs';
+import { buscarLoteNaPagina, compraDaUrl, expirarArmazenamento, lerCsv, lerDiario, preencherPaginaCadastro, progresso, registrarDiario, resumirPreenchimento } from './preencher-proposta.mjs';
 
 const status = document.getElementById('preencherStatus');
 const origensLicitaPlena = () => chrome.runtime.getManifest().optional_host_permissions || [];
@@ -14,8 +14,10 @@ async function abaAtiva() {
   if (!compra) throw new Error('Abra a página "Cadastrar propostas" do Compras.gov (já logado) e tente de novo.');
   return { aba, compra };
 }
-const lerLote = compra => { try { return JSON.parse(globalThis.localStorage.getItem(chaveLote(compra))) || []; } catch { return []; } };
-const guardarLote = (compra, itens) => { try { globalThis.localStorage.setItem(chaveLote(compra), JSON.stringify(itens)); } catch { /* sem armazenamento */ } };
+const lerLote = compra => { try { return JSON.parse(globalThis.localStorage.getItem(chaveLote(compra)))?.itens || []; } catch { return []; } };
+const apagarLote = compra => { try { globalThis.localStorage.removeItem(chaveLote(compra)); } catch { /* sem armazenamento */ } };
+expirarArmazenamento(globalThis.localStorage);
+const guardarLote = (compra, itens) => { try { globalThis.localStorage.setItem(chaveLote(compra), JSON.stringify({ em: new Date().toISOString(), itens })); } catch { /* sem armazenamento */ } };
 const mostrarProgresso = compra => { const lote = lerLote(compra); return lote.length ? progresso(lerDiario(globalThis.localStorage, compra), lote) : null; };
 
 function falha(e) { status.textContent = e?.message || 'Falha. Nada foi alterado na página.'; }
@@ -55,7 +57,9 @@ document.getElementById('preencherAgora').addEventListener('click', () => {
     const r = await executar(aba.id, preencherPaginaCadastro, [{ lote }]);
     if (!r) throw new Error('Não foi possível preencher a página.');
     if (r.status === 'ok') registrarDiario(globalThis.localStorage, compra, r);
-    status.textContent = resumirPreenchimento(r, mostrarProgresso(compra));
+    const prog = mostrarProgresso(compra);
+    status.textContent = resumirPreenchimento(r, prog);
+    if (prog && prog.feitos >= prog.total) apagarLote(compra); // compra concluída: o lote (com valor mínimo) não fica no navegador
   })().catch(falha);
 });
 

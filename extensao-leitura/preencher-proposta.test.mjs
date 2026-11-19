@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
-import { compraDaUrl, lerCsv, lerDiario, preencherPaginaCadastro, progresso, registrarDiario, resumirPreenchimento } from './preencher-proposta.mjs';
+import { compraDaUrl, expirarArmazenamento, lerCsv, lerDiario, preencherPaginaCadastro, progresso, registrarDiario, resumirPreenchimento } from './preencher-proposta.mjs';
 
 // ---- DOM mínimo (sem dependências): parser de HTML + seletores tag, .classe, [attr], [attr="v"], [attr*="v"], descendente ----
 const VAZIOS = new Set(['input', 'br', 'img', 'meta', 'link']);
@@ -127,6 +127,25 @@ test('valor abaixo do mínimo do usuário ou acima do estimado: alerta e não pr
   assert.equal(campo(pg, 1, 'input-valor-proposta').value, '');
   assert.equal(campo(pg, 2, 'input-valor-proposta').value, '');
   assert.equal((await rodar(pagina(), [L('2', '5')])).preenchidos.length, 1);
+});
+
+test('valor com vários pontos e sem vírgula ("1.234.567") é inválido; "1.234,56" e "11.87" passam', async () => {
+  const r = await rodar(pagina(), [L('6', '1.234.567'), L('1', '1.234,56'), L('2', '5')]);
+  assert.deepEqual(r.alertas.filter(a => a.tipo === 'valor_invalido').map(a => a.item), ['6']);
+});
+
+test('armazenamento: lote/diário sem data ou com mais de 30 dias são apagados; recentes ficam', () => {
+  const m = new Map([
+    ['lp-preencher-lote:a', JSON.stringify({ em: '2026-11-18T00:00:00Z', itens: [] })],
+    ['lp-preencher-lote:b', JSON.stringify({ em: '2026-09-01T00:00:00Z', itens: [] })],
+    ['lp-preencher-lote:c', JSON.stringify([{ item: '1', valorMinimo: '9' }])],
+    ['lp-preencher-diario:d', JSON.stringify({ 1: { estado: 'preenchido', em: '2026-09-01T00:00:00Z' } })],
+    ['lp-preencher-diario:e', JSON.stringify({ 1: { estado: 'preenchido', em: '2026-11-17T00:00:00Z' } })],
+    ['outra', 'x'],
+  ]);
+  const st = { get length() { return m.size; }, key: i => [...m.keys()][i], getItem: k => m.get(k) ?? null, removeItem: k => m.delete(k) };
+  expirarArmazenamento(st, Date.parse('2026-11-19T00:00:00Z'));
+  assert.deepEqual([...m.keys()].sort(), ['lp-preencher-diario:e', 'lp-preencher-lote:a', 'outra']);
 });
 
 test('classifica: já cadastrado no portal (não mexe), fora do lote, fora da página; texto de resumo', async () => {

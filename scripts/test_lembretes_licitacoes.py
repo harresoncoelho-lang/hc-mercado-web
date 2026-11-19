@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime, timezone
 
+import os
+from unittest.mock import patch
+
+import lembretes_licitacoes as lic
 from lembretes_licitacoes import momento_do_aviso, montar_corpo_email, situacao
 
 # Prazo 20/11/2026 17:00 em Brasília (UTC-3) = 20:00Z.
@@ -41,3 +45,36 @@ def test_corpo_do_email_escapa_html_e_mostra_o_prazo():
     assert "20/11/2026 17:00" in texto
     assert "<script>" not in html_corpo and "&lt;script&gt;" in html_corpo
     assert "<b>x</b>" not in html_corpo and "Empresa &lt;A&gt;" in html_corpo
+
+
+def _rodar_main(reserva, envio_falha=False):
+    chamadas = []
+    lembrete = {**LEMBRETE, "id": "L1", "cliente_id": "C1", "enviado": False}
+
+    def enviar(*a):
+        chamadas.append("enviar")
+        if envio_falha:
+            raise RuntimeError("smtp")
+    with patch.multiple(
+        lic,
+        carregar_lembretes_pendentes=lambda: [lembrete],
+        situacao=lambda l, agora: "enviar",
+        buscar_cliente=lambda _id: {"email": "a@b.c", "nome": "A"},
+        reservar_envio=lambda i: chamadas.append("reservar") or reserva,
+        liberar_envio=lambda i: chamadas.append("liberar"),
+        enviar_email=enviar,
+    ), patch.dict(os.environ, {"LEMBRETES_SO_REGISTRAR": "0"}):
+        lic.main()
+    return chamadas
+
+
+def test_reserva_antes_de_enviar():
+    assert _rodar_main(True) == ["reservar", "enviar"]
+
+
+def test_outra_rodada_ja_reservou_nao_envia():
+    assert _rodar_main(False) == ["reservar"]
+
+
+def test_envio_falho_devolve_lembrete_para_a_fila():
+    assert _rodar_main(True, envio_falha=True) == ["reservar", "enviar", "liberar"]

@@ -72,7 +72,7 @@ function lerFornecedores(html) {
     }
     if (ultima && tds.length === 1 && /tex5b/.test(corpo)) {
       for (const par of corpo.matchAll(/<span class="tex5b">([\s\S]*?)<\/span>\s*<span class="tex5a">([\s\S]*?)<\/span>/gi)) {
-        const rotulo = limpar(par[1]).replace(/:$/, "").toLowerCase(), valor = limpar(par[2]) || null;
+        const rotulo = limpar(par[1]).replace(/:$/, "").toLowerCase(), valor = texto(limpar(par[2]), 600) || null;
         if (rotulo === "marca") ultima.marca = valor;
         else if (rotulo === "fabricante") ultima.fabricante = valor;
         else if (rotulo.startsWith("modelo")) ultima.modelo = valor;

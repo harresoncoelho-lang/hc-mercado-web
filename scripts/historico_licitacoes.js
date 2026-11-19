@@ -17,6 +17,9 @@
 // 233 itens tinha 3.041 propostas no mês; os 2 itens de café, 14). Nada do resto do arquivo é gravado.
 const L = require("../netlify/functions/_licitacao_anterior");
 const CN = require("../netlify/functions/_comprasnet_antigo");
+const { semCpf } = require("../netlify/functions/_cpf");
+// LGPD: marca/fabricante/modelo são texto livre do fornecedor; sem HTML e sem CPF (o CHECK do banco recusa).
+const textoLivre = (v) => (v ? semCpf(String(v).replace(/<[^>]*>/g, " "), " ").replace(/\s+/g, " ").trim().slice(0, 120) || null : null);
 const { referencia } = require("../netlify/functions/importar-item-pncp");
 
 const ANOS = Math.max(1, Number(process.env.ANOS_HISTORICO || 3));
@@ -167,8 +170,8 @@ async function lerComprasAntigas({ compras, numeros }, { rest, fetchImpl = (...a
       if (cancelado || !it.ni) continue;
       saida.participacoes.push(semNulos({ id_compra: c.id_compra, numero_item: n, ...L.fornecedor(it.ni, it.nome, "pp"), ordem_classificacao: 1,
         situacao_resultado: it.situacao, valor_homologado: it.valor_unitario, quantidade_homologada: it.qtd_lance ?? it.quantidade, data_resultado: res.data,
-        marca: L.normalizarMarca(it.marca, it.descricao), marca_declarada: it.marca ? String(it.marca).slice(0, 120) : null,
-        fabricante: it.fabricante ? String(it.fabricante).slice(0, 120) : null, modelo: it.modelo ? String(it.modelo).slice(0, 120) : null, descricao_ofertada: it.ofertado }));
+        marca: textoLivre(L.normalizarMarca(it.marca, it.descricao)), marca_declarada: textoLivre(it.marca),
+        fabricante: textoLivre(it.fabricante), modelo: textoLivre(it.modelo), descricao_ofertada: it.ofertado }));
     }
   }
   return saida;

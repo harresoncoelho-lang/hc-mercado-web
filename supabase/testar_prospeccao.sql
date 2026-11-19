@@ -24,7 +24,13 @@ do $$ begin
  begin insert into public.prospeccao_itens(id,tipo,fonte,link) values('xx:QA-6','edital','pncp','https://pncp.gov.br/app/x'); raise exception 'tipo inválido aceito';
  exception when check_violation then null; end;
 end $$;
+reset role;
+insert into auth.users(id,email) values ('c9000000-0000-4000-8000-000000000001','pro-a@qa.invalid'),('c9000000-0000-4000-8000-000000000002','pro-p@qa.invalid');
+insert into public.clientes(id,nome,email,status) values ('c9000000-0000-4000-8000-000000000001','QA pro A','pro-a@qa.invalid','aprovado'),('c9000000-0000-4000-8000-000000000002','QA pro P','pro-p@qa.invalid','pendente');
 set local role authenticated;
+select set_config('request.jwt.claim.sub','c9000000-0000-4000-8000-000000000002',true);
+do $$ begin if (select count(*) from public.prospeccao_itens)<>0 then raise exception 'cliente pendente leu'; end if; end $$;
+select set_config('request.jwt.claim.sub','c9000000-0000-4000-8000-000000000001',true);
 do $$ begin
  if (select count(*) from public.prospeccao_itens where id='contrato:QA-1')<>1 then raise exception 'autenticado não lê'; end if;
  begin insert into public.prospeccao_itens(id,tipo,fonte,link) values('pca:QA-7','pca','pncp','https://pncp.gov.br/app/pca/1/2026'); raise exception 'autenticado gravou';

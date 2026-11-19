@@ -82,9 +82,18 @@ grant select on public.prospeccao_itens to authenticated;
 revoke truncate on public.prospeccao_itens from service_role;
 grant select, insert, update, delete on public.prospeccao_itens to service_role;
 
+-- Leitura só para cliente aprovado (conta pendente/suspensa com JWT válido não lê). security definer porque a RLS de
+-- clientes só mostra a própria linha; stable + search_path vazio. Mesmo corpo em prospeccao.sql e historico_licitacoes.sql.
+create or replace function public.cliente_aprovado() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.clientes c where c.id = (select auth.uid()) and c.status = 'aprovado')
+$$;
+revoke all on function public.cliente_aprovado() from public, anon;
+grant execute on function public.cliente_aprovado() to authenticated, service_role;
+
 drop policy if exists prospeccao_itens_select_autenticado on public.prospeccao_itens;
 create policy prospeccao_itens_select_autenticado on public.prospeccao_itens
-  for select to authenticated using (true);
+  for select to authenticated using (public.cliente_aprovado());
 -- Sem policy de escrita: só service_role (bypassrls) grava.
 
 commit;

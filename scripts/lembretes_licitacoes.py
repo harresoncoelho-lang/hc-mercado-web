@@ -183,6 +183,28 @@ def enviar_email(destino_email, nome_destinatario, lembrete):
         servidor.sendmail(remetente, [destino_email], msg.as_string())
 
 
+def reservar_envio(lembrete_id):
+    # PATCH condicional (enviado=eq.false): so uma rodada ganha a linha. Evita e-mail duplicado entre rodadas
+    # simultaneas e reenvio de hora em hora se a gravacao pos-envio falhasse.
+    ganhou = _requisicao_supabase(
+        "/rest/v1/lembretes?id=eq." + urllib.parse.quote(lembrete_id) + "&enviado=eq.false",
+        metodo="PATCH",
+        corpo={"enviado": True, "enviado_em": datetime.now(timezone.utc).isoformat()},
+        headers_extra={"Prefer": "return=representation"},
+    )
+    return bool(ganhou)
+
+
+def liberar_envio(lembrete_id):
+    # Envio falhou: devolve o lembrete para a fila (proxima hora tenta de novo).
+    _requisicao_supabase(
+        "/rest/v1/lembretes?id=eq." + urllib.parse.quote(lembrete_id),
+        metodo="PATCH",
+        corpo={"enviado": False, "enviado_em": None},
+        headers_extra={"Prefer": "return=minimal"},
+    )
+
+
 def marcar_como_enviado(lembrete_id, enviado=True):
     _requisicao_supabase(
         "/rest/v1/lembretes?id=eq." + urllib.parse.quote(lembrete_id),
@@ -219,12 +241,23 @@ def main():
             enviados += 1
             continue
         try:
+            reservado = reservar_envio(lembrete["id"])
+        except Exception as e:
+            log("ERRO ao reservar lembrete " + lembrete["id"] + ": " + str(e) + " (nada enviado)")
+            continue
+        if not reservado:
+            log("Lembrete " + lembrete["id"] + " já reservado por outra rodada, pulando.")
+            continue
+        try:
             enviar_email(email, nome, lembrete)
-            marcar_como_enviado(lembrete["id"])
             enviados += 1
             log("Lembrete enviado para " + email + " (licitação " + str(lembrete.get("numero_controle_pncp")) + ").")
         except Exception as e:
             log("ERRO ao enviar lembrete " + lembrete["id"] + " para " + email + ": " + str(e))
+            try:
+                liberar_envio(lembrete["id"])
+            except Exception as e2:
+                log("ERRO ao devolver lembrete " + lembrete["id"] + " para a fila: " + str(e2))
 
     log("=== Concluído: " + str(enviados) + " lembrete(s) " + ("registrado(s), nada enviado" if so_registrar else "enviado(s)") + " ===")
 

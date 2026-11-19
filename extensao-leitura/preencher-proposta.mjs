@@ -94,6 +94,19 @@ export function registrarDiario(storage, compra, resultado, agora = new Date().t
   try { storage.setItem(chaveDiario(compra), JSON.stringify(d)); } catch { /* sem armazenamento: o diário é conveniência */ }
   return d;
 }
+const PREFIXOS_ARMAZENADOS = ['lp-preencher-lote:', 'lp-preencher-diario:'];
+// Lote traz valorMinimo (estratégia do usuário): não fica para sempre no navegador. Lote guarda {em, itens}, diário {item:{em}}; sem data ou com mais de `dias`, apaga.
+export function expirarArmazenamento(storage, agora = Date.now(), dias = 30) {
+  try {
+    for (let i = storage.length - 1; i >= 0; i--) {
+      const k = storage.key(i);
+      if (!PREFIXOS_ARMAZENADOS.some(p => k?.startsWith(p))) continue;
+      let em = NaN;
+      try { const v = JSON.parse(storage.getItem(k)); em = Array.isArray(v) ? NaN : Math.max(...[v.em, ...Object.values(v).map(e => e?.em)].map(Date.parse).filter(Number.isFinite)); } catch { /* ilegível: apaga */ }
+      if (!(agora - em < dias * 86400000)) storage.removeItem(k);
+    }
+  } catch { /* sem armazenamento */ }
+}
 export function progresso(diario, lote) {
   const feitos = lote.filter(l => diario[l.item]).length;
   return { feitos, total: lote.length };
@@ -117,7 +130,7 @@ export async function preencherPaginaCadastro(entrada) {
   // Valores com 4 casas inteiras escaladas (BigInt): "11,8700" e "11.87" -> 118700n. Milhar com ponto só se vier com vírgula.
   const escalar = t => {
     let s = String(t ?? '').replace(/R\$|\s/g, '');
-    if (!/^\d[\d.]*(,\d{1,4})?$|^\d+(\.\d{1,4})?$/.test(s)) return null;
+    if (!/^\d[\d.]*,\d{1,4}$|^\d+(\.\d{1,4})?$/.test(s)) return null; // vários pontos só com vírgula decimal: \"1.234.567\" é ambíguo
     if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
     const [i, f = ''] = s.split('.');
     return BigInt(i + f.padEnd(4, '0'));

@@ -79,7 +79,11 @@ do $$ declare f text; begin
  end loop;
  if has_table_privilege('authenticated','public.historico_cnpj_consultas','SELECT') then raise exception 'logado lê a fila (tem solicitante)'; end if;
 end $$;
+reset role;
+insert into auth.users(id,email) values ('c9200000-0000-4000-8000-000000000001','cnpj-a@qa.invalid');
+insert into public.clientes(id,nome,email,status) values ('c9200000-0000-4000-8000-000000000001','QA cnpj A','cnpj-a@qa.invalid','aprovado');
 set local role authenticated;
+select set_config('request.jwt.claim.sub','c9200000-0000-4000-8000-000000000001',true);
 do $$ begin
  if (select count(*) from public.analise_cnpj_participacoes('11444777000161')) <> 2 then raise exception 'Logado não leu pela RPC'; end if;
  begin perform 1 from public.historico_cnpj_consultas; raise exception 'Logado leu a fila';

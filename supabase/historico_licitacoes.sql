@@ -130,6 +130,25 @@ update public.historico_participacoes set fornecedor_nome = nullif(btrim(regexp_
 alter table public.historico_participacoes drop constraint if exists historico_participacoes_nome_sem_cpf;
 alter table public.historico_participacoes add constraint historico_participacoes_nome_sem_cpf check (fornecedor_nome !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y');
 
+-- LGPD: marca/fabricante/modelo também são texto livre do fornecedor. Limpeza idempotente (só linha com CPF) e CHECK.
+do $$ declare c text; begin
+ foreach c in array array['marca', 'marca_declarada', 'fabricante', 'modelo'] loop
+  execute format($f$update public.historico_participacoes set %1$I = nullif(btrim(regexp_replace(regexp_replace(%1$I, '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y', ' ', 'g'), '\s+', ' ', 'g')), '')
+   where %1$I ~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y'$f$, c);
+  execute format('alter table public.historico_participacoes drop constraint if exists %I', 'historico_participacoes_' || c || '_sem_cpf');
+  execute format($f$alter table public.historico_participacoes add constraint %I check (%I !~ '\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y')$f$, 'historico_participacoes_' || c || '_sem_cpf', c);
+ end loop;
+end $$;
+
+-- Leitura só para cliente aprovado (conta pendente/suspensa com JWT válido não lê). security definer porque a RLS de
+-- clientes só mostra a própria linha; stable + search_path vazio. Mesmo corpo em prospeccao.sql e historico_licitacoes.sql.
+create or replace function public.cliente_aprovado() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.clientes c where c.id = (select auth.uid()) and c.status = 'aprovado')
+$$;
+revoke all on function public.cliente_aprovado() from public, anon;
+grant execute on function public.cliente_aprovado() to authenticated, service_role;
+
 do $$ declare t text; begin
  foreach t in array array['historico_compras', 'historico_itens', 'historico_participacoes'] loop
   execute format('alter table public.%I enable row level security', t);
@@ -137,8 +156,8 @@ do $$ declare t text; begin
   execute format('grant select on public.%I to authenticated', t);
   execute format('grant all on public.%I to service_role', t);
   execute format('drop policy if exists %I on public.%I', t || '_leitura', t);
-  -- Dado público de compras governamentais: qualquer usuário logado lê; ninguém além do servidor escreve.
-  execute format('create policy %I on public.%I for select to authenticated using (true)', t || '_leitura', t);
+  -- Dado público de compras governamentais: qualquer cliente aprovado lê; ninguém além do servidor escreve.
+  execute format('create policy %I on public.%I for select to authenticated using (public.cliente_aprovado())', t || '_leitura', t);
  end loop;
 end $$;
 

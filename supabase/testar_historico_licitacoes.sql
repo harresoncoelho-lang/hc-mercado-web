@@ -80,9 +80,16 @@ do $$ begin
  exception when check_violation then null; end;
  begin update public.historico_participacoes set descricao_ofertada='titular 97048143215' where numero_item=107 and fornecedor_chave='38350458000143'; raise exception 'CPF aceito em descricao_ofertada';
  exception when check_violation then null; end;
+begin update public.historico_participacoes set marca='ACME 970.481.432-15' where numero_item=107 and fornecedor_chave='38350458000143'; raise exception 'CPF aceito em marca'; exception when check_violation then null; end; begin update public.historico_participacoes set modelo='x 97048143215' where numero_item=107 and fornecedor_chave='38350458000143'; raise exception 'CPF aceito em modelo'; exception when check_violation then null; end;
 end $$;
 -- Usuário logado lê; não escreve. Anônimo não lê.
+reset role;
+insert into auth.users(id,email) values ('c9100000-0000-4000-8000-000000000001','his-a@qa.invalid'),('c9100000-0000-4000-8000-000000000002','his-p@qa.invalid');
+insert into public.clientes(id,nome,email,status) values ('c9100000-0000-4000-8000-000000000001','QA his A','his-a@qa.invalid','aprovado'),('c9100000-0000-4000-8000-000000000002','QA his P','his-p@qa.invalid','suspenso');
 set local role authenticated;
+select set_config('request.jwt.claim.sub','c9100000-0000-4000-8000-000000000002',true);
+do $$ begin if (select count(*) from public.historico_participacoes)<>0 then raise exception 'cliente suspenso leu'; end if; end $$;
+select set_config('request.jwt.claim.sub','c9100000-0000-4000-8000-000000000001',true);
 do $$ begin
  if (select count(*) from public.historico_participacoes where id_compra='78882005900332025')<>2 then raise exception 'Logado não leu as participações'; end if;
  if (select count(*) from public.historico_itens where situacao_item='Fracassado')<1 then raise exception 'Logado não leu o fracassado'; end if;

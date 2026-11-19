@@ -73,7 +73,7 @@ async function exigirUsuarioLogado(event) {
 // IA só prossegue com contagem válida. Os demais consumidores mantêm o comportamento
 // anterior de contingência para não alterar envios e consultas fora deste fluxo.
 async function verificarLimiteDiario(userId, nomeFuncao, limite) {
-  const ehIA = nomeFuncao === "ia-edital";
+  const ehIA = nomeFuncao === "ia-edital" || nomeFuncao === "monte-busca-ia";
   const indisponivel = ehIA ? { ok: false, status: 503, erro: "Não foi possível verificar o limite de uso da IA agora. Tente novamente em instantes." } : { ok: true };
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
