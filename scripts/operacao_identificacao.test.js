@@ -85,3 +85,25 @@ test('invalidar contexto enquanto consulta sessão impede o envio posterior', as
   liberar({ userId: 'u1', accessToken: 'token-ficticio' }); await concluir();
   assert.equal(pedidos, 0); assert.equal(a.buscar(e => e.id === 'empresa-identificacao-razao'), undefined);
 });
+
+// Quadro único "Dados da empresa": a identificação vira a 1ª seção e repassa o endereço confirmado ao perfil (UF da sede).
+test('quadro único: seção nomeada e endereço confirmado chega ao perfil na carga e ao confirmar', async () => {
+  const a = ambiente(), recebidos = [];
+  const empresa = { id: 'empresaA', razao_social: 'Empresa fictícia', cnpj: '00000000000100' };
+  const confirmado = { status: 'confirmado', dados: { endereco: 'Rua Fictícia, 1 — Manaus/AM', representante: 'Pessoa', cargo: 'Sócia' } };
+  const controlador = montar({ alvo: a.host, titulo: 'Identificação e representante', aoAtualizar: r => recebidos.push(r.perfil?.dados?.endereco ?? null),
+    obterSessao: async () => ({ userId: 'u1', accessToken: 'token-ficticio' }),
+    requisitar: async (_url, op) => { const p = JSON.parse(op.body); return { ok: true, json: async () => ({ empresa, documentos: [], perfil: p.acao === 'confirmar' ? { status: 'confirmado', dados: p.dados } : confirmado }) }; } });
+  controlador.abrir('empresaA', 'u1'); await concluir(); await concluir();
+  assert.equal(a.buscar(e => e.tag === 'summary').textContent, 'Identificação e representante');
+  assert.deepEqual(recebidos, ['Rua Fictícia, 1 — Manaus/AM']);
+  const endereco = a.buscar(e => e.id === 'empresa-identificacao-endereco'); endereco.value = 'Av. Fictícia, 2, Belém - PA'; endereco.oninput();
+  const revisao = a.buscar(e => e.id === 'empresa-identificacao-revisao'); revisao.checked = true; revisao.onchange();
+  await a.buscar(e => e.textContent === 'Salvar identificação confirmada').onclick(); await concluir();
+  assert.equal(recebidos.at(-1), 'Av. Fictícia, 2, Belém - PA');
+});
+
+test('sem título a identificação mantém o nome antigo (painel e processos usam o mesmo componente)', () => {
+  const a = ambiente();
+  assert.equal(a.buscar(e => e.tag === 'summary').textContent, 'Dados da empresa');
+});

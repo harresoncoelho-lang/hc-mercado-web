@@ -153,3 +153,10 @@ test('logo: prévia em data: URL com o tipo certo e bytes íntegros (cabe na CSP
   assert.deepEqual([...Buffer.from(url.split(',')[1], 'base64')], [...png]);
   assert.match(P.dataUrlLogo(new Uint8Array(70000).fill(7), 'jpg'), /^data:image\/jpeg;base64,/);
 });
+
+// Quadro único: a UF da sede é sugerida na hora em que a identificação é confirmada, com a mesma leitura do servidor.
+test('UF do endereço: navegador lê igual ao servidor, inclusive sem UF e com sigla que não é UF', () => {
+  for (const e of ['Rua Fictícia, 100 — Manaus/AM', 'Av. Teste, 2, Belém - PA, CEP 66000-000', 'Rua sp 1, Centro, RJ 20000-000', 'Rua das Flores, 10, Centro', 'Rua X, 1, XX', '', null, 'Rua A, SP, depois Manaus/AM'])
+    assert.equal(P.ufDoEndereco(e), S.ufDoEndereco(e), String(e));
+  assert.equal(P.ufDoEndereco('Rua Fictícia, 100 — Manaus/AM'), 'AM');
+});

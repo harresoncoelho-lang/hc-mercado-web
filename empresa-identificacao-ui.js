@@ -9,7 +9,7 @@
     let cadastro, ocupado = false, alterado = false;
     const provas = new Map();
     const secao = criar('details'); secao.open = contexto.aberto === true;
-    secao.append(criar('summary', 'Dados da empresa'));
+    secao.append(criar('summary', contexto.titulo || 'Dados da empresa'));
     const aviso = criar('p'); aviso.setAttribute('role', 'status');
     secao.append(criar('p', 'Confira os poderes do representante no contrato social. A confirmação registra sua conferência; não certifica os documentos. Estes dados e arquivos não são enviados à IA.'), aviso);
     const campos = {};

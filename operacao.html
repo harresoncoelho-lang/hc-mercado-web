@@ -93,7 +93,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
 .total-calculado{color:var(--action-text)}
 .modal{background:rgba(11,16,32,.5)}
 .modal-corpo{background:var(--surface-raised);border-color:var(--border-default);border-radius:var(--radius-modal);box-shadow:var(--shadow-overlay)}
-/* Perfil da empresa (E12), na aba Dados da empresa logo abaixo da identificação: grupos curtos, tabela de premissas com rolagem própria no celular. */
+/* Perfil da empresa (E12), no quadro único Dados da empresa, nas seções depois da identificação: grupos curtos, tabela de premissas com rolagem própria no celular. */
 .perfil-cabeca{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:12px}
 .perfil-logo{display:grid;justify-items:end;gap:6px;text-align:right}.perfil-logo img{max-width:160px;max-height:64px;object-fit:contain;border:1px solid var(--border-default);border-radius:var(--radius-control);background:#fff;padding:4px}
 #perfil-logo-aviso{margin:0;max-width:260px;font-size:13px;padding:6px 10px}.perfil-arquivo{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.perfil-logo label.btn{cursor:pointer;margin:0}
@@ -136,7 +136,7 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
   <div id="aviso" class="aviso"></div>
   <section class="metricas"><div class="metrica ok"><span>Documentos válidos</span><b id="m-validos">—</b><span>com validade regular</span></div><div class="metrica alerta"><span>Vencem em até 30 dias</span><b id="m-proximos">—</b><span>alerta configurável: 30, 15, 7, 3 e 1 dia</span></div><div class="metrica vencido"><span>Documentos vencidos</span><b id="m-vencidos">—</b><span>pedem renovação</span></div><div class="metrica"><span>Prontidão da empresa</span><b id="m-prontidao">—</b><span>documentos essenciais válidos</span></div></section>
   <div class="abas"><button class="aba" data-aba="identificacao">Dados da empresa</button><button class="aba ativa" data-aba="documentos">Documentos e certidões</button><button class="aba" data-aba="catalogo">Catálogo de produtos</button><button class="aba" data-aba="agenda">Agenda operacional</button><button class="aba" data-aba="relatorio">Prontidão e relatório</button></div>
-  <section id="aba-identificacao" class="painel"><div class="card"><p>Identificação e representação da empresa ativa para preparar documentos e propostas.</p><p id="identificacao-retorno" hidden><a class="link" id="voltar-processo">Abrir processo de origem</a><br><span class="nota">Seu rascunho continua na aba original. Volte a ela para continuar a edição e atualizar a prévia.</span></p><div id="identificacao-empresa" aria-live="polite"><p>Carregando empresas autorizadas…</p></div></div><div class="card" id="perfil-empresa" aria-live="polite"><p>Carregando perfil…</p></div></section>
+  <section id="aba-identificacao" class="painel"><div class="card"><div class="perfil-cabeca"><div><h2>Dados da empresa</h2><p>Preencha uma vez. Os documentos, a proposta e as declarações usam estes dados.</p></div><div id="perfil-logo-area"></div></div><p id="identificacao-retorno" hidden><a class="link" id="voltar-processo">Abrir processo de origem</a><br><span class="nota">Seu rascunho continua na aba original. Volte a ela para continuar a edição e atualizar a prévia.</span></p><div id="identificacao-empresa" aria-live="polite"><p>Carregando empresas autorizadas…</p></div><div id="perfil-empresa" aria-live="polite"><p>Carregando perfil…</p></div></div></section>
   <section id="aba-documentos" class="painel ativo"><div class="card"><div class="card-topo"><div><h2>Central de documentos</h2><p>Federal, estadual, municipal, FGTS, CNDT, balanço, contrato social, licenças, registros, atestados e tipos personalizados.</p></div><div class="pdf-acoes"><button class="btn" id="btn-pdf-unico" disabled title="Marque os documentos na ordem em que devem aparecer">Baixar PDF único</button><button class="btn" id="btn-atualizar">Atualizar</button></div></div><div class="tabela-wrap"><table class="tabela"><thead><tr><th title="Incluir no PDF único">PDF</th><th>Documento</th><th>Emissão / vencimento</th><th>Emissor / responsável</th><th>Status</th><th>Arquivo</th><th></th></tr></thead><tbody id="lista-documentos"></tbody></table></div><p class="nota" id="pdf-unico-status" aria-live="polite">Marque os documentos na ordem desejada para juntar em um PDF (até 30 arquivos / 60 MB). A montagem acontece no seu navegador.</p><ul class="nota" id="pdf-unico-avisos"></ul></div></section>
   <section id="aba-catalogo" class="painel"><div class="card" id="catalogo-produtos"></div></section>
   <section id="aba-agenda" class="painel"><div class="card"><div class="card-topo"><div><h2>Agenda operacional</h2><p>Compromissos em atraso e próximos prazos da empresa.</p></div><button class="btn primario" id="btn-novo-evento">+ Compromisso</button></div><div id="lista-agenda" class="lista-agenda"></div></div></section>
@@ -156,12 +156,14 @@ input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   let contextoInicial = true, usuarioIdentificacao, sessaoIdentificacaoAlterada = false;
-  const identificacao = OperacaoIdentificacao.montar({ alvo: $("identificacao-empresa"), obterSessao: async () => {
+  // Quadro único: a identificação é a 1ª seção; o endereço confirmado sugere a UF da sede ao perfil (nada digitado duas vezes).
+  const identificacao = OperacaoIdentificacao.montar({ alvo: $("identificacao-empresa"), titulo: "Identificação e representante",
+    aoAtualizar: r => { if (r?.perfil?.status === "confirmado") perfilEmpresa.sugerirUf(r.perfil.dados?.endereco); }, obterSessao: async () => {
     const { data: { session } } = await sb.auth.getSession();
     return session ? { userId: session.user.id, accessToken: session.access_token } : null;
   } });
   // Perfil (E12): mesma sessão da identificação; a logo vai direto ao bucket privado, o servidor confere em registrarLogo.
-  const perfilEmpresa = PerfilEmpresa.montar({ alvo: $("perfil-empresa"), obterSessao: async () => {
+  const perfilEmpresa = PerfilEmpresa.montar({ alvo: $("perfil-empresa"), alvoCabeca: $("perfil-logo-area"), obterSessao: async () => {
     const { data: { session } } = await sb.auth.getSession();
     return session ? { accessToken: session.access_token } : null;
   }, enviarLogo: async (caminho, arquivo, tipo) => {

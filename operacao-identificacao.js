@@ -13,7 +13,8 @@
     // O destino só abre o dossiê depois de encontrá-lo na lista autorizada da empresa.
     return `processos.html?empresa=${encodeURIComponent(empresaId)}&processo=${encodeURIComponent(processoId)}`;
   }
-  function montar({ alvo, obterSessao, requisitar = global.fetch.bind(global) }) {
+  // titulo e aoAtualizar: o quadro único de operacao.html nomeia a seção e repassa o endereço confirmado ao perfil (UF da sede).
+  function montar({ alvo, obterSessao, requisitar = global.fetch.bind(global), titulo, aoAtualizar }) {
     let vigente = null, uiAtiva = null;
     function limpar(mensagem) {
       vigente = null; uiAtiva = null; alvo.replaceChildren();
@@ -45,7 +46,7 @@
         return resultado;
       };
       alvo.replaceChildren();
-      const ui = global.EmpresaIdentificacaoUI.renderizar(alvo, { empresaId, ativo, solicitar, semMinuta: true, aberto: true }); uiAtiva = ui;
+      const ui = global.EmpresaIdentificacaoUI.renderizar(alvo, { empresaId, ativo, solicitar, semMinuta: true, aberto: true, titulo, atualizado: aoAtualizar }); uiAtiva = ui;
       void ui.carregar();
     }
     return { abrir, limpar, temAlteracoesNaoSalvas: () => uiAtiva?.temAlteracoesNaoSalvas?.() === true };
