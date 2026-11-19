@@ -37,3 +37,6 @@ vault-obsidian/.obsidian/
 # Saída do build para o Cloudflare Pages (scripts/montar_publico.js)
 publico/
 .wrangler/
+
+# Histórico do boletim por destinatário (e-mails): fica só no Supabase (dados_robo), nunca no git
+data/editais_vistos.json
