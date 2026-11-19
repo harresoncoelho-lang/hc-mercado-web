@@ -1,0 +1,41 @@
+name: Prospecção (PCA, IRP, atas para adesão, contratos vencendo)
+
+# Robô diário da tela Prospecção (scripts/coletar_prospeccao.js): lê PNCP e Compras.gov dados abertos (grátis,
+# sem login, sem captcha) e grava a tabela enxuta prospeccao_itens. 09:00 UTC = 6h de Brasília, antes do
+# expediente. Rodar de novo no mesmo dia é seguro (upsert + limpeza só de fonte completa).
+# Não escreve no repositório: só no Supabase. Precisa de supabase/prospeccao.sql aplicado antes.
+concurrency:
+  group: prospeccao
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      ufs:
+        description: "UFs separadas por vírgula"
+        required: false
+        default: "AM"
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Coletar prospecção
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PROSPECCAO_UFS: ${{ github.event.inputs.ufs || 'AM' }}
+          DIAS_HORIZONTE: "400"
+          PAUSA_MS: "250"
+          LIMITE_MINUTOS: "50"
+        run: node scripts/coletar_prospeccao.js
