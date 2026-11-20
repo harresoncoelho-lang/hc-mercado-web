@@ -8,3 +8,10 @@ compatibility_date = "2025-09-01"
 # cada chamada. Segredos (SUPABASE_SERVICE_ROLE_KEY, TRANSPARENCIA_TOKEN, ZEPTOMAIL_TOKEN,
 # GROQ_API_KEY, DOSSIES_EDITAIS_CHAVE) vão no painel do Pages, nunca aqui.
 compatibility_flags = ["nodejs_compat"]
+
+# Variáveis comuns (não secretas) da produção. Ligam recursos já testados no ambiente de teste.
+# PORTAL_IP_SALT é segredo: fica no painel do Pages. PORTAL_ORIGEM_LINK não é definido em produção.
+[vars]
+IDENTIFICACAO_EMPRESA_LOCAL = "1"
+IMPORTACAO_PNCP_LOCAL = "1"
+PORTAL_CLIENTE_LIGADO = "1"
