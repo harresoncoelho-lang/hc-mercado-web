@@ -3,27 +3,118 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Acompanhamento de Licitações — LicitaPlena</title>
+<title>Processos — LicitaPlena</title>
 <link rel="icon" type="image/png" href="favicon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="operacao-acompanhamento.js"></script><script src="operacao-acompanhamento-ui.js"></script><script src="operacao-edital.js"></script><script src="operacao-relatorio.js"></script>
-<script>try{if(localStorage.getItem("licitaplena_tema")==="claro")document.documentElement.classList.add("tema-claro");}catch(e){}</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script><script src="supabase-config.js"></script>
+<script src="agenda-ics.js"></script><script src="operacao-identificacao.js"></script><script src="contrato-publico.js"></script><script src="operacao-acompanhamento.js"></script><script src="operacao-acompanhamento-ui.js"></script><script src="operacao-edital.js"></script><script src="operacao-relatorio.js"></script><link rel="stylesheet" href="ds-tokens.css"><link rel="stylesheet" href="menu-lateral.css"><link rel="stylesheet" href="agenda-ics.css">
+<!-- Tema: mesma chave do painel; claro é o padrão, só quem escolheu "escuro" fica no escuro. data-theme pinta o menu lateral (ds-tokens.css). -->
+<script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}if(t!=="escuro")document.documentElement.classList.add("tema-claro");document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
 <style>
-header .marca{color:#fff;text-decoration:none}header .tema-icone{width:36px;height:36px;padding:0;border-radius:50%;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:17px;line-height:1}
 html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--texto:#15253a;--fraco:#61738b;color-scheme:light}html.tema-claro input,html.tema-claro select,html.tema-claro textarea{background:var(--card2)}html.tema-claro .btn.primario{color:#fff}
-:root{--azul:#2e8dff;--escuro:#0a121c;--card:#141f2e;--card2:#182638;--borda:#273a50;--texto:#eef3f8;--fraco:#9cadc0;--verde:#35c17c;--laranja:#f3a23a;--vermelho:#e8617a;--raio:12px}*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 400px at 10% -10%,rgba(46,141,255,.16),transparent 60%),var(--escuro);color:var(--texto);font:14px Inter,Arial,sans-serif}header{background:linear-gradient(120deg,#0d47a1,var(--azul));padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;z-index:5}.marca{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800}.marca img{width:34px}.acoes{display:flex;gap:9px}.btn{border:1px solid var(--borda);background:var(--card2);color:var(--texto);font:inherit;font-weight:700;padding:10px 13px;border-radius:8px;cursor:pointer;text-decoration:none}.btn:hover{border-color:var(--azul)}.btn.primario{background:var(--azul);border-color:var(--azul)}.btn.perigo{color:#ffc1cc}main{max-width:1280px;margin:auto;padding:28px 24px 56px}.topo,.cabecalho-card{display:flex;justify-content:space-between;align-items:end;gap:16px}.topo h1{font-size:28px;margin:0}.topo p,.card p,.nota{color:var(--fraco);line-height:1.5}.empresa{min-width:260px}label{display:block;color:var(--fraco);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}input,select,textarea{width:100%;background:#0d1826;color:var(--texto);border:1px solid var(--borda);border-radius:8px;padding:10px 11px;font:inherit}input:focus,select:focus,textarea:focus{outline:0;border-color:var(--azul)}.aviso{display:none;margin:18px 0;border:1px solid;padding:12px 14px;border-radius:9px}.aviso.erro{display:block;color:#ffc1cc;border-color:var(--vermelho);background:rgba(232,97,122,.1)}.aviso.info{display:block;color:#bfdbff;border-color:#376ca9;background:rgba(46,141,255,.1)}.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}.metrica,.card{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio)}.metrica{padding:17px}.metrica b{display:block;font-size:26px;margin:8px 0 3px}.metrica span{color:var(--fraco);font-size:12px}.abas{display:flex;gap:8px;overflow:auto;margin:18px 0}.aba{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--fraco);font:inherit;font-weight:700;padding:11px 10px;cursor:pointer;white-space:nowrap}.aba.ativa{color:var(--texto);border-color:var(--azul)}.painel{display:none}.painel.ativo{display:block}.card{padding:20px;margin-bottom:16px}.filtros{display:grid;grid-template-columns:1fr 210px;gap:12px;margin:16px 0}.grade{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.processo{background:var(--card2);border:1px solid var(--borda);padding:16px;border-radius:10px;cursor:pointer}.processo:hover{border-color:var(--azul)}.processo h3{font-size:15px;margin:10px 0 7px}.processo small{color:var(--fraco)}.tag{display:inline-block;border-radius:99px;padding:4px 8px;font-size:11px;font-weight:800;background:rgba(143,160,183,.15);color:#cad5e3}.tag.triagem,.tag.preparacao{background:rgba(46,141,255,.15);color:#9dcbff}.tag.sessao,.tag.habilitacao,.tag.recurso{background:rgba(243,162,58,.15);color:#ffd38e}.tag.homologado,.tag.contratado,.tag.pago{background:rgba(53,193,124,.14);color:#8ee8b6}.tag.perdido,.tag.arquivado,.tag.cancelado{background:rgba(232,97,122,.14);color:#ffb6c5}.tabela-wrap{overflow:auto}.tabela{width:100%;border-collapse:collapse;min-width:760px}.tabela th{text-align:left;color:var(--fraco);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:10px;border-bottom:1px solid var(--borda)}.tabela td{padding:13px 10px;border-bottom:1px solid rgba(39,58,80,.7);vertical-align:top}.vazio{padding:28px;text-align:center;color:var(--fraco)}.evento{border-left:3px solid var(--azul);background:var(--card2);padding:12px;border-radius:0 8px 8px 0;margin:9px 0}.evento.urgente{border-color:var(--vermelho)}.modal{display:none;position:fixed;z-index:20;inset:0;background:rgba(0,0,0,.72);padding:18px;align-items:center;justify-content:center}.modal.aberto{display:flex}.modal-corpo{width:min(820px,100%);max-height:94vh;overflow:auto;background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:22px}.modal-corpo h2{margin:0 0 18px}.form-grade{display:grid;grid-template-columns:1fr 1fr;gap:13px}.inteiro{grid-column:1/-1}.modal-rodape{display:flex;justify-content:flex-end;gap:10px;margin-top:19px}.dossie-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}.dado{border:1px solid var(--borda);border-radius:8px;padding:12px;background:var(--card2)}.dado span{display:block;color:var(--fraco);font-size:11px;text-transform:uppercase;font-weight:700;margin-bottom:6px}.check{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--borda)}.acoes-dossie{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}@media(max-width:820px){main{padding:20px 14px}.topo{align-items:stretch;flex-direction:column}.metricas,.grade,.dossie-grid{grid-template-columns:repeat(2,1fr)}.empresa{min-width:0}.form-grade{grid-template-columns:1fr}header{padding:12px 14px}}@media(max-width:500px){.metricas,.grade,.dossie-grid{grid-template-columns:1fr}.acoes .btn:not(.primario){display:none}.topo h1{font-size:24px}.filtros{grid-template-columns:1fr}}
+:root{--azul:#2e8dff;--escuro:#0a121c;--card:#141f2e;--card2:#182638;--borda:#273a50;--texto:#eef3f8;--fraco:#9cadc0;--verde:#35c17c;--laranja:#f3a23a;--vermelho:#e8617a;--raio:12px}*{box-sizing:border-box}body{margin:0;background:var(--escuro);color:var(--texto);font:14px Inter,Arial,sans-serif}header{padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;z-index:5}.marca{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800}.marca img{width:34px}.acoes{display:flex;gap:9px}.btn{border:1px solid var(--borda);background:var(--card2);color:var(--texto);font:inherit;font-weight:700;padding:10px 13px;border-radius:8px;cursor:pointer;text-decoration:none}.btn:hover{border-color:var(--azul)}.btn.primario{background:var(--azul);border-color:var(--azul)}.btn.perigo{color:#ffc1cc}main{max-width:1280px;margin:auto;padding:28px 24px 56px}.topo,.cabecalho-card{display:flex;justify-content:space-between;align-items:end;gap:16px}.topo h1{font-size:28px;margin:0}.topo p,.card p,.nota{color:var(--fraco);line-height:1.5}.empresa{min-width:260px}label{display:block;color:var(--fraco);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}input,select,textarea{width:100%;background:#0d1826;color:var(--texto);border:1px solid var(--borda);border-radius:8px;padding:10px 11px;font:inherit}input:focus,select:focus,textarea:focus{outline:0;border-color:var(--azul)}.aviso{display:none;margin:18px 0;border:1px solid;padding:12px 14px;border-radius:9px}.aviso.erro{display:block;color:#ffc1cc;border-color:var(--vermelho);background:rgba(232,97,122,.1)}.aviso.info{display:block;color:#bfdbff;border-color:#376ca9;background:rgba(46,141,255,.1)}.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0}.metrica,.card{background:var(--card);border:1px solid var(--borda);border-radius:var(--raio)}.metrica{padding:17px}.metrica b{display:block;font-size:26px;margin:8px 0 3px}.metrica span{color:var(--fraco);font-size:12px}.abas{display:flex;gap:8px;overflow:auto;margin:18px 0}.aba{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--fraco);font:inherit;font-weight:700;padding:11px 10px;cursor:pointer;white-space:nowrap}.aba.ativa{color:var(--texto);border-color:var(--azul)}.painel{display:none}.painel.ativo{display:block}.card{padding:20px;margin-bottom:16px}.filtros{display:grid;grid-template-columns:1fr 210px;gap:12px;margin:16px 0}.grade{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.processo{background:var(--card2);border:1px solid var(--borda);padding:16px;border-radius:10px;cursor:pointer}.processo:hover{border-color:var(--azul)}.processo h3{font-size:15px;margin:10px 0 7px}.processo small{color:var(--fraco)}.tag{display:inline-block;border-radius:99px;padding:4px 8px;font-size:11px;font-weight:800;background:rgba(143,160,183,.15);color:#cad5e3}.tag.triagem,.tag.preparacao{background:rgba(46,141,255,.15);color:#9dcbff}.tag.sessao,.tag.habilitacao,.tag.recurso{background:rgba(243,162,58,.15);color:#ffd38e}.tag.homologado,.tag.contratado,.tag.pago{background:rgba(53,193,124,.14);color:#8ee8b6}.tag.perdido,.tag.arquivado,.tag.cancelado{background:rgba(232,97,122,.14);color:#ffb6c5}.tabela-wrap{overflow:auto}.tabela{width:100%;border-collapse:collapse;min-width:760px}.tabela th{text-align:left;color:var(--fraco);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:10px;border-bottom:1px solid var(--borda)}.tabela td{padding:13px 10px;border-bottom:1px solid rgba(39,58,80,.7);vertical-align:top}.vazio{padding:28px;text-align:center;color:var(--fraco)}.evento{border-left:3px solid var(--azul);background:var(--card2);padding:12px;border-radius:0 8px 8px 0;margin:9px 0}.evento.urgente{border-color:var(--vermelho)}.modal{display:none;position:fixed;z-index:20;inset:0;background:rgba(0,0,0,.72);padding:18px;align-items:center;justify-content:center}.modal.aberto{display:flex}.modal-corpo{width:min(820px,100%);max-height:94vh;overflow:auto;background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:22px}.modal-corpo h2{margin:0 0 18px}.form-grade{display:grid;grid-template-columns:1fr 1fr;gap:13px}.inteiro{grid-column:1/-1}.modal-rodape{display:flex;justify-content:flex-end;gap:10px;margin-top:19px}.dossie-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}.dado{border:1px solid var(--borda);border-radius:8px;padding:12px;background:var(--card2)}.dado span{display:block;color:var(--fraco);font-size:11px;text-transform:uppercase;font-weight:700;margin-bottom:6px}.check{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--borda)}.acoes-dossie{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}@media(max-width:820px){main{padding:20px 14px}.topo{align-items:stretch;flex-direction:column}.metricas,.grade,.dossie-grid{grid-template-columns:repeat(2,1fr)}.empresa{min-width:0}.form-grade{grid-template-columns:1fr}header{padding:12px 14px}}@media(max-width:500px){.metricas,.grade,.dossie-grid{grid-template-columns:1fr}.acoes .btn:not(.primario){display:none}.topo h1{font-size:24px}.filtros{grid-template-columns:1fr}}
 @media(min-width:821px){.metricas{grid-template-columns:repeat(5,minmax(0,1fr))}#modal-dossie .modal-corpo{width:min(1050px,100%)}}
 .bloco-dossie{border-top:1px solid var(--borda);padding-top:17px;margin-top:18px}.bloco-dossie h3{margin:0 0 12px;font-size:16px}.linha-registro{padding:10px 0;border-bottom:1px solid var(--borda)}.linha-registro:last-child{border-bottom:0}.linha-registro small{display:block;color:var(--fraco);margin-top:4px;line-height:1.5}.linha-registro .tag{margin-right:5px}.linha-registro a{color:#8fc3ff;word-break:break-word}.acoes-bloco{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}.aviso-dados{border-left:3px solid var(--laranja);padding:9px 12px;background:var(--card2);color:var(--fraco);margin:8px 0}
 #modal-relatorio .modal-corpo{width:min(1150px,100%);height:min(94vh,100%);display:flex;flex-direction:column;overflow:hidden}#relatorio-frame{width:100%;flex:1;min-height:0;border:1px solid var(--borda);border-radius:8px;background:#fff}#modal-relatorio .acoes-bloco{justify-content:flex-end}
 #d-itens-edital{padding:12px;margin-bottom:12px}.itens-lista{max-height:360px;overflow:auto;margin:12px 0;border-top:1px solid var(--borda);border-bottom:1px solid var(--borda)}.ir-item{display:flex;align-items:center;gap:8px;margin:0}.ir-item input{width:105px}.acoes-bloco{align-items:center;flex-wrap:wrap}
 .entrada-moeda{display:flex;align-items:center;gap:7px;margin-top:5px}.entrada-moeda span{font-weight:700;color:var(--fraco)}.entrada-moeda input{margin-top:0;flex:1;min-width:0}.total-calculado{display:block;margin-top:7px;font-weight:700;color:#8fc3ff}
+/* Design System (ds-tokens.css): as variáveis legadas desta página apontam para os tokens, como painel-design.css (seção 1),
+   e os componentes repetem as regras de lá (topo, botões, campos, tabelas, chips, avisos, modais). Sem degradê; sombra só em modal. */
+:root,html.tema-claro{--azul:var(--action-strong);--azul-escuro:var(--brand-navy);--fundo:var(--surface-page);--escuro:var(--surface-page);--card:var(--surface-default);--card2:var(--surface-sunken);--borda:var(--border-default);--texto:var(--text-primary);--fraco:var(--text-secondary);--verde:var(--success-text);--laranja:var(--attention-text);--vermelho:var(--error-text);--raio:var(--radius-card)}
+[data-theme="dark"]{color-scheme:dark}[data-theme="light"]{color-scheme:light}
+body{background:var(--surface-page);color:var(--text-primary);font:var(--text-body)}
+button,input,select,textarea{font-family:var(--font-sans)}
+:is(button,a,input,textarea,select,summary,[tabindex]):focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+header{background:var(--surface-default);border-bottom:1px solid var(--border-default);box-shadow:none;padding:8px 24px;flex-wrap:wrap}
+.topo-marca-linha{display:flex;align-items:center;gap:8px;min-width:0}
+header .marca{display:flex;align-items:center;gap:8px;color:var(--text-primary);text-decoration:none;font:600 16px/24px var(--font-sans)}
+/* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (mesma regra do painel). */
+.marca-placa{display:inline-grid;place-content:center;width:32px;height:32px;border-radius:var(--radius-control);background:#f6f8fc;border:1px solid #e3e8f0;flex:none}
+.marca-placa img{width:24px;height:24px;display:block}
+.acoes{gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:500 14px/16px var(--font-sans);text-decoration:none;box-shadow:none}
+.btn:hover{background:var(--surface-sunken);border-color:var(--border-strong)}
+.btn.primario,html.tema-claro .btn.primario{background:var(--action-strong);border-color:transparent;color:var(--action-on)}
+.btn.primario:hover{background:var(--action-strong-hover)}
+.btn.perigo,html.tema-claro .btn.perigo{color:var(--error-text);border-color:var(--error-border)}
+.btn.perigo:hover{background:var(--error-bg)}
+.btn:disabled{background:var(--surface-sunken);color:var(--text-disabled);border-color:var(--border-default);opacity:1}
+header .tema-icone{width:40px;height:40px;padding:0;font-size:16px;line-height:1}
+.link,html.tema-claro .link,.linha-registro a{color:var(--action-text)}
+button.link{background:none;border:0;padding:0;font:inherit;font-weight:600;cursor:pointer}
+label,.empresa-select label{font:var(--text-label);color:var(--text-primary);text-transform:none;letter-spacing:0}
+select,input,textarea,html.tema-claro select,html.tema-claro input,html.tema-claro textarea{padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body);box-shadow:none}
+select,input:not([type="checkbox"]):not([type="radio"]){min-height:40px}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--focus-ring);outline-offset:2px;border-color:var(--border-strong)}
+input::placeholder,textarea::placeholder{color:var(--text-secondary);opacity:1}
+[data-theme="dark"] input::-webkit-calendar-picker-indicator{filter:invert(.85)}
+.topo h1{font:var(--text-title);color:var(--text-primary)}
+.topo p,.card p,.nota,.vazio{color:var(--text-secondary)}
+.metrica,.card,.processo{background:var(--surface-default);border:1px solid var(--border-default);border-radius:var(--radius-card);box-shadow:none}
+.card{padding:16px}
+.card h2,.modal-corpo h2{font:var(--text-section);color:var(--text-primary)}
+.metrica{padding:16px}
+.metrica span{font:var(--text-label);color:var(--text-secondary)}
+.metrica b{font:600 28px/36px var(--font-sans);font-variant-numeric:tabular-nums}
+.processo:hover{border-color:var(--action-strong)}
+.processo h3{font:600 14px/22px var(--font-sans)}
+.processo small{color:var(--text-secondary)}
+.dado{background:var(--surface-sunken);border-color:var(--border-default);border-radius:var(--radius-control)}
+.dado span{font:var(--text-label);text-transform:none}
+.aba{color:var(--text-secondary);font:500 14px/20px var(--font-sans)}
+.aba:hover{color:var(--text-primary)}
+.aba.ativa{color:var(--text-primary);border-color:var(--action-strong);font-weight:600}
+.evento{background:var(--surface-sunken);border-left-color:var(--action-strong);border-radius:0 var(--radius-control) var(--radius-control) 0}
+.evento.urgente{border-left-color:var(--error-text)}
+.tabela-wrap{border:1px solid var(--border-default);border-radius:var(--radius-card)}
+.tabela th{background:var(--surface-sunken);color:var(--text-secondary);font:var(--text-label);text-transform:none;letter-spacing:0;padding:10px 12px;border-bottom:1px solid var(--border-default)}
+.tabela td{padding:10px 12px;line-height:22px;border-bottom:1px solid var(--border-default)}
+.tabela tbody tr:last-child td{border-bottom:0}
+.tabela tbody tr:hover{background:var(--surface-sunken)}
+.tag{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-sunken);color:var(--text-secondary);font:var(--text-label);white-space:nowrap;vertical-align:middle}
+.tag.valido,.tag.homologado,.tag.contratado,.tag.pago{background:var(--success-bg);border-color:var(--success-border);color:var(--success-text)}
+.tag.proximo,.tag.sessao,.tag.habilitacao,.tag.recurso{background:var(--attention-bg);border-color:var(--attention-border);color:var(--attention-text)}
+.tag.vencido,.tag.perdido,.tag.arquivado,.tag.cancelado{background:var(--error-bg);border-color:var(--error-border);color:var(--error-text)}
+.tag.triagem,.tag.preparacao{background:var(--info-bg);border-color:var(--info-border);color:var(--info-text)}
+.aviso{border-radius:var(--radius-card);padding:12px 16px}
+.aviso.erro{color:var(--error-text);border-color:var(--error-border);background:var(--error-bg)}
+.aviso.info{color:var(--info-text);border-color:var(--info-border);background:var(--info-bg)}
+.aviso-dados{border-left-color:var(--attention-border);background:var(--attention-bg);color:var(--attention-text)}
+.total-calculado{color:var(--action-text)}
+.modal{background:rgba(11,16,32,.5)}
+.modal-corpo{background:var(--surface-raised);border-color:var(--border-default);border-radius:var(--radius-modal);box-shadow:var(--shadow-overlay)}
+@media(max-width:820px){header{padding:8px 12px}}
+@media(max-width:480px){.topo h1{font-size:24px;line-height:32px}.acoes .btn.tema-icone{display:inline-flex}}
 </style>
 </head>
 <body>
-<header><a class="marca" href="painel.html" title="Voltar ao painel principal"><img src="logo-icone-branco.svg" alt="LicitaPlena">Acompanhamento de Licitações</a><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button><a class="btn" href="operacao.html">Central operacional</a><a class="btn" href="painel.html">Painel</a><button class="btn primario" id="btn-novo-processo">+ Processo</button></div></header>
+<header><div class="topo-marca-linha"><button id="nav-gaveta-btn" type="button" aria-controls="menu-principal" aria-expanded="false">Menu</button><a class="marca" href="painel.html" title="Voltar ao painel principal"><span class="marca-placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a></div><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button><button class="btn primario" id="btn-novo-processo">+ Processo</button></div></header>
+<div class="shell">
+<!-- Menu lateral: mesma estrutura e itens do menu do painel.html (duplicação intencional entre páginas). Comportamento em menu-lateral.js. -->
+<nav id="menu-principal" aria-label="Menu principal">
+  <button id="nav-colapsar-btn" type="button" title="Recolher menu" aria-controls="menu-principal">
+    <span class="nav-ico" aria-hidden="true">&#171;</span><span class="nav-label">Recolher</span>
+  </button>
+  <a href="/sistema" title="Hoje"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-house"></use></svg></span><span class="nav-label">Hoje</span></a>
+  <a href="painel.html#boletim" title="Boletim"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-clipboard-text"></use></svg></span><span class="nav-label">Boletim</span></a>
+  <a href="painel.html#oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-magnifying-glass"></use></svg></span><span class="nav-label">Encontrar Licitações</span></a>
+  <a href="painel.html#diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Inteligência de Mercado</span></a>
+  <a href="prospeccao.html" title="Prospecção"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Prospecção</span></a>
+  <a href="painel.html#empresa" title="Analisar concorrente"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Analisar concorrente</span></a>
+  <a href="painel.html#transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-handshake"></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></a>
+  <a href="painel.html#precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Pesquisa de Preços</span></a>
+  <a href="bdi.html" title="Calculadora de BDI"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Calculadora de BDI</span></a>
+  <a href="sinapi.html" title="Preços SINAPI"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Preços SINAPI</span></a>
+  <a href="painel.html#kanban" title="Funil"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folders"></use></svg></span><span class="nav-label">Funil</span></a>
+  <a href="processos.html" class="ativo" aria-current="page" title="Processos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folder-open"></use></svg></span><span class="nav-label">Processos</span></a>
+  <a href="operacao.html" title="Minhas empresas e documentos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-files"></use></svg></span><span class="nav-label">Minhas empresas e documentos</span></a>
+  <a href="painel.html#juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-scales"></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></a>
+  <a href="painel.html#status" title="Status"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-circle"></use></svg></span><span class="nav-label">Status</span></a>
+</nav>
+<div class="nav-gaveta-fundo" id="nav-gaveta-fundo" hidden></div>
 <main>
-  <div class="topo"><div><h1>Da oportunidade ao pagamento</h1><p>Registre decisão, prazos, preço, resultado, contrato e empenhos em um dossiê privado.</p></div><div class="empresa"><label for="empresa-atual">Empresa ativa</label><select id="empresa-atual"></select></div></div>
+  <div class="topo"><div><h1>Processos</h1><p>Da oportunidade ao pagamento: registre decisão, prazos, preço, resultado, contrato e empenhos em um dossiê privado.</p></div><div class="empresa"><label for="empresa-atual">Empresa ativa</label><select id="empresa-atual"></select></div></div>
   <div id="aviso" class="aviso"></div>
   <section class="metricas"><div class="metrica"><span>Processos ativos</span><b id="m-ativos">—</b><span>em preparação, proposta, sessão ou habilitação</span></div><div class="metrica"><span>Prazos vencidos</span><b id="m-prazos">—</b><span>pendências que precisam de ação</span></div><div class="metrica"><span>Vitórias registradas</span><b id="m-ganhos">—</b><span>declaradas ou apuradas por item</span></div><div class="metrica"><span>Valor homologado</span><b id="m-homologado">—</b><span>valores registrados; confira a fonte</span></div><div class="metrica"><span>Saldo de empenhos</span><b id="m-saldo">—</b><span>execução ainda pendente</span></div></section>
   <div class="abas"><button class="aba ativa" data-aba="funil">Funil de processos</button><button class="aba" data-aba="prazos">Prazos e sessão</button><button class="aba" data-aba="empenhos">Empenhos e execução</button></div>
@@ -31,6 +122,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   <section id="aba-prazos" class="painel"><div class="card"><div class="cabecalho-card"><div><h2>Agenda dos processos</h2><p>Use o edital como fonte final para validar cada prazo.</p></div></div><div id="lista-prazos"></div></div></section>
   <section id="aba-empenhos" class="painel"><div class="card"><div class="cabecalho-card"><div><h2>Execução e empenhos</h2><p>Controle o que foi emitido, entregue, recebido e pago.</p></div></div><div class="tabela-wrap"><table class="tabela"><thead><tr><th>Empenho</th><th>Processo</th><th>Valor / saldo</th><th>Entrega</th><th>Status</th></tr></thead><tbody id="lista-empenhos"></tbody></table></div></div></section>
 </main>
+</div>
 
 <div id="modal-processo" class="modal"><form id="form-processo" class="modal-corpo"><h2 id="titulo-form-processo">Novo processo</h2><input name="id" type="hidden"><div class="form-grade"><div class="inteiro"><label>Objeto</label><input name="objeto" required maxlength="500" placeholder="Ex.: Aquisição de material gráfico"></div><div><label>Número / processo</label><input name="numero" maxlength="100"></div><div><label>Modalidade</label><input name="modalidade" maxlength="80" placeholder="Pregão eletrônico, dispensa..."></div><div><label>Sistema / portal</label><input name="sistema" maxlength="100" placeholder="Ex.: e-Compras, Compras.gov.br"></div><div><label>UASG, se houver</label><input name="uasg" maxlength="30"></div><div class="inteiro"><label>Órgão comprador</label><input name="orgao" maxlength="220"></div><div class="inteiro"><label>Link oficial</label><input name="url_origem" type="url" maxlength="500" placeholder="https://pncp.gov.br/..."></div><div><label>Decisão inicial</label><select name="decisao"><option value="em_analise">Em análise</option><option value="participar">Participar</option><option value="nao_participar">Não participar</option></select></div><div><label>Responsável</label><input name="responsavel" maxlength="120"></div><div><label>Publicação</label><input name="data_publicacao" type="date"></div><div><label>Sessão</label><input name="data_sessao" type="datetime-local"></div><div><label>Valor estimado</label><input name="valor_estimado" type="number" min="0" step="0.01"></div><div><label>Custo direto</label><input name="custo_direto" type="number" min="0" step="0.01"></div><div><label>Frete e despesas variáveis</label><input name="frete" type="number" min="0" step="0.01"></div><div><label>Tributos (%)</label><input name="tributos_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Garantia (%)</label><input name="garantia_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Margem desejada (%)</label><input name="margem_percentual" type="number" min="0" max="99" step="0.01"></div><div><label>Preço da proposta</label><input name="preco_proposta" type="number" min="0" step="0.01"></div><div class="inteiro"><label>Observações da decisão</label><textarea name="observacoes" rows="3" maxlength="3000"></textarea></div></div><div class="modal-rodape"><button type="button" class="btn" data-fechar="modal-processo">Cancelar</button><button class="btn primario" id="btn-salvar-processo">Salvar dossiê</button></div></form></div>
 
@@ -55,12 +147,15 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
 (() => {
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const estado = { orgId:null, empresaId:null, empresas:[], processos:[], documentos:[], prazos:[], empenhos:[], itens:[], ocorrencias:[], contratos:[], anexos:[], detalhesCarregados:false, erroDetalhes:false };
+  let usuarioSessao;
   const itensOficiais = new Map();
   const consultasItens = new Set();
   const falhasItens = new Map();
   const paginasItens = new Map();
   const paginaAtualItens = new Map();
   const itensAbertos = new Set();
+  let contextoLinkPendente = true, geracaoCarregamento = 0;
+  let processoPendente = new URLSearchParams(location.search).get("processo");
   let origemPendente = new URLSearchParams(location.search).get("origem");
   const $ = id => document.getElementById(id), esc = v => String(v ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const dinheiro = v => Number(v || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"}), data = v => v ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? `${v}T12:00:00` : v).toLocaleDateString("pt-BR") : "—";
@@ -82,8 +177,8 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     const cabecalho=`<button type="button" class="btn" data-alternar-itens="${processo.id}" aria-expanded="${aberto}">${aberto?"▾ Fechar":"▸ Abrir"} itens oficiais${dados?` · página ${pagina}`:""}</button>`;
     if(!aberto){alvo.innerHTML=cabecalho;return;}
     const erro=falhasItens.get(processo.id);
-    const conteudo=consultasItens.has(processo.id)?'<p class="nota">Carregando esta página de itens do PNCP…</p>':erro?`<p class="nota">${esc(erro)} <button type="button" class="btn" data-retry-itens="${processo.id}">Tentar novamente</button></p>`:dados?`<div class="itens-lista">${itens.length?itens.map((item,indice)=>`<div class="linha-registro"><strong>Item ${esc(item.numero)}</strong><small>${esc(item.descricao||"Sem descrição")} · ${esc(item.quantidade??"—")} ${esc(item.unidade||"")}</small>${registrados.has(String(item.numero))?'<span class="tag">Resultado em acompanhamento</span>':`<button type="button" class="btn" data-acompanhar-item="${indice}">Registrar resultado</button>`}</div>`).join(""):'<p class="nota">Nenhum item nesta página.</p>'}</div><div class="acoes-bloco"><button type="button" class="btn" data-pagina-itens="${pagina-1}" ${pagina===1?"disabled":""}>Anterior</button><span>Página ${pagina} · ${itens.length} itens</span><button type="button" class="btn" data-pagina-itens="${pagina+1}" ${dados.proximaPagina?"":"disabled"}>Próxima</button><label class="ir-item">Ir ao item nº <input type="number" id="numero-item-busca" min="1" step="1" placeholder="Ex.: 900"></label><button type="button" class="btn" data-buscar-item>Ir</button></div>`:'<p class="nota">Abra a lista para consultar os itens.</p>';
-    alvo.innerHTML=`${cabecalho}<p class="nota">Itens do PNCP, 100 por página. Selecione um item para registrar o resultado, marca e modelo; a lista pode ser fechada a qualquer momento.</p>${conteudo}`;
+    const conteudo=consultasItens.has(processo.id)?'<p class="nota">Carregando esta página de itens do PNCP…</p>':erro?`<p class="nota">${esc(erro)} <button type="button" class="btn" data-retry-itens="${processo.id}">Tentar novamente</button></p>`:dados?`<div class="itens-lista">${itens.length?itens.map((item,indice)=>`<div class="linha-registro"><strong>Item ${esc(item.numero)}</strong><small>${esc(item.descricao||"Sem descrição")} · ${esc(item.quantidade??"—")} ${esc(item.unidade||"")}</small>${registrados.has(String(item.numero))?`<span class="tag">Item cadastrado</span><button type="button" class="btn" data-acompanhar-item="${indice}">Conferir origem PNCP</button>`:`<button type="button" class="btn" data-acompanhar-item="${indice}">Importar item com origem PNCP</button>`}</div>`).join(""):'<p class="nota">Nenhum item nesta página.</p>'}</div><div class="acoes-bloco"><button type="button" class="btn" data-pagina-itens="${pagina-1}" ${pagina===1?"disabled":""}>Anterior</button><span>Página ${pagina} · ${itens.length} itens</span><button type="button" class="btn" data-pagina-itens="${pagina+1}" ${dados.proximaPagina?"":"disabled"}>Próxima</button><label class="ir-item">Ir ao item nº <input type="number" id="numero-item-busca" min="1" step="1" placeholder="Ex.: 900"></label><button type="button" class="btn" data-buscar-item>Ir</button></div>`:'<p class="nota">Abra a lista para consultar os itens.</p>';
+    alvo.innerHTML=`${cabecalho}<p class="nota">Itens do PNCP, 100 por página. Importe um item com origem rastreável; depois informe sua oferta, marca e modelo no cadastro. Cadastro manual permanece disponível; a lista pode ser fechada a qualquer momento.</p>${conteudo}`;
   }
   async function carregarItensOficiais(processo,pagina=1){
     if(consultasItens.has(processo.id))return;
@@ -108,12 +203,14 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     }catch(erro){console.warn("Itens oficiais indisponíveis:",erro);falhasItens.set(processo.id,`Não foi possível consultar os itens: ${erro.message}.`);}
     finally{consultasItens.delete(processo.id);if($("modal-dossie").classList.contains("aberto")&&$("modal-dossie").dataset.processoId===processo.id)renderizarItensOficiais(processo);}
   }
-  async function autenticar(){const {data:{session}}=await sb.auth.getSession();if(!session){location.replace("login.html");return false;}const {data:cliente}=await sb.from("clientes").select("status").eq("id",session.user.id).maybeSingle();if(!cliente||cliente.status!=="aprovado"){await sb.auth.signOut();location.replace("login.html");return false;}return true;}
-  async function iniciar(){if(!await autenticar())return;const {data:orgId,error}=await sb.rpc("bootstrap_operacao");if(error){aviso("A Central precisa da migração do Supabase. Execute supabase/operacao_licitacoes.sql e recarregue.","erro");return;}estado.orgId=orgId;await carregarEmpresas();}
-  async function carregarEmpresas(){const {data:empresas,error}=await sb.from("operacao_empresas").select("id,razao_social,cnpj").eq("organizacao_id",estado.orgId).eq("ativo",true).order("razao_social");if(error){aviso("Não foi possível carregar as empresas: "+error.message,"erro");return;}estado.empresas=empresas||[];$("empresa-atual").innerHTML=estado.empresas.map(e=>`<option value="${e.id}">${esc(e.razao_social)}${e.cnpj?` · ${esc(e.cnpj)}`:""}</option>`).join("");let preferida="";try{preferida=localStorage.getItem("licitaplena_empresa_operacional_id")||"";}catch(_){}estado.empresaId=estado.empresas.some(e=>e.id===estado.empresaId)?estado.empresaId:estado.empresas.some(e=>e.id===preferida)?preferida:estado.empresas[0]?.id;$("empresa-atual").value=estado.empresaId||"";await carregarTudo();}
+  sb.auth.onAuthStateChange((_evento,sessao)=>{const usuario=sessao?.user?.id||null;if(usuarioSessao!==undefined&&usuario!==usuarioSessao){++geracaoCarregamento;processoPendente=null;fechar("modal-dossie");}usuarioSessao=usuario;});
+  async function autenticar(){const {data:{session}}=await sb.auth.getSession();usuarioSessao=session?.user?.id||null;if(!session){location.replace("login.html?voltar=/processos");return false;}const {data:cliente}=await sb.from("clientes").select("status").eq("id",session.user.id).maybeSingle();if(!cliente||cliente.status!=="aprovado"){await sb.auth.signOut();location.replace("login.html?voltar=/processos");return false;}return true;}
+  async function iniciar(){if(!await autenticar())return;const {data:orgId,error}=await sb.rpc("bootstrap_operacao");if(error){aviso("Processos precisa da migração do Supabase. Execute supabase/operacao_licitacoes.sql e recarregue.","erro");return;}estado.orgId=orgId;await carregarEmpresas();}
+  async function carregarEmpresas(){const {data:empresas,error}=await sb.from("operacao_empresas").select("id,razao_social,cnpj").eq("organizacao_id",estado.orgId).eq("ativo",true).order("razao_social");if(error){aviso("Não foi possível carregar as empresas: "+error.message,"erro");return;}estado.empresas=empresas||[];$("empresa-atual").innerHTML=estado.empresas.map(e=>`<option value="${e.id}">${esc(e.razao_social)}${e.cnpj?` · ${esc(e.cnpj)}`:""}</option>`).join("");let preferida="";try{preferida=localStorage.getItem("licitaplena_empresa_operacional_id")||"";}catch(_){}const empresaLink=contextoLinkPendente?OperacaoIdentificacao.empresaDoLink(location.search,estado.empresas):undefined;contextoLinkPendente=false;estado.empresaId=empresaLink!==undefined?empresaLink:estado.empresas.some(e=>e.id===estado.empresaId)?estado.empresaId:estado.empresas.some(e=>e.id===preferida)?preferida:estado.empresas[0]?.id;$("empresa-atual").value=estado.empresaId||"";if(empresaLink===null){processoPendente=null;origemPendente=null;aviso("A empresa do link não está disponível no seu acesso. Selecione uma empresa autorizada.","erro");return;}await carregarTudo();}
   async function consultarTodas(montar){const todos=[];for(let inicio=0;;inicio+=500){let resposta;try{resposta=await montar().range(inicio,inicio+499);}catch(error){return {data:null,error};}const {data:pagina,error}=resposta;if(error)return {data:null,error};todos.push(...(pagina||[]));if(!pagina||pagina.length<500)return {data:todos,error:null};}}
-  async function consultarPorProcessos(tabela,ids,ordem,ascendente=true){const todos=[];for(let indice=0;indice<ids.length;indice+=100){const bloco=ids.slice(indice,indice+100);const resposta=await consultarTodas(()=>sb.from(tabela).select("*").in("processo_id",bloco).order(ordem,{ascending:ascendente}).order("id"));if(resposta.error)return resposta;todos.push(...resposta.data);}return {data:todos,error:null};}
+  async function consultarPorProcessos(tabela,ids,ordem,ascendente=true,filtro=null){const todos=[];for(let indice=0;indice<ids.length;indice+=100){const bloco=ids.slice(indice,indice+100);const resposta=await consultarTodas(()=>{const q=sb.from(tabela).select("*").in("processo_id",bloco);return (filtro?filtro(q):q).order(ordem,{ascending:ascendente}).order(tabela==="operacao_contratos_publicos"?"chave":tabela==="operacao_esteira_tarefas"?"etapa":"id");});if(resposta.error)return resposta;todos.push(...resposta.data);}return {data:todos,error:null};}
   async function carregarTudo(){
+    const geracao=++geracaoCarregamento, usuario=usuarioSessao;
     if(!estado.empresaId)return;
     const empresaId=estado.empresaId;
     fecharAviso();
@@ -121,14 +218,16 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
       consultarTodas(()=>sb.from("operacao_processos").select("*").eq("empresa_id",empresaId).order("criado_em",{ascending:false}).order("id")),
       consultarTodas(()=>sb.from("operacao_documentos").select("tipo,vencimento").eq("empresa_id",empresaId).order("tipo").order("id")),
     ]);
-    if(estado.empresaId!==empresaId)return;
+    if(estado.empresaId!==empresaId||geracao!==geracaoCarregamento||usuario!==usuarioSessao)return;
     let falha=[p,d].find(x=>x.error);
     if(falha){aviso("Não foi possível carregar o dossiê. Confira a migração operacao_acompanhamento.sql: "+falha.error.message,"erro");return;}
     estado.processos=p.data||[];estado.documentos=d.data||[];
-    estado.detalhesCarregados=false;estado.erroDetalhes=false;estado.prazos=[];estado.empenhos=[];estado.itens=[];estado.ocorrencias=[];estado.contratos=[];estado.anexos=[];
+    estado.detalhesCarregados=false;estado.erroDetalhes=false;estado.prazos=[];estado.empenhos=[];estado.itens=[];estado.ocorrencias=[];estado.contratos=[];estado.anexos=[];estado.contratosPublicos=[];estado.esteiraResultado=[];
     renderizar();
     const ids=estado.processos.map(processo=>processo.id);
     if(!ids.length){estado.detalhesCarregados=true;renderizar();abrirOrigemPendente();return;}
+    // Etapas 7 e 8 da esteira: tabelas opcionais (SQL ainda não aplicado ou falha de leitura = sem sugestão/quadro, nunca erro).
+    const opcional=async(tabela,filtro)=>{const r=await consultarPorProcessos(tabela,ids,"processo_id",true,filtro);return r.error?[]:r.data;};
     const [pr,e,itens,ocorrencias,contratos,anexos]=await Promise.all([
       consultarPorProcessos("operacao_prazos_processo",ids,"vencimento"),
       consultarPorProcessos("operacao_empenhos",ids,"emitido_em",false),
@@ -137,9 +236,11 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
       consultarPorProcessos("operacao_contratos",ids,"criado_em",false),
       consultarPorProcessos("operacao_anexos_processo",ids,"criado_em",false),
     ]);
-    if(estado.empresaId!==empresaId)return;
+    if(estado.empresaId!==empresaId||geracao!==geracaoCarregamento||usuario!==usuarioSessao)return;
     falha=[pr,e,itens,ocorrencias,contratos,anexos].find(x=>x.error);
     if(falha){estado.erroDetalhes=true;renderizar();if($("modal-dossie").classList.contains("aberto"))abrirDossie($("modal-dossie").dataset.processoId);aviso("Não foi possível carregar o acompanhamento. Confira a migração operacao_acompanhamento.sql: "+falha.error.message,"erro");return;}
+    [estado.contratosPublicos,estado.esteiraResultado]=await Promise.all([opcional("operacao_contratos_publicos"),opcional("operacao_esteira_tarefas",q=>q.eq("etapa","resultado"))]);
+    if(estado.empresaId!==empresaId||geracao!==geracaoCarregamento||usuario!==usuarioSessao)return;
     estado.prazos=pr.data||[];estado.empenhos=e.data||[];
     estado.itens=itens.data||[];estado.ocorrencias=ocorrencias.data||[];estado.contratos=contratos.data||[];estado.anexos=anexos.data||[];
     estado.detalhesCarregados=true;
@@ -148,6 +249,13 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     abrirOrigemPendente();
   }
   function abrirOrigemPendente(){
+    if(processoPendente){
+      const id=processoPendente;processoPendente=null;
+      const processo=estado.processos.find(p=>p.id===id&&p.empresa_id===estado.empresaId);
+      if(processo){abrirDossie(processo.id);$("d-titulo").tabIndex=-1;$("d-titulo").focus();}
+      else aviso("O processo do link não está disponível para a empresa ativa.","erro");
+      return;
+    }
     if(!origemPendente)return;
     const processo=estado.processos.find(p=>p.origem_externa_id===origemPendente);
     origemPendente=null;
@@ -175,19 +283,59 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
       return `<article class="processo" data-processo="${p.id}"><span class="tag ${p.status}">${esc(rotuloStatus(p.status))}</span> <span class="tag">${resultado?esc(rotuloStatus(resultado.situacao)):estado.erroDetalhes?"Resultado indisponível":"Carregando resultado…"}</span><h3>${esc(p.objeto)}</h3><small>${esc(p.orgao||"Órgão não informado")}</small><p class="nota">${esc(p.numero||"Sem número")} · ${esc(p.sistema||"Sistema não informado")} · sessão: ${dataHora(p.data_sessao)}</p><strong>${resultado?.valor!=null?`Homologado: ${dinheiro(resultado.valor)}`:p.preco_proposta?`Proposta: ${dinheiro(p.preco_proposta)}`:"Valor a apurar"}</strong></article>`;
     }).join(""):`<div class="vazio">Nenhum processo neste recorte. Crie o primeiro dossiê para acompanhar a oportunidade até o resultado.</div>`;
   }
-  function renderizarPrazos(){if(!estado.detalhesCarregados){$("lista-prazos").innerHTML=`<div class="vazio">${estado.erroDetalhes?"Prazos indisponíveis. Confira o aviso no topo.":"Carregando prazos…"}</div>`;return;}const processos=new Map(estado.processos.map(p=>[p.id,p]));const lista=estado.prazos.filter(x=>!x.concluido_em&&processos.has(x.processo_id));$("lista-prazos").innerHTML=lista.length?lista.map(p=>{const processo=processos.get(p.processo_id);return `<div class="evento ${prazoUrgente(p.vencimento)?"urgente":""}"><strong>${esc(p.titulo)}</strong><small>${esc(processo.objeto)} · ${esc(p.categoria)} · ${dataHora(p.vencimento)} · ${esc(p.responsavel||"Sem responsável")}</small></div>`}).join(""):`<div class="vazio">Nenhum prazo aberto para esta empresa.</div>`;}
+  function renderizarPrazos(){if(!estado.detalhesCarregados){$("lista-prazos").innerHTML=`<div class="vazio">${estado.erroDetalhes?"Prazos indisponíveis. Confira o aviso no topo.":"Carregando prazos…"}</div>`;return;}const processos=new Map(estado.processos.map(p=>[p.id,p]));const lista=estado.prazos.filter(x=>!x.concluido_em&&processos.has(x.processo_id));$("lista-prazos").innerHTML=lista.length?lista.map(p=>{const processo=processos.get(p.processo_id);return `<div class="evento ${prazoUrgente(p.vencimento)?"urgente":""}"><strong>${esc(p.titulo)}</strong><small>${esc(processo.objeto)} · ${esc(p.categoria)} · ${dataHora(p.vencimento)} · ${esc(p.responsavel||"Sem responsável")}</small></div>`}).join(""):`<div class="vazio">Nenhum prazo aberto para esta empresa.</div>`;
+    // "Adicionar à agenda" (agenda-ics.js) em cada prazo, na mesma ordem da lista; texto do banco entra por textContent.
+    const empresa=estado.empresas.find(e=>e.id===estado.empresaId)?.razao_social;
+    $("lista-prazos").querySelectorAll(".evento").forEach((no,i)=>{const p=lista[i],processo=processos.get(p.processo_id);const botao=window.AgendaIcs?.montarBotao(document,{id:p.id,titulo:p.titulo,inicio:p.vencimento,processo:[processo.numero,processo.objeto].filter(Boolean).join(" · "),empresa,empresaId:processo.empresa_id,processoId:processo.id});if(botao)no.append(botao);});}
   function renderizarEmpenhos(){if(!estado.detalhesCarregados){$("lista-empenhos").innerHTML=`<tr><td colspan="5" class="vazio">${estado.erroDetalhes?"Empenhos indisponíveis. Confira o aviso no topo.":"Carregando empenhos…"}</td></tr>`;return;}const processos=new Map(estado.processos.map(p=>[p.id,p]));const lista=estado.empenhos.filter(e=>processos.has(e.processo_id));$("lista-empenhos").innerHTML=lista.length?lista.map(e=>`<tr><td><strong>${esc(e.numero)}</strong><br><span class="nota">${data(e.emitido_em)}</span></td><td>${esc(processos.get(e.processo_id).objeto)}</td><td>${dinheiro(e.valor)}<br><span class="nota">Saldo: ${dinheiro(e.saldo ?? e.valor)}</span></td><td>${data(e.entrega_prevista)}</td><td><span class="tag ${e.status}">${esc(rotuloStatus(e.status))}</span></td></tr>`).join(""):`<tr><td colspan="5" class="vazio">Nenhum empenho cadastrado.</td></tr>`;}
   function abrirDossie(id){
     const p=estado.processos.find(x=>x.id===id);if(!p)return;
     const origem=linkSeguro(p.url_origem);
     $("d-titulo").textContent=p.objeto;
     $("d-subtitulo").textContent=[p.numero,p.orgao,p.modalidade,p.sistema,p.uasg?`UASG ${p.uasg}`:""].filter(Boolean).join(" · ")||"Dossiê privado";
-    $("d-conteudo").innerHTML=`<div class="dossie-grid"><div class="dado"><span>Órgão</span><b>${esc(p.orgao||"Não informado")}</b></div><div class="dado"><span>Publicação</span><b>${data(p.data_publicacao)}</b></div><div class="dado"><span>Sessão / abertura</span><b>${dataHora(p.data_sessao)}</b></div><div class="dado"><span>Estágio</span><b>${esc(rotuloStatus(p.status))}</b></div></div><div class="card" id="d-itens-edital"></div><div id="d-acompanhamento"></div><div class="acoes-dossie"><select id="d-status" aria-label="Estágio do processo"><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option><option value="arquivado">Arquivado</option></select><button class="btn" data-atualizar-status="${p.id}">Atualizar estágio</button><button class="btn" data-relatorio="${p.id}">Visualizar relatório</button>${origem?`<a class="btn" href="${esc(origem)}" target="_blank" rel="noopener">Abrir fonte oficial</a>`:""}</div>`;
+    $("d-conteudo").innerHTML=`<div class="dossie-grid"><div class="dado"><span>Órgão</span><b>${esc(p.orgao||"Não informado")}</b></div><div class="dado"><span>Publicação</span><b>${data(p.data_publicacao)}</b></div><div class="dado"><span>Sessão / abertura</span><b>${dataHora(p.data_sessao)}</b></div><div class="dado"><span>Estágio</span><b>${esc(rotuloStatus(p.status))}</b></div></div><div class="card" id="d-itens-edital"></div><div class="card" id="d-vinculo-compra" hidden></div><div id="d-kit-documentos"></div><div id="d-acompanhamento"></div><div class="acoes-dossie"><select id="d-status" aria-label="Estágio do processo"><option value="triagem">Triagem</option><option value="preparacao">Preparação</option><option value="proposta_enviada">Proposta enviada</option><option value="sessao">Sessão</option><option value="habilitacao">Habilitação</option><option value="recurso">Recurso</option><option value="homologado">Homologado</option><option value="contratado">Contratado</option><option value="perdido">Perdido</option><option value="arquivado">Arquivado</option></select><button class="btn" data-atualizar-status="${p.id}">Atualizar estágio</button><button class="btn" data-relatorio="${p.id}">Visualizar relatório</button>${origem?`<a class="btn" href="${esc(origem)}" target="_blank" rel="noopener">Abrir fonte oficial</a>`:""}</div>`;
     $("d-status").value=p.status;
     $("modal-dossie").dataset.processoId=id;
     acompanhamento.renderizar(p);
+    // D1 (decisão do dono, 18/11/2026): a proposta DOCX é feita só no editor do sistema. O dossiê leva para lá pelo link
+    // direto do processo, que o /sistema confere de novo (catálogo + consultar). LicitaKitDocumentos segue em uso no sistema.html.
+    const preparar=document.createElement("a");preparar.className="btn primario";preparar.textContent="Preparar proposta";
+    preparar.href=`/sistema?empresa=${encodeURIComponent(estado.empresaId)}&processo=${encodeURIComponent(p.id)}`;
+    $("d-kit-documentos").replaceChildren(preparar);
     abrir("modal-dossie");
     renderizarItensOficiais(p);
+    // D5: o vínculo com o portal (/api/vinculo-compra-portal) fica escondido até o SQL vinculo_compra_portal.sql ser
+    // aplicado em produção; sem a tabela o handler falha. Para religar, tire o hidden de #d-vinculo-compra e volte esta chamada.
+    // void montarVinculoCompra(p);
+  }
+  async function montarVinculoCompra(p){
+    const alvo=$("d-vinculo-compra"), empresaId=estado.empresaId;
+    const vigente=()=>alvo.isConnected&&estado.empresaId===empresaId&&$("modal-dossie").dataset.processoId===p.id;
+    alvo.innerHTML='<h3>Vínculo com a compra no Compras.gov.br</h3><p>Confira a referência no portal. Esta revisão é uma declaração do responsável, não certificação do portal. O link de origem do dossiê será preservado.</p><p data-vinculo-status role="status" aria-live="polite">Consultando…</p><form data-vinculo-form hidden><label>URL da compra<input name="url" type="url" required maxlength="300"></label><label>Identificador da compra (17 dígitos)<input name="compra" required pattern="[0-9]{17}" maxlength="17"></label><label>Número do pregão<input name="numero" required pattern="[0-9]{1,5}" maxlength="5"></label><label>Ano<input name="ano" required pattern="[0-9]{4}" maxlength="4"></label><label><input name="conferido" type="checkbox" required> Conferi CNPJ, UASG, número, ano e compra na referência informada.</label><button class="btn" type="submit">Confirmar vínculo revisado</button></form>';
+    const status=alvo.querySelector('[data-vinculo-status]'),form=alvo.querySelector('form');let atual;let usuario=null;let geracao=0;
+    const enviar=async body=>{
+      const {data:{session}}=await sb.auth.getSession();
+      if(!vigente())throw Error('Contexto alterado.');
+      if(!session||usuario&&usuario!==session.user.id)throw Error('Sessão alterada.');usuario=session.user.id;
+      const r=await fetch('/api/vinculo-compra-portal',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({...body,empresaId,processoId:p.id})});
+      const data=await r.json();const fresh=await sb.auth.getSession();
+      if(!vigente()||fresh.data.session?.user.id!==usuario)throw Error('Contexto ou sessão alterados.');
+      if(!r.ok)throw Error(data.erro||'Não foi possível conferir o vínculo.');return data;
+    };
+    const mostrar=data=>{atual=data;status.textContent=`CNPJ: ${data.cnpj} · UASG: ${data.uasg||'não informada'} · Sistema: ${data.sistema||'não informado'}. ${data.vinculo?(data.vinculo.invalidado_em?'Revisão invalidada; confira novamente.':'Vínculo revisado pelo responsável.'):'Sem vínculo revisado.'}`;};
+    try{mostrar(await enviar({acao:'consultar'}));if(!vigente())return;
+      const v=atual.vinculo;if(v){for(const [key,field] of [['url','url_compra'],['compra','compra'],['numero','numero'],['ano','ano']])form.elements[key].value=v[field]||'';}
+      form.hidden=false;
+    }catch(e){if(vigente())status.textContent=e.message;return;}
+    form.addEventListener('input',()=>{geracao++;form.elements.conferido.checked=false;status.textContent='Dados editados. Confira a referência antes de confirmar.';});
+    form.elements.conferido.addEventListener('input',e=>e.stopPropagation());
+    form.addEventListener('submit',async e=>{e.preventDefault();if(!form.reportValidity()||!atual)return;
+      const button=form.querySelector('button');button.disabled=true;const inicio=geracao;
+      const dados=Object.fromEntries(['url','compra','numero','ano'].map(key=>[key,form.elements[key].value.trim()]));
+      try{const response=await enviar({acao:'confirmar',versaoEsperada:atual.versao,processoSnapshot:atual.processoSnapshot,dados});if(vigente()){if(inicio!==geracao){atual=null;form.hidden=true;status.textContent='Dados editados durante a confirmação. Reabra o dossiê para conferir o estado salvo.';return;}mostrar(response);form.elements.conferido.checked=false;}}
+      catch(error){if(vigente()){status.textContent=error.message;atual=null;form.hidden=true;}}
+      finally{button.disabled=false;}
+    });
   }
   async function visualizarRelatorio(id){
     if(!estado.detalhesCarregados){aviso("Aguarde o carregamento completo do acompanhamento antes de gerar o relatório.","erro");return;}
@@ -247,7 +395,7 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
   document.querySelectorAll(".aba").forEach(b=>b.onclick=()=>{document.querySelectorAll(".aba").forEach(x=>x.classList.remove("ativa"));document.querySelectorAll(".painel").forEach(x=>x.classList.remove("ativo"));b.classList.add("ativa");$("aba-"+b.dataset.aba).classList.add("ativo");});
   $("lista-processos").addEventListener("click",e=>{const p=e.target.closest("[data-processo]");if(p)abrirDossie(p.dataset.processo);});
   $("d-conteudo").addEventListener("click",async e=>{const prazo=e.target.closest("[data-add-prazo]"),empenho=e.target.closest("[data-add-empenho]"),rel=e.target.closest("[data-relatorio]"),atualizar=e.target.closest("[data-atualizar-status]");if(prazo){$("form-prazo").reset();$("titulo-form-prazo").textContent="Novo prazo do processo";$("form-prazo").processo_id.value=prazo.dataset.addPrazo;fechar("modal-dossie");abrir("modal-prazo");}if(empenho){$("form-empenho").reset();$("titulo-form-empenho").textContent="Novo empenho";$("form-empenho").processo_id.value=empenho.dataset.addEmpenho;fechar("modal-dossie");abrir("modal-empenho");}if(rel)void visualizarRelatorio(rel.dataset.relatorio);if(atualizar){const {error}=await sb.from("operacao_processos").update({status:$("d-status").value,atualizado_em:new Date().toISOString()}).eq("id",atualizar.dataset.atualizarStatus);if(error){aviso("Não foi possível atualizar o estágio: "+error.message,"erro");return;}await carregarTudo();abrirDossie(atualizar.dataset.atualizarStatus);}});
-  $("d-conteudo").addEventListener("click",e=>{
+  $("d-conteudo").addEventListener("click",async e=>{
     const id=$("modal-dossie").dataset.processoId;
     const processo=estado.processos.find(item=>item.id===id);
     if(!processo)return;
@@ -269,14 +417,15 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
     const indice=Number(acompanhar.dataset.acompanharItem);
     const item=itensOficiais.get(id)?.itens?.[indice];
     if(!item)return;
-    const form=$("form-item");
-    form.reset();
-    form.elements.namedItem("processo_id").value=id;
-    form.elements.namedItem("identificador").value=String(item.numero||"");
-    form.elements.namedItem("descricao").value=String(item.descricao||"").slice(0,500);
-    form.elements.namedItem("quantidade").value=item.quantidade??"";
-    acompanhamento.atualizarValoresItem();
-    fechar("modal-dossie");abrir("modal-item");
+    acompanhar.disabled=true;
+    try{
+      const {data:{session}}=await sb.auth.getSession();if(!session?.access_token)throw new Error('Sessão expirada. Entre novamente.');
+      const resposta=await fetch('/api/importar-item-pncp',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({empresaId:processo.empresa_id,processoId:id,numeroItem:Number(item.numero)})});
+      const resultado=await resposta.json();if(!resposta.ok)throw new Error(resultado.erro||'Importação indisponível.');
+      const {data:{session:atual}}=await sb.auth.getSession();if(atual?.user?.id!==session.user?.id||$("modal-dossie").dataset.processoId!==id)return;
+      await carregarTudo();aviso(resultado.mensagem,'sucesso');abrirDossie(id);
+    }catch(erro){aviso(erro.message||'Não foi possível importar o item.','erro');}
+    finally{acompanhar.disabled=false;}
   });
   acompanhamento.vincular();iniciar();
 })();
@@ -285,10 +434,12 @@ html.tema-claro{--escuro:#f4f7fb;--card:#fff;--card2:#f8fafc;--borda:#d6e0ec;--t
 (() => {
   const btn = document.getElementById("btn-tema");
   const atualizar = () => { const claro = document.documentElement.classList.contains("tema-claro"); btn.textContent = claro ? "☀" : "☾"; btn.title = claro ? "Mudar para tema escuro" : "Mudar para tema claro"; };
-  btn.addEventListener("click", () => { const claro = document.documentElement.classList.toggle("tema-claro"); try { localStorage.setItem("licitaplena_tema", claro ? "claro" : "escuro"); } catch (_) {} atualizar(); });
+  btn.addEventListener("click", () => { const claro = document.documentElement.classList.toggle("tema-claro"); document.documentElement.dataset.theme = claro ? "light" : "dark"; try { localStorage.setItem("licitaplena_tema", claro ? "claro" : "escuro"); } catch (_) {} atualizar(); });
   document.getElementById("empresa-atual").addEventListener("change", e => { try { localStorage.setItem("licitaplena_empresa_operacional_id", e.target.value); } catch (_) {} });
   atualizar();
 })();
 </script>
+<script src="menu-lateral.js"></script>
 </body>
 </html>
+

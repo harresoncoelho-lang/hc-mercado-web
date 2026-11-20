@@ -60,7 +60,7 @@ function respostaJob(estado, agora = Date.now()) {
 function urlBackground() {
   // URL é injetada pelo Netlify; nunca usa Host, Origin ou corpo do navegador.
   const url = new URL(process.env.URL || "https://licitaplena.com.br");
-  if (url.protocol !== "https:" || !["licitaplena.com.br", "www.licitaplena.com.br", "hc-mercado-web.netlify.app"].includes(url.hostname)) throw new Error("Destino interno indisponível");
+  if (url.protocol !== "https:" || !["licitaplena.com.br", "www.licitaplena.com.br"].includes(url.hostname)) throw new Error("Destino interno indisponível");
   return new URL("/.netlify/functions/ia-resumo-background", url).href;
 }
 

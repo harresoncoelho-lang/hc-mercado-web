@@ -2,7 +2,7 @@
 //
 // Por quê: publicar a raiz do repositório subiria node_modules, scripts, supabase e .github, e o
 // Pages tem limite de 20.000 arquivos por deploy. Aqui entra só o que o site realmente serve:
-// as páginas HTML, os JS/imagens da raiz referenciados por elas, data/ e o _headers.
+// as páginas HTML, os JS/imagens da raiz referenciados por elas, os dados públicos e o _headers.
 // O Netlify continua publicando a raiz ("publish = .") e não usa este script.
 
 const fs = require("node:fs");
@@ -17,9 +17,15 @@ const EXTENSOES_SERVIDAS = new Set([".html", ".js", ".png", ".svg", ".ico", ".jp
 
 function arquivosDaRaiz() {
   return fs.readdirSync(RAIZ, { withFileTypes: true })
-    .filter((e) => e.isFile() && !IGNORADOS.has(e.name) && EXTENSOES_SERVIDAS.has(path.extname(e.name).toLowerCase()))
+    // Testes da raiz (*.test.js) não são do site: publicados, ficavam acessíveis e o `node --test` os achava em publico/.
+    .filter((e) => e.isFile() && !IGNORADOS.has(e.name) && !e.name.endsWith(".test.js") && EXTENSOES_SERVIDAS.has(path.extname(e.name).toLowerCase()))
     .map((e) => e.name)
     .concat("_headers");
+}
+
+function arquivosDeDados() {
+  // O histórico por destinatário e futuros arquivos internos não pertencem ao site público.
+  return ["capag-municipios.json", "convenios.json", "sistema_s_am.json", "mercado_meta.json", "contratos_meta.json", "municipios-centroides.json"];
 }
 
 function montarPublico() {
@@ -27,9 +33,8 @@ function montarPublico() {
   fs.mkdirSync(DESTINO, { recursive: true });
   const copiados = arquivosDaRaiz();
   for (const nome of copiados) fs.copyFileSync(path.join(RAIZ, nome), path.join(DESTINO, nome));
-  fs.cpSync(path.join(RAIZ, "data"), path.join(DESTINO, "data"), { recursive: true });
-  // Histórico do boletim tem e-mails de destinatários; o robô usa o blob no Supabase, não o site.
-  fs.rmSync(path.join(DESTINO, "data", "editais_vistos.json"), { force: true });
+  fs.mkdirSync(path.join(DESTINO, "data"));
+  for (const nome of arquivosDeDados()) fs.copyFileSync(path.join(RAIZ, "data", nome), path.join(DESTINO, "data", nome));
   return copiados;
 }
 
@@ -38,4 +43,4 @@ if (require.main === module) {
   console.log(`publico/: ${copiados.length} arquivos da raiz + data/`);
 }
 
-module.exports = { montarPublico, arquivosDaRaiz };
+module.exports = { montarPublico, arquivosDaRaiz, arquivosDeDados };

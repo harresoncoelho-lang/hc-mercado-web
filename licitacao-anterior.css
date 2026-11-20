@@ -1,0 +1,79 @@
+/* Licitação anterior (licitacao-anterior-ui.js): cartão do processo (sistema.html) e tela avulsa (painel.html).
+   Usa as variáveis de cada página com valor de reserva, para valer nas duas sem mudar o visual existente. */
+#licitacao-anterior:empty { display: none; }
+.la { display: grid; gap: 12px; min-width: 0; }
+.la p { margin: 0; }
+.la-apoio, .la-fonte { color: var(--texto-suave, var(--texto-secundario, #5b6472)); font-size: .9rem; }
+.la-fonte { font-size: .8rem; }
+.la-subtitulo { font-size: 1rem; margin: 0; }
+.la-compra { border: 1px solid var(--borda, #d9dee7); border-radius: 10px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.la-compra-topo { display: grid; gap: 4px; }
+.la-meta-compra, .la-objeto { font-size: .88rem; overflow-wrap: anywhere; }
+.la-links { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.la-link { font-weight: 600; }
+.la-aviso { font-size: .82rem; color: var(--aviso-texto, #8a5a00); }
+.la-item { border-top: 1px dashed var(--borda, #d9dee7); padding-top: 8px; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.la-item-ruim { border-left: 3px solid var(--erro, #c0392b); padding-left: 8px; }
+.la-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: .8rem; }
+.la-meta span, .la-chip { border: 1px solid var(--borda, #d9dee7); border-radius: 999px; padding: 1px 8px; }
+.la-ruim { color: #fff; background: var(--erro, #c0392b); border-color: transparent !important; font-weight: 600; }
+.la-alta { border-color: var(--ok, #2e7d32) !important; }
+.la-baixa { border-style: dashed !important; }
+.la-precos, .la-vencedor, .la-reservas { font-size: .9rem; }
+.la-cancelado { font-size: .88rem; color: var(--erro, #c0392b); }
+.la-marca { font-weight: 600; }
+.la-sem { font-style: italic; font-weight: 400; }
+.la-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.la-lista { margin: 6px 0 0; padding-left: 20px; font-size: .85rem; display: grid; gap: 2px; }
+.la-form { display: grid; gap: 10px; max-width: 720px; }
+.la-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.la-linha .la-campo { flex: 1 1 240px; }
+.la-campo { display: grid; gap: 4px; font-size: .9rem; }
+.la-campo input, .la-campo select { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; }
+.la-botao { padding: 8px 14px; cursor: pointer; }
+@media (max-width: 600px) { .la-compra { padding: 10px; } .la-linha { display: grid; } }
+.la-itens > summary { cursor: pointer; font-weight: 600; font-size: .9rem; }
+.la-itens[open] > summary { margin-bottom: 4px; }
+.la-produtos { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.la-produto { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 2px; overflow-wrap: anywhere; }
+/* Pregão gravado por usuário (extensão): motivo literal por participante com selo de confiança e fonte sem HTTPS. */
+.la-motivo { margin: 2px 0 0; font-size: .82rem; overflow-wrap: anywhere; }
+.la-motivo q { font-style: italic; }
+.la-selo-leitura { display: inline-block; font-size: .75rem; border: 1px solid var(--borda, #d9dee7); border-radius: 999px; padding: 0 8px; }
+.la-nao-verificado { color: var(--aviso-texto, #8a5a00); border-color: var(--aviso-texto, #8a5a00); }
+.la-verificado { color: var(--ok, #2e7d32); border-color: var(--ok, #2e7d32); }
+.la-sem-https { font-weight: 600; color: var(--erro, #c0392b); }
+.la-situacao-participante { font-weight: 600; }
+.la-lista .sancao-selo { margin-top: 2px; }
+/* Selo de sanção dentro do cartão (sancoes-ui.js): cores do próprio cartão, texto diz a situação além da cor. */
+.la .sancao-selo { border: 1px solid var(--erro, #c0392b); border-radius: 8px; padding: 6px 10px; font-size: .82rem; display: grid; gap: 2px; overflow-wrap: anywhere; }
+.la .sancao-selo[data-situacao="expirada"] { border-color: var(--borda, #d9dee7); }
+.la .sancao-selo-titulo { margin: 0; font-weight: 600; }
+.la .sancao-selo ul { margin: 0; padding-left: 16px; }
+.la .sancao-selo-mais { margin: 0; }
+/* "Ver tudo do pregão": abre a página oficial, o usuário resolve o captcha, a extensão grava. */
+.la-vertudo { border: 1px solid var(--info-border, #b9ccf5); background: var(--info-bg, #eaf1fe); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+.la-vertudo-titulo { margin: 0; font-size: .95rem; }
+.la-vertudo .la-links { align-items: center; }
+.la-vertudo a.la-botao { text-decoration: none; display: inline-block; }
+.la-passos { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: .88rem; }
+.la-passos li { display: flex; gap: 8px; align-items: flex-start; }
+.la-passos svg { flex: none; color: var(--info-text, #1f4fb8); }
+/* Camadas e completude por pregão: o que já está aqui e de onde veio (texto além da cor e dos símbolos). */
+.la-camadas { display: grid; gap: 6px; min-width: 0; }
+.la-camadas .la-completude { margin: 0; font-size: .85rem; line-height: 1.7; }
+.la-camada { display: inline-block; font-size: .8rem; font-weight: 600; border: 1px solid var(--borda, #d9dee7); border-radius: 999px; padding: 2px 10px; margin: 0 6px 4px 0; max-width: 100%; overflow-wrap: anywhere; }
+.la-camadas > .la-camada { justify-self: start; }
+.la-cam-auto { color: var(--info-text, #1f4fb8); border-color: var(--info-border, #b9ccf5); background: var(--info-bg, #eaf1fe); }
+.la-cam-verificado, .la-cam-ok { color: var(--ok, #2e7d32); border-color: var(--ok, #2e7d32); }
+.la-cam-gravado { color: var(--aviso-texto, #8a5a00); border-color: var(--aviso-texto, #8a5a00); }
+.la-cam-falta { color: var(--erro, #c0392b); border-color: var(--erro, #c0392b); }
+.la-comp { white-space: nowrap; font-weight: 600; }
+.la-comp-ok { color: var(--ok, #2e7d32); }
+.la-comp-parcial { color: var(--aviso-texto, #8a5a00); }
+.la-comp-falta { color: var(--erro, #c0392b); }
+.la-comp-dica { color: var(--texto-suave, var(--texto-secundario, #5b6472)); }
+/* Aviso discreto quando a tela se atualiza sozinha ao voltar da página do governo. */
+.la-atualizado { font-size: .82rem; color: var(--ok, #2e7d32); animation: la-some 8s forwards; }
+@keyframes la-some { 0%, 75% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .la-atualizado { animation: none; } }

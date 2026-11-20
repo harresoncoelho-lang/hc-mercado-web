@@ -1,0 +1,11 @@
+- PostgreSQL 17.5
+- base: rls_e_limite_de_uso.sql (seções 1-2) + operacao_licitacoes.sql + operacao_acompanhamento.sql + limite_cnpjs_operacao.sql + acesso_empresa_convites.sql + operacao_checklist_edital.sql + operacao_kanban_sync.sql + operacao_itens_valores_unitarios.sql + operacao_itens_marca_modelo.sql
+- base confere com catálogo de 31/10: 20 policies iguais; funções públicas iguais exceto criar_cliente_no_cadastro() (trigger de cadastro, fora do escopo)
+- 02 antes do 01: recusado pelo gate do kit (esperado)
+- 01 com erro no fim: rollback completo, base intacta
+- rodada 1: 01 aplicado sem erro; 02 → 81 itens ok, 0 falha
+- rodada 2: 01 aplicado sem erro; 02 → 81 itens ok, 0 falha
+- dados preservados: {"d":2,"p":4,"i":1,"m":1,"o":2}
+- 02 com policy removida (em transação desfeita): aponta exatamente a policy em falha
+- incrementar_uso: anon e authenticated negados; service_role executa
+ENSAIO OK

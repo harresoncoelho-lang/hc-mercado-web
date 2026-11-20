@@ -1,0 +1,6 @@
+processos.html real: logout: OK
+processos.html real: troca-usuario: OK
+processos.html real: troca-silenciosa: OK
+processos.html real: recarga-pendente-falha: OK
+processos.html real: mesmo-usuario: OK
+processos.html real: token-refresh: OK

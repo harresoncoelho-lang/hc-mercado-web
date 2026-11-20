@@ -1,0 +1,30 @@
+{
+  "operacao.html": {
+    "sha256": "5ac6e19febcbf5c4b346e7ae06c4bc289ed925c7043adffa889099d17c6b30a4",
+    "baselineSha256": "e1dd820425ed1731d23b245758b4861b07d5e0c31158d30c40bd2a669c1b723c"
+  },
+  "operacao-identificacao.js": {
+    "sha256": "2804573bcf43c5baa46a23a4eedb68535bacbd3dfc84984ab9ff1498a3a20725",
+    "baselineSha256": null
+  },
+  "operacao-identificacao.css": {
+    "sha256": "9ace7d692b840d291ce1bd43749545b04e41214e15d1ec68498a888e96f3f910",
+    "baselineSha256": null
+  },
+  "empresa-identificacao-ui.js": {
+    "sha256": "1fba2b3c7efc48f1cdad751e2b9298489da64e7e07fbef53ec088ae4fa635374",
+    "baselineSha256": "782a6b926bae3d11ba49eec63e06491005e2d736eb4f1ae92885e7a99144e145"
+  },
+  "kit-documentos-ui.js": {
+    "sha256": "7e21b2237bc633d0578a1e9369eb4ff92c6a9f395374f6ba37358107c68090b7",
+    "baselineSha256": "34dcfd0a1bf6c8ba3b1d402eba93d927c8a054bcc4e50984811de856e512b4f1"
+  },
+  "processos.html": {
+    "sha256": "b8c9279f31833a183aa9d698f99985469e58f1a88be8e157ecac3514bf9a9b0f",
+    "baselineSha256": "23f6683691761762418c8c72502c54b6ff73c06aea1b390d375362bf5f793657"
+  },
+  "scripts/operacao_identificacao.test.js": {
+    "sha256": "f8d7e5589a955e600d6bdce5a667de91149f0b7c6141943eb20654227f82035c",
+    "baselineSha256": null
+  }
+}

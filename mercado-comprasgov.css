@@ -1,0 +1,33 @@
+/* "Buscar no mercado (Compras.gov)": catálogo (operacao.html) e preço por item (sistema.html). Tokens de ds-tokens.css. */
+.mercado-busca label{display:block;font-weight:600;margin-bottom:4px}
+.mercado-linha{display:flex;gap:8px}
+.mercado-linha input{flex:1;min-width:0;min-height:40px}
+.mercado-filtros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:8px 0}
+.mercado-campo label{display:block;font-size:13px;color:var(--text-secondary)}
+.mercado-campo select{width:100%;min-height:40px}
+.mercado-numeros{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:6px 0}
+.mercado-numeros div{border:1px solid var(--border-default);border-radius:var(--radius-control);padding:6px 8px;background:var(--surface-sunken)}
+.mercado-numeros dt{font-size:12px;color:var(--text-secondary)}
+.mercado-numeros dd{margin:0;font-weight:700}
+.mercado-lista{list-style:none;padding:0;margin:8px 0;display:grid;gap:8px}
+.mercado-item{border:1px solid var(--border-default);border-radius:var(--radius-control);padding:8px 10px;background:var(--surface-default);overflow-wrap:anywhere}
+.mercado-item p{margin:4px 0}
+.mercado-acoes{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.mercado-numeros .destaque{border-color:var(--border-strong);background:var(--surface-default)}
+.mercado-numeros .destaque dd{font-size:18px}
+.mercado-subtitulo{margin:12px 0 2px;font-size:16px}
+.mercado-tabela{overflow-x:auto}
+.mercado-marcas{width:100%;border-collapse:collapse;font-size:14px}
+.mercado-marcas th{text-align:left;font-size:12px;color:var(--text-secondary);border-bottom:1px solid var(--border-default);padding:4px 6px}
+.mercado-marcas td{border-bottom:1px solid var(--border-default);padding:6px;vertical-align:top}
+.mercado-marcas tr.ativa td{background:var(--surface-sunken)}
+.mercado-marca-nome{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--action-text);text-decoration:underline;cursor:pointer;text-align:left;min-height:32px}
+.mercado-selo{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;border:1px solid var(--attention-border);background:var(--attention-bg);color:var(--attention-text);font-size:12px}
+.mercado-diferentes{margin:8px 0;border:1px dashed var(--border-default);border-radius:var(--radius-control);padding:6px 10px}
+.mercado-diferentes summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center}
+@media(max-width:640px){.mercado-marcas thead{display:none}.mercado-marcas tr{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px;padding:6px 0;border-bottom:1px solid var(--border-default)}.mercado-marcas td{border:0;padding:2px 0}.mercado-marcas td::before{content:attr(data-rotulo);display:block;font-size:11px;color:var(--text-secondary)}.mercado-marcas td[data-rotulo=""],.mercado-marcas td[data-rotulo="Últimos órgãos"]{grid-column:1/-1}.mercado-marcas td[data-rotulo=""]::before{display:none}.mercado-marcas td[data-rotulo=""] .btn{width:100%}}
+@media(max-width:640px){.mercado-filtros{grid-template-columns:1fr}.mercado-numeros{grid-template-columns:repeat(2,minmax(0,1fr))}.mercado-acoes{justify-content:flex-start}.mercado-acoes .btn,.mercado-acoes button{width:100%}}
+.itens-fontes{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;margin-top:8px}
+.itens-mercado{margin-top:8px;padding:8px;border:1px solid var(--border-default);border-radius:var(--radius-control)}
+.catalogo-usar-opcao{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:4px 0}
+.catalogo-form,#itens-titulo{scroll-margin-top:140px}

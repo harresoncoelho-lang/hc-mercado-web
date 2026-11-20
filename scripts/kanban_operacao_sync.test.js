@@ -35,7 +35,7 @@ function criarBanco(existente = null, prazos = []) {
   return { banco, gravacoes, consultas };
 }
 
-function preparar(existente, prazos) {
+function preparar(existente, prazos, etapas = null) {
   const { banco, consultas } = criarBanco(existente, prazos);
   const contexto = {
     window: { __sbClient: banco },
@@ -56,7 +56,9 @@ function preparar(existente, prazos) {
     "const { organizacaoId, empresa } = await empresaOperacionalParaDossie(empresaId);",
     'const organizacaoId = "org", empresa = { id: "empresa" };'
   );
-  vm.runInNewContext(`${codigoTestavel}\nthis.sincronizar = sincronizarDossieOperacional; this.status = dadosStatusOperacional;`, contexto);
+  // etapas simula o Funil carregado do banco (null = tabela operacao_funil_etapas ainda não existe).
+  contexto.__etapas = etapas;
+  vm.runInNewContext(`${codigoTestavel}\netapasFunil = this.__etapas; this.sincronizar = sincronizarDossieOperacional; this.status = dadosStatusOperacional;`, contexto);
   return { sincronizar: contexto.sincronizar, status: contexto.status, consultas };
 }
 
@@ -169,4 +171,49 @@ test("fonte oficial registrada no dossiê não é substituída pelo Kanban", asy
   assert.equal(atualizacao.situacao_resultado, undefined);
   assert.equal(atualizacao.resultado, undefined);
   assert.equal(atualizacao.valor_homologado, undefined);
+});
+
+const ETAPAS = [
+  { id: "etapa-interesse", nome: "Tenho interesse", ordem: 0, status_sistema: "triagem", chave_sistema: "interesse", cor: "#64748b" },
+  { id: "etapa-participando", nome: "Participando", ordem: 1, status_sistema: "preparacao", chave_sistema: "participando", cor: "#2563eb" },
+  { id: "etapa-sessao", nome: "Sessão marcada", ordem: 2, status_sistema: "sessao", chave_sistema: null, cor: "#7c3aed" },
+];
+
+test("etapa personalizada grava etapa_id e status_sistema", async () => {
+  const existente = { id: "processo-existente", objeto: "Papel", status: "preparacao", resultado: "" };
+  const { sincronizar, consultas } = preparar(existente, [], ETAPAS);
+  await sincronizar("PNCP-1", { objeto: "Papel" }, "participando", null, ETAPAS[2]);
+  const atualizacao = consultas.find(c => c.tabela === "operacao_processos" && c.acao === "update").dados;
+  assert.equal(atualizacao.status, "sessao");
+  assert.equal(atualizacao.etapa_id, "etapa-sessao");
+  assert.equal(atualizacao.decisao, "participar");
+
+  const novo = preparar(null, [], ETAPAS);
+  await novo.sincronizar("PNCP-2", { objeto: "Papel" }, "participando", null, ETAPAS[2]);
+  const insercao = novo.consultas.find(c => c.tabela === "operacao_processos" && c.acao === "insert").dados;
+  assert.equal(insercao.status, "sessao");
+  assert.equal(insercao.etapa_id, "etapa-sessao");
+});
+
+test("sem etapa grava etapa_id null", async () => {
+  const existente = { id: "processo-existente", objeto: "Papel", status: "sessao", etapa_id: "etapa-sessao", resultado: "" };
+  const { sincronizar, consultas } = preparar(existente, [], ETAPAS);
+  await sincronizar("PNCP-1", { objeto: "Papel" }, "participando");
+  const atualizacao = consultas.find(c => c.tabela === "operacao_processos" && c.acao === "update").dados;
+  assert.equal(atualizacao.status, "preparacao");
+  assert.ok("etapa_id" in atualizacao);
+  assert.equal(atualizacao.etapa_id, null);
+});
+
+// O painel pode ir ao ar antes do SQL: sem a tabela, a coluna etapa_id também não existe.
+test("sem a tabela de etapas no banco não envia etapa_id", async () => {
+  const existente = { id: "processo-existente", objeto: "Papel", status: "triagem", resultado: "" };
+  const { sincronizar, consultas } = preparar(existente);
+  await sincronizar("PNCP-1", { objeto: "Papel" }, "participando");
+  const atualizacao = consultas.find(c => c.tabela === "operacao_processos" && c.acao === "update").dados;
+  assert.equal(atualizacao.status, "preparacao");
+  assert.equal("etapa_id" in atualizacao, false);
+  const novo = preparar(null);
+  await novo.sincronizar("PNCP-2", { objeto: "Papel" }, "interesse");
+  assert.equal("etapa_id" in novo.consultas.find(c => c.tabela === "operacao_processos" && c.acao === "insert").dados, false);
 });

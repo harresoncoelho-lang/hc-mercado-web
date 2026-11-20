@@ -1,42 +1,108 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Convite de acesso — LicitaPlena</title>
   <link rel="icon" type="image/png" href="favicon.png?v=3">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="ds-tokens.css">
+  <link rel="stylesheet" href="senha-olho.css">
+  <script>
+    // Tema antes de pintar (sem piscar): mesma chave e mesmo padrão claro do sistema (login.html).
+    (function () { var t = null; try { t = localStorage.getItem("licitaplena_tema"); } catch (e) { t = null; } document.documentElement.dataset.theme = t === "escuro" ? "dark" : "light"; })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
+  <script src="senha-captcha-ui.js"></script>
   <script src="supabase-config.js"></script>
   <style>
-    :root{font-family:Inter,Arial,sans-serif;color:#17263a;background:#f3f7fc}*{box-sizing:border-box}
-    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
-    main{width:min(520px,100%);background:#fff;border:1px solid #d9e4ef;border-radius:16px;padding:28px;box-shadow:0 14px 40px #14396816}
-    header{display:flex;align-items:center;gap:12px;margin-bottom:18px}header img{width:38px}h1{font-size:23px;margin:0}p{color:#556983;line-height:1.55}
-    label{display:block;font-size:13px;font-weight:700;margin:14px 0 5px}input{width:100%;padding:11px;border:1px solid #cbd8e6;border-radius:8px;font:inherit}
-    button{border:0;border-radius:8px;background:#236bd1;color:#fff;font:inherit;font-weight:700;padding:11px 15px;cursor:pointer;margin-top:14px}button:disabled{opacity:.6;cursor:wait}
-    .abas{display:flex;gap:8px}.abas button{background:#e9eff7;color:#1c3a61}.abas button.ativo{background:#236bd1;color:#fff}
-    .aviso{min-height:25px;font-size:14px;margin-top:16px}.aviso.erro{color:#ae2740}.aviso.ok{color:#176c43}
-    a{color:#195ab5}.consentimento{display:flex;gap:8px;align-items:start;font-size:13px;color:#475a73}.consentimento input{width:auto;margin-top:3px}
+    /* Design System (ds-tokens.css), mesmo padrão de login.html/cadastro.html. Aguarda aprovação. */
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: 24px; display: flex; align-items: center; justify-content: center; font: var(--text-body); color: var(--text-primary); background: var(--surface-page); }
+    button, input { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+    .caixa { width: 100%; max-width: 440px; padding: 24px; background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); }
+    .topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+    .marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; line-height: 24px; color: var(--text-primary); text-decoration: none; }
+    /* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (regra do DS). */
+    .placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+    .placa img { width: 24px; height: 24px; display: block; }
+    h1 { font: var(--text-section); margin: 0 0 4px; }
+    p.sub { color: var(--text-secondary); margin: 0 0 16px; }
+    label { display: block; font: var(--text-label); margin-bottom: 4px; }
+    input[type=email], input[type=password], input[type=text] { width: 100%; height: 40px; padding: 0 12px; margin-bottom: 16px; background: var(--surface-default); color: var(--text-primary); border: 1px solid var(--border-strong); border-radius: var(--radius-control); }
+    .campo-senha-wrap { margin-bottom: 16px; }
+    .campo-senha-wrap input { margin-bottom: 0 !important; }
+    .btn { height: 40px; padding: 0 16px; border-radius: var(--radius-control); border: 1px solid transparent; font-weight: 500; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-ter { background: transparent; color: var(--action-text); height: 32px; padding: 0 8px; font-size: 12px; white-space: nowrap; }
+    .btn-ter:hover { background: var(--action-tint); }
+    /* Abas como controle segmentado: a ativa ganha superfície, borda e texto de ação. */
+    .abas { display: flex; gap: 4px; padding: 4px; margin-bottom: 16px; background: var(--surface-sunken); border: 1px solid var(--border-default); border-radius: var(--radius-control); }
+    .abas .btn { flex: 1; height: 32px; padding: 0 8px; background: transparent; color: var(--text-secondary); }
+    .abas .btn.ativo { background: var(--surface-default); color: var(--action-text); border-color: var(--border-default); font-weight: 600; }
+    button.entrar { width: 100%; background: var(--action-strong); color: var(--action-on); }
+    button.entrar:hover { background: var(--action-strong-hover); }
+    button.entrar:disabled { background: var(--surface-sunken); color: var(--text-disabled); border-color: var(--border-default); cursor: not-allowed; }
+    .consentimento { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 16px; color: var(--text-secondary); }
+    .consentimento input { width: 16px; height: 16px; margin: 3px 0 0; flex: none; accent-color: var(--action-strong); }
+    .captcha-turnstile { max-width: 100%; margin-bottom: 16px; }
+    .captcha-aviso { font: var(--text-label); color: var(--text-secondary); margin: 0 0 16px; }
+    /* Aviso: cor + texto + sinal (estado nunca só por cor); sem texto, some. */
+    .aviso { margin: 0 0 16px; padding: 12px 16px; border-radius: var(--radius-card); border: 1px solid var(--info-border); background: var(--info-bg); color: var(--info-text); display: flex; gap: 8px; }
+    .aviso:empty { display: none; }
+    .aviso::before { font-weight: 700; flex: none; content: "i"; }
+    .aviso.erro { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+    .aviso.erro::before { content: "!"; }
+    .aviso.ok { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+    .aviso.ok::before { content: "✓"; }
+    a { color: var(--action-text); }
+    .rodape-link { text-align: center; margin: 24px 0 0; color: var(--text-secondary); }
+    @media (max-width: 480px) { body { padding: 12px; align-items: flex-start; } .caixa { padding: 20px 16px; margin-top: 12px; } }
   </style>
 </head>
 <body>
-<main>
-  <header><img src="logo-icone.svg" alt=""><h1>Acesso por empresa</h1></header>
-  <p>Este convite dá acesso somente à empresa indicada pelo administrador. Use exatamente o e-mail para o qual o convite foi criado.</p>
-  <div id="estado-convite" class="aviso"></div>
-  <div class="abas"><button type="button" id="aba-criar" class="ativo">Criar minha conta</button><button type="button" id="aba-entrar">Já tenho conta</button></div>
+<main class="caixa">
+  <div class="topo">
+    <a href="index.html" class="marca"><span class="placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a>
+    <button type="button" class="btn btn-ter" id="tema">Tema escuro</button>
+  </div>
+  <h1>Acesso por empresa</h1>
+  <p class="sub">Este convite dá acesso somente à empresa indicada pelo administrador. Use exatamente o e-mail para o qual o convite foi criado.</p>
+  <div id="estado-convite" class="aviso" role="status" aria-live="polite"></div>
+  <div class="abas"><button type="button" id="aba-criar" class="btn ativo">Criar minha conta</button><button type="button" id="aba-entrar" class="btn">Já tenho conta</button></div>
   <form id="form-convite">
     <label for="email">E-mail convidado</label><input id="email" type="email" required autocomplete="email">
-    <label for="senha">Senha</label><input id="senha" type="password" required minlength="8" autocomplete="new-password">
-    <div id="consentimento" class="consentimento" style="margin-top:15px;"><input id="aceite" type="checkbox" required><span>Li e aceito os <a href="termos-de-uso.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="politica-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span></div>
-    <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-top:18px;"></div>
-    <button id="enviar" type="submit">Criar conta e ativar acesso</button>
+    <label for="senha">Senha</label><div class="campo-senha-wrap"><input id="senha" type="password" required minlength="8" autocomplete="new-password"><button type="button" class="btn-mostrar-senha" data-alvo="senha" aria-controls="senha" aria-pressed="false" aria-label="Mostrar senha" title="Mostrar senha">
+          <svg class="olho-aberto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+        </button></div>
+    <div id="consentimento" class="consentimento"><input id="aceite" type="checkbox" required><span>Li e aceito os <a href="termos-de-uso.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="politica-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span></div>
+    <div class="captcha-turnstile"></div>
+    <p class="captcha-aviso" role="alert" hidden></p>
+    <button id="enviar" type="submit" class="btn entrar">Criar conta e ativar acesso</button>
   </form>
-  <p><a href="login.html">Voltar ao login</a></p>
+  <p class="rodape-link"><a href="login.html">Voltar ao login</a></p>
 </main>
 <script>
+  // Alternar tema: grava na mesma chave que o sistema lê (igual a login.html).
+  (function () {
+    const b = document.getElementById("tema");
+    const pintar = () => { b.textContent = document.documentElement.dataset.theme === "dark" ? "Tema claro" : "Tema escuro"; };
+    pintar();
+    b.addEventListener("click", () => {
+      const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem("licitaplena_tema", t === "dark" ? "escuro" : "claro"); } catch (e) { /* preferência opcional */ }
+      pintar();
+    });
+  })();
+</script>
+<script>
 (() => {
+  SenhaCaptchaUi.ligarOlhosDaSenha(document);
+  const captcha = SenhaCaptchaUi.montarTurnstile(document, window); // Turnstile; sem chave configurada fica desligado
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const token = new URL(location.href).searchParams.get("token") || "";
   const $ = id => document.getElementById(id);
@@ -76,8 +142,7 @@
     const botao = $("enviar"); botao.disabled = true; aviso("Validando acesso...");
     const email = $("email").value.trim().toLowerCase();
     const password = $("senha").value;
-    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
-    if (typeof hcaptcha !== "undefined" && !captchaToken) { aviso("Conclua a verificação de segurança.", "erro"); botao.disabled = false; return; }
+    const captchaToken = await captcha.obterToken(); // vazio se desligado; quem exige é o Supabase
     try {
       const resposta = modo === "criar"
         ? await sb.auth.signUp({ email, password, options: { captchaToken, emailRedirectTo: location.href,
@@ -89,8 +154,8 @@
         return;
       }
       await aceitar();
-    } catch (erro) { aviso("Não foi possível ativar o acesso: " + erro.message, "erro"); }
-    finally { botao.disabled = false; if (typeof hcaptcha !== "undefined") hcaptcha.reset(); }
+    } catch (erro) { aviso(SenhaCaptchaUi.ehErroDeCaptcha(erro) ? SenhaCaptchaUi.MSG_CAPTCHA : "Não foi possível ativar o acesso: " + erro.message, "erro"); }
+    finally { botao.disabled = false; captcha.resetar(); }
   });
 })();
 </script>

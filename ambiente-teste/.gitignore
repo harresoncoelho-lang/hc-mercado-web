@@ -1,0 +1,6 @@
+# Ambiente de teste local: chaves locais, senhas geradas e saídas do ensaio nunca vão para o git.
+*.local.json
+*.local.txt
+.local/
+supabase/.temp/
+supabase/.branches/

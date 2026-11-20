@@ -1,0 +1,2484 @@
+{
+  "objetos": [
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.id.",
+      "sha256": "f30ffa72f1ab1d61438f5e8b4d84c11fcb3588df6a6f39af416b3bcb45a5f34b"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email.",
+      "sha256": "e880816fcfc2b56b4f0d3d6e9baea857b593e9f7e99c39aabfb85be32c84e312"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.email.",
+      "sha256": "ab7ae103e576d877d7a89c4f2dc465adc6173c048b8f1149ba6157064f0fc839"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.nome.",
+      "sha256": "d2939d2345fe847ec2bb7e7145f5568d50a1fd074084f442682b651a7f7f693b"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.role.",
+      "sha256": "dca03324b36e5c5958f2088ef98e9543fb989a1dcf63e199eac59c8a50c01adf"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.permissoes.",
+      "sha256": "94967b44bdc78fda98f4f9a21e09722434e835b47a3b82f46ea2a742566d8a48"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.criado_em.",
+      "sha256": "0bd0fe8fe4ab81918d51fa427c32d06faee23e0d07e2f4e64a62d49fa98003ae"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.criado_por.",
+      "sha256": "faf38767a4ec1d08a36d0d2212f575845271336e1faf90cb3c37d2b169cac67c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.id.",
+      "sha256": "82f3479c2749fe1150edc645b6f206d2ce37adca301fefd1ebfe32aa545a9567"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.nome.",
+      "sha256": "1b4eca10dda8b0cb26bae063ce29c6c3addc9a233d4ef80e0c08d0ec6a1395c9"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.empresa.",
+      "sha256": "e481ea510b65a41c0b697983cbb9b0565c6856346243cc60703a6f10da2b0a28"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.cnpj.",
+      "sha256": "a86b954eb808b0a2bf38b8603ed36a2245af751cc411aa81324101742be3ba9f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.telefone.",
+      "sha256": "6195b869083cf2acd847ce04b49b00de9d1d9a1432658d39ee3b3289cdcd3d36"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.email.",
+      "sha256": "370c40de50fae64af0af549e844f26ba52919575eb563cdb333c49c417c9f78f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.status.",
+      "sha256": "605a0d0ce524250aa4d65940824d802c1abf14177f4046c302eff26302597f80"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.plano.",
+      "sha256": "4db327062d523d4725e411b580b164881a3aa7bda9ede838d5d332e7fa196fc2"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.observacoes_admin.",
+      "sha256": "3eb7e97f39d88ced1f551b21917563b5fa2579b448fc9ebde36f3109dcaa26c3"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.criado_em.",
+      "sha256": "ecd263bbf3f7bdd9f755be2cd230d1bab23135e926ef36ef3e7b53c6cbac5882"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aprovado_em.",
+      "sha256": "d57e882ade24646776636e4552739228c9f40139f3395d4dffd7aac8c37db91f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aprovado_por.",
+      "sha256": "5b0ed4f798c1c5a0f50e73110f20a8348f5b6d9d4d0c733f3a834c67e9dee300"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.segmento.",
+      "sha256": "d8218ca130c69fe839720b98fd513d7ba11e0d339a8c3351f04bdfc20760aef6"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.cargo.",
+      "sha256": "2ff62e699a225dac740e6d878fe4ffee02d8d2db7dd99c782e2047f47b92c863"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.porte_empresa.",
+      "sha256": "11eea85780a0c84042560145d6426db11ab1bea64c69b4cad386085315bbc38c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aceite_termos.",
+      "sha256": "cf4e5a18195b5c152dbc7c382726fc4373852a2b357f34e11942911b3bedec79"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aceite_termos_em.",
+      "sha256": "303823dc68916ae2e631b74008a6a60ecc979986a016b8b8bdd8ad376a6ab56c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.atividades.",
+      "sha256": "b066cbf307efe3bbd434d1282e8d31c6d08eb246e99f845bbd3db882a1f764a1"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.estados_interesse.",
+      "sha256": "578a1c48d9b1d6aab088b2a2739162ba6dc20a768a3e5126312be02d52abc970"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.como_conheceu.",
+      "sha256": "655b5fbc9c3030943e7fccefa3c1da852ef9e598ee863aa59fe05d6286888903"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.quantidade_funcionarios.",
+      "sha256": "9ae8ed88523e5120efad2706a5bffab4e62de1fa25d0042cd55eebca95a95f7a"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.licitacoes_por_mes.",
+      "sha256": "3d89d9354254c79a5db9988c29175ccba2d2e14af853f70759b68228144b65a6"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.faturamento_anual.",
+      "sha256": "db4140576c6892a5000750d5895eb14dd40ea60fe13667f382013cbeafee269d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.como_pretende_usar.",
+      "sha256": "d129c532ab367106e0cdc5d1456b8b98830c61c6e15a8266bb5b7c0b490615cb"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.boletim_filtro.",
+      "sha256": "5923c6ca0fdf24a041b5587c3ff817aa1aae0876bb5947e4bf8bfd82da0afca2"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.id.",
+      "sha256": "ff60ae6842c8fccbc4069820bde53df33074f01eb817fbe06b36587bd9b9cf33"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.organizacao_id.",
+      "sha256": "8b2b76441c6f11108cf79966ea5759f06870ef3f247d51c768d3db9f246f2ccb"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.empresa_id.",
+      "sha256": "6900277e7b94d83a37f856f8511a6e747f1fb509b58be09e0b840e819d0def15"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.categoria.",
+      "sha256": "e225ca6b4acb86155e8bb95b95c443549937b704a2d56a44d1990fb93a7506d1"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.titulo.",
+      "sha256": "a2109c4481b4e4ff6c04da9fd15b0f1a0f5d0e204c2bf32a42d69598110d277c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.vencimento.",
+      "sha256": "193b3a64b62f1344eec53690c4fc98adc28e4ccae802a9e0e0b1ff82819267f6"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.responsavel.",
+      "sha256": "7b12beb4dff076deff4bc2602f33bebec358aba14ecf2e7ddf3f97b1b1d2dce9"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.observacoes.",
+      "sha256": "b3a9f77c66001540638ba088eb7e7470f93a51c6dcbc56aee0b0fd12683ed8ce"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.concluido_em.",
+      "sha256": "d3100ca93c1478d52732dbd10d231b9023a88ebd570db248dbb966c4709d1fe1"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.criado_em.",
+      "sha256": "1f10972a7e1881a26408f3600ac7ee8aa14f6034d6cff028aa43a0560539a993"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.id.",
+      "sha256": "f59cc7c6b1782785eb5f7c89e3d08529ae4d1bb9aac676126a7710833e92dec8"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.organizacao_id.",
+      "sha256": "48b0622ec427a33224abb07ac7a47769787d7b17542c25c61628a81af2f208ed"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.processo_id.",
+      "sha256": "f4fb3aaac7681aaad78f8310e9efbf01e368cc51104a28badd88938ddc12820a"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.tipo.",
+      "sha256": "781fcee73b367b8ac91122bd168249d6932b0752b5300cf93b36ed187dc9fa6b"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.titulo.",
+      "sha256": "4aaef2ed0d3f052a8d17c43f7d066c6a5ab510ce65ca9944e10dd444aa5c9753"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.referencia_numero.",
+      "sha256": "bea7210b088f43516034b422ca509efa3324e493fd421c9c1c7d29be3622058a"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.arquivo_caminho.",
+      "sha256": "3baa6a96989d73d199144bf168a67b060e1ea859cb252beed7f5a315eca00dfd"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.arquivo_nome.",
+      "sha256": "6a4d339879167ce8039e5fe9bb6e99bdc8af537f7abae989e6b5ff34a21a65b4"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.criado_em.",
+      "sha256": "9d5863fb5b24327b6795b5f43d26002d9ba951819d43d0dfb6527b6963650b37"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.id.",
+      "sha256": "59f2c6d5614147ffa846acd3d2dc4578f979e5d337a5b131dafc12403c64a69d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.organizacao_id.",
+      "sha256": "3f2170707a9ce4ac2238fd9aa141017cd95febdbe9ad0d5763b45408f6e42093"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.processo_id.",
+      "sha256": "8556f188888fae63a951496a696e7457ada7ac4659bec1cdb92310a42e798508"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.numero.",
+      "sha256": "89f04de0b29ab33c557449b972a32c262d593dfcd2862f9dff563e0b1863c460"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.assinado_em.",
+      "sha256": "01627d83c780f26673f1cb6c037791e42e2264965f45163514868d1dc67262db"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.vigencia_inicio.",
+      "sha256": "8c042705ddcc54202e414478763b3d91919c6237a3099416503d6e41ca02c912"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.vigencia_fim.",
+      "sha256": "6e7578ff30246b839ead5b9a020dee64d98f68b7fd0858f6611a806d1098ff4e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.valor.",
+      "sha256": "cc907383ea2bfb377f009ba87c288425d2353f2fd2a12740e9ac65ba4571c9b0"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.situacao.",
+      "sha256": "cdd4d201c0d0af242348ca0467185ac2427d2432b7fec8080917c7056d4d4013"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.observacoes.",
+      "sha256": "1fce24994467f63a2c5ed88f10fac55a6e32581f158e66519ce9a87095d10cd8"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.criado_em.",
+      "sha256": "1f59c17c60386aa1e1d74f464604bcf9024c7fc96e9ce0d51a6b923cbfc3eeba"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.id.",
+      "sha256": "01a155ad45f65d608eb275c744e8570d4230f9cc1d7778f47796233d061f76e7"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.organizacao_id.",
+      "sha256": "76c38bca875312be634da67990620e2880b5094c3cdd8a315992e3b5b472100c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.empresa_id.",
+      "sha256": "3a0abb601d1649d041d9e4382ec6a88abbed208093eb41ec5ca9a7ffa912f5ba"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.email.",
+      "sha256": "d00483eb93e6f72bbcdafcbddd7d4466b74512e17264ea3ce799c4a4926c0c8e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.nome.",
+      "sha256": "7746d353df5cb202f1057dc0ec205065c7f167f81ea507c72f38c3df7f896f2f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.token.",
+      "sha256": "bc95299c6f49887fbf1799bdc37e3eb135da9016879fc403bf21ea58308ac774"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.expira_em.",
+      "sha256": "63a6c35591af6692a88179ed4cdbe74d34d0456c76bbb1cae8a95792861ac5b6"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.aceito_em.",
+      "sha256": "86cc9ee3cb20c6e90b0dca2333e39f8ac6a37c0b0de8b114c9d1a85e9bf85784"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.revogado_em.",
+      "sha256": "d8b0d0ed0adf6d0d8c734b92ae998146b3353468ff65ec17c8224c2964961675"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.criado_por.",
+      "sha256": "17dd51eb697b6761bda64e12c8377e22091e80d3f7166a52a5bc28ad63123033"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.criado_em.",
+      "sha256": "aa4d1dfb8088249d00b76e25cd5670cb97fd0392f885f7735727e87c7a8f9c6e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.id.",
+      "sha256": "e7f08e5bf6d4d1192ac29665d1c4b884a311f11b06a082a0e234072241d86145"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.organizacao_id.",
+      "sha256": "5adcf006ed32aac2a6ffba777db1ff235222aaa8ff3708d031dded9c17f4e4a9"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.empresa_id.",
+      "sha256": "b8f18e8ae222c7e770fd0266785499ecdd307fb534d5809f528f6e10ab481cc0"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.tipo.",
+      "sha256": "2fe2f92646a6368550635f5535d0ee9e5f1a43538e135d29e80d45fc5ca5532d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.titulo.",
+      "sha256": "8f47b640dd2eda878b53998e7899e39775b2cf6338f66703c8c42c76ab1fb04f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.emissao.",
+      "sha256": "3f90f6caa2d2ff06e70beffe75eefac528eba525da3bf13d36fa3ea694c6a38f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.vencimento.",
+      "sha256": "c6355983244c4695be6c557fbbcd7d099470c716f1666d00236d751da840f1c2"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.orgao_emissor.",
+      "sha256": "acbabd3da87899a3e29c8c2b0d6758546b53696f6f6de87df62f006d7c527484"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.responsavel.",
+      "sha256": "279261d380eef31efa6a234d0fcbe1890072b250f905c5602de52cc179119613"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.observacoes.",
+      "sha256": "f9dbd167b8ea5e10df06f28288649a58f3fd58301cb4c0722628c728b972c20d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.arquivo_caminho.",
+      "sha256": "c07dc70c1680325eace04b0e7b886e0b0b1b14174e26ea9a4f378a97dc0575a0"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.arquivo_nome.",
+      "sha256": "74753d6a0dc76a2bce8fe5404ec65f6b4c33e06b4098ec8ec79b2bc6c5ddb6cf"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.criado_por.",
+      "sha256": "3cfa6469175da2e28b9a4b6137b2ed43a7bb7944a2e413d3b59b53dfed909e5a"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.criado_em.",
+      "sha256": "29cba644158d7ae98fd11923b77f210a2d98d3894a1ca62f3f4c8561b8704c8e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.atualizado_em.",
+      "sha256": "9dd7ed89e1484e12377fe519eb883aeb594d635dad76dd4d6b14202de05a3ff8"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.id.",
+      "sha256": "f56a12d85e7c7d4381c9f03dd424914fefb263fcf0d9ff89a4758d8eb2aa7028"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.organizacao_id.",
+      "sha256": "5b78257765b7c85ca6d1e0041bff49b4d5ec1d9ee42e0080ed66a286572f77c3"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.processo_id.",
+      "sha256": "fbce950fa8bc34b79bdbf1c3762cd8bf3937428417d8ef43df2727b4690359f4"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.numero.",
+      "sha256": "9bb217a4d3ed4b0d601ac26244584dc117703aeee6ca75960b12b07be854d322"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.emitido_em.",
+      "sha256": "f7246380a2730fb54f85fa0111097d768f361be71423cd5b6fdc8b64d2e11acc"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.valor.",
+      "sha256": "4a157a92c69c7ed5f278e0cff84becafd58d044e900321775da45ad5de9765d9"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.saldo.",
+      "sha256": "f9144ce45398e90d704bd1bff65b036a1aaaf39be1733a4c7834d9ead3a3126e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.entrega_prevista.",
+      "sha256": "942e70cdc2eca5decc26b56d1d519aca19719488288706bf3f635cd4b771e9d0"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.entregue_em.",
+      "sha256": "83968c5a1f11cebdf2cbaec6021f5f0dac8393f0e8a53e179c21e9c9e57d4fcd"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.recebido_em.",
+      "sha256": "57cb1359b4e75fbc21002f7f27634f1f03c80a3ccd058a5c60f0bdc0400c62cb"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.pago_em.",
+      "sha256": "265b3973c917fe19630a68fabda2ede4f4fcd767cf2ed07db02b152780246187"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.status.",
+      "sha256": "9b81309dd0eeb933d1d580b091c67447db3cc16c204a373d1059d054bd31f6be"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.observacoes.",
+      "sha256": "7b7811a7df39b199855f7dde9d17c24a2aa617fbd0fa4486dbbfb9a9d1a31ebb"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.criado_em.",
+      "sha256": "03e90ea3923b093f8188a74a1c898169d25eff9401a179c9b7a5e7052ab4b73f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.id.",
+      "sha256": "6dd5d4276a8eb2461f0ab7ba66d1d8a3f9671e85636a4f3157bc4b7f4a749ba5"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.organizacao_id.",
+      "sha256": "7c8c77b21f79a5ed7c958a435e078e31c2aaf99218b92dc08d7e40994982cac9"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.razao_social.",
+      "sha256": "06137387c014299d850c78ba37a7520e8fda3292a6425aaf598bd2d415953536"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.cnpj.",
+      "sha256": "2bc80cc7294cdb697275130438da36eca523c8dbd51d82cb25999f44f972b633"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.responsavel.",
+      "sha256": "27309c487e65895a3c078294172f0b110be61418ecb192b8fe3f5cae3b48a340"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.ativo.",
+      "sha256": "12adab309594805056dac70d9f68e9572bd991de0b11fdef8a9168be81f53ab3"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.criado_em.",
+      "sha256": "ae87c6b7e29c9047ede1bd48b4f96284b606a5f46338c403c5af9a9079b96578"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.id.",
+      "sha256": "44533d9e50bc2cf481dc294926e9d898e649ac2ce8ddd1ee10a9b959c691db40"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.organizacao_id.",
+      "sha256": "9d6e86f150b7e7f51ce55ac2fb8390ae1b51614863ddc7bb87a7a27598e79a13"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.processo_id.",
+      "sha256": "791d1dea2d9392563ad83add5ca3d90dbb10db185f6f521c452133de5bb3b6df"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.identificador.",
+      "sha256": "f858142bcd53f523cb0e35bc5b93b74dd04f3a2cb9ed58d8a5266fecb9ca9f04"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.tipo.",
+      "sha256": "a947ca1c8067ed054fc7ff3121ffac73cd32a1746ffe99277654894ce49e4a0d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.descricao.",
+      "sha256": "c9f6b74cb0c4ccc4d5e7fa9addd89eef42d46048c5571321f176f0a9721b8e58"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.situacao.",
+      "sha256": "42ec476b007a9716fb18bc02c53cd7898ff37fe0ebb317399e6271801534dd8e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.quantidade.",
+      "sha256": "656a9e31f30760cc1f7a6dfe6aed527793f27e1f349e3d10d02656da95c9b138"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_proposta.",
+      "sha256": "46f260cd9f38f9860171b116709741fededd44f7c685a1c11a0023b91f27526d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_homologado.",
+      "sha256": "3de3b96eab2f0a66dbac39c48484e2e469f68549130adbfaf9a18906cd4b77e7"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.motivo.",
+      "sha256": "def7f89eba17bb005450312171049ce8a5b1c09880466279e347b7262a8bf93e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.fonte_oficial.",
+      "sha256": "852993c264fa5046e0ec0e56dd1c457568c59652d17d35266ad0cb859c92965c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.atualizado_em.",
+      "sha256": "e2d8d29ffe9f97327d758239ccc3687e0737f3ad6ce33534c0718a7cd7d6bfb7"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.marca.",
+      "sha256": "cf1d1daabee3a2ca45ea8ab03537fe84a2f3c0db6a54c3a6940d08ff055fd32f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.modelo.",
+      "sha256": "a6f495fc98af4132f7f53a43f2efcd35c0ea7066a72ed8b9036bb073024ad5d4"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_unitario_proposta.",
+      "sha256": "2c943e2db8e1bb5f734369f4feeb73d44536f8b5a8158da3b4c6ae27affbfbd5"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_unitario_homologado.",
+      "sha256": "466c5ca2f9430b30e17be1ec3af1b208236c837562755fc88a2f50f2aab48c0d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_limites_cnpj.usuario_id.",
+      "sha256": "49239c802ba73a29ea3d6a009cdf8f178df8b2d4d9c469978c419e40a801ef47"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_limites_cnpj.limite.",
+      "sha256": "33feab9524da9b4ed24acae184bcade9d0aaf1b4acee45b76f4fd61fc42893bd"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_limites_cnpj.atualizado_em.",
+      "sha256": "a89e4cc89851bfb9edf097c571343d4183547793144c7dc4d4b26a0c8211246c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.organizacao_id.",
+      "sha256": "0b687a13e54541a631d7b3d3822e0545cb75e7121e630324c13ee767fdf0d447"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.usuario_id.",
+      "sha256": "9ada5a3d84030706cbfc806b7b3e12d5ac2866dc8309049c224e3bbf3d694026"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.papel.",
+      "sha256": "ce375b232d991be10070ff624a58b82da61c52bb2316af3b9d9ab3d6aaa64c4b"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.criado_em.",
+      "sha256": "5fa0f4df8af825966708dbf88020b06ac472b00595db0f157ac7beb71b531e1d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.empresa_id.",
+      "sha256": "9a962c9090dc34a30f7dabf83d5a01494994d6f8f422b1ccd55e675df74f9b68"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.id.",
+      "sha256": "a257c3b04c77669082fd71a88bee3e1727900de61132444d52eb2cc0b4698359"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.organizacao_id.",
+      "sha256": "6615ce9b0da1cbe262e492eefb09fa5a072dad6e95655138ac5aa28e90151e0c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.processo_id.",
+      "sha256": "0b056d7bac6e85990478761391f2f02603467af8dfe0f15a1cd9e3af5b3d4ce1"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.ocorrido_em.",
+      "sha256": "b814a2a29b61e56558642e16218e932445a6ed42e43b751442d6204698d744cd"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.categoria.",
+      "sha256": "62dd5b495bd3a61d5a53aa2f1a62f0f70733d0a83a592b7eae3f07bf327bb1a1"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.descricao.",
+      "sha256": "35248866f50a7ffa97d1ee86c13338e95ff4584fa9c32f5881419e8c14fbd1a3"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.fonte_oficial.",
+      "sha256": "5243a476ac5d2a154243cc4e9d2894fd3e7aa702b9f71a90df1de7e5f41b5840"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.criado_em.",
+      "sha256": "14a472cbc150fccd3e5678a775d7887a56bb6deec014160a93bcaa96ea393bb5"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.id.",
+      "sha256": "4c06ce4715415e1d5afdff3880b52287bef82b20f114abef442122b3a1b36dd2"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.nome.",
+      "sha256": "025ca953534ba282844488c1535418b5462efe2a4c009c4d2607d94342e68319"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.owner_id.",
+      "sha256": "fce4100b5cb2b9ebf7a6313b0305426ed223ee67d5fffa3ed37b0e0d6bfcb06c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.criado_em.",
+      "sha256": "99b1183778d5e9ef8b79022cd7542e2533bb668e3a88910ea1df997277b19a84"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.id.",
+      "sha256": "ae2558e075634d38b0ef5eef112eb6bbf470709c786678a9bcd24207f3de8deb"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.organizacao_id.",
+      "sha256": "8aed39b86ced09c9e401c6e55f9356f21ddccbe76c4b4b4368872d56b03ad067"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.processo_id.",
+      "sha256": "383a0da799ebd229b913512962ea112cb07280a8073ca7782d164cccef20c1bf"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.categoria.",
+      "sha256": "9a9f5506fc7d44a76801924dbad656a5e6dc7cb2923334a39a006c32bbab08fa"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.titulo.",
+      "sha256": "8dc6ed2ec1f7c5d6c09d2c8a5867a54d652f32cc836ceff48a7e865e7a3f5eee"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.vencimento.",
+      "sha256": "fba2d258a44f4a8988ac264627eec73c5241372e71cd1301fcfe42e665e59276"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.responsavel.",
+      "sha256": "bbad33d85d07e7048635353b15b6e128f35a6072c2d73c6a44d3420d96f458bc"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.concluido_em.",
+      "sha256": "4cd08afec832c01810ae324bbfbc7a21df4d541a8cb013a87f28f2567194c449"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.observacoes.",
+      "sha256": "1d5ee16e12b1ab61ca73cec9bf657f6297aa1ea400306cd809fa4c255c2f30b9"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.criado_em.",
+      "sha256": "5bdbdaa6c2d6390496fb5f75c34c0042b24ee7e8bcf535529eb24e92a6706e73"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.id.",
+      "sha256": "4b681b99a076f2bbd68458042bbde361d541577b28744142e91bbe557354e972"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.organizacao_id.",
+      "sha256": "a82056ac6a921d22a447a5053072c6a7aab50415239d0a183e05a4d28d6f9459"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.empresa_id.",
+      "sha256": "d1cf9d2bf519f1cbd4b93b23770510c4ce9686001f2697b60000cf606a53d5f1"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.numero.",
+      "sha256": "6fccf944ff301ba3128491f65f7e9ee2f811e1c13e87667b8730d0fe4f1cb538"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.objeto.",
+      "sha256": "2e24c59231c7b15424d695b65db1c6eb100d4ca97d1394163967482c7dde767b"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.orgao.",
+      "sha256": "7114abc4fe5e1279e23cbfd6d0e2b437808668b45111ae49afff70f0eef64b5f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.modalidade.",
+      "sha256": "511533e15490375a7ebe37fb4aa09bb624bac12d49aef3729c3a5b7010ff3883"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.url_origem.",
+      "sha256": "029d27f4850770bc78a18349e79ebc6bcdbbc1b338baf1850f3b12fe34c97e39"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.status.",
+      "sha256": "b9c7b327c62961e7e927a481f3c7212f8ae4a6db3b758dd6f3c939b893aba680"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.decisao.",
+      "sha256": "a7bb542f4c1156850d483f735602f1db24d590095feec30bb94da3bda665819f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.responsavel.",
+      "sha256": "e3abd98fd405c264440b97e5d6035f5de58a1f149e01ba1a756db65a5fda9f78"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.valor_estimado.",
+      "sha256": "f81e84ddae9f85ae5b1d72b1d412f9b351a03aa0e30e97c8b82004e9421215fa"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.custo_direto.",
+      "sha256": "b51fe1dbc5266f8e395d58400fe45e3f29cd2c7e6e5596998afb53433bfee35c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.frete.",
+      "sha256": "8bea53a4102f55cf333778076903722c1c60fcc77e0c4be820d9db42c5230f6a"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.tributos_percentual.",
+      "sha256": "e295b6790b6404f2c64cc58ad674e472137dec952b00d3d986a0fe3baf33c130"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.garantia_percentual.",
+      "sha256": "3032df8707eaa6fc0bea44495b0a4feec21730127b61fd54d9fa935bf31a2fd8"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.margem_percentual.",
+      "sha256": "be141e7890be64cf820b0da2198c9d8718e31728a539f09c86547f5c1539b12a"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.preco_minimo.",
+      "sha256": "8fd42de4ddbbed1a577b085e63959e46e34185bfab3bbe23e55d695364ac2b6b"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.preco_proposta.",
+      "sha256": "5636f0b4f9f7cc74ad5c0515cc0926b5725d6bf51f850710341c73763437adf8"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.documentos_exigidos.",
+      "sha256": "f306dc30134c12fa82b8c75f068937b008b1ff3653b1bb91713349c39ee4403e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.data_publicacao.",
+      "sha256": "3ec25edf80cc578a6b81797096cf27c9fa3d5cb7434dfef8d79726e1fbc283a6"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.data_sessao.",
+      "sha256": "121ddc1f14e2030816c17103c7d0308396f15160e75d50efa96373d685cb219f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.data_resultado.",
+      "sha256": "b212fdd0a3e90d40543690291cd82240fac644e02d698e7896898ee671faf745"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.resultado.",
+      "sha256": "70d6a52ef63bc97e737adab2f1549b6e3f262c46d59628cb698733025999183f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.motivo_perda.",
+      "sha256": "344052ce5cb1d49d9b4235c8f8e731e2dd3705793f765ab9b36b04382c45175d"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.observacoes.",
+      "sha256": "8386b99617a7b7604a567610d5b8c55682d8b2562c23c39634ff036325e561cb"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.criado_por.",
+      "sha256": "97e501548be6e2b278388c2a018c1c76b9ff47139acac3f58d2d5aef8dd0f03c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.criado_em.",
+      "sha256": "3741512a69e3ea6d841ca48a4ae55650c4997df903867a816185a478e39be08e"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.atualizado_em.",
+      "sha256": "553481e58ac8be2b57b5dc215e953e3f6e6b5c0332160c971d9d4599fc115c5f"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.origem_externa_id.",
+      "sha256": "694e342a543f1f5fa94614333c1cc9b9c6a973479259832d2f629569cc2e3d43"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.sistema.",
+      "sha256": "df9a41c790df179dfe532a7fd31701c60afe4bd283ffbfbf346149c3c409e1c6"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.uasg.",
+      "sha256": "3f00c7d6dd33efa0407324ab6b5b53cbfe22e46947a3f07b3ea76e98764504dd"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.situacao_resultado.",
+      "sha256": "8702cac7c5f5f2cb2a4faebfac0ce77b69db600dc9041076eb6c63f2bb9ec4ea"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.valor_homologado.",
+      "sha256": "796898c082c76ee685004deeef6222cd83edc4568973987f9bb4f312faaf5a35"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.fonte_resultado.",
+      "sha256": "7e1ffdf4b5af3f7de684bb391b02afb878f90e043d2d89875f194e9351c26a05"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.checklist_fonte.",
+      "sha256": "8ae501482442e87b1ac84560b317a5f78f196fbdc98fb4ac13dfdb95436017a2"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.checklist_editado_manualmente.",
+      "sha256": "b5b3f903593f522e69fd15b2292d813877ab780d048a08b496567abd67cf0464"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.checklist_gerado_em.",
+      "sha256": "e600dd8dd65a2d46a144e88c26ee8a57a39f31a4626bad299e6307e58ba515ff"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.id.",
+      "sha256": "27458a9a300e46d554e169f54b138786c0ec4edec29dfde04228ddf858d7b26c"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.documento_id.",
+      "sha256": "361432173521bd545d3fa576f28145a1f051564e5e736b56c896813a82aa7a75"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.emissao_anterior.",
+      "sha256": "6004703b2929b74b0ba1202db0cb5b4fda7607fa5670fcb13b211ce0c027c2d8"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.vencimento_anterior.",
+      "sha256": "cf269d48f860777a321fb543ae1ed80a9532c44f78a31a80887058e73a64b3f9"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.emissao_nova.",
+      "sha256": "a051cf3139be107475571350f7346cc403b392c6464f8f9f3b19a9e530274915"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.vencimento_novo.",
+      "sha256": "f8fcc21f77fb42d4ff33b9552fdb022f0e2d5d77097728bb7f93b0a06e3e5d22"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.registrado_por.",
+      "sha256": "394df0af609649b4aca096ce703033eff8e0403b46e0d4462e04c3f6de149b86"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.registrado_em.",
+      "sha256": "7e26c3f9483912f62deefc1e2c054fc92acb314275383e2fc742db9f087929c2"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.id.",
+      "sha256": "a807bc5b1c9d640d0f2f7f84e9e85640c19f220ed3ee7b5a4c6579d260aa2c77"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.organizacao_id.",
+      "sha256": "07601ae703b30b4ff1e755d9cb53b60ce285fd180d3d14494b5eda95aaa45605"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.nome.",
+      "sha256": "a2342abe56fa3a5b25097d917fd194222a4d69f87a73a7c6879328b1cf3aedfd"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.personalizado.",
+      "sha256": "643a8055cab814727304d6f70992e4e36fac298ca53138a84ea09b47e088a556"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.id.",
+      "sha256": "bc6eeed3fec21def45a2efbee818872eb2ca03971126eace9aa4646ea0ed1302"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.name.",
+      "sha256": "e917d034d328008c2ff16beb7c8bb68fe1809adc43c7db83f3d5473faab9e1e6"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.public.",
+      "sha256": "e6ac3dd0907e3281d997b315f3b7033462a687ac9b4693d6f01f6c42af5703bb"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.id.",
+      "sha256": "c534a206b7477c007df26ea8f8bf58502c1045a85bfdb485c0a6db2f5c33ac80"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.bucket_id.",
+      "sha256": "c05a6f39c3a217d5228c471c20d1168a26419e757588566ffbb50c4b204b5c38"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.name.",
+      "sha256": "8113ec18142d2c2c17d15355e3fb90ebed02e54a6f19917289fb72e3acd94dbf"
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.metadata.",
+      "sha256": "bc0de72a89d55e003330f3220ed7dc2a9a935195670fc41a2495ab99a6bfa7e2"
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.users_pkey.",
+      "sha256": "a09f2a6950af160ffc02eae65fd734834263cb14aae3afa88741c0509f26f3de"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.admins.admins_pkey.",
+      "sha256": "a398dace0dc0f5f44f447e128e0ff32272a96d66bd16c276206f6d6bba476932"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.clientes.clientes_pkey.",
+      "sha256": "822a3a32ae710fc7b87ecdcfc18a2a79c16cb23930c0827b95a6aa09110e8298"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_agenda.operacao_agenda_organizacao_vencimento_idx.",
+      "sha256": "a3a1d04cc68f97c479a3ccbec42ae20e32e0a048d531688f9b9b54810931a75f"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_agenda.operacao_agenda_pkey.",
+      "sha256": "4f1802cdcf61f06259866c97054923f53a0de16c8ddc4aac7468b7f623b49869"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_idx.",
+      "sha256": "a15db4d8ecad7851527891811565f91a7d983b23be99cab240715f3e1f1c9ff9"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_pkey.",
+      "sha256": "c7393952574334f675c183bfbdc3aa0d5742fbbbdcb78113c0f21bbfc41d1018"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_contratos.operacao_contratos_pkey.",
+      "sha256": "e9d233c3baf61d39602ca6b03c2d9b9aad2dd358d284439a35df028f888307e6"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_id_numero_key.",
+      "sha256": "47408a9f78b7c138ecef354cdd23a8b5a0a2465ec8440934367e0933c475b661"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_idx.",
+      "sha256": "b6e531fe1c2c383955df9735fb580950fadeb5965732afac794c35f6a1f339e3"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_pkey.",
+      "sha256": "eea4a70e8fe661c0284012c8f56761d6e73aceb657eb53d16abe3aaadef4647d"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_token_key.",
+      "sha256": "088c5b75d2107c72118cc611f1c3994b9155f3cdbe364e02c959a24e4543bc6b"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_documentos.operacao_documentos_empresa_vencimento_idx.",
+      "sha256": "44fd2e58b8072968146382e543d495549172e5c004b528085a84371c78dbb968"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_documentos.operacao_documentos_pkey.",
+      "sha256": "85480125f723f0662e7ab3ce72661e6b535760e9be5ae34cc3b65be4ee581ec9"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_pkey.",
+      "sha256": "81308abfa8c2d3be94d08f895af8a0b25eeef2c2bd0814037dcd4ef44a11a332"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_id_numero_key.",
+      "sha256": "2b1801d6a8ebbde0bbc162c517904f9e5adf2becf496e3442e52cd2a1bb85c4b"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_status_idx.",
+      "sha256": "ca9d207b61d5188e07b984311b029d5ff69d920874d969d28793e7291e7e0a86"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empresas.operacao_empresas_id_org_idx.",
+      "sha256": "f180c9d450659b54df8676c6aeddce002f728a612ab64d924658b25b050d3d62"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empresas.operacao_empresas_organizacao_id_cnpj_key.",
+      "sha256": "332a7121ca614d5c4780994281ba31de28b1090d59134f9de59273c41d3d5075"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empresas.operacao_empresas_pkey.",
+      "sha256": "6031b15cfb110f8e35d1656ce030aea3a9741de2ca127535ea4123887ddeeae1"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_pkey.",
+      "sha256": "57ab28c41c515a27f620a6085acddf34da62c8bf1735bf204f06af81ffd697f2"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_id_tipo_identificador_key.",
+      "sha256": "f909d391a7013ae5ee0fcf32c1534f26030114788891734642ccab70b5e08e99"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_idx.",
+      "sha256": "4fd78ef01b61fc132092a0a2415e0b272b7ef22ef54ed7cc64facd21c79de9a2"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_pkey.",
+      "sha256": "769ca528dc2839784ef12986a4a5997063e91ab74e68f56d7f5ce70b6a236980"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_membros.operacao_membros_pkey.",
+      "sha256": "733f496b1a72a8c4a0ac1b42fdaf906bf61a0f5b6934fa1f93f57c574b75d707"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_pkey.",
+      "sha256": "29cb7b46357bca47e6e3f685cf91dbf82c80b3bc34fdd6c49d518b4da2426d58"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_processo_data_idx.",
+      "sha256": "cf40a208eec065f63838f5da44379a4363cf24cc098423b2694f15f3fbdbe699"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_owner_id_key.",
+      "sha256": "2e018f6c78672e6146b897c7d2069aaeb9258d53477a7526ae456fd24dd9eb3d"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_pkey.",
+      "sha256": "7849d1c8fc7e0ae155b80326c49fa1da10287760cb4deb8591ae3338479f931d"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_pkey.",
+      "sha256": "febc0209a65bf1e9631c4aaab716aedf18b6fba711e55458231d6626bcf329b1"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_vencimento_idx.",
+      "sha256": "516e47657c72541acee0c00671a2801e077cb4a3449dc72c7d131ab39aeff5d9"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_empresa_status_idx.",
+      "sha256": "4f691cac7f08d9e59a9b9eb0c1c36e87bbdf80ef1670da20dc458b24c88239fc"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_id_org_idx.",
+      "sha256": "5ce1aa2fb3a055f38e586652ac93fcb8fc1289a89ca48171ee480c833724a6c3"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_organizacao_sessao_idx.",
+      "sha256": "db4c90d1a3b537c969198497672f92fd0b6ee3a3069642cab1564d60aa1ed300"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_origem_externa_unica_idx.",
+      "sha256": "a070f67f02a0f9934a398da25d5840bdfd3d3f264240967b589d4cf4254b3dc7"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_pkey.",
+      "sha256": "7bcc1e70ad29970542c08b38e90af1e8dd75bb083b5dbff32c651bdb10a84f85"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_pkey.",
+      "sha256": "dbcca6b6cc2a976ee52e38f51ca162891e6271dac23feae759c87444ec69f4d5"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_organizacao_id_nome_key.",
+      "sha256": "1b2f4b3578c42c85209a9f07192b538b5f9c6e4f87935e5fe6639c25bae53945"
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_pkey.",
+      "sha256": "2cf16886ebc2e0e5e4c86c3064349b81459e28ebe9834973d957db42c5e76daf"
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.buckets.buckets_pkey.",
+      "sha256": "f2b32a58703bd5a1382d161478b3a75b029b1133aeeea28cae352b04af2d0e36"
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.objects_pkey.",
+      "sha256": "d080f1d866d5e8984b9eea421bad2e05478f525f1077deb3cf2200ac04ad728e"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "auth..uid.auth.uid()",
+      "sha256": "93e0c67ac6198287a2921730e07a75c7b9463aba30c0784a154febf2f49d638b"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..aceitar_convite_empresa_operacao.aceitar_convite_empresa_operacao(uuid)",
+      "sha256": "185f1ad4a139e8d05c487acbacc6a1b7dec9716c6e73b3e00a6977a76288e0fc"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..acesso_arquivo_operacao.acesso_arquivo_operacao(text)",
+      "sha256": "c754ebd576ada8f8d415f3e9826401bb5cfd2f4720fc599667546724b448c17d"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..configurar_limite_cnpjs_cliente.configurar_limite_cnpjs_cliente(uuid,integer)",
+      "sha256": "23d7d4bb9681a0b688927b4973c3ba00ca73740b6a05abfbe108514f91a1b893"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..consultar_limite_cnpjs_cliente.consultar_limite_cnpjs_cliente(uuid)",
+      "sha256": "a22d20c9b15c6777f853f112b69ab934782cd16ef38bc5d1c4a7727f5e4d58e6"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..criar_convite_empresa_operacao.criar_convite_empresa_operacao(uuid,text,text)",
+      "sha256": "931a0649707fb4d68eea4cfeac2ee26d3c21ac9ea66339c34085fd5e1e7f918f"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..eh_owner_admin_operacao.eh_owner_admin_operacao(uuid)",
+      "sha256": "b9a9771ac561e1bf2103ce4ed6148abde9ff652b0a339c1391de3af8adca8543"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..limite_cnpjs_operacao.limite_cnpjs_operacao()",
+      "sha256": "deba9832b14ed3d7881d2e31332dfc08d0fdf89f6317eeb0a5e80e55275bdb48"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..listar_acessos_empresa_operacao.listar_acessos_empresa_operacao()",
+      "sha256": "a3076930456d9d728f13c8ba1f25d3d799b4b8cb17a23eb7d9dbd8ad8ddef6ea"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..listar_convites_empresa_operacao.listar_convites_empresa_operacao()",
+      "sha256": "d1c06d99add7542b2a9077dc4931b260aba933db3c1fc82f4cb4c0d045c0e511"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..listar_empresas_convite_operacao.listar_empresas_convite_operacao()",
+      "sha256": "744e4d58edadcaf91c4fbff225887527e0fd6e000248c3c1b96bb9b328785ea0"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..meu_acesso_operacao.meu_acesso_operacao()",
+      "sha256": "6e092831f89d418bc95f8eada46957d5bedcf20447c86fe9604f4e833a3b48c6"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..pode_acessar_empresa_operacao.pode_acessar_empresa_operacao(uuid,uuid)",
+      "sha256": "2936c281d3c36e3e7aeaa3ef69c564b9c2b983255943b0af49f4250284033f67"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..pode_acessar_processo_operacao.pode_acessar_processo_operacao(uuid,uuid)",
+      "sha256": "cabdd379a4e75f17858cc0e0054a680dcf3051765b970bc24a5b5bf3eac091fa"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..proteger_status_cliente_operacao.proteger_status_cliente_operacao()",
+      "sha256": "384730398489c2484130b353bf255ea174e8fe6892dd4856c18d1ac691508cd9"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..revogar_acesso_empresa_operacao.revogar_acesso_empresa_operacao(uuid)",
+      "sha256": "d0c02ecc2eef2923b536f0ddffe25716f695031ede35f4d5576a3cf363afece2"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..revogar_convite_empresa_operacao.revogar_convite_empresa_operacao(uuid)",
+      "sha256": "267cd42ec1679d8da796922c48e58094b89a7cdd4b2c09bc6bc03bee016b5ea2"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..tem_vinculo_operacao.tem_vinculo_operacao(uuid)",
+      "sha256": "dd89be8bc79936d5184ba0dc7f94c54d43fcf85c1602f5223f4f876e47b0970b"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..verificar_limite_cnpjs_operacao.verificar_limite_cnpjs_operacao()",
+      "sha256": "488dc3e8588395aeacdbea5763d41fd154e10de3d5216735f48787d6878bf17f"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "auth..users.",
+      "sha256": "ebeb9d40683c78880b27ecfde17f8287835aad4212ba7f71ea33cdacbe451ff6"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..admins.",
+      "sha256": "692cd3513c540d36702f11ffcec73ca4ba2e813accad0a6584e5d1aa4254abd1"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..clientes.",
+      "sha256": "2dafbdabd52c0f040ac970adf1d314990219d3bb14b132217e127af9b63554af"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_agenda.",
+      "sha256": "7710efa9cd561868ae762265d239addb45a9eba0041527ee2d6847fcb107cd61"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_anexos_processo.",
+      "sha256": "4ce302239122529a49b7b88ecac597a0619edae3bf3c8a6e4ccb7d9da3ede899"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_contratos.",
+      "sha256": "777fcfa5b317e2bb42da1f5fb1a21424ad94e457bfb85b15a79c959acb696d14"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_convites_empresa.",
+      "sha256": "2c9b554d5e354260d1f0a07bf08928b357df51c3a2f78189ec2cc6c97cbc2b58"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_documentos.",
+      "sha256": "3e8351355f70a01b77a9f6b8d62d86cbbb307d13e0166d98e43696c38e3de5aa"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_empenhos.",
+      "sha256": "273b6d3c54f596811dd470e8da754140dfd1f9112e0e930abe94000ba53c145f"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_empresas.",
+      "sha256": "35a86005e439ab64a58f1aba86b104c9302a18d16e0503e5b9e4714a9328155a"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_itens_resultado.",
+      "sha256": "a02a15d7dfbae480ac1807052fec4894383892d4ddb6cb14ac8b036788539603"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_limites_cnpj.",
+      "sha256": "d48be05963e04bad79c117ea79a6cf98a5fcb3feac03ec18300bdcfca250ffa8"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_membros.",
+      "sha256": "9486e38ff24d5535a418cfe3b68f83716bc5ca07d7252ebda90b8604bf1b60ce"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_ocorrencias.",
+      "sha256": "38ca53936575691f3cc126c70fb029d03df19377d20473afb651153b36c39698"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_organizacoes.",
+      "sha256": "28d01f3defa188d50b36206fe752de80115247b66e9337e300232105e314e635"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_prazos_processo.",
+      "sha256": "8c65ddf596e0bad0f60f0785ba7fbd2d90d127ecb3e722e3f901cbbee428cbd4"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_processos.",
+      "sha256": "4fc337070f250c124a1e71e19ddc43a20e0db3499de8aabca028fa0dc08a919a"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_renovacoes_documento.",
+      "sha256": "a454cbe4e7068c6c76fc9ae63565fa01db724a5ec99c98f65a23cac0766e9b83"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_tipos_documento.",
+      "sha256": "79b5e3746a5815b87487a68ba8ed5f97990b201b700d9f65cddbb3d25dfa5f34"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "storage..buckets.",
+      "sha256": "a055d507f9ba078e0ca93579f7435f7c6c4f65c16ddf02689f3fa1e8237e956c"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "storage..objects.",
+      "sha256": "593a417beda162f3f531770d29948defc50d91e91e6d7162944e032a78b34429"
+    },
+    {
+      "secao": "triggers",
+      "objeto": "public.operacao_empresas.operacao_empresas_limite_cnpjs.",
+      "sha256": "ca61f7b0f4211c86dadc1018e0dab6f95e0fa2217cb36f22ea0e2c2fd2f4d95f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "auth.users.users_id_not_null.",
+      "sha256": "76a641b79edfec52449112924c6dd48b65b5f43bd29d61e2f99728016ef46e66"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "auth.users.users_pkey.",
+      "sha256": "84bc788e01d7ca0604442b2a05333324aea42e95eb9803301703fff7f688ef50"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_criado_em_not_null.",
+      "sha256": "547ed99e3ddad023dd3e3bb0cf09224eae998d4908cdd697d29002542cba207a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_email_not_null.",
+      "sha256": "070efe67938be3e0484ccb0bbe696ef678aaf9eee5351be1be0221596ff04e49"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_permissoes_not_null.",
+      "sha256": "724cda20232d8455993dd560ca9b4177551f579920f19d83036a49c0b91ac38b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_pkey.",
+      "sha256": "3a6e52ec2a5351e5c4bc2a299065e5b4c857befb69e6d1676ed0f18442e02631"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_role_check.",
+      "sha256": "7cb6fcd6c85ee3b18a931231bc80d6ffbdcc3a43f1befdd15e78fdfef977b4d0"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_role_not_null.",
+      "sha256": "0c4c6194fdce1a4d2813f1bc5c30949d5963cca42ae68820ec7c1510252d726e"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_boletim_filtro_valido.",
+      "sha256": "e3e9c5b66c68f285c10aac81295629fff0c9b2f3f5167f97bed49016fd037871"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_criado_em_not_null.",
+      "sha256": "98d84ffb5993e734ade2f521b4b0bdfe1c77aceffba0c57034604d44b81b5cf5"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_email_not_null.",
+      "sha256": "7022449709db9a9387abf0b35b595204e0d9118d930b874ee65d07b5b38049ab"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_estados_interesse_not_null.",
+      "sha256": "e5030fd2475e7718a1c3306ea5297fd005d9f3fb01e6ef8e7316378e1eef7426"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_id_fkey.",
+      "sha256": "ce015ec30c9cc4469c3905ca4746f00bdf84165ef634254b837c87ce2b82a817"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_id_not_null.",
+      "sha256": "8b1f62c4f0aff96b5d29eb1cd6d05dd68e1e2b39bd33b17fef5a7ae4fe6bc080"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_nome_not_null.",
+      "sha256": "789920873ea913b89911b1613369e3865551a4a6ac55f779fc137177c57784f3"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_pkey.",
+      "sha256": "fdcb3aef8d915a1304d83a7740874bec21aeeee3769252f545faedb73f885032"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_status_check.",
+      "sha256": "f0ecdacca9435409f16ab95351dc608e278184a3ba0369425159d93fa200d259"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_status_not_null.",
+      "sha256": "a54cdc8e5d48c39778102bf07ab13ed79597abce91fc61690ddc977dba5e3993"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_categoria_check.",
+      "sha256": "0778d71914eff234a8b5e280005cd9b2a14bfe2c6cbb27b8526792cc1f724729"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_categoria_not_null.",
+      "sha256": "2f8a9822e1d55bf56546c3eec41cad3c1d32dc4de4fc3d917f45efcce47a8ab3"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_criado_em_not_null.",
+      "sha256": "b72295148fbd3595eae65efe4ccbd9532f7a4c10f1953734ca108073d0f6ddcf"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_empresa_id_fkey.",
+      "sha256": "4716533d82dc2bdd6fd8f70c9f6e2b53e33f6ba659dfdfcda162e8c7bdaf5f7f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_id_not_null.",
+      "sha256": "69d91b47042d6dae509d20f1aeaf687038499531e988173f5cffddf86d796468"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_organizacao_id_fkey.",
+      "sha256": "1c07f87a8a384cf2406e4dee65b4ee358bd491a9f6076ace2928c2d839926db4"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_organizacao_id_not_null.",
+      "sha256": "42d8a84a56980ab8e4239234bbc8a91950a040345cbba67c5c5f0f134a4928c2"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_pkey.",
+      "sha256": "1c926e0f6c93b3a2ff3d02bf4730a09a23cebb6303704c5f8932eb61c1b444ec"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_titulo_not_null.",
+      "sha256": "594cff52f48ccd494e4ef688b7a7787fefdb3721fe446287555952788ffba33a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_vencimento_not_null.",
+      "sha256": "292a5779173925c3e4d99f62f893281bf43d9c108b47250f7edd6d7d394a71cd"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_arquivo_caminho_not_null.",
+      "sha256": "e4d3dc69267982d0f1c548a4638c383f94a20945d2fbd0c996815e063ccbdfdf"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_arquivo_nome_not_null.",
+      "sha256": "00804771d90b9f1f5a74690f265cf7ab4d6c73788e71729915d5d818ea27731f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_criado_em_not_null.",
+      "sha256": "432e01d4466fa9e7ccadfa934682bb2302fdcd99f504327a07bad876ac88899b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_id_not_null.",
+      "sha256": "d35db4acda0c784bd6a0bb8540ee3eb6fa3ab19963fb133a16ffe752340198ac"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_organizacao_id_not_null.",
+      "sha256": "64135c2d454a0a1b2b9aab9a86f2249839efe8c68c1f2faf620d061467ca8191"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_pkey.",
+      "sha256": "b163e930295a2028b17c14a985d255a6f785355edbbbeb979e56d671530c5200"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_processo_id_not_null.",
+      "sha256": "5450a6f5bd04e53aebd2fb7c746d17e1cdb1a21a1fbb8d6759f1c5ebce12b404"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_processo_id_organizacao_id_fkey.",
+      "sha256": "c0416329438a7617b76d9985a0639730d413f6923b61e2370f9017c686376387"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_tipo_check.",
+      "sha256": "fbb1f6ddd3b3582f426bd779298d76fdaf01f5cff0f02a13feaeac69ff624702"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_tipo_not_null.",
+      "sha256": "8647fbd2598120f389030a0ad280fd5867f4bde13c6c421813d4ab710da2c297"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_titulo_not_null.",
+      "sha256": "1f17f2b155bd1db6ec495d35842148752c239edb8d2a1b591c485ff73039982b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_criado_em_not_null.",
+      "sha256": "fa3d4367e598b4ab66bdfa6db04e8c5392ac65a276c2b392de6e4b6fcd1af304"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_id_not_null.",
+      "sha256": "2b457e55b2a489d8e3f95aaaabeb2b9a82e7aaa98c418ef56d26adedd278e072"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_numero_not_null.",
+      "sha256": "a690dcafcfc14f5f76c13c2b16677c860c1531520b5926637f0ede7c8cb11380"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_organizacao_id_not_null.",
+      "sha256": "fa277c28d294bfd27829f2cfba8c3e57e6c53bd9bdbf2e71cc9e446b0bd8f7ed"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_pkey.",
+      "sha256": "ec7ac5e9dcbf8d01092f0a07078dfebb6906f7e9dae59696fb8bd8118027bd92"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_id_not_null.",
+      "sha256": "e6a21faddd5aaf26348cabb83688d34cedf040103eb011d9f9b7359f50d70ed3"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_id_numero_key.",
+      "sha256": "7818f782430801bafd6ee2ef4bf3eb2bd41e41b5ec3167645b4f6294e482890b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_id_organizacao_id_fkey.",
+      "sha256": "df372e2d2a604a983347dca487da7811192f99749b3ac248cedccaea545b2f12"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_situacao_check.",
+      "sha256": "6e01301f5ed96883eedb63800b35c5663af87eea988318dfb1cd0643603e342d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_situacao_not_null.",
+      "sha256": "70631dd83504007ffe27a4ecfbd670530fb17485187b0e460ac555205946e38b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_valor_check.",
+      "sha256": "9a90cd240557a2ff62f0ac673ecc4350eecd5d3b2631706b0406fb7e7fa7a499"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_criado_em_not_null.",
+      "sha256": "32ec73ca5c27a3887694e4064371024b7a21e6cd3c7c1ebc43ac220a0da5fcf9"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_criado_por_fkey.",
+      "sha256": "2a5e2a3290def6ea2e6b7948c8a7a7af0f8a5e36b8d8f650e4e9ad14b745dedc"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_criado_por_not_null.",
+      "sha256": "b2aeafc0b7ac5089e11e4c9b2f95e24ea5e5dbaa76bd6d0765e18943a82e9baa"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_email_not_null.",
+      "sha256": "3d1e81b1b38e7877ef53c59c9fd5f04073a92b7299272cd67838050902168a40"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_empresa_id_not_null.",
+      "sha256": "93cbc4433516165e44eb0ff2c804880b2a3d63c2491ee37eca94c09949105f77"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_empresa_id_organizacao_id_fkey.",
+      "sha256": "ef728397b25b68500467174a7f8ba4e704df8ec4e99fe45471f6f45ed95b179b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_expira_em_not_null.",
+      "sha256": "a7d68a17ff383246d28480eef7b5630463ed90710188d3677e4bff3a292aa901"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_id_not_null.",
+      "sha256": "0ff108e3180c543206b2c75677125547703d36b8301733e7e14b9bb85176b607"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_nome_not_null.",
+      "sha256": "176f46e2a7fc03eb5b4a56222c0573b1fcfdfcc1ef22a69de378b480d848abb2"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_organizacao_id_fkey.",
+      "sha256": "0a7ba9daab0eb8731c6ca47c2b3fe7b61a739d2e3b198f69313e8d0850c371bc"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_organizacao_id_not_null.",
+      "sha256": "d1ca6f974930fe4e687e08601eb3bc834f34f44277ccfc9f6f67c626d61f568d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_pkey.",
+      "sha256": "fad03b62743bf7d8bb5dbb6ce6c21a47971713f39437c92c06162ee36af35435"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_token_key.",
+      "sha256": "946bc8bc20fe7e5a70aba0936e057155d9c9b285784e2eb02a5a174487bf9242"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_token_not_null.",
+      "sha256": "2e2da13652e678e7799947b11d15cc9a308b9074c4c0892f25846a7c60e8aaeb"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_atualizado_em_not_null.",
+      "sha256": "20748e5d1dcc634dc038aac4338543d7f7a4a5f3d07b5c1ebb84c0279e6ff1a0"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_criado_em_not_null.",
+      "sha256": "891931f42d0ce5ab86282aea269c1c09af4d87996ca26c5c88702ed02711bf57"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_criado_por_fkey.",
+      "sha256": "5f8fbd61b85ac4bd2fa6366c404e8615cab9dd164d2e20932a7a8251581f72fd"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_empresa_id_fkey.",
+      "sha256": "f9ff99cbc2bc2138f0fcac73b24a6f504932859222c7a725e8258fb36e6b8b7b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_empresa_id_not_null.",
+      "sha256": "f8bebe3646fa40f9042992b6e1e99cb56c8376667e5f31cb2e42a6ae0fa5ef5a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_id_not_null.",
+      "sha256": "173227fd1280551e181d940d705004e2efcc687fd0d773a764377fe657f7c36d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_organizacao_id_fkey.",
+      "sha256": "465eb0bb1652fb991185ffc0a8340effe1a09c1963dcc825e74224f88a4c0838"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_organizacao_id_not_null.",
+      "sha256": "bd1e38baf6c4dd70a3d0ab362d8ef8d2e9001296c530a4fc37d7d9cb32ed253e"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_pkey.",
+      "sha256": "ddd53cfbce0c231d1b91ab8ab3a50c2e61f9126f52806bdfb6b6e8d9d4c3d125"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_tipo_not_null.",
+      "sha256": "7dc0f45f27a83d595b0c1a77a744f227a903c7832b5ca687bf23530336de1839"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_criado_em_not_null.",
+      "sha256": "33b4e7dd9f49b732a4a309f0b20d01f22aa58b166a0727048b44f910626bf727"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_id_not_null.",
+      "sha256": "ca6bc86b06faba7ddd672802b5a0a03bd1edb9dbe0b95c4d498375866ac114b2"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_numero_not_null.",
+      "sha256": "dda91412bc6d6325a446921e84d2e7dec4c79143a8604f599b5fc50fcb8de560"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_organizacao_id_fkey.",
+      "sha256": "2efa1899b35fcb2d0b095f9ebaab089fc37e5c7101dbca619ff10a27c4be184e"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_organizacao_id_not_null.",
+      "sha256": "50d9f19cfac123b0cab8772c0bf787f94314596b12e160a45ab305c94d231ca2"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_pkey.",
+      "sha256": "c039fc8af07ffc4ac7e37e4f45145c37f30c0e21af6452bca26f51ccd7577828"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_id_fkey.",
+      "sha256": "66c8f64ff3f808bcea6c280326aad29f3a48f8321f685a0dd2a68c43bb5acba4"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_id_not_null.",
+      "sha256": "7324a8d00e696cb28c40c4b5920cb2bf851b84ec0e41c941acb07b8ada765779"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_id_numero_key.",
+      "sha256": "6c83d12fac30a158bf6e7ebe905e3273db4fdb3e523663fde79ee5bb215208d4"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_saldo_check.",
+      "sha256": "e248a15c02df050bc698da4c8914b30990420f319cdd5107e0006be0d0afe930"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_status_check.",
+      "sha256": "fde0cda2dec54328a9ecbb99635baa30600619b1b515955537982408f7e93cf1"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_status_not_null.",
+      "sha256": "84a5471559057432aa2a2edf56206a5ff074d1ff5951a04738cd8ec2c780baa2"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_valor_check.",
+      "sha256": "e99bc0efeb7fb36b47f6fe08db0134b348fcd2c136ea71d64785d5213e58d89a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_valor_not_null.",
+      "sha256": "fbce601c3a7cceaebf8e51bec36d68b524f8ddc5337d7ab6afcabcfbb2277c6f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_ativo_not_null.",
+      "sha256": "a6763b12943f40a9daa4e5fdc6416fd33522a1b5e8a02a9a3a11fc7b4b6d7f52"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_criado_em_not_null.",
+      "sha256": "f93f9b8e5c647b843eb42e3b3292154786eb3ff4428d0ca80c0f621c034f6378"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_id_not_null.",
+      "sha256": "e628a6600ded8d6bd19d4a72a1b364c91e14e9ff77bb2697aca86c728b092e2d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_organizacao_id_cnpj_key.",
+      "sha256": "101c3283d1dbe1f6339368b2f8125730d815b77471e316490c57f95ef8fb5ea3"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_organizacao_id_fkey.",
+      "sha256": "edeea394d96004fbb56b9fea7cd37fc5710533cfb6e88da75e7fe57c27896992"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_organizacao_id_not_null.",
+      "sha256": "237dcdd4d3442e49aeecf09c87b1722a6e28cfd29c6bba16ce971842e9b60918"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_pkey.",
+      "sha256": "c7d439e7cb7d807ed0c33ff7de47cbfc39c1330e3899779c6bb9cd26d4ad1213"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_razao_social_not_null.",
+      "sha256": "05a60d54817a6630b1676ca0b30448129b227065a1b1c02dc19dc55529f3e7db"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_atualizado_em_not_null.",
+      "sha256": "794bc9ccf8a425701f22b51c5e0b4e42f8595a1a56cd5e48889b545ec7a32299"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_check.",
+      "sha256": "1346545e83580a699d30da9a6db9fd60443ed3c875aee570b6ed363f33553435"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_check1.",
+      "sha256": "82c469e96dbf1094f0bd4223063840a31c1bceff9280dc4cea77821bfcb35116"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_id_not_null.",
+      "sha256": "d9c815e834200c3a691befcc4d3f1b9ae5aa19652b9fd14af4bff6447193bf27"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_identificador_not_null.",
+      "sha256": "d4aebd43445833d7b4a0339e78b04ba2b3407d38393c76e6a56007f9f5760a24"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_organizacao_id_not_null.",
+      "sha256": "29b2c5a7bbd630057d7870641b7d2e1ff8040902f8dd36bd200ce66e87b25b67"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_pkey.",
+      "sha256": "036b587458c0e935e72524caf08286027cfff3a665ce7587fc732a843ad78420"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_id_not_null.",
+      "sha256": "ae2e15d61ab3a4de59db4e568e816e93283779eea7ff7fe40f5604da48885784"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_id_organizacao_id_fkey.",
+      "sha256": "6402045a48905fb71220232aba5ee0f3b1c39cee3a5bdae5d041df9ca2dc1623"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_id_tipo_identificador_key.",
+      "sha256": "9d0faa95bd80f94139afd15cff7b863304d847c39ceb14e55526f7b174ffb3e9"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_quantidade_check.",
+      "sha256": "1fecb82d3380b5cb945e8f073694256a3624af2e43d43decd782ccfd91f45389"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_situacao_check.",
+      "sha256": "9e38738cc6164d8a283059cbae9683815f3267893caf01cb58f59006fcf4b24c"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_situacao_not_null.",
+      "sha256": "7ddf241240e3873ded16bfbc6dc275749b40d913579a80d586a4bfcd87a8b021"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_tipo_check.",
+      "sha256": "9b36f2030d4b6a35d78a3fac9588435fdc9262df84903f573f866eddd848e765"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_tipo_not_null.",
+      "sha256": "83a1f8c70d1e84f80d7d28c3106932c7cea292063e08ce76ff7cdbfe16e62618"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_valor_proposta_check.",
+      "sha256": "fb7da2e45c0da65c9e5a722fa73bbea48b7f4541e5a5ed510d38e93c38e6e27e"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_valor_unitario_proposta_check.",
+      "sha256": "bf09777649bd7f75e9a3b08b0d96d9036e046f9d05bce4fcdf4005ae79382b41"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_atualizado_em_not_null.",
+      "sha256": "2ef6c5e5a18f8f46258f7e3336b66c9e84f4efe0ba276d1cee61d33ce91fe16f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_limite_check.",
+      "sha256": "d9a5d1d3570b23d47fedb30c30f06e5830f6fb490e24dcaf1c547f1b19ffc8c9"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_limite_not_null.",
+      "sha256": "108b57c358b173d0cdf31a00d009fd0e0b1b3ee9a6892fdd7fe219e0df7bcc9d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_pkey.",
+      "sha256": "07f502d92b4e3551d1207b9ebbc905402a735da8314d765bc390393934aec1cb"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_usuario_id_fkey.",
+      "sha256": "e8e9bb049e837ea080ac619ad2adb05cd6bdf00109f2e5978f6afc3f35681ec6"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_usuario_id_not_null.",
+      "sha256": "a9d16bb450f5532c02aeb40f66e3afb9677695b555675c47aece63e10036f544"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_criado_em_not_null.",
+      "sha256": "732338fa463d93ede76e6d024ff59d24aabef34c55e154fb5c0d90400326daee"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_empresa_org_fk.",
+      "sha256": "7533ebab60eaa3da66d6e36a4e2acb1bbbf1f42dbbc8de0c482e4436138de07f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_organizacao_id_fkey.",
+      "sha256": "1998814e49cb9d5fed4d61a02a5597c45340419e01fa347d7ec67cc147a1dbee"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_organizacao_id_not_null.",
+      "sha256": "6f641717be5e7497b11376656c448602b41842c67eb440a53e41b55519d5d262"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_papel_check.",
+      "sha256": "2d4ca32704af7c07c5371160c32148ba79b97eb9b328ca6da8255f5a79affc8a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_papel_not_null.",
+      "sha256": "04d961623799c4afe6950b4f94e5e52008af72c9e6cd43a480c3294cc513e0f4"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_pkey.",
+      "sha256": "b7e28c050bb8b06b6e9c24ae2163b0fd630e870007cf7536bd15743c0994a5f8"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_usuario_id_fkey.",
+      "sha256": "e7c41e046dd736986beade7e94c66b3c679527fc197e28d760356df9628e6f7e"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_usuario_id_not_null.",
+      "sha256": "689bb8705e78144c9469ce7d48f856c7b5bceb12b616f54b41549d2bc02c3404"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_categoria_check.",
+      "sha256": "8924947bf78093c93ccc21cef6e544c1cce65ceb1b541e5fd90d5a92405e7efc"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_categoria_not_null.",
+      "sha256": "f8991629ff44834f77719cee5e008e9b815da90f837ee1f91414e032ef0656a8"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_criado_em_not_null.",
+      "sha256": "3d7ca42d04667f2c0fe56699fcb1df2aae401e8afe3f93ef54f7cc4f4ebb7b52"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_descricao_not_null.",
+      "sha256": "14a67ace8cc6966b253755fa43e05b415428e7bcdfb6778af1d269134096136f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_id_not_null.",
+      "sha256": "8795eb1d8726017af40e1a244ffa1435a16a8a73137f8af2dc373efba03aabda"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_ocorrido_em_not_null.",
+      "sha256": "a3f5dd79687958a8a80bc1ef4ebe801074eb5b0f907fef7b7b95d284dcefaec6"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_organizacao_id_not_null.",
+      "sha256": "1b2bb8e085d8cbe024acb833ca65a088f14328b66a3ec93eb1809f6a071cf05c"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_pkey.",
+      "sha256": "5ed4c5eda0d31b8ed175cda2d9aa6a55415cffac70d7eb8d923f853f01a9057b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_processo_id_not_null.",
+      "sha256": "754a14ea719aceb4883d67cd243e9cbe5deca829a28a0d9e70913eb7b6164bc0"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_processo_id_organizacao_id_fkey.",
+      "sha256": "4a9cd4a35b4685cdb161db087e13dbf584828f558680844e3c77c2b41866ba1a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_criado_em_not_null.",
+      "sha256": "cb30b350e5e22a2f1099a06a1ce15540fcb8b40bf5eccfd8396418ce443b201d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_id_not_null.",
+      "sha256": "900f666afc40974fd6715579dc1d827de2f627af6793d8efc136cb4af52a2e4c"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_nome_not_null.",
+      "sha256": "d4af4516f2d73d902d04f1276b47a6ac23f37f9915265921427542587444b687"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_owner_id_fkey.",
+      "sha256": "be2d3e80243461918b97edf4adaafea87ec8e407ed4635ce77268d3d0c7c17bd"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_owner_id_key.",
+      "sha256": "e067977dcda01b9294361b774aeb222dd6e5724e2876b4119215f0638f199dee"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_owner_id_not_null.",
+      "sha256": "3adfd39b9dffa0b3092c166bf9c1b19dc796f579a77f6b0e6037d52e387ffd4f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_pkey.",
+      "sha256": "5a27ec9e133cdb898f3828d146aa9822db0f219e6f6a06de7c12b39dcfdf3505"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_categoria_check.",
+      "sha256": "44d8d741812168c78dc1d577e62f58889da4d1c083ea2d6e33327d1a7339491d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_categoria_not_null.",
+      "sha256": "69403d18348d70496f5d774ff99dfcc7f2c9e013fed2b8f74f4c2a5355aefbae"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_criado_em_not_null.",
+      "sha256": "fdb7a355a66dffdb5751d946d07c2d20979adb875305f26446982e128f1bd76f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_id_not_null.",
+      "sha256": "dfc291bc980a41428067731876caa093f322e944762ba35d198cc9e47f6a937d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_organizacao_id_fkey.",
+      "sha256": "1c68faa6fc54d51c810336e5b57c17813f996e090c7ec9bd009ac495c1ebf74a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_organizacao_id_not_null.",
+      "sha256": "c6cba96cb6d5e724f9d0ac18b03fcf6194568a95e12708cd67969bd62a68a4a5"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_pkey.",
+      "sha256": "81cd4971a9878e73673d63b4523c4c9f847f47e8a8f6e5f19a5121c806df7571"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_processo_id_fkey.",
+      "sha256": "8c39d75328744a3f8fb6b11220164682b7f4ea2d6caa3bed33a207f4a55f0669"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_processo_id_not_null.",
+      "sha256": "e8c63acaf8c5640928b9fc109a211414cef855fc9938535e8670096d6c151149"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_titulo_not_null.",
+      "sha256": "9845eb3a8d05bf0d6d029db944527c99265650af259da364e0aeadafdb733226"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_vencimento_not_null.",
+      "sha256": "92d9b6b0db4923ecfb6e424d7c4020893d3ffdfcfac83871708527810d8f46d4"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_atualizado_em_not_null.",
+      "sha256": "98b5450d962fefba4dff6e7f980a23c0761eba4942815815da379c4bb9fb37ec"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_checklist_editado_manualmente_not_null.",
+      "sha256": "d87368611a0a0327b5ea3f24eaef67cf76ebfbcb0d43bb23671596d140a3b24e"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_checklist_fonte_not_null.",
+      "sha256": "8f09f507810aa6045fd8b9cbd62969327c445e9174c03c6537c4c714eead01fb"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_criado_em_not_null.",
+      "sha256": "71648ba08c83c6036c17d6fe868c22fa43c7b8218d02f94c6476b2e23e92e26a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_criado_por_fkey.",
+      "sha256": "7badf342211f3cc8319baad8790a3ac91241a49244c628493851ce5f2ede0bfb"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_decisao_check.",
+      "sha256": "01911cb6682254fd16978ad1b49bb86a74adc32f55a4318f7d024bb9ea53a817"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_decisao_not_null.",
+      "sha256": "7b2cf77400258ed2014858261e067d6a209eb16566b84ee9096d7a37766eeb73"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_documentos_exigidos_not_null.",
+      "sha256": "c0433f7f50b2d496781e64f012bca24bae9c064dd12f1511b80a66bbb8076983"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_empresa_id_fkey.",
+      "sha256": "751d32c539a559f381d107b61be01d4578e175bf29c80db2e841e1f1c21b3828"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_empresa_id_not_null.",
+      "sha256": "ec2c7d820cea3c79606645676b67b0067b9244a77f739d1f05228f4ade6623ff"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_id_not_null.",
+      "sha256": "b16934286f9d150f1dc09d835683deacd79e5b37b77914d6d983a989c4de166e"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_objeto_not_null.",
+      "sha256": "525d2e0f82acb6fbac89323229e33533c625f6c28567f56c972ed9900df20bf5"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_organizacao_id_fkey.",
+      "sha256": "494c7b75f58bd9025f42fb519731c749df40489cbd7efd47a659c41a8a69c904"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_organizacao_id_not_null.",
+      "sha256": "485e14a3bddf470bd4663d905f17dbad185c792d5d41793b55978b2a085db85d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_pkey.",
+      "sha256": "210d14f926bd6bed51bb15bd725f6395293f48da3d356c1d0e618c82875f4acd"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_resultado_valido.",
+      "sha256": "4df37519f25d8c51eecf750b24b91a115cd2a33f580299c96c166a4a1c055f42"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_situacao_resultado_not_null.",
+      "sha256": "327022b777f41a3e3a5cc8e0e68e0722512eebb1208e9c2080a29e58da0290f8"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_status_check.",
+      "sha256": "5de226441c26f70d08dbaed6f279488fe3606ab390c942eacad2eb2e7e0d6803"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_status_not_null.",
+      "sha256": "3a162ed75d87037cf3d931a6a37c56ebedd972da9014b8e2efed13a00046865b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_valor_homologado_valido.",
+      "sha256": "f06a31b418e6d673c9b0f390c2833acd46f00750958d67fa106d961065e07aab"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_documento_id_fkey.",
+      "sha256": "a32b7d4ebea89162de46aa38e1a8d31d5f519c1f182e69d444e5d564123dc62b"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_documento_id_not_null.",
+      "sha256": "a89658b2fd25623b1320ae8042c909dcbb34f2c2735a071a6e74927006e91f20"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_id_not_null.",
+      "sha256": "5228830c27408eec9c9a8d9b65f95fa48ac52909cf230ecd9e225607d3fcfd2d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_pkey.",
+      "sha256": "dbce1a655710b6c81ac68aedb6d60eb2c0279ac083d5cc409ad35983592e2556"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_registrado_em_not_null.",
+      "sha256": "218427bc2760c7aa7db906809bab214f2418db54f6f4f4cb798a925c87efbb7a"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_registrado_por_fkey.",
+      "sha256": "415d78280b49214a201637cf714bb7afab638c5dbbc60fa2947e947a50e6eb1f"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_id_not_null.",
+      "sha256": "dd1fc00ee1fd5d610961a3bc5990059d3262180b74dc030edbb50121911d6ec1"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_nome_not_null.",
+      "sha256": "e38f445d5210f6582dc2c9a662f574ae4b8d8ebddff60fba35095eafa205440d"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_organizacao_id_fkey.",
+      "sha256": "c5b437c07d9386aa111f0fdd42d2fd4824b81ee778cefd50c3a5734bb9977191"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_organizacao_id_nome_key.",
+      "sha256": "f6f38d5e5d7a5ad0481ec99b9d3dcee87be1dbd8ea35d49e24237dcf14118443"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_personalizado_not_null.",
+      "sha256": "f9657f979fcbf1ba05c1229923e7c9fc0598ac66c2403c1a2ba477aaa4a44d73"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_pkey.",
+      "sha256": "4ac8e199675c7baaaf539a6a4278a961cd30ad664aa1b6ce1f34391be17e8739"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_id_not_null.",
+      "sha256": "7f54fdb665d08aad3f00d8673e39d0928f72ebe4ca84d0e03ec91f160e954de0"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_pkey.",
+      "sha256": "6f29d1cec7b0bbc261ec9849730aa3906be6225a61febde49022494c5e9d6be2"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.objects.objects_id_not_null.",
+      "sha256": "5af958d604afff8288933e12fa2e2a04669cb8bd1d87c2e443a64cd644d0a8ef"
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.objects.objects_pkey.",
+      "sha256": "3c58332d7cc7ae02e1efe9aecfe509442424fd88ca77d2d736d9f07886da6089"
+    }
+  ],
+  "dadosAntes": {
+    "admins": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "clientes": "e6f8328a09119c5bf3958cea5fa3aa988f005003ffaaacc3e3d522023c0ba488",
+    "operacao_agenda": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_anexos_processo": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_contratos": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_convites_empresa": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_documentos": "bd9b1fb49d424980706c97836e4cea012fce0bea106411c14414caceacad78a3",
+    "operacao_empenhos": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_empresas": "24190a2b84446e3f4297a7565259e03524d112578e1c0c843e8df5b99b8da48b",
+    "operacao_itens_resultado": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_limites_cnpj": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_membros": "8e14e5511c718f942da0f29de712dd776a6848f67f831ca05b58a41e2e46a0ad",
+    "operacao_ocorrencias": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_organizacoes": "dcc6c3742da964fc1e33cacb255b595bcd26390cfc88c93f479e32f57c58616a",
+    "operacao_prazos_processo": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_processos": "ff20fea0f874933d57b7ddc1fb8e7077b6d340f4f52d6b4e733205e9d28dad25",
+    "operacao_renovacoes_documento": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_tipos_documento": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "dadosDepois": {
+    "admins": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "clientes": "e6f8328a09119c5bf3958cea5fa3aa988f005003ffaaacc3e3d522023c0ba488",
+    "operacao_agenda": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_anexos_processo": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_contratos": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_convites_empresa": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_documentos": "bd9b1fb49d424980706c97836e4cea012fce0bea106411c14414caceacad78a3",
+    "operacao_empenhos": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_empresas": "24190a2b84446e3f4297a7565259e03524d112578e1c0c843e8df5b99b8da48b",
+    "operacao_itens_resultado": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_limites_cnpj": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_membros": "8e14e5511c718f942da0f29de712dd776a6848f67f831ca05b58a41e2e46a0ad",
+    "operacao_ocorrencias": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_organizacoes": "dcc6c3742da964fc1e33cacb255b595bcd26390cfc88c93f479e32f57c58616a",
+    "operacao_prazos_processo": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_processos": "ff20fea0f874933d57b7ddc1fb8e7077b6d340f4f52d6b4e733205e9d28dad25",
+    "operacao_renovacoes_documento": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "operacao_tipos_documento": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "escopo": "criação e verificação local do corpus, sem chamada a IA",
+  "checagens": [
+    "alfa-identificacao-texto.pdf: 2 páginas",
+    "alfa-identificacao-escaneado.pdf: 2 páginas",
+    "beta-proposta-cnpj-divergente.pdf: 1 páginas",
+    "Todos os trechos do gabarito presentes na página indicada",
+    "Escaneado sem camada textual; exatamente uma imagem por página",
+    "CNPJs documentalmente separados",
+    "Arredondamento por item e total da Beta: 0,02 + 3,69 = 3,71"
+  ],
+  "comparacao_raster": [
+    {
+      "pagina": 1,
+      "tamanho_pixels": [
+        1323,
+        1871
+      ],
+      "diferenca_media_rgb_0_255": 0.0
+    },
+    {
+      "pagina": 2,
+      "tamanho_pixels": [
+        1323,
+        1871
+      ],
+      "diferenca_media_rgb_0_255": 0.0
+    }
+  ],
+  "inspecao_visual": "PASS: as três páginas visuais únicas foram renderizadas a 160 dpi e inspecionadas pelo agente; texto legível, margens e rodapés íntegros, sem cortes ou sobreposições. As duas páginas rasterizadas têm diferença média RGB zero em relação às versões textuais renderizadas."
+}

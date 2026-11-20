@@ -1,0 +1,104 @@
+--- a/supabase/kit_documentos.sql
++++ b/supabase/kit_documentos.sql
+@@ -22,8 +22,6 @@
+  using(public.pode_acessar_empresa_operacao(organizacao_id,empresa_id)
+   and exists(select 1 from public.clientes c where c.id=auth.uid() and c.status='aprovado')
+   and exists(select 1 from public.operacao_empresas e where e.id=operacao_kit_documentos.empresa_id and e.organizacao_id=operacao_kit_documentos.organizacao_id and e.ativo));
+-revoke all on public.operacao_kit_documentos from public,anon,authenticated,service_role;
+-grant select on public.operacao_kit_documentos to authenticated,service_role;
+ 
+ create or replace function public.kit_documento_escopo_imutavel() returns trigger
+  language plpgsql set search_path=pg_catalog,pg_temp as $$
+@@ -33,7 +31,6 @@
+  then raise sqlstate 'PT409' using message='Escopo e autoria da peça são imutáveis';end if;
+  return new;
+ end $$;
+-revoke all on function public.kit_documento_escopo_imutavel() from public,anon,authenticated;
+ drop trigger if exists kit_documento_escopo_imutavel on public.operacao_kit_documentos;
+ create trigger kit_documento_escopo_imutavel before update on public.operacao_kit_documentos
+  for each row execute function public.kit_documento_escopo_imutavel();
+@@ -116,7 +113,30 @@
+  if d.id is null then raise sqlstate 'PT409' using message='Versão alterada';end if;
+  return d;
+ end $$;
+-revoke all on function public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb) from public,anon,authenticated;
++-- Defaults do ambiente podem conceder acesso a outros papéis: normaliza só os três objetos do kit, preservando seus donos.
++do $acl_kit$
++declare objeto record;papel record;
++begin
++ for objeto in
++  select 'table public.operacao_kit_documentos' as alvo,c.relowner as dono,
++   coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner)) as acl
++  from pg_catalog.pg_class c where c.oid='public.operacao_kit_documentos'::pg_catalog.regclass
++  union all
++  select 'function '||p.oid::pg_catalog.regprocedure::text,p.proowner,
++   coalesce(p.proacl,pg_catalog.acldefault('f',p.proowner))
++  from pg_catalog.pg_proc p where p.oid in (
++   'public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)'::pg_catalog.regprocedure,
++   'public.kit_documento_escopo_imutavel()'::pg_catalog.regprocedure
++  )
++ loop
++  for papel in select distinct a.grantee from pg_catalog.aclexplode(objeto.acl) a where a.grantee<>objeto.dono loop
++   execute pg_catalog.format('revoke all on %s from %s',objeto.alvo,
++    case when papel.grantee=0 then 'public' else pg_catalog.quote_ident(pg_catalog.pg_get_userbyid(papel.grantee)) end);
++  end loop;
++ end loop;
++end
++$acl_kit$;
++grant select on public.operacao_kit_documentos to authenticated,service_role;
+ grant execute on function public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb) to service_role;
+ commit;
+ notify pgrst,'reload schema';
+--- a/docs/qa/testar-kit-persistencia-local.cjs
++++ b/docs/qa/testar-kit-persistencia-local.cjs
+@@ -133,7 +133,49 @@
+    }finally{await db.exec('rollback');}
+    await verificar();
+   }
+-  return {checks,checksOriginais,casosGate:casos.length,mensagem:`SQL real PGlite: ${checks} verificações aprovadas (${checksOriginais} originais); migração aplicada duas vezes, lacuna anterior reproduzida e gate somente leitura aprovado com ${casos.length} desconfigurações rejeitadas e revertidas somente na fixture.`};
++  const checksSemDefaults=checks;
++  const registros=()=>db.query('select to_jsonb(d) as documento from public.operacao_kit_documentos d order by id').then(r=>r.rows);
++  const preservados=await registros();
++  // Somente nesta fixture em memória: recria o kit com os defaults permissivos do Supabase.
++  await db.exec(`drop table public.operacao_kit_documentos cascade;
++   drop function public.kit_documento_escopo_imutavel();
++   create role supabase_admin superuser;create role "kit default extra";
++   alter default privileges for role supabase_admin in schema public grant all on tables to postgres,anon,authenticated,service_role;
++   alter default privileges for role supabase_admin in schema public grant execute on functions to postgres,anon,authenticated,service_role;
++   alter default privileges for role supabase_admin in schema public grant all on tables to "kit default extra" with grant option;
++   alter default privileges for role supabase_admin in schema public grant execute on functions to "kit default extra" with grant option;
++   set role supabase_admin;
++   create table public.kit_acl_controle(valor text);insert into public.kit_acl_controle values('preservar');
++   create function public.kit_acl_controle() returns text language sql as $$select 'preservar'::text$$;`);
++  const ambiente=()=>db.query(`select
++   (select jsonb_agg(to_jsonb(d) order by oid) from pg_catalog.pg_default_acl d) as defaults,
++   (select jsonb_agg(jsonb_build_array(rolname,rolsuper,rolbypassrls,rolinherit) order by rolname) from pg_catalog.pg_roles) as papeis,
++   (select jsonb_agg(to_jsonb(m) order by roleid,member) from pg_catalog.pg_auth_members m) as associacoes,
++   (select jsonb_build_array(relowner,relacl) from pg_catalog.pg_class where oid='public.kit_acl_controle'::regclass) as tabela,
++   (select jsonb_build_array(proowner,proacl) from pg_catalog.pg_proc where oid='public.kit_acl_controle()'::regprocedure) as funcao,
++   (select valor from public.kit_acl_controle) as dado,public.kit_acl_controle() as retorno`).then(r=>r.rows);
++  const ambientePreservado=await ambiente();
++  const donos=()=>db.query(`select pg_catalog.pg_get_userbyid(relowner) as dono from pg_catalog.pg_class where oid='public.operacao_kit_documentos'::regclass
++   union all select pg_catalog.pg_get_userbyid(proowner) from pg_catalog.pg_proc where oid in ('${assinatura}'::regprocedure,'public.kit_documento_escopo_imutavel()'::regprocedure)`).then(r=>r.rows);
++  const verificarDefaults=async()=>{
++   await db.exec('begin read only;set local search_path=pg_catalog,public');
++   try{await verificar();}finally{await db.exec('rollback');}
++   ok(await donos(),[{dono:'supabase_admin'},{dono:'supabase_admin'},{dono:'supabase_admin'}]);
++   ok(await ambiente(),ambientePreservado);
++  };
++  await db.exec(sql('kit_documentos.sql'));
++  await verificarDefaults();
++  await db.query('insert into public.operacao_kit_documentos select * from jsonb_populate_recordset(null::public.operacao_kit_documentos,$1)',[JSON.stringify(preservados.map(r=>r.documento))]);
++  // A reaplicação também corrige ACL direta antiga sem perder conteúdo, autoria ou versão.
++  await db.exec(`grant all on public.operacao_kit_documentos to postgres,"kit default extra" with grant option;
++   grant execute on function ${assinatura} to postgres,"kit default extra" with grant option;
++   grant execute on function public.kit_documento_escopo_imutavel() to postgres,service_role,"kit default extra" with grant option;`);
++  for(let rodada=0;rodada<2;rodada++){
++   await db.exec(sql('kit_documentos.sql'));
++   await verificarDefaults();
++   ok(await registros(),preservados);
++  }
++  return {checks,checksOriginais,checksSemDefaults,checksDefaults:checks-checksSemDefaults,casosGate:casos.length,mensagem:`SQL real PGlite: ${checks} verificações aprovadas (${checksSemDefaults} anteriores, incluindo ${checksOriginais} originais, e ${checks-checksSemDefaults} de defaults permissivos); gate somente leitura aprovado com ${casos.length} desconfigurações rejeitadas e revertidas. ACLs extras removidas na criação e reaplicação; donos, dados, defaults, papéis e objetos de controle preservados somente na fixture.`};
+  }finally{await db.close();}
+ }
+ module.exports={testarPersistencia};

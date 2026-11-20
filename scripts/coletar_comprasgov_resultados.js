@@ -14,6 +14,8 @@
 //   CONCORRENCIA_ITENS=3       -> compras enriquecidas em paralelo por página
 //   INTERVALO_MS=900            -> espaçamento global entre chamadas à fonte
 //   PAUSA_429_MS=15000          -> espera mínima após rate limit (HTTP 429)
+//   TAMANHO_LOTE_BANCO=100      -> linhas por upsert; dividido ao meio em timeout 57014
+//   LOTE_MINIMO_BANCO=10        -> abaixo disso o timeout encerra a execução e guarda o cursor
 //   SUPABASE_SERVICE_ROLE_KEY  -> obrigatória para gravar dados e cursor
 //
 // O robô só usa APIs públicas e só normaliza campos explicitamente fornecidos.
@@ -31,6 +33,10 @@ const ATRASO_MS = parseInt(process.env.ATRASO_MS || "350", 10);
 const CONCORRENCIA_ITENS = Math.max(1, parseInt(process.env.CONCORRENCIA_ITENS || "3", 10));
 const INTERVALO_MS = parseInt(process.env.INTERVALO_MS || "900", 10);
 const PAUSA_429_MS = parseInt(process.env.PAUSA_429_MS || "15000", 10);
+// A tabela passou de 295 mil linhas / 785 MB com índice GIN trigram em descricao_item;
+// 500 linhas por upsert estouravam o statement_timeout (8s) do papel authenticator.
+const TAMANHO_LOTE_BANCO = Math.max(1, parseInt(process.env.TAMANHO_LOTE_BANCO || "100", 10));
+const LOTE_MINIMO_BANCO = Math.max(1, parseInt(process.env.LOTE_MINIMO_BANCO || "10", 10));
 const LIMITE_MS = LIMITE_MINUTOS * 60 * 1000;
 const CHAVE_ESTADO = "comprasgov_resultados_estado";
 const inicioExecucao = Date.now();
@@ -217,6 +223,41 @@ function normalizarResultado(resultado, item, coletadoEm) {
   };
 }
 
+function ehTimeoutDoBanco(erro) {
+  return /57014|statement timeout/.test(String(erro && erro.message));
+}
+
+// Grava em lotes de TAMANHO_LOTE_BANCO e, se o Postgres cancelar por timeout (57014),
+// divide o lote ao meio até LOTE_MINIMO_BANCO. O upsert é idempotente (on_conflict=chave),
+// então reenviar metade de um lote já parcialmente gravado é seguro. Se nem o lote mínimo
+// passa, o erro sobe marcado com timeoutBanco e com quantas linhas chegaram ao banco.
+async function gravarComDivisao(linhas, upsert = upsertEmLotes, tamanho = TAMANHO_LOTE_BANCO, minimo = LOTE_MINIMO_BANCO) {
+  let gravadas = 0;
+  async function gravarLote(lote) {
+    try {
+      await upsert("comprasgov_resultados", lote, "chave", lote.length);
+      gravadas += lote.length;
+    } catch (erro) {
+      if (!ehTimeoutDoBanco(erro)) throw erro;
+      if (lote.length <= minimo) {
+        erro.timeoutBanco = true;
+        throw erro;
+      }
+      const meio = Math.ceil(lote.length / 2);
+      console.log(`[comprasgov-resultados] Timeout do banco com ${lote.length} linha(s); tentando em lotes de ${meio}.`);
+      await gravarLote(lote.slice(0, meio));
+      await gravarLote(lote.slice(meio));
+    }
+  }
+  try {
+    for (let i = 0; i < linhas.length; i += tamanho) await gravarLote(linhas.slice(i, i + tamanho));
+  } catch (erro) {
+    erro.gravadas = gravadas;
+    throw erro;
+  }
+  return gravadas;
+}
+
 async function salvarEstado(estado) {
   await salvarBlob("dados_robo", CHAVE_ESTADO, { ...estado, atualizadoEm: new Date().toISOString() });
 }
@@ -253,8 +294,16 @@ async function main() {
       .filter(Boolean);
 
     if (linhas.length > 0) {
-      await upsertEmLotes("comprasgov_resultados", linhas, "chave");
-      registrosSalvos += linhas.length;
+      try {
+        registrosSalvos += await gravarComDivisao(linhas);
+      } catch (erro) {
+        if (!erro.timeoutBanco) throw erro;
+        registrosSalvos += erro.gravadas || 0;
+        // Mesma política do 429: guarda o cursor desta página e encerra sem derrubar o job.
+        await salvarEstado({ proximaData: data, proximaPagina: pagina, saudeFonte: "banco_lento", ultimoErro: erro.message.slice(0, 300) });
+        console.log(`[comprasgov-resultados] Banco cancelou o upsert mesmo em lotes de ${LOTE_MINIMO_BANCO}; cursor preservado em ${data}, página ${pagina}. ${registrosSalvos} linha(s) gravadas nesta execução.`);
+        break;
+      }
     }
     paginasProcessadas += 1;
     const totalPaginas = resposta.totalPaginas || 1;
@@ -273,7 +322,7 @@ async function main() {
     await salvarEstado({ proximaData: reinicio, proximaPagina: 1, saudeFonte: "ok", ultimoSucessoEm: new Date().toISOString() });
     console.log(`[comprasgov-resultados] Janela concluída; próxima execução revisita desde ${reinicio}.`);
   }
-  console.log(`[comprasgov-resultados] Concluído: ${paginasProcessadas} página(s), ${registrosSalvos} resultado(s) salvos.`);
+  console.log(`[comprasgov-resultados] Concluído: ${paginasProcessadas} página(s), ${registrosSalvos} linha(s) gravadas.`);
 }
 
 if (require.main === module) {
@@ -283,4 +332,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { chaveResultado, normalizarResultado, somarDias };
+module.exports = { chaveResultado, normalizarResultado, somarDias, gravarComDivisao };

@@ -1,0 +1,60 @@
+✖ cadastro independente abre os campos sem ação ou mensagens de minuta (1.8251ms)
+✖ cadastro independente confirma apenas após conferência e informa uso em documentos (1.6109ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.5284
+
+✖ failing tests:
+
+test at scripts\operacao_identificacao.test.js:14:1
+✖ cadastro independente abre os campos sem ação ou mensagens de minuta (1.8251ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\operacao_identificacao.test.js:17:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\operacao_identificacao.test.js:23:1
+✖ cadastro independente confirma apenas após conferência e informa uso em documentos (1.6109ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + {
+  +   append: [Function: append],
+  +   checked: false,
+  +   children: [],
+  +   disabled: false,
+  +   files: [],
+  +   replaceChildren: [Function: replaceChildren],
+  +   role: 'status',
+  +   setAttribute: [Function: setAttribute],
+  +   tag: 'p',
+  +   textContent: 'Identificação confirmada. A minuta permanece como você a editou.',
+  +   value: ''
+  + }
+  - undefined
+  
+      at TestContext.<anonymous> (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\operacao_identificacao.test.js:37:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Object],
+    expected: undefined,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

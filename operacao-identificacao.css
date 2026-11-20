@@ -1,0 +1,37 @@
+/* Quadro único "Dados da empresa" (operacao.html): a identificação é a primeira seção, no mesmo traço das seções do perfil
+   (.perfil-grupo). Markup de empresa-identificacao-ui.js: details > summary, p, label+campo em pares, selects, arquivo,
+   botões .defesa-botao, div de sugestões, checkbox e label. Desktop: label | campo; celular: rótulo acima do campo.
+   Quando o navegador expõe ::details-content, o grid vai nesse conteúdo; senão, no próprio details (mesmo padrão de app-comercial.css). */
+#aba-identificacao .card {max-width:960px}
+#identificacao-empresa details {--campos-colunas:20px minmax(0,1fr);display:block;min-width:0;border-top:1px solid var(--border-default);padding:16px 0}
+@supports selector(details::details-content) {
+  #identificacao-empresa details::details-content {display:grid;grid-template-columns:var(--campos-colunas);gap:12px 16px;min-width:0}
+}
+@supports not selector(details::details-content) {
+  #identificacao-empresa details {display:grid;grid-template-columns:var(--campos-colunas);gap:12px 16px}
+}
+#identificacao-empresa summary {font:var(--text-section);color:var(--text-primary);cursor:pointer;margin-bottom:4px}
+#identificacao-empresa details>*:not(summary) {grid-column:1/-1;min-width:0}
+#identificacao-empresa p {margin:0;line-height:1.6;color:var(--text-secondary);overflow-wrap:anywhere}
+#identificacao-empresa p[role="status"] {color:var(--text-primary)}
+#identificacao-empresa label {margin:0;font:var(--text-label);color:var(--text-primary)}
+#identificacao-empresa input:not([type="checkbox"]),#identificacao-empresa select {width:100%;min-width:0}
+#identificacao-empresa input:read-only {background:var(--surface-sunken);color:var(--text-secondary)}
+#identificacao-empresa details>input[type="checkbox"] {grid-column:1;width:20px;height:20px;margin:0;justify-self:start;align-self:center;accent-color:var(--action-strong)}
+#identificacao-empresa details>label[for="empresa-identificacao-revisao"] {grid-column:2;align-self:center}
+#identificacao-empresa .defesa-botao {justify-self:start;max-width:100%;min-height:40px;white-space:normal;padding:8px 16px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:500 14px/16px var(--font-sans);cursor:pointer}
+#identificacao-empresa .defesa-botao:hover {background:var(--surface-sunken)}
+#identificacao-empresa .defesa-botao:disabled {background:var(--surface-sunken);color:var(--text-disabled);border-color:var(--border-default);cursor:not-allowed}
+/* "Salvar identificação confirmada" é a ação principal da seção. */
+#identificacao-empresa label[for="empresa-identificacao-revisao"]+.defesa-botao:not(:disabled) {background:var(--action-strong);border-color:transparent;color:var(--action-on)}
+#identificacao-empresa div {display:grid;gap:8px;min-width:0}
+@media (min-width:641px) {
+  #identificacao-empresa details {--campos-colunas:minmax(10rem,13rem) minmax(0,1fr)}
+  #identificacao-empresa details>label,#identificacao-empresa details>input:not([type]),#identificacao-empresa details>select#empresa-identificacao-documento {grid-column:auto;align-self:center}
+  #identificacao-empresa details>input[type="checkbox"] {justify-self:end}
+}
+@media (max-width:640px) {
+  #identificacao-empresa .defesa-botao {width:100%}
+}
+#aba-identificacao :focus-visible,.aba:focus-visible,#empresa-atual:focus-visible {outline:2px solid var(--focus-ring);outline-offset:3px}
+#aba-identificacao [hidden] {display:none}

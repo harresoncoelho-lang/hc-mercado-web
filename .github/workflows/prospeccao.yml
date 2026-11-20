@@ -1,0 +1,45 @@
+name: Prospecção (PCA, IRP, atas para adesão, contratos vencendo)
+
+# Robô diário da tela Prospecção (scripts/coletar_prospeccao.js): lê PNCP e Compras.gov dados abertos (grátis,
+# sem login, sem captcha) e grava a tabela enxuta prospeccao_itens. Rodadas de 10 minutos de hora em hora, das
+# 09:00 às 14:00 UTC (6h às 11h de Brasília): cada rodada retoma de onde a anterior parou (progresso do dia em
+# dados_robo/prospeccao_estado) e, com o dia completo, só confere e sai. Rodar de novo é seguro (upsert + limpeza
+# só quando a etapa fecha). Um AM inteiro leva 11 a 17 minutos seguidos; em rodadas cabe com folga e as adesões
+# já usadas das atas (uma consulta por item) avançam por rodízio.
+# Não escreve no repositório: só no Supabase. Precisa de supabase/prospeccao.sql aplicado antes.
+concurrency:
+  group: prospeccao
+  cancel-in-progress: false
+
+on:
+  schedule:
+    - cron: "0 9-14 * * *"
+  workflow_dispatch:
+    inputs:
+      ufs:
+        description: "UFs separadas por vírgula"
+        required: false
+        default: "AM"
+
+permissions:
+  contents: read
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Coletar prospecção
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PROSPECCAO_UFS: ${{ github.event.inputs.ufs || 'AM' }}
+          DIAS_HORIZONTE: "400"
+          PAUSA_MS: "250"
+          LIMITE_MINUTOS: "10"
+          ADESOES_POR_RODADA: "1500"
+        run: node scripts/coletar_prospeccao.js

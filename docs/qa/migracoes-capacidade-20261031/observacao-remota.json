@@ -1,0 +1,35 @@
+{
+  "data": "2026-10-31",
+  "origem": "Interface administrativa autenticada no navegador interno; somente leitura",
+  "supabase": {
+    "projeto": "LICITAPLENA",
+    "referencia": "lsqjamqvmrcyrvowndiu",
+    "estado": "Healthy",
+    "compute": "NANO",
+    "branches": "No branches",
+    "metricas_instante": {"cpu_percent":3,"disk_percent":21,"ram_percent":55,"conexoes":6,"limite_conexoes":60},
+    "backups": {
+      "tipo": "PHYSICAL",
+      "horarios_utc": ["2026-10-31T05:16:47Z","2026-10-30T05:16:42Z","2026-10-29T05:16:45Z","2026-10-28T05:17:00Z","2026-10-27T05:16:50Z","2026-10-26T05:15:16Z","2026-10-25T05:16:16Z","2026-10-24T05:15:23Z"],
+      "restore_to_new_project_status": "COMPLETED nos oito backups listados",
+      "pitr": "Não habilitado; interface oferece Enable add-on",
+      "storage_bytes": "Interface declara não incluídos no backup de banco",
+      "restore_executado": false,
+      "custo_contratado": false
+    }
+  },
+  "cloudflare": {
+    "projeto": "licitaplena",
+    "ambiente": "Production",
+    "janela": "Last 24 hours",
+    "requests_success": 12,
+    "requests_errors": 0,
+    "subrequests": 8,
+    "errors_cpu_memory_exception_internal": 0,
+    "cpu_percentiles_painel": {"50":973,"75":1896,"99":7599,"99_9":7599},
+    "cpu_unidade": "Eixo do gráfico mostra ms; AX omite unidade. Inconsistência com duração impede inferir orçamento.",
+    "duration_percentiles_painel": {"50":0.002,"75":0.002,"99":0.094,"99_9":0.094},
+    "novo_modulo_implantado": false,
+    "configuracao_alterada": false
+  }
+}

@@ -1,0 +1,5 @@
+pg_config_pkglibdir=/nix/store/pq183ial4hii0r4cjf2w9fs63nvi2zrx-postgresql-17.11-lib/lib
+library=supautils path=/nix/store/pq183ial4hii0r4cjf2w9fs63nvi2zrx-postgresql-17.11-lib/lib/supautils.so readable=false
+library=safeupdate path=/nix/store/pq183ial4hii0r4cjf2w9fs63nvi2zrx-postgresql-17.11-lib/lib/safeupdate.so readable=false
+library=supautils path=/nix/var/nix/profiles/default/lib/supautils.so readable=true
+library=safeupdate path=/nix/var/nix/profiles/default/lib/safeupdate.so readable=true

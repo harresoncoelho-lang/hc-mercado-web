@@ -1,0 +1,131 @@
+[
+  {
+    "evidencia_baseline_destino": {
+      "banco": "postgres",
+      "limites": [
+        "Sem linhas de negócio, configuração de credenciais ou execução de funções da aplicação.",
+        "Nome do banco, executor e rótulo esperado não identificam o projeto hospedado.",
+        "A referência real deve ser conferida na URL/identidade da conexão antes de executar.",
+        "Presença de schemas não comprova saúde HTTP ou autenticação real dos serviços."
+      ],
+      "executor": "postgres",
+      "extensoes": [
+        {
+          "nome": "pg_stat_statements",
+          "versao": "1.11"
+        },
+        {
+          "nome": "pgcrypto",
+          "versao": "1.3"
+        },
+        {
+          "nome": "plpgsql",
+          "versao": "1.0"
+        },
+        {
+          "nome": "supabase_vault",
+          "versao": "0.3.1"
+        },
+        {
+          "nome": "uuid-ossp",
+          "versao": "1.1"
+        }
+      ],
+      "read_only": "on",
+      "public_funcoes": [],
+      "server_version": "17.11",
+      "usuario_sessao": "postgres",
+      "defaults_public": [
+        {
+          "acl": "{postgres=rwU/postgres}",
+          "dono": "postgres",
+          "tipo": "S"
+        },
+        {
+          "acl": "{postgres=X/postgres}",
+          "dono": "postgres",
+          "tipo": "f"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/postgres,anon=Dxtm/postgres,authenticated=Dxtm/postgres,service_role=Dxtm/postgres}",
+          "dono": "postgres",
+          "tipo": "r"
+        },
+        {
+          "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}",
+          "dono": "supabase_admin",
+          "tipo": "S"
+        },
+        {
+          "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}",
+          "dono": "supabase_admin",
+          "tipo": "f"
+        },
+        {
+          "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}",
+          "dono": "supabase_admin",
+          "tipo": "r"
+        }
+      ],
+      "public_relacoes": [],
+      "versao_consulta": 1,
+      "observado_em_utc": "2026-11-01T18:13:57Z",
+      "projeto_esperado": "luguscapasskcsficckf",
+      "papeis_necessarios": [
+        {
+          "nome": "anon",
+          "login": false,
+          "inherit": true,
+          "superuser": false,
+          "bypass_rls": false
+        },
+        {
+          "nome": "authenticated",
+          "login": false,
+          "inherit": true,
+          "superuser": false,
+          "bypass_rls": false
+        },
+        {
+          "nome": "postgres",
+          "login": true,
+          "inherit": true,
+          "superuser": false,
+          "bypass_rls": true
+        },
+        {
+          "nome": "service_role",
+          "login": false,
+          "inherit": true,
+          "superuser": false,
+          "bypass_rls": true
+        },
+        {
+          "nome": "supabase_auth_admin",
+          "login": true,
+          "inherit": false,
+          "superuser": false,
+          "bypass_rls": false
+        },
+        {
+          "nome": "supabase_storage_admin",
+          "login": true,
+          "inherit": false,
+          "superuser": false,
+          "bypass_rls": false
+        }
+      ],
+      "server_version_num": "170011",
+      "organizacao_esperada": "vhmjospwgiryrnrndkpd",
+      "servicos_gerenciados": {
+        "auth_jwt_existe": true,
+        "auth_uid_existe": true,
+        "auth_role_existe": true,
+        "auth_users_existe": true,
+        "storage_buckets_existe": true,
+        "storage_objects_existe": true
+      },
+      "identidade_servidor_confirmada_por_esta_consulta": false
+    }
+  }
+]

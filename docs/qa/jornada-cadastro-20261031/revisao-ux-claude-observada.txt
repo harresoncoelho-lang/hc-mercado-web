@@ -1,0 +1,37 @@
+										354 text Listing the acceptance criteria and the conflicts with the approved standard Aqui vão os seis critérios de aceite e os conflitos com o padrão aprovado. Esta revisão não lê nem altera arquivos, não cria versão e não publica.
+										355 text Critérios de aceite
+											357 container
+												358 AXListMarker 1. 
+												359 text Atalho secundário no bloqueio do kit.  O bloqueio por identificação pendente mostra um atalho «Completar identificação da empresa» com CNPJ e processo no texto. Ele é secundário: «Salvar rascunho» continua sendo a única ação principal da tela. Ao voltar do cadastro, o foco retorna ao bloqueio, e o texto diz o que mudou.
+											360 container
+												361 AXListMarker 2. 
+												362 text Rascunho preservado.  Preços, condições, seleção de itens, peças salvas e o modelo em edição continuam como estavam ao abrir e ao voltar do cadastro. Navegar entre abas não zera o contexto. Cancelar ou voltar não cria nem perde operação de gravação.
+											363 container
+												364 AXListMarker 3. 
+												365 text CNPJ e processo sempre visíveis e fixos.  O topo do cadastro mostra a mesma empresa e o mesmo processo do kit. Trocar a empresa dentro do cadastro não aplica a mudança ao kit sem uma ação explícita e um aviso em texto.
+											366 container
+												367 AXListMarker 4. 
+												368 text Confirmar dados não aprova documento.  A mensagem após confirmar diz: «Dados confirmados nesta sessão. Nenhum documento foi aprovado: gere uma nova prévia e confira antes de baixar.» As revisões de peça ficam invalidadas e as peças mostram «Dados mudaram» até nova prévia. Nenhuma palavra como «aprovado» ou «validado» aparece para dados da empresa.
+											369 container
+												370 AXListMarker 5. 
+												371 text Autorização revalidada.  Ao voltar e ao confirmar, a sessão e o perfil são checados de novo. Leitor vê o cadastro em modo somente leitura com o motivo escrito, não apenas controles desativados. Sessão encerrada bloqueia a ação com mensagem e não restaura rascunho, prévia nem pacote.
+											372 container
+												373 AXListMarker 6. 
+												374 text Layout, teclado e leitura de tela.  Funciona em 375, 704 e 1280 px, claro e escuro, sem rolagem horizontal. O atalho e os títulos quebram linha sem cortar texto. O foco é visível, a ordem de tabulação faz sentido, e o anúncio de mudança de tela sai por  aria-live .
+										375 text Conflitos com o padrão aprovado
+											377 container
+												378 AXListMarker • 
+												379 text Duas ações principais:  se o atalho usar o estilo primário, ele compete com «Salvar rascunho». O padrão exige uma ação principal por tela.
+											380 container
+												381 AXListMarker • 
+												382 text Reset de contexto: switchCtx()  zera o estado do pacote, as prévias e as aprovações. Se o atalho reutilizar essa função para navegar, o rascunho some. A navegação deve trocar só a aba, sem chamar troca de contexto.
+											383 container
+												384 AXListMarker • 
+												385 text Duplicação de componente:  exibir o cadastro dentro da Central Operacional não pode criar uma cópia de marcação. Isso conflita com a regra de reutilizar componentes e de não regenerar o PerfilDocumentos já publicado. Deve ser o mesmo bloco, apenas montado em outro lugar.
+											386 container
+												387 AXListMarker • 
+												388 text Papel do leitor:  ocultar controles sem explicar gera o mesmo problema de estado silencioso que já corrigimos no pacote. O motivo precisa estar em texto.
+											389 container
+												390 AXListMarker • 
+												391 text Redação de confirmação:  textos como «aprovado» para dados da empresa criariam a impressão de que a peça está pronta. A redação aprovada separa confirmação de dados de revisão de documento.
+										392 text Nenhum outro conflito com o padrão aprovado foi identificado para este encadeamento. A implementação local do Codex segue sem duplicação por parte desta revisão.

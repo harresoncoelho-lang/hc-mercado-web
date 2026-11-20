@@ -1,0 +1,56 @@
+[
+  {
+    "path": "supabase/kit_documentos.sql",
+    "baseline_sha256": "7feb6b0aab74d51fdeb009c8169d5630debdf5e15c329cd8448b6b8a10f56c8a",
+    "final_sha256": "7b2ef8ed7676e45acd9708b56d95bb5b6d39ec44ecc54455d796daa2e148131f",
+    "changed_from_baseline": true
+  },
+  {
+    "path": "docs/qa/testar-kit-persistencia-local.cjs",
+    "baseline_sha256": "fbfa6200dd3ca424be98616062c49481d0b105dfaa61b070ce3ac5291da760ff",
+    "final_sha256": "681c14d6a076e325bf4624d94deed7a83d4daa26cf3d5b04b60565d0a383c7bf",
+    "changed_from_baseline": true
+  },
+  {
+    "path": "supabase/verificar_kit_prepublicacao.sql",
+    "baseline_sha256": "2c4023cb0cac4e9b5fa29afee68398a0b4e402663dee9cd9fa580e7ea19178cf",
+    "final_sha256": "2c4023cb0cac4e9b5fa29afee68398a0b4e402663dee9cd9fa580e7ea19178cf",
+    "changed_from_baseline": false
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/kit-acl-exato.json",
+    "baseline_sha256": "29e2810f0140dcc067ad96600b5802bf69be87c42633aaf313572e5c25cf314c",
+    "final_sha256": "29e2810f0140dcc067ad96600b5802bf69be87c42633aaf313572e5c25cf314c",
+    "changed_from_baseline": false
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/kit-gate-diagnostico.json",
+    "baseline_sha256": "18d8bef6c7ca6688116e372bd854204ece847f64e82d62c3c37b2147a08a3d53",
+    "final_sha256": "18d8bef6c7ca6688116e372bd854204ece847f64e82d62c3c37b2147a08a3d53",
+    "changed_from_baseline": false
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/acl-fix.diff",
+    "baseline_sha256": null,
+    "final_sha256": "0a45c742fd81b8fd8d430f493479f2a7413139b1c1317a8542c4472c0347308f",
+    "changed_from_baseline": null
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/acl-baseline.log",
+    "baseline_sha256": null,
+    "final_sha256": "e7dcf264c900551c5060f40310dfeb91c34983687887eccecf46627f20193998",
+    "changed_from_baseline": null
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/acl-red.log",
+    "baseline_sha256": null,
+    "final_sha256": "4082f83c033bf423760dd6f36847b1ec41feceb1686bef312b63b034b77ef136",
+    "changed_from_baseline": null
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/acl-green.log",
+    "baseline_sha256": null,
+    "final_sha256": "748f33419e8d0cac115f8575b05f243dbf1ac32fceee33af5f95cab190359904",
+    "changed_from_baseline": null
+  }
+]

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Extensão de leitura — LicitaPlena</title>
+  <link rel="icon" type="image/png" href="favicon.png?v=3">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="ds-tokens.css">
+  <!-- Tema: mesma chave do painel (licitaplena_tema); claro é o padrão. Tema adicionado em 20/11/2026: aguarda aprovação. -->
+  <script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
+  <style>
+    [data-theme="dark"]{color-scheme:dark}[data-theme="light"]{color-scheme:light}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--surface-page,#f6f8fc);color:var(--text-primary,#172033);font:16px/1.55 Inter,Arial,sans-serif;padding:24px 16px}
+    main{max-width:720px;margin:0 auto;background:var(--surface-default,#fff);border:1px solid var(--border-default,#e3e8f0);border-radius:12px;padding:24px}
+    h1{font-size:1.5rem;margin:0 0 8px}h2{font-size:1.1rem;margin:24px 0 8px}p{margin:0 0 12px}
+    p.apoio{color:var(--text-secondary,#58657a)}
+    ol{padding-left:22px}li{margin-bottom:8px}
+    code{background:var(--surface-sunken,#f1f4fa);padding:1px 6px;border-radius:4px;overflow-wrap:anywhere}
+    a{color:var(--action-text,#2255e0)}a:focus-visible{outline:2px solid var(--focus-ring,#3772f8);outline-offset:2px}
+    .aviso{background:var(--attention-bg,#fff4e0);border:1px solid var(--attention-border,#f0cf95);color:var(--attention-text,#8a4b00);border-radius:8px;padding:10px 12px}
+    .info{background:var(--info-bg,#eaf1fe);border:1px solid var(--info-border,#b9ccf5);color:var(--info-text,#1f4fb8);border-radius:8px;padding:10px 12px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Extensão de leitura do LicitaPlena</h1>
+  <p class="apoio">Para trazer ao LicitaPlena participantes, marcas e motivos de recusa dos pregões anteriores, a leitura é feita no seu navegador, por você.</p>
+  <p class="aviso"><strong>Versão de desenvolvedor (0.4.0).</strong> A versão da Chrome Web Store vem depois. Por enquanto a extensão é instalada manualmente, como abaixo.</p>
+
+  <h2>Instalar (uma vez, uns 3 minutos)</h2>
+  <ol>
+    <li>Receba da equipe do LicitaPlena o arquivo <code>licitaplena-extensao-0.4.0.zip</code> e salve na pasta <strong>Documentos</strong>.</li>
+    <li>Clique com o botão direito no arquivo e escolha <strong>Extrair tudo…</strong> → <strong>Extrair</strong>. Vai aparecer uma pasta com o mesmo nome. Não apague essa pasta depois: o navegador usa ela.</li>
+    <li>No Chrome, digite <code>chrome://extensions</code> na barra de endereço e aperte Enter. No Edge, digite <code>edge://extensions</code>.</li>
+    <li>Ligue a chave <strong>Modo do desenvolvedor</strong> (no Chrome fica no canto superior direito; no Edge, na barra da esquerda, embaixo).</li>
+    <li>Clique em <strong>Carregar sem compactação</strong> e escolha a pasta que você extraiu no passo 2 (a que tem o arquivo <code>manifest.json</code> dentro).</li>
+    <li>A extensão aparece na lista, ligada, como na imagem abaixo. Clique no ícone de quebra-cabeça do navegador e no alfinete ao lado de <em>LicitaPlena</em> para deixar o ícone sempre à vista.</li>
+  </ol>
+  <!-- Imagem real do Edge com a extensão carregada (gerada no teste de 20/11/2026): aguarda aprovação. -->
+  <p><img src="extensao-instalada.png" alt="Tela de extensões do Edge mostrando LicitaPlena carregada e ligada" width="640" style="max-width:100%;height:auto;border:1px solid var(--border-default,#e3e8f0);border-radius:8px"></p>
+  <p class="info"><strong>Atualizar para uma versão nova:</strong> extraia o .zip novo por cima da mesma pasta e clique em <strong>Recarregar</strong> no cartão da extensão. <strong>Deu erro ao carregar?</strong> Confira se escolheu a pasta de dentro (a que tem <code>manifest.json</code>), não o arquivo .zip.</p>
+
+  <h2>Usar em um pregão anterior</h2>
+  <ol>
+    <li>No LicitaPlena, no cartão <strong>Licitação anterior</strong>, clique no botão para abrir a página do pregão no governo.</li>
+    <li>Resolva o captcha na página do governo. Você mesmo resolve; o LicitaPlena nunca faz isso por você.</li>
+    <li>Clique no ícone da extensão e em <strong>Ler esta página e gravar</strong>. O Chrome pede, uma vez, autorização para falar com o LicitaPlena: aceite.</li>
+    <li>Volte ao LicitaPlena (aberto e logado em outra aba) e clique <strong>Atualizar</strong>.</li>
+  </ol>
+
+  <p class="info">A extensão só lê o que a página já mostrou. Ela não clica, não navega, não envia propostas nem lances e não resolve captcha. Se algo não estiver aberto na tela, ela lista o que você precisa abrir.</p>
+  <h2>Preencher proposta</h2>
+  <p>Para não digitar item por item no cadastro de propostas do Compras.gov, a extensão preenche os campos por você a partir do seu lote no LicitaPlena ou de uma planilha CSV.</p>
+  <ol>
+    <li>Abra o Compras.gov, entre na página <strong>Cadastrar propostas</strong> da compra e aceite você mesmo o termo e as declarações Sim/Não.</li>
+    <li>Clique no ícone da extensão, em <strong>Preencher proposta</strong>, e use <strong>Buscar lote no LicitaPlena</strong> (com o LicitaPlena logado em outra aba) ou escolha a planilha CSV.</li>
+    <li>Clique em <strong>Preencher esta página</strong>. A extensão preenche quantidade, valor, marca e modelo dos itens visíveis.</li>
+    <li>Confira cada item e clique <strong>Salvar</strong> em cada um. Depois vá para a próxima página (o portal pede o captcha, que é seu) e repita o passo 3.</li>
+  </ol>
+  <p class="info">A extensão nunca clica em Salvar, nunca aceita termo ou declarações e nunca resolve captcha. Itens com valor abaixo do seu mínimo, acima do estimado do portal ou com texto maior que o limite do campo ficam em branco e aparecem na lista para você decidir. A extensão lembra o que já preencheu: se o portal cair, reabra a página e clique de novo.</p>
+
+  <h2>Acompanhar chat do pregão</h2>
+  <p>Avisa quando o pregoeiro escrever no pregão que você já tem aberto no Compras.gov.</p>
+  <ol>
+    <li>Abra o pregão no Compras.gov (sala do fornecedor logado ou "Acompanhar contratação") e deixe o chat visível.</li>
+    <li>Clique no ícone da extensão, em <strong>Acompanhar chat</strong>, informe o CNPJ da sua empresa (para destacar quando ela for citada) e clique <strong>Acompanhar este pregão</strong>.</li>
+    <li>Quando o pregoeiro escrever, aparece uma notificação com o trecho e a hora, e o ícone mostra um número. Mensagens que citam sua empresa, convocação, anexo, prazo, recusa, desclassificação, inabilitação, diligência, habilitação, suspensão ou aceite vêm destacadas. O som é opcional; as importantes também dão um bipe na própria aba do pregão (funciona mesmo com o som de notificação do Windows desligado, depois que você clicou na página).</li>
+  </ol>
+  <p class="info"><strong>Limites.</strong> Precisa da aba aberta e do computador ligado (sem a aba, nada é avisado). Se a página recarregar, a extensão volta a acompanhar sozinha. Se o portal deslogar, cair, a aba sair da página ou não der para voltar, ela avisa "parei de acompanhar". Ela só lê o que a própria página mostra: não faz requisições ao portal, não recarrega, não navega e não resolve captcha. Gravar as mensagens no LicitaPlena é opcional e só funciona na página pública "Acompanhar contratação". Ainda não foi testada na sala de disputa real.</p>
+
+  <h2>Quando a extensão não reconhece a página: enviar diagnóstico</h2>
+  <p>O portal do governo muda de vez em quando. Se a extensão disser que não reconhece a página (ou que não achou o chat, os itens ou os campos), aparece no fim da janela da extensão o botão <strong>Enviar diagnóstico</strong>.</p>
+  <ol>
+    <li>Deixe a página do portal aberta e carregada, do jeito que estava.</li>
+    <li>Deixe o LicitaPlena aberto e logado em outra aba.</li>
+    <li>Clique em <strong>Enviar diagnóstico</strong>. A equipe recebe só o "esqueleto" da página (nomes de campos, seções e botões) para ajustar a extensão.</li>
+  </ol>
+  <p class="info">O diagnóstico <strong>não leva</strong> o que você digitou, valores, CPF, nomes de pessoas, nem o texto do chat. Só funciona em páginas do Compras.gov e do ComprasNet, e o servidor do LicitaPlena apaga de novo qualquer coisa parecida com CPF antes de guardar.</p>
+
+  <h2>Roteiro do primeiro teste real (com a equipe)</h2>
+  <p>Faça num pregão em que você já vai participar. Reserve 30 minutos antes da sessão. A cada passo, se o resultado for diferente do esperado, clique <strong>Enviar diagnóstico</strong> (quando aparecer) e anote a hora.</p>
+  <ol>
+    <li><strong>Preparar:</strong> LicitaPlena aberto e logado numa aba; o processo do pregão cadastrado com os itens, valores, marca e modelo. Extensão fixada no navegador.</li>
+    <li><strong>Cadastro da proposta:</strong> no Compras.gov, abra <em>Cadastrar propostas</em> da compra e aceite <em>você mesmo</em> o termo e as declarações Sim/Não. Na extensão: <strong>Buscar lote no LicitaPlena</strong> → <strong>Preencher esta página</strong>.<br><em>Esperado:</em> os itens da página ficam com quantidade, valor, marca e modelo preenchidos; a extensão lista o que não preencheu e por quê. <strong>Confira cada item e clique Salvar você mesmo.</strong> Vá para a próxima página (o captcha é seu) e repita.</li>
+    <li><strong>Sessão de disputa:</strong> abra a sala do pregão com o chat visível. Na extensão, em <em>Acompanhar chat</em>, informe o CNPJ da empresa e clique <strong>Acompanhar este pregão</strong>. Aceite a permissão do portal que o navegador pedir.<br><em>Esperado:</em> "Acompanhando esta aba (N mensagens já na tela…)". Se aparecer <strong>0 mensagens</strong> com o chat cheio, envie o diagnóstico: é a primeira vez que a extensão vê a sala de disputa de verdade.</li>
+    <li><strong>Quando o pregoeiro escrever:</strong> <em>esperado</em> notificação com trecho e hora e um número no ícone; convocação, anexo, diligência, suspensão, aceite, recusa, habilitação ou o CNPJ da empresa vêm como <strong>IMPORTANTE</strong> e ficam na tela até você clicar.</li>
+    <li><strong>Se o portal pedir para recarregar:</strong> recarregue normalmente. <em>Esperado:</em> o ícone mostra "…" e volta para "ON" sozinho. Se o chat fechou com a recarga, vem o aviso "não vejo o chat": abra o chat de novo.</li>
+    <li><strong>Depois da sessão:</strong> na página pública "Acompanhar contratação" do pregão, abra os itens e fornecedores e clique <strong>Ler esta página e gravar</strong>. <em>Esperado:</em> "Gravado no LicitaPlena (N propostas…)".</li>
+  </ol>
+  <p class="aviso">Em nenhum passo a extensão clica em Salvar, aceita termo ou declarações, resolve captcha, envia lance ou troca de página sozinha.</p>
+
+  <p><a href="index.html">Voltar ao LicitaPlena</a></p>
+</main>
+</body>
+</html>

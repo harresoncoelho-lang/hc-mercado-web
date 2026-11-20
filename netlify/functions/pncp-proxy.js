@@ -8,6 +8,7 @@
 // Uso: GET /.netlify/functions/pncp-proxy?url=<URL completa e codificada do endpoint do PNCP>
 // Por segurança (pra não virar um proxy aberto pra qualquer domínio), só aceita URLs https
 // cujo host seja pncp.gov.br.
+const { cabecalhosPadrao, limitarPorIp } = require("./_auth");
 const HOST_PERMITIDO = "pncp.gov.br";
 
 // O endpoint api/search/ do PNCP reseta a conexão na hora (sem timeout, sem erro HTTP) quando
@@ -18,7 +19,10 @@ const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 exports.handler = async (event) => {
-  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
+  // Proxy público: CORS só do nosso domínio e teto diário por IP (teste de ataque 19/11, M5).
+  const headers = cabecalhosPadrao(event);
+  const limite = await limitarPorIp(event, "pncp-proxy");
+  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
   const alvo = (event.queryStringParameters && event.queryStringParameters.url) || "";
 
   let destino;

@@ -1,0 +1,59 @@
+{
+  "data": "2026-10-30",
+  "metodo": "Interface nativa do Google AI Studio no navegador interno, sem API",
+  "consentimento": "Usuário respondeu: Sim, aceitar para os testes fictícios. Aviso de copyright e uso dos anexos aceito antes da primeira execução.",
+  "conta": "Conta pessoal do usuário, indicador PRO observado",
+  "modelo_observado": "gemini-3.8-flash",
+  "thinking_level": "Medium",
+  "api_key_selecionada": false,
+  "billing_habilitado_pelo_agente": false,
+  "grounding_search": false,
+  "grounding_maps": false,
+  "url_context": false,
+  "code_execution": false,
+  "function_calling": false,
+  "structured_outputs": false,
+  "prompt": "../prompt-avaliacao.txt",
+  "gabarito_enviado": false,
+  "sessoes_independentes": true,
+  "testes": [
+    {
+      "id": "T1",
+      "anexos": ["alfa-identificacao-texto.pdf"],
+      "inicio_utc": "2026-10-30T23:05:13.166Z",
+      "conclusao_observada_ate_utc": "2026-10-30T23:05:43.016Z",
+      "duracao_exibida_segundos": 20.9,
+      "url": "https://aistudio.google.com/prompts/1JNgo0VZ_orjNss35uw1xlwbak1yhKQyd",
+      "resposta": "t1-textual-resposta-original.json",
+      "captura": "innerText do bloco de código exibido"
+    },
+    {
+      "id": "T2",
+      "anexos": ["alfa-identificacao-escaneado.pdf"],
+      "inicio_utc": "2026-10-30T23:07:20.942Z",
+      "conclusao_observada_ate_utc": "2026-10-30T23:07:53.945Z",
+      "duracao_exibida_segundos": null,
+      "url": "https://aistudio.google.com/prompts/1Kr18zTtKQqYqQEGzxcT7UD8iwdWqU8bj",
+      "resposta": "t2-escaneado-resposta-original.json",
+      "captura": "innerText do bloco de código exibido"
+    },
+    {
+      "id": "T3",
+      "anexos": ["alfa-identificacao-texto.pdf", "beta-proposta-cnpj-divergente.pdf"],
+      "inicio_utc": "2026-10-30T23:08:55.250Z",
+      "conclusao_observada_ate_utc": "2026-10-30T23:11:52.728Z",
+      "duracao_exibida_segundos": null,
+      "url": "https://aistudio.google.com/prompts/1nmebYfTl9BpjfKs-DdZoLNRXsXCQVCHh",
+      "resposta": "t3-cnpj-divergente-resposta-original.json",
+      "captura": "value do editor visível da resposta, aberto somente para leitura; encerrado sem digitação/alteração"
+    }
+  ],
+  "limites_temporais": "Horários finais são limites superiores observados na captura, incluem a interação de conferência e não são benchmark de latência. Apenas T1 teve duração do serviço exibida e registrada.",
+  "incidentes_de_ferramenta": [
+    "Vínculo da aba estava indisponível após mudança de turno; reset documentado do cua_repl recuperou a mesma aba e sessão, sem mudar autenticação.",
+    "Download code não gerou evento de download e Copy code retornou clipboard vazio; respostas foram capturadas por conteúdo visível da UI.",
+    "O renderizador de T3 interpretou R$ em trechos como fórmulas. O editor mostrou JSON monetário correto, preservado no arquivo.",
+    "Erro de transcrição local de fechamento em T1 propagado para T2 foi identificado e corrigido contra a UI, com cópias incorretas preservadas e fingerprints conferidos; não foi erro do modelo."
+  ],
+  "sem_acoes": ["publicação", "produção", "SMTP", "PNCP", "resumo", "e-mail", "robô de boletins", "autenticação do produto", "modelos do produto", "CNPJ Proprio"]
+}

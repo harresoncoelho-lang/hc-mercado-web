@@ -1,0 +1,19 @@
+{
+  "gateSomenteCatalogos": true,
+  "comandosDeEscritaEncontrados": [],
+  "harnessOriginalPreservadoAntesDoRetorno": true,
+  "fontesCatalogo": [
+    "pg_catalog.pg_class",
+    "pg_catalog.pg_namespace",
+    "pg_catalog.pg_roles",
+    "pg_catalog.pg_policy",
+    "pg_catalog.aclexplode",
+    "pg_catalog.pg_attribute",
+    "pg_catalog.pg_proc",
+    "pg_catalog.pg_language",
+    "pg_catalog.pg_trigger"
+  ],
+  "sha256Gate": "c0c994a0c4407fc4547bc89f0600bf6ef5a261e0c8f2961755c4f88d0bd065cc",
+  "sha256MigracaoAtual": "7feb6b0aab74d51fdeb009c8169d5630debdf5e15c329cd8448b6b8a10f56c8a",
+  "limite": "Revisão estática auxiliar, somada à execução BEGIN READ ONLY; não certifica corpos das funções nem o stack Supabase."
+}

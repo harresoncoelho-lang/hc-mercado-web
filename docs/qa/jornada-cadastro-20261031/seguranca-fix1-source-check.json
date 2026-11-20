@@ -1,0 +1,20 @@
+{
+  "gateSomenteLeitura": true,
+  "comandosDeEscritaOuConfiguracaoEncontrados": [],
+  "harnessOriginalPreservadoAntesDoRetorno": true,
+  "fontesCatalogo": [
+    "pg_catalog.pg_class",
+    "pg_catalog.pg_namespace",
+    "pg_catalog.pg_roles",
+    "pg_catalog.pg_policy",
+    "pg_catalog.aclexplode",
+    "pg_catalog.pg_attribute",
+    "pg_catalog.pg_proc",
+    "pg_catalog.pg_language",
+    "pg_catalog.pg_trigger"
+  ],
+  "sha256Gate": "2c4023cb0cac4e9b5fa29afee68398a0b4e402663dee9cd9fa580e7ea19178cf",
+  "sha256Harness": "fbfa6200dd3ca424be98616062c49481d0b105dfaa61b070ce3ac5291da760ff",
+  "sha256MigracaoAtual": "7feb6b0aab74d51fdeb009c8169d5630debdf5e15c329cd8448b6b8a10f56c8a",
+  "limite": "Inspeção estática auxiliar, somada ao BEGIN READ ONLY; corpos das funções e stack Supabase continuam fora da prova."
+}

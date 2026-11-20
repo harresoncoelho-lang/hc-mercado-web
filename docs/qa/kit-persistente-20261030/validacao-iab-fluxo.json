@@ -1,0 +1,30 @@
+{
+  "fixture": true,
+  "produção": false,
+  "checks": [
+    {
+      "caso": "Aurora: prévia integral e confirmação atual",
+      "passou": true
+    },
+    {
+      "caso": "Horizonte não herda documento ou aprovação da Aurora",
+      "passou": true
+    },
+    {
+      "caso": "Horizonte: proposta revisada habilita DOCX",
+      "passou": true
+    },
+    {
+      "caso": "Editar condição invalida revisão e download",
+      "passou": true
+    },
+    {
+      "caso": "A→B→A e abrir peça exige nova revisão",
+      "passou": true
+    },
+    {
+      "caso": "Horizonte reabre versão 2 com pagamento 45 dias e total R$25,00",
+      "passou": true
+    }
+  ]
+}

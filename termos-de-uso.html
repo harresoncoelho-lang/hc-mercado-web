@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,17 +8,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds-tokens.css">
+<!-- Tema: mesma chave do painel (licitaplena_tema); claro é o padrão. -->
+<script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
 <style>
   :root {
-    --azul: #2e8dff; --laranja: #f2891a;
-    --fundo: #0a121c; --cartao: #141f2e; --borda: #223144;
-    --texto: #eef3f8; --texto-fraco: #90a2b8;
+    /* Design System (ds-tokens.css): as variáveis legadas apontam para os tokens, como nas páginas já migradas. */
+    --azul: var(--action-text); --laranja: var(--attention-text);
+    --fundo: var(--surface-page); --cartao: var(--surface-default); --borda: var(--border-default);
+    --texto: var(--text-primary); --texto-fraco: var(--text-secondary);
   }
   * { box-sizing: border-box; }
   body {
     font-family: "Inter", Arial, Helvetica, sans-serif;
-    background: radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%), var(--fundo);
-    background-attachment: fixed;
+    background: var(--fundo);
     color: var(--texto);
     margin: 0;
   }
@@ -26,7 +29,8 @@
     display: flex; align-items: center; gap: 12px; padding: 18px 24px;
     border-bottom: 1px solid var(--borda); max-width: 760px; margin: 0 auto;
   }
-  header img { width: 32px; height: 32px; }
+  .placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+  .placa img { width: 24px; height: 24px; display: block; }
   header span { font-weight: 700; font-size: 16px; }
   header a.voltar { margin-left: auto; color: var(--texto-fraco); font-size: 13px; text-decoration: none; }
   header a.voltar:hover { color: var(--azul); }
@@ -36,13 +40,13 @@
   h1 { font-size: 26px; margin: 0 0 6px; }
   p.atualizado { color: var(--texto-fraco); font-size: 13px; margin: 0 0 32px; }
   h2 { font-size: 17px; color: var(--azul); margin: 32px 0 10px; }
-  p, li { font-size: 14.5px; line-height: 1.7; color: #d7e0ec; }
+  p, li { font-size: 14.5px; line-height: 1.7; color: var(--texto); }
   ul { padding-left: 20px; }
   a { color: var(--azul); }
   .caixa-aviso {
-    background: rgba(242,137,26,0.08); border: 1px solid rgba(242,137,26,0.35);
+    background: var(--attention-bg); border: 1px solid var(--attention-border);
     border-radius: 10px; padding: 14px 16px; font-size: 13.5px; margin: 18px 0;
-    color: #f4c98d;
+    color: var(--attention-text);
   }
   footer {
     max-width: 760px; margin: 0 auto; padding: 20px 24px 40px;
@@ -64,7 +68,7 @@
 </head>
 <body>
   <header>
-    <img src="logo-icone-branco.svg" alt="LicitaPlena">
+    <span class="placa"><img src="logo-icone.svg" alt="LicitaPlena"></span>
     <span>LicitaPlena</span>
     <a class="voltar" href="index.html">&larr; Voltar ao site</a>
   </header>

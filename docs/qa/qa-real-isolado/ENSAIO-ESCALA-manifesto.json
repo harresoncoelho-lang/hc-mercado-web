@@ -1,0 +1,22 @@
+{
+  "destino": "luguscapasskcsficckf",
+  "executado": false,
+  "sha256": "b1282db185ba6fa20b2c8ce3e40e8d6e0b31b031757d382e1527ac3fe0413f1f",
+  "fontes": [
+    {
+      "arquivo": "supabase/kit_documentos_escala_proposta.sql",
+      "sha256": "f5a8da7bcfaca55e9a331b7c6b051ae778394467e12aa049af899399bba43d0a",
+      "normalizacao": "LF"
+    },
+    {
+      "arquivo": "supabase/testar_kit_escala_bytes.sql",
+      "sha256": "a3d217e47df516d3f5bb1b6687084f6a8974f0c56fb7a24d8cfa125a3b298d80",
+      "normalizacao": "LF"
+    },
+    {
+      "arquivo": "supabase/testar_kit_escala_rpc.sql",
+      "sha256": "0b6c7804d5bf1d07e0e4e95b4aad80dfa728cba1dfea2a4d808b741d9b28db1b",
+      "normalizacao": "LF"
+    }
+  ]
+}

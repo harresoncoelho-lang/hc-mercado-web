@@ -10,7 +10,7 @@ Roteamento HTTP + auth/CORS/quota para chamadas vindas do front-end (`painel.htm
 
 - Toda function exporta `exports.handler = async (event) => { ... }`; primeira linha é sempre `cabecalhosPadrao(event)` ou um header CORS manual equivalente.
 - Endpoint que custa dinheiro ou toca dado sensível: importa `{ cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("./_auth")` e chama ambos antes de qualquer trabalho real (ver `ia-edital.js:322-330`) — nunca pula a ordem `exigirUsuarioLogado` → `verificarLimiteDiario`.
-- Proxy público (`pncp-itens.js`, `pncp-arquivos.js`, `pncp-baixar.js`): sem import de `_auth`, `Access-Control-Allow-Origin: "*"` fixo, sem checagem de sessão — existe só para contornar CORS do PNCP.
+- Proxy público (`pncp-*.js`, `comprasgov-*.js`): sem checagem de sessão (o painel chama sem token), mas com `cabecalhosPadrao(event)` (CORS só do nosso domínio) e `limitarPorIp()` de `_auth.js` (teto diário por IP; teste de ataque 19/11, M5).
 - Toda chamada `fetch` ao domínio `pncp.gov.br` manda `User-Agent` de navegador (`USER_AGENT_NAVEGADOR`) — sem isso alguns endpoints do PNCP resetam a conexão (ver comentário em `pncp-proxy.js`).
 - Erros de negócio retornam `{ statusCode, headers, body: JSON.stringify({ erro: "..." }) }` — nunca lançam exceção não tratada para fora do handler.
 - Requisições externas usam `AbortController` + `setTimeout` explícito (8–15s) — nunca um `fetch` sem timeout.

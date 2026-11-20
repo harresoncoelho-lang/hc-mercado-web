@@ -75,3 +75,9 @@ test("handler que lança exceção vira 500 JSON sem vazar detalhes", async () =
   assert.ok(!texto.includes("segredo interno"));
   assert.ok(JSON.parse(texto).erro);
 });
+
+test("B3 (19/11): respostas de /api levam nosniff, sem sobrescrever o do handler", async () => {
+  const { resultadoParaResponse } = require("../_adaptador_cloudflare");
+  assert.equal(resultadoParaResponse({ statusCode: 200, body: "{}" }).headers.get("x-content-type-options"), "nosniff");
+  assert.equal(resultadoParaResponse({ statusCode: 204 }).headers.get("x-content-type-options"), "nosniff");
+});

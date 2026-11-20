@@ -1,0 +1,12 @@
+{
+  "repository": "harresoncoelho-lang/licitaplena-homologacao",
+  "head": "ad0d07dffe1c56dfc4ad49e9d3c0052cd6cd1722",
+  "runId": 41338100692,
+  "createdAt": "2026-11-01T18:43:54Z",
+  "url": "https://github.com/harresoncoelho-lang/licitaplena-homologacao/actions/runs/41338100692",
+  "workflow": "inventario.yml",
+  "timeoutMinutes": 5,
+  "production": false,
+  "dispatchRepeated": false,
+  "note": "Registro local corrigido após dispatch bem-sucedido; nenhum segundo job iniciado."
+}

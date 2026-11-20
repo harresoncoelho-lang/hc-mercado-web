@@ -1,0 +1,96 @@
+{
+  "verificadoEmUtc": "2026-10-30T22:49:45.4402540+00:00",
+  "arquivos": [
+    {
+      "arquivo": "scripts/kit_documentos_ui.test.js",
+      "sha256": "1F3362D2A2DF3E5CF9CE9FD37F984CD548ABCB3F1819760F3D47878DB91DAB49",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "docs/qa/verificar-kit-documentos.cjs",
+      "sha256": "8CA6DB4931B1C58ED4C609DBACB50E8ACBD9497BAE44BD98222468168C280115",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "docs/qa/verificar-kit-processos.cjs",
+      "sha256": "FCA93F3C517668400204866D27FD59B0DEBABD3371813E422708DDBD8BAE7F58",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "docs/qa/servir-kit-documentos-local.cjs",
+      "sha256": "B1BCF861092E90258A03FA2518DB1949F32E3F24DB4696026179EA7B8676AB9E",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "kit-documentos-ui.js",
+      "sha256": "3F8EFE857B6308F3E2BA6AAE43DA0B6DCB9D905DE66E63320FFF020461FA912B",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "kit-documentos.css",
+      "sha256": "B771E5351BFBC773263F672EAA506C112DAD81C8C189E516E7C73FE37B93ACEE",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "processos.html",
+      "sha256": "23F6683691761762418C8C72502C54B6FF73C06AEA1B390D375362BF5F793657",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "netlify/functions/kit-documentos.js",
+      "sha256": "559AADB8884837D4BCDD0FE3B416D547E07FEFB4FF91B033875C9F85E92097E4",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "netlify/functions/_kit_documentos.js",
+      "sha256": "6EF11FD484ADF708D258D825606250959DEC71C639784B1DDD9016CE1E57A725",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "netlify/functions/_auth.js",
+      "sha256": "7F8756C5FE1D6C6177ACDC77D398F05E9C1697C4620A98BD0575ADB003D47A93",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "netlify/functions/_empresa_identificacao_contexto.js",
+      "sha256": "FC3ACD02D3D34EDE4E3967383B8892309C8C40AAEBDE5E973D73D6240C3FF295",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "netlify/functions/_empresa_identificacao.js",
+      "sha256": "E81D9F2A2366EAF2807EE2E08D3533085BD7C2DC732A044D36ABB7659F564E90",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "netlify/functions/gerar-checklist.js",
+      "sha256": "302CD974EA8A04CDFD03E391E4F4087B50A9C9ED1CCB2B14C49A2B7D6B151C42",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "resumo-modelo.js",
+      "sha256": "953E30C32A3CF993BE07EE77EB44AD0305B4FEAE63A97080436D26ECD549375F",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "docs/qa/kit-exemplo-ficticio.docx",
+      "sha256": "50258306A876B0BE1F2A2D706E47322C3C0793766BC9C7A79BCFCA15FA473070",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "docs/qa/kit-escuro.png",
+      "sha256": "BE4F36423829B683F64B32A1ECA85BF9DECDB4EE10CD006B325071EE2F056B26",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "docs/qa/kit-claro.png",
+      "sha256": "6EE17DE9AAA90EB169BDE44FC83D65A16D1BD49960B87A0EB8D3BBD7C4FB5DD5",
+      "igualBaseline": true
+    },
+    {
+      "arquivo": "docs/qa/kit-mobile.png",
+      "sha256": "BF5F0C4D3E858992CB4E1FDD69D575D53A08522B237B53B47EDEE359EAA7D733",
+      "igualBaseline": true
+    }
+  ],
+  "divergencias": 0
+}

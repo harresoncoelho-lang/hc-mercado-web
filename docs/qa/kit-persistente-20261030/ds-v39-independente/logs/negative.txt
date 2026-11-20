@@ -1,0 +1,43 @@
+PASS D1 lista inicial vazia com mensagem clara
+PASS D1 peça nova: estado "Ainda não salvo"
+PASS D1 salvar cria peça com título, tipo e versão 1
+PASS D1 após salvar: "Salvo · versão 1" sem alterações pendentes
+PASS D1 mensagem de sucesso visível
+PASS D1 abrir devolve foco ao título da peça aberta
+PASS D1 abrir exige nova prévia antes de baixar (mensagem)
+PASS D1 após abrir: aprovação e download bloqueados até nova prévia
+PASS D2 duas declarações salvas aparecem como peças distintas
+PASS D3 editar preço depois de salvar mostra "Alterações não salvas"
+PASS D3 a peça salva indica que os dados mudaram
+PASS D4 peça incompleta salva com estado Incompleto e aviso
+PASS D5 falha: nada salvo e sem mensagem de sucesso (controle negativo)
+PASS D5 falha exibida como alerta com texto claro e foco no aviso
+PASS D5 a peça continua em edição, sem estado salvo
+PASS D5 nova tentativa após falha salva normalmente
+PASS D6 conflito exibido com texto claro
+PASS D6 conflito não reporta falso sucesso (controle negativo)
+PASS D6 texto local (preço 220) preservado após conflito
+PASS D6 carregar versão atual por ação explícita limpa o conflito
+PASS D6 versão atual restaurada: preço 200 da peça salva
+PASS D7 base: declaração revisada
+PASS D7 confirmar declaração não revisa a proposta
+PASS D7 editar dado invalida a revisão imediatamente
+PASS D8 cancelar e reabrir a mesma peça: confirmação disponível
+PASS D9 empresa B não mostra peças da empresa A (controle negativo de mistura)
+PASS D9 A→B→A: peça salva de A continua listada
+PASS D9 A→B→A não restaura revisão do pacote
+PASS D10 resposta tardia de outra empresa descartada: nada gravado (controle negativo)
+PASS D11 sair da sessão durante a gravação: nada gravado (controle negativo)
+PASS D12 leitor: salvar desabilitado
+PASS D12 ação forjada do leitor não grava e mostra o motivo (controle negativo)
+PASS D13 Enter em Salvar: foco na mensagem de resultado
+PASS D13 Enter em Abrir: foco no título da peça aberta
+PASS D14 375px claro sem rolagem horizontal (0)
+PASS D14 375px escuro sem rolagem horizontal (0)
+PASS D14 704px claro sem rolagem horizontal (0)
+PASS D14 704px escuro sem rolagem horizontal (0)
+PASS D14 1280px claro sem rolagem horizontal (0)
+PASS D14 1280px escuro sem rolagem horizontal (0)
+PASS D15 lista de peças sem custos internos
+SUMMARY pass=41 fail=0
+FAIL NEG controle deliberado

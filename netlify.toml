@@ -14,12 +14,11 @@
 # object-src, base-uri e frame-ancestors já ficam restritos ao necessário, o que já bloqueia a
 # maioria dos ataques comuns (clickjacking, injeção de recurso externo, MIME sniffing).
 #
-# https://*.hcaptcha.com liberado em script-src/style-src/connect-src/frame-src pro widget
-# anti-robô do cadastro (cadastro.html) — o hCaptcha carrega script adicional, CSS inline via
-# iframe e chama a própria API pra validar o desafio. Recomendação oficial deles em
-# https://docs.hcaptcha.com/. Como o header aqui é pra "/*" (não dá pra restringir só a uma
-# página no Netlify sem duplicar toda a regra), esses domínios ficam liberados no site inteiro,
-# não só no cadastro.
+# https://challenges.cloudflare.com liberado em script-src/frame-src pro captcha Cloudflare
+# Turnstile das telas de acesso (login, cadastro, convite, admin) — o script carrega o desafio
+# num iframe desse domínio (recomendação oficial: developers.cloudflare.com/turnstile).
+# Como o header aqui é pra "/*" (não dá pra restringir só a uma página no Netlify sem
+# duplicar toda a regra), o domínio fica liberado no site inteiro.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -29,7 +28,7 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br https://*.hcaptcha.com; frame-src 'self' about: https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br; frame-src 'self' about: https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 # Os arquivos de dados do robô (data/*.json) podem ser cacheados por alguns minutos com
 # revalidação — antes o site inteiro (inclusive esses arquivos de até 20+ MB) usava
@@ -52,6 +51,18 @@
   for = "/.netlify/functions/convenios-publico"
   [headers.values]
     Cache-Control = "public, max-age=300, stale-while-revalidate=3600"
+
+# Portal do cliente (cliente.html, aberto por /cliente#t=<token>): mesma regra do bloco /cliente* do _headers.
+# Página sem script/estilo inline, por isso a CSP é própria e bem mais estreita que a de "/*". O netlify.toml não
+# tem o "!" do _headers: se o Netlify somar estes valores aos de "/*" em vez de trocar, continua seguro (duas CSPs
+# valem as duas, "no-store" e "no-referrer" prevalecem sobre os valores mais frouxos).
+[[headers]]
+  for = "/cliente*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    Referrer-Policy = "no-referrer"
+    Cache-Control = "no-store"
+    X-Robots-Tag = "noindex"
 
 # O front-end chama /api/* (Cloudflare Pages); aqui o Netlify encaminha para as mesmas funções.
 [[redirects]]

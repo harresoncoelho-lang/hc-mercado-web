@@ -1,0 +1,58 @@
+{
+  "verificadoEm": "2026-10-28T03:15:20.662Z",
+  "somenteLocal": true,
+  "origem": "C:/Users/harre/AppData/Local/LicitaPlena/recuperacao-contratos-atas-20261028",
+  "manifestoSha256": "c3bcaf5a04744ad4f5d23862fba9597e3a2d6183f0c680c2616b61ead0641323",
+  "janelaContratos": [
+    "20261024",
+    "20261027"
+  ],
+  "contratos": 15348,
+  "paginasContratos": 31,
+  "atasSelecionadas": 5,
+  "compras": 4,
+  "itens": 59,
+  "itensSemResultado": 42,
+  "linhasResultado": 19,
+  "arquivosConferidos": 107,
+  "bytesConferidos": 26588535,
+  "chamadasColeta": 110,
+  "atasHistoricasPendentes": 459,
+  "atasFonte": [
+    {
+      "id": "76966860000146-1-000151/2024-000001",
+      "compra": "76966860000146-1-000151/2024",
+      "vigenciaFim": "2026-11-15",
+      "cancelado": false
+    },
+    {
+      "id": "76966860000146-1-000151/2024-000002",
+      "compra": "76966860000146-1-000151/2024",
+      "vigenciaFim": "2026-11-15",
+      "cancelado": false
+    },
+    {
+      "id": "25043571000134-1-000049/2024-000001",
+      "compra": "25043571000134-1-000049/2024",
+      "vigenciaFim": "2027-10-22",
+      "cancelado": false
+    },
+    {
+      "id": "22835076000170-1-000023/2024-000001",
+      "compra": "22835076000170-1-000023/2024",
+      "vigenciaFim": "2027-07-27",
+      "cancelado": false
+    },
+    {
+      "id": "04104816000116-1-000183/2024-000001",
+      "compra": "04104816000116-1-000183/2024",
+      "vigenciaFim": "2027-10-22",
+      "cancelado": false
+    }
+  ],
+  "semChamadasExternasNaConferencia": true,
+  "itensSemResultadoPorSituacao": {
+    "Fracassado": 1,
+    "Em andamento": 41
+  }
+}

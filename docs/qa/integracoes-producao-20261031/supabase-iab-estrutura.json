@@ -1,0 +1,46 @@
+{
+  "dataObservacao": "2026-10-31",
+  "origem": "Interface administrativa do Supabase no navegador interno; sessão existente; leitura pela coordenação",
+  "projeto": "LICITAPLENA",
+  "referencia": "lsqjamqvmrcyrvowndiu",
+  "correspondeAoCodigo": true,
+  "branch": "main / PRODUCTION",
+  "statusExibido": "Healthy",
+  "planoOrganizacaoExibido": "PRO",
+  "ultimaMigrationExibida": "fila_dossies",
+  "ultimoBackupExibido": "a day ago",
+  "restauracaoValidada": false,
+  "catalogoPublic": {
+    "baseOperacionalObservada": ["operacao_empresas", "operacao_documentos", "operacao_processos", "operacao_itens_resultado", "operacao_membros", "operacao_convites_empresa", "operacao_limites_cnpj"],
+    "buscasSemResultadosEmTables": ["operacao_kit", "operacao_identificacao"],
+    "tabelasEsperadasNaoEncontradas": ["operacao_kit_documentos", "operacao_identificacao_empresa"],
+    "buscasSemResultadosEmFunctions": ["identificacao", "gravar_kit_documento"],
+    "funcoesBaseObservadasSemValidacaoDeCorpoOuACL": ["acesso_arquivo_operacao", "aceitar_convite_empresa_operacao", "criar_convite_empresa_operacao", "eh_membro_operacao", "eh_owner_admin_operacao", "configurar_limite_cnpjs_cliente", "consultar_limite_cnpjs_cliente"]
+  },
+  "storage": {
+    "bucket": "operacao-documentos",
+    "publicBucketSwitch": false,
+    "limiteExibido": "Unset (50 MB)",
+    "tiposExibidos": "Any",
+    "politicasListadas": [
+      {"nome": "operacao_arquivos_atualizacao", "comando": "UPDATE", "papelExibido": "public"},
+      {"nome": "operacao_arquivos_envio", "comando": "INSERT", "papelExibido": "public"},
+      {"nome": "operacao_arquivos_exclusao", "comando": "DELETE", "papelExibido": "public"},
+      {"nome": "operacao_arquivos_leitura", "comando": "SELECT", "papelExibido": "public"}
+    ],
+    "updateUsingECheckExibidos": "((bucket_id = 'operacao-documentos'::text) AND acesso_arquivo_operacao(name))",
+    "insertCheckExibido": "((bucket_id = 'operacao-documentos'::text) AND acesso_arquivo_operacao(name))",
+    "outrasPoliciesStorageObjectsExibidas": "No policies created yet",
+    "policiesStorageBucketsExibidas": "No policies created yet",
+    "observacao": "Papel public não significa acesso público aos arquivos; a condição e os helpers precisam ser avaliados. O bucket está privado. Nenhuma pasta ou arquivo foi aberto; a navegação de detalhes exibiu somente a raiz do bucket."
+  },
+  "naoValidado": [
+    "corpos e ACLs completos dos helpers",
+    "colunas, tipos, constraints, triggers e grants de todas as dependências",
+    "correspondência e validade do secret de serviço da hospedagem",
+    "gates de catálogo e fluxo autenticado em produção",
+    "backup dos bytes do Storage e ensaio de restauração",
+    "isolamento entre produção e preview"
+  ],
+  "restricoesPreservadas": ["nenhum SQL executado", "nenhuma migração aplicada", "nenhuma configuração salva", "nenhum secret revelado", "nenhum registro de cliente consultado", "nenhum upload ou download de arquivo", "nenhuma publicação"]
+}

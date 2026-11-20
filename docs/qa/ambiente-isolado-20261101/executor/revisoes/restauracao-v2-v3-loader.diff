@@ -1,0 +1,266 @@
+--- v2/restauracao/restore.py
++++ v3/restauracao/restore.py
+@@ -18,6 +18,15 @@
+ START = """initdb -D /qa/data -U supabase_admin --auth-local=trust --auth-host=reject --locale-provider=icu --icu-locale=en_US.UTF-8 --encoding=UTF8 --no-instructions > /qa/initdb.log 2>&1 || { cat /qa/initdb.log >&2; exit 1; }
+ exec postgres -D /qa/data -c listen_addresses='' -c unix_socket_directories=/qa -c shared_preload_libraries='' -c logging_collector=off"""
+ NEW_FILES = {".github/workflows/restauracao.yml", "restauracao/restore.py", "restauracao/test_restore.py", "restauracao/README.md", "restauracao/baseline.json"}
++LIBRARY_PATH_PROBE = """pglib="$(pg_config --pkglibdir)"
++printf 'pg_config_pkglibdir=%s\\n' "$pglib"
++for directory in "$pglib" /nix/var/nix/profiles/default/lib; do
++  for library in supautils safeupdate; do
++    file="$directory/$library.so"
++    if test -r "$file"; then readable=true; else readable=false; fi
++    printf 'library=%s path=%s readable=%s\\n' "$library" "$file" "$readable"
++  done
++done"""
+ 
+ 
+ def digest(path):
+@@ -163,6 +172,18 @@
+     return results
+ 
+ 
++def load_library(container, library, command):
++    if library not in ("supautils", "safeupdate"):
++        raise ValueError("library_allowlist")
++    marker = library + "_loaded"
++    args = ["docker", "exec", "-i", container, "psql", "-X", "-q", "-A", "-t", "-v", "ON_ERROR_STOP=1",
++            "-h", "/qa", "-U", "supabase_admin", "-d", "postgres"]
++    result = command(args, data=f"LOAD {literal(library)}; SELECT {literal(marker)};",
++                     filename=f"library-{library}.txt", check=False)
++    return {"exit_code": result.returncode,
++            "loaded": result.returncode == 0 and result.stdout.decode().strip() == marker}
++
++
+ GLOBALS_SQL = """SELECT json_build_object(
+ 'roles',(SELECT json_agg(to_jsonb(r)-'oid'-'rolpassword') FROM pg_roles r),
+ 'memberships',(SELECT json_agg(json_build_object('role',pg_get_userbyid(m.roleid),'member',pg_get_userbyid(m.member),'grantor',pg_get_userbyid(m.grantor),'admin',m.admin_option,'inherit',m.inherit_option,'set',m.set_option)) FROM pg_auth_members m),
+@@ -206,8 +227,8 @@
+         report["files"] = {p.name: {"sha256": digest(p), "bytes": p.stat().st_size} for p in output.iterdir() if p.name != "report.json"}
+         (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+ 
+-    def command(args, data=None, filename=None, check=True, timeout=120):
+-        return run_captured(args, output, data, filename, check, timeout, failure_filename=f"failure-{report['phase']}.txt")
++    def command(args, data=None, filename=None, check=True, timeout=120, limit=None):
++        return run_captured(args, output, data, filename, check, timeout, limit, failure_filename=f"failure-{report['phase']}.txt")
+ 
+     def sql(query, db=DB, user="supabase_admin"):
+         nonlocal sql_counter
+@@ -248,7 +269,20 @@
+         report["server_version"] = version
+         if not re.match(r"^17\.11(?:\s|$)", version):
+             raise ValueError("server_version")
+-        command(["docker", "exec", container, "/bin/bash", "-ceu", 'test -r "$(pg_config --pkglibdir)/supautils.so"; test -r "$(pg_config --pkglibdir)/safeupdate.so"'])
++        report["phase"] = "library_paths"
++        save()
++        command(["docker", "exec", container, "/bin/bash", "-ceu", LIBRARY_PATH_PROBE], filename="library-paths.txt", limit=4096)
++        report["library_preflight"] = {}
++        for library in ("supautils", "safeupdate"):
++            report["phase"] = "load_" + library
++            save()
++            proof = load_library(container, library, command)
++            report["library_preflight"][library] = proof
++            save()
++            if not proof["loaded"]:
++                raise ValueError("library_load")
++        report["phase"] = "preflight_pg_trgm"
++        save()
+         if sql("SELECT count(*) FROM pg_available_extensions WHERE name='pg_trgm';", "postgres") != "1":
+             raise ValueError("pg_trgm_missing")
+         source_schema = command(["docker", "exec", container, "pg_restore", "--schema-only", "--file=-", "/input/ficticio.dump"], filename="source-schema.sql").stdout.decode()
+--- v2/restauracao/test_restore.py
++++ v3/restauracao/test_restore.py
+@@ -5,7 +5,7 @@
+ import tempfile
+ from types import SimpleNamespace
+ import unittest
+-from unittest.mock import patch
++from unittest.mock import Mock, patch
+ 
+ import restore as r
+ 
+@@ -105,6 +105,31 @@
+             self.assertEqual((output / "diagnostic-docker.txt").read_bytes(), b"available log")
+             self.assertEqual((output / "diagnostic-initdb.txt").read_bytes(), b"initialization detail")
+ 
++    def test_library_loader_requires_exit_zero_and_exact_marker(self):
++        for library in ("supautils", "safeupdate"):
++            with self.subTest(library=library):
++                command = Mock(return_value=SimpleNamespace(returncode=0, stdout=(library + "_loaded\n").encode()))
++                self.assertEqual(r.load_library("a" * 64, library, command), {"exit_code": 0, "loaded": True})
++                call = command.call_args
++                self.assertIn("ON_ERROR_STOP=1", call.args[0])
++                self.assertEqual(call.args[0][-2:], ["-d", "postgres"])
++                self.assertEqual(call.kwargs["data"], f"LOAD '{library}'; SELECT '{library}_loaded';")
++                self.assertEqual(call.kwargs["filename"], f"library-{library}.txt")
++                self.assertFalse(call.kwargs["check"])
++                command.return_value = SimpleNamespace(returncode=1, stdout=(library + "_loaded\n").encode())
++                self.assertFalse(r.load_library("a" * 64, library, command)["loaded"])
++                command.return_value = SimpleNamespace(returncode=0, stdout=b"unexpected")
++                self.assertFalse(r.load_library("a" * 64, library, command)["loaded"])
++
++    def test_library_probe_is_bounded_and_unknown_library_is_rejected(self):
++        self.assertIn('for library in supautils safeupdate', r.LIBRARY_PATH_PROBE)
++        self.assertIn('for directory in "$pglib" /nix/var/nix/profiles/default/lib', r.LIBRARY_PATH_PROBE)
++        self.assertNotIn("find ", r.LIBRARY_PATH_PROBE)
++        command = Mock()
++        with self.assertRaisesRegex(ValueError, "library_allowlist"):
++            r.load_library("a" * 64, "other", command)
++        command.assert_not_called()
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+--- v2/restauracao/README.md
++++ v3/restauracao/README.md
+@@ -1,39 +1,41 @@
+-# Restauração lógica fictícia — candidato para revisão
++# RestauraÃ§Ã£o lÃ³gica fictÃ­cia â€” candidato para revisÃ£o
+ 
+-Preparado em 01/11/2026; **nenhum SQL, servidor, Docker local ou job desta restauração foi executado na preparação**. O inventário remoto anterior foi aprovado no run `41339162377`, commit `c08feeabe25ff3d726e9373b4d1a92147a99885f`: origem, pg_dump e cliente 17.11; 812 entradas selecionadas de 817 entradas totais do cabeçalho.
++Preparado em 01/11/2026; **nenhum SQL, servidor, Docker local ou job desta restauraÃ§Ã£o foi executado na preparaÃ§Ã£o**. O inventÃ¡rio remoto anterior foi aprovado no run `41339162377`, commit `c08feeabe25ff3d726e9373b4d1a92147a99885f`: origem, pg_dump e cliente 17.11; 812 entradas selecionadas de 817 entradas totais do cabeÃ§alho.
+ 
+-## Escopo mínimo e origem
++## Escopo mÃ­nimo e origem
+ 
+-Usar o mesmo dump fictício de 505.274 bytes e SHA256 `30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c`. O snapshot anterior à correção de ACL foi normalizado em `baseline.json`: 40 tabelas (30 public, 10 Storage), 29 roles sem senhas, 21 memberships, 12 default ACLs e os objetos do kit. SHA256 do snapshot original: `f7a111357f7db4af3e849c8ffdba69e6e63ef409cee98c403e2ff70b87b95419`. OIDs foram traduzidos por nomes; namespaces vêm do TOC, mais o namespace public predefinido 2200. Ordem de ACL não altera sua semântica e é normalizada; privilégios/grantors não são retirados.
++Usar o mesmo dump fictÃ­cio de 505.274 bytes e SHA256 `30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c`. O snapshot anterior Ã  correÃ§Ã£o de ACL foi normalizado em `baseline.json`: 40 tabelas (30 public, 10 Storage), 29 roles sem senhas, 21 memberships, 12 default ACLs e os objetos do kit. SHA256 do snapshot original: `f7a111357f7db4af3e849c8ffdba69e6e63ef409cee98c403e2ff70b87b95419`. OIDs foram traduzidos por nomes; namespaces vÃªm do TOC, mais o namespace public predefinido 2200. Ordem de ACL nÃ£o altera sua semÃ¢ntica e Ã© normalizada; privilÃ©gios/grantors nÃ£o sÃ£o retirados.
+ 
+-O dump declara pg_trgm. As referências a pg_cron/pg_net são corpos de funções de concessão; não há criação dessas extensões nem event triggers anexados, FDWs, publicações ou assinaturas no TOC. A baseline do papel authenticator exige bibliotecas reais `supautils, safeupdate`, motivo para não usar a imagem vanilla e não criar stubs. Funções existentes do dump permanecem exatamente como estavam, inclusive código de suporte de extensões não ativadas.
++O dump declara pg_trgm. As referÃªncias a pg_cron/pg_net sÃ£o corpos de funÃ§Ãµes de concessÃ£o; nÃ£o hÃ¡ criaÃ§Ã£o dessas extensÃµes nem event triggers anexados, FDWs, publicaÃ§Ãµes ou assinaturas no TOC. A baseline do papel authenticator exige bibliotecas reais `supautils, safeupdate`, motivo para nÃ£o usar a imagem vanilla e nÃ£o criar stubs. FunÃ§Ãµes existentes do dump permanecem exatamente como estavam, inclusive cÃ³digo de suporte de extensÃµes nÃ£o ativadas.
+ 
+-Imagem derivada da **mesma tag do Compose fictício**: `public.ecr.aws/supabase/postgres:17.11.0.004`, fixada no manifesto linux/amd64 `sha256:e85bc10ac5b141223b289e1e8dc8d448cf3df92501917149db0366b9c5aaf053`; config OCI `sha256:c4be96218454e68421a29c712e1a83c7a9fe186208c725d8bb2ebb474e2042f2`. Metadados públicos consultados sem baixar layers: 29 camadas, 367.717.338 bytes comprimidos, sem VOLUME declarado. O digest atual não foi demonstrado como idêntico ao image ID local histórico; compatibilidade é verificada pelo servidor, bibliotecas, restore e comparações. A versão 17.11 corresponde ao próprio dump fictício; não é afirmação sobre produção.
++Imagem derivada da **mesma tag do Compose fictÃ­cio**: `public.ecr.aws/supabase/postgres:17.11.0.004`, fixada no manifesto linux/amd64 `sha256:e85bc10ac5b141223b289e1e8dc8d448cf3df92501917149db0366b9c5aaf053`; config OCI `sha256:c4be96218454e68421a29c712e1a83c7a9fe186208c725d8bb2ebb474e2042f2`. Metadados pÃºblicos consultados sem baixar layers: 29 camadas, 367.717.338 bytes comprimidos, sem VOLUME declarado. O digest atual nÃ£o foi demonstrado como idÃªntico ao image ID local histÃ³rico; compatibilidade Ã© verificada pelo servidor, bibliotecas, restore e comparaÃ§Ãµes. A versÃ£o 17.11 corresponde ao prÃ³prio dump fictÃ­cio; nÃ£o Ã© afirmaÃ§Ã£o sobre produÃ§Ã£o.
+ 
+-## Execução remota proposta
++## ExecuÃ§Ã£o remota proposta
+ 
+-O workflow novo é manual, privado, com timeout de dez minutos e a mesma concorrência exclusiva do inventário. Não roda no push e não publica site. Adiciona ao repositório existente apenas `.github/workflows/restauracao.yml` e quatro arquivos em `restauracao/`; conserva os seis arquivos do inventário, seus hashes e o dump. Uploader e disparo ficam para a coordenação após revisão do candidato, saldo e bloqueio de cobrança adicional. Nenhuma credencial nova, login, serviço pago ou serviço HTTP é exigido.
++O workflow novo Ã© manual, privado, com timeout de dez minutos e a mesma concorrÃªncia exclusiva do inventÃ¡rio. NÃ£o roda no push e nÃ£o publica site. Adiciona ao repositÃ³rio existente apenas `.github/workflows/restauracao.yml` e quatro arquivos em `restauracao/`; conserva os seis arquivos do inventÃ¡rio, seus hashes e o dump. Uploader e disparo ficam para a coordenaÃ§Ã£o apÃ³s revisÃ£o do candidato, saldo e bloqueio de cobranÃ§a adicional. Nenhuma credencial nova, login, serviÃ§o pago ou serviÃ§o HTTP Ã© exigido.
+ 
+-O container substitui o entrypoint da imagem. Portanto não executa automaticamente as migrações Supabase ou o bootstrap da imagem. Inicia `initdb` vazio como usuário Linux postgres, com superuser SQL supabase_admin, e usa apenas Unix socket em `/qa`. Rede `none`, nenhuma porta, root filesystem somente leitura, capacidades removidas, input somente leitura e tmpfs efêmeros em `/qa` e `/tmp`. Não há volume persistente. Host authentication é rejeitada; local trust vale somente dentro desse container isolado, sem senha de origem. As bibliotecas são as da imagem real. Os defaults globais da distribuição não são tratados como backup da configuração original.
++O container substitui o entrypoint da imagem. Portanto nÃ£o executa automaticamente as migraÃ§Ãµes Supabase ou o bootstrap da imagem. Inicia `initdb` vazio como usuÃ¡rio Linux postgres, com superuser SQL supabase_admin, e usa apenas Unix socket em `/qa`. Rede `none`, nenhuma porta, root filesystem somente leitura, capacidades removidas, input somente leitura e tmpfs efÃªmeros em `/qa` e `/tmp`. NÃ£o hÃ¡ volume persistente. Host authentication Ã© rejeitada; local trust vale somente dentro desse container isolado, sem senha de origem. As bibliotecas sÃ£o as da imagem real. Os defaults globais da distribuiÃ§Ã£o nÃ£o sÃ£o tratados como backup da configuraÃ§Ã£o original.
+ 
+-O preflight exige servidor 17.11 (mesma versão da origem comprovada), pg_trgm disponível e arquivos das duas bibliotecas. Prepara roles/atributos/config/memberships da baseline, sem passwords, e cria banco vazio `licitaplena_restore`. O role postgres conserva NOSUPERUSER; supabase_admin conserva SUPERUSER. O dump é restaurado uma vez, com `--exit-on-error --single-transaction`, sem `--clean`, `--no-owner`, `--no-acl`, lista filtrada ou correção posterior.
++O preflight exige servidor 17.11 (mesma versÃ£o da origem comprovada), pg_trgm disponÃ­vel e **carregamento real** das duas bibliotecas. Registra caminhos/booleans apenas de `pg_config --pkglibdir` e do profile Nix, para supautils/safeupdate, com captura privada limitada a 4.096 bytes por stream. Caminho legÃ­vel Ã© diagnÃ³stico, nÃ£o substitui o loader. Executa `LOAD 'supautils'` e `LOAD 'safeupdate'` em sessÃµes separadas, exigindo exit zero e marcador de sucesso de cada sessÃ£o; stdout/stderr ficam privados e o relatÃ³rio registra os exits. Qualquer falha interrompe antes de roles/dados/restore. Prepara roles/atributos/config/memberships da baseline, sem passwords, e cria banco vazio `licitaplena_restore`. O role postgres conserva NOSUPERUSER; supabase_admin conserva SUPERUSER. O dump Ã© restaurado uma vez, com `--exit-on-error --single-transaction`, sem `--clean`, `--no-owner`, `--no-acl`, lista filtrada ou correÃ§Ã£o posterior.
++
++A rodada V2 `41341452270` iniciou PostgreSQL 17.11 e parou no teste silencioso de arquivos via pg_config, sem tentar restore; o container foi removido. As evidÃªncias nÃ£o identificam qual dos dois arquivos faltava naquele teste. O [build pÃºblico dessa tag](https://github.com/supabase/postgres/blob/17.11.0.004/nix/postgresql/generic.nix#L323) copia pg_config sem wrapper, mas configura `NIX_PGLIBDIR` no wrapper do servidor; seu [patch de runtime](https://github.com/supabase/postgres/blob/17.11.0.004/nix/postgresql/patches/specify_pkglibdir_at_runtime.patch) permite ao servidor usar esse diretÃ³rio. A V3 remove somente a suposiÃ§Ã£o de equivalÃªncia entre os caminhos e exige comprovaÃ§Ã£o pelo loader real. V2 e artefatos continuam preservados. NÃ£o hÃ¡ relaxamento de isolamento, troca de imagem, stub ou alteraÃ§Ã£o dos comparadores.
+ 
+ Depois compara:
+ 
+-- Esquema extraído do próprio dump versus pg_dump do destino: seções por identidade/owner, conservando SQL, ACLs, comentários e corpos de funções. Normaliza somente ordem das seções e comandos aleatórios `\\restrict`/`\\unrestrict` do cliente. Divergência interrompe para diagnóstico, sem ampliar filtros automaticamente.
+-- Contagens e o mesmo fingerprint MD5 de linhas JSONB ordenadas nas 40 tabelas, usando a receita original. SHA256 verifica o arquivo fonte; MD5 aqui reproduz o detector de alterações da baseline.
+-- Atributos e configurações de 29 roles, 21 memberships com grantor/flags e 12 default ACLs, por nomes.
+-- Owner, RLS e ACL do kit **antes da correção**, incluindo EXECUTE de service_role no trigger. Não aplica o ajuste aprovado posterior durante a prova de recuperação.
+-- Nova conexão local como authenticator, para comprovar que suas bibliotecas configuradas realmente carregam. Isso não é homologação de Auth HTTP.
++- Esquema extraÃ­do do prÃ³prio dump versus pg_dump do destino: seÃ§Ãµes por identidade/owner, conservando SQL, ACLs, comentÃ¡rios e corpos de funÃ§Ãµes. Normaliza somente ordem das seÃ§Ãµes e comandos aleatÃ³rios `\\restrict`/`\\unrestrict` do cliente. DivergÃªncia interrompe para diagnÃ³stico, sem ampliar filtros automaticamente.
++- Contagens e o mesmo fingerprint MD5 de linhas JSONB ordenadas nas 40 tabelas, usando a receita original. SHA256 verifica o arquivo fonte; MD5 aqui reproduz o detector de alteraÃ§Ãµes da baseline.
++- Atributos e configuraÃ§Ãµes de 29 roles, 21 memberships com grantor/flags e 12 default ACLs, por nomes.
++- Owner, RLS e ACL do kit **antes da correÃ§Ã£o**, incluindo EXECUTE de service_role no trigger. NÃ£o aplica o ajuste aprovado posterior durante a prova de recuperaÃ§Ã£o.
++- Nova conexÃ£o local como authenticator, para comprovar que suas bibliotecas configuradas realmente carregam. Isso nÃ£o Ã© homologaÃ§Ã£o de Auth HTTP.
+ 
+-Relatórios, schemas e resultados são artefatos privados por um dia. O log público do job não recebe SQL ou resultados de tabelas; stderr de falhas pode permanecer no artefato privado para revisão. Não há impressão de senha/token. O container é removido no finally; falha na remoção impede declarar sucesso. Timeout global/encerramento abrupto pode impedir finally/upload; o runner hospedado continua efêmero, e a coordenação deve verificar o término real do job.
++RelatÃ³rios, schemas e resultados sÃ£o artefatos privados por um dia. O log pÃºblico do job nÃ£o recebe SQL ou resultados de tabelas; stderr de falhas pode permanecer no artefato privado para revisÃ£o. NÃ£o hÃ¡ impressÃ£o de senha/token. O container Ã© removido no finally; falha na remoÃ§Ã£o impede declarar sucesso. Timeout global/encerramento abrupto pode impedir finally/upload; o runner hospedado continua efÃªmero, e a coordenaÃ§Ã£o deve verificar o tÃ©rmino real do job.
+ 
+-Antes da remoção, captura privadamente as últimas 100 linhas do log Docker e o final de `/qa/initdb.log`, limitando cada stream salvo a 65.536 bytes. Se initdb falhar, seu log é emitido no stderr do container antes de sair, pois o tmpfs não persiste após a parada. Timeouts de subprocesso preservam stdout/stderr parciais com identificação explícita de captura incompleta. O relatório distingue criação, inspeção de isolamento, início e prontidão do servidor. Esses diagnósticos não alteram opções de isolamento, restauração ou comparação.
++Antes da remoÃ§Ã£o, captura privadamente as Ãºltimas 100 linhas do log Docker e o final de `/qa/initdb.log`, limitando cada stream salvo a 65.536 bytes. Se initdb falhar, seu log Ã© emitido no stderr do container antes de sair, pois o tmpfs nÃ£o persiste apÃ³s a parada. Timeouts de subprocesso preservam stdout/stderr parciais com identificaÃ§Ã£o explÃ­cita de captura incompleta. O relatÃ³rio distingue criaÃ§Ã£o, inspeÃ§Ã£o de isolamento, inÃ­cio e prontidÃ£o do servidor. Esses diagnÃ³sticos nÃ£o alteram opÃ§Ãµes de isolamento, restauraÃ§Ã£o ou comparaÃ§Ã£o.
+ 
+ ## Limites que permanecem
+ 
+-Os dados das 27 tabelas Auth presentes no TOC não têm baseline completa de contagens/hashes; são restaurados pelo dump, mas não certificados pela comparação das 40 tabelas. O valor da sequência Auth `refresh_tokens_id_seq` também não tem comparação com baseline; sua definição estrutural participa do comparador de esquema, seu valor não. Senhas de roles não são copiadas. Não há serviços GoTrue/PostgREST/Storage HTTP, login comercial, SMTP, API ou teste de aplicação nesta rodada.
++Os dados das 27 tabelas Auth presentes no TOC nÃ£o tÃªm baseline completa de contagens/hashes; sÃ£o restaurados pelo dump, mas nÃ£o certificados pela comparaÃ§Ã£o das 40 tabelas. O valor da sequÃªncia Auth `refresh_tokens_id_seq` tambÃ©m nÃ£o tem comparaÃ§Ã£o com baseline; sua definiÃ§Ã£o estrutural participa do comparador de esquema, seu valor nÃ£o. Senhas de roles nÃ£o sÃ£o copiadas. NÃ£o hÃ¡ serviÃ§os GoTrue/PostgREST/Storage HTTP, login comercial, SMTP, API ou teste de aplicaÃ§Ã£o nesta rodada.
+ 
+-Há cinco registros antigos de storage.objects e um bucket; os bytes correspondentes não acompanham o dump. Sua restauração continua pendente. Nenhum dos PDFs reais de produção será enviado. Configuração completa de cluster, collation original, versões históricas de cada biblioteca, backups físicos e RPO/RTO de produção não são certificados por este ensaio. O resultado poderá provar somente restauração e comparação do recorte fictício declarado; não libera produção nem equivale ao SaaS completo homologado.
++HÃ¡ cinco registros antigos de storage.objects e um bucket; os bytes correspondentes nÃ£o acompanham o dump. Sua restauraÃ§Ã£o continua pendente. Nenhum dos PDFs reais de produÃ§Ã£o serÃ¡ enviado. ConfiguraÃ§Ã£o completa de cluster, collation original, versÃµes histÃ³ricas de cada biblioteca, backups fÃ­sicos e RPO/RTO de produÃ§Ã£o nÃ£o sÃ£o certificados por este ensaio. O resultado poderÃ¡ provar somente restauraÃ§Ã£o e comparaÃ§Ã£o do recorte fictÃ­cio declarado; nÃ£o libera produÃ§Ã£o nem equivale ao SaaS completo homologado.
+ 
+-Fontes públicas: [Dockerfile da tag usada](https://github.com/supabase/postgres/blob/17.11.0.004/Dockerfile-17), [pg_restore PostgreSQL 17](https://www.postgresql.org/docs/17/app-pgrestore.html). Inventário e snapshot anteriores são preservados sem alteração.
++Fontes pÃºblicas: [Dockerfile da tag usada](https://github.com/supabase/postgres/blob/17.11.0.004/Dockerfile-17), [pg_restore PostgreSQL 17](https://www.postgresql.org/docs/17/app-pgrestore.html). InventÃ¡rio e snapshot anteriores sÃ£o preservados sem alteraÃ§Ã£o.
+--- v2/enviar-restauracao-privada.ps1
++++ v3/enviar-restauracao-privada-v3.ps1
+@@ -1,11 +1,11 @@
+ # Preparado para revisao. Nao executa workflow, nao publica site e nao altera o login global do gh.
+-# Candidato: envia somente quatro payloads novos; workflow de restauracao criado pela UI.
+-# HEAD permanece bloqueado ate aprovacao independente e novo commit informado pela coordenacao.
++# Candidato V3: atualiza somente tres payloads; conserva os demais oito arquivos remotos.
++# Executar somente apos revisao independente; HEAD e todos os onze blobs anteriores sao conferidos.
+ $ErrorActionPreference = 'Stop'
+ $repoName = 'harresoncoelho-lang/licitaplena-homologacao'
+ $accountName = 'harresoncoelho-lang'
+ $packageRoot = Join-Path $PSScriptRoot 'executor'
+-$expectedHeadSha = '0196a317f0828a560a1f47d880cf5ad9e8ee08dd'
++$expectedHeadSha = '702663b5af7551896551eef253a7f425d144bc5d'
+ $workflowPath = '.github/workflows/restauracao.yml'
+ $expected = [ordered]@{
+     '.github/workflows/inventario.yml' = 'a5ae9a0d9f4ec7347aa13a4fcccc22433700bbb44cccd9f382faace31fc95720'
+@@ -15,17 +15,35 @@
+     'package-manifest.json' = '0ef9542dc690dda39184e4dd9e23cef6ebc4bc1b4bb300e89d183e2c6a864994'
+     'input/ficticio.dump' = '30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c'
+     '.github/workflows/restauracao.yml' = '2b2e01c82652e4f5ea868ee688946a42c3c31800621d21605f570f093baef08f'
+-    'restauracao/restore.py' = '61c63c53a6ba71dfbd2139ab7d5aaecb4474fd0cd0ccb43700b1c6906510678f'
+-    'restauracao/test_restore.py' = 'acc22af0b0912a04dcafdb0d5d1abded2711dbb3987f70174bf02122a830daad'
++    'restauracao/restore.py' = '6e6d588d8a9ec0598002f3e4cc76607605f541b850e1a6de1c61cc689ec967f5'
++    'restauracao/test_restore.py' = 'e17889fe2cb66f0abf27b037751da8205a8b6cbe0e9dc17db3bfd9810633e78a'
+     'restauracao/baseline.json' = '43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0'
+-    'restauracao/README.md' = 'a0da1b7fe7dee75e8ed1832976eb6816f3e8496ee19149d47423fe1738b3f964'
++    'restauracao/README.md' = 'ced775f10a668be00351a40080fb2a299ec4cf1a7132acb600306f95521acc3f'
+ }
+-$payloads = @('restauracao/restore.py','restauracao/test_restore.py','restauracao/baseline.json','restauracao/README.md')
++$payloads = @('restauracao/restore.py','restauracao/test_restore.py','restauracao/README.md')
+ $inventoryFiles = @('.github/workflows/inventario.yml','inventory.py','test_inventory.py','README.md','input/ficticio.dump')
++$previousSha256 = [ordered]@{}
++foreach ($name in $expected.Keys) { $previousSha256[$name] = $expected[$name] }
++$previousSha256['restauracao/restore.py'] = '61c63c53a6ba71dfbd2139ab7d5aaecb4474fd0cd0ccb43700b1c6906510678f'
++$previousSha256['restauracao/test_restore.py'] = 'acc22af0b0912a04dcafdb0d5d1abded2711dbb3987f70174bf02122a830daad'
++$previousSha256['restauracao/README.md'] = 'a0da1b7fe7dee75e8ed1832976eb6816f3e8496ee19149d47423fe1738b3f964'
++$previousGitBlobs = [ordered]@{
++    '.github/workflows/inventario.yml' = '92ed46c1f96bce2de654a9d8157b648abda038c9'
++    'inventory.py' = '444663da8cded7ea39adda233723bcd4169634b2'
++    'test_inventory.py' = '0054a3fb1b46050c42940f377e725d088495c91a'
++    'README.md' = 'fb45a83e8e934e607d26f2471ef3ac86f1208891'
++    'package-manifest.json' = '422943f85459b075bf74360a6d5d9b42b06fcff1'
++    'input/ficticio.dump' = '459957061a7e09628c6661c562b5839351dbfbea'
++    '.github/workflows/restauracao.yml' = '5606caae9120e07ea942d64a9a72cdb2dd06437c'
++    'restauracao/restore.py' = 'ad19f3bdace4793301d67dd8bf6abd6e18b70359'
++    'restauracao/test_restore.py' = '7608a3a58347ed01ab59a5e7a7bcccf0f2f19fc8'
++    'restauracao/baseline.json' = '0038944322952fab41dba2cead325d17adec5285'
++    'restauracao/README.md' = '5d1a8e9fed4d30ea184a310f9ef7d15da2063f29'
++}
+ $hadToken = Test-Path Env:GH_TOKEN
+ $priorToken = [Environment]::GetEnvironmentVariable('GH_TOKEN', 'Process')
+ $phase = 'local_validation'
+-$evidence = [ordered]@{ started_utc = [DateTime]::UtcNow.ToString('o'); repository = $repoName; status = 'preparing'; payload_sha256 = $expected; uploaded_blobs = @() }
++$evidence = [ordered]@{ started_utc = [DateTime]::UtcNow.ToString('o'); repository = $repoName; status = 'preparing'; payload_sha256 = $expected; previous_payload_sha256 = $previousSha256; previous_git_blobs = $previousGitBlobs; uploaded_blobs = @() }
+ $evidencePath = Join-Path $PSScriptRoot ('envio-restauracao-' + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ') + '.json')
+ 
+ function Invoke-GitHub([string]$Method, [string]$Endpoint, $Body = $null) {
+@@ -97,9 +115,9 @@
+     if ($headSha -cne $expectedHeadSha) { throw 'HEAD differs from the UI-reviewed baseline' }
+     $baseCommit = Invoke-GitHub 'GET' "repos/$repoName/git/commits/$headSha"
+     $remoteFiles = @(Get-CheckedTree $baseCommit.tree.sha)
+-    foreach ($name in @($expected.Keys | Where-Object { $payloads -cnotcontains $_ })) {
+-        $existing = @($remoteFiles | Where-Object { $_.path -ceq $name })
+-        if ($existing.Count -ne 1 -or $existing[0].sha -cne (Get-GitBlobSha $contents[$name])) { throw 'Existing immutable repository files differ' }
++    if (@(Compare-Object -CaseSensitive @($remoteFiles.path) @($previousGitBlobs.Keys)).Count -ne 0) { throw 'Previous eleven-file repository allowlist failed' }
++    foreach ($existing in $remoteFiles) {
++        if ($existing.sha -cne $previousGitBlobs[$existing.path]) { throw 'Previous remote file identity mismatch' }
+     }
+     $workflow = @($remoteFiles | Where-Object { $_.path -ceq $workflowPath })
+     if ($workflow.Count -ne 1) { throw 'Workflow must already exist' }
+@@ -112,7 +130,7 @@
+     $evidence.base_commit = $headSha
+     $evidence.branch = $branch
+ 
+-    $phase = 'four_new_payload_blobs'
++    $phase = 'three_changed_payload_blobs'
+     $entries = @()
+     foreach ($name in $payloads) {
+         $blob = Invoke-GitHub 'POST' "repos/$repoName/git/blobs" @{ encoding = 'base64'; content = [Convert]::ToBase64String($contents[$name]) }
+@@ -127,7 +145,7 @@
+     foreach ($entry in $finalFiles) {
+         if ($entry.sha -cne (Get-GitBlobSha $contents[$entry.path])) { throw 'Final tree payload mismatch' }
+     }
+-    $commit = Invoke-GitHub 'POST' "repos/$repoName/git/commits" @{ message = 'Prepare isolated fictitious PostgreSQL restore'; tree = $tree.sha; parents = @($headSha) }
++    $commit = Invoke-GitHub 'POST' "repos/$repoName/git/commits" @{ message = 'Validate required libraries through PostgreSQL loader'; tree = $tree.sha; parents = @($headSha) }
+     $evidence.prepared_commit = $commit.sha
+     $evidence.tree_sha = $tree.sha
+     $phase = 'head_recheck_and_nonforce_update'

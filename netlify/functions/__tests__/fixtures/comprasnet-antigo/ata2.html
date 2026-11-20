@@ -1,0 +1,178 @@
+
+<html>
+<head>
+	<title>Compras.gov.br - O SITE DE COMPRAS DO GOVERNO</title>
+	<meta http-equiv="expires" content="0" />
+	<meta http-equiv="cache-control" content="private" />
+	<meta http-equiv="pragma" content="no-cache" />
+	<script type="text/javascript" src="/includes/aguarde.js"></script>
+	<link rel="stylesheet" href="/css/estilo.css" type="text/css" />
+	<link rel="stylesheet" href="/imagens/style1.css" type="text/css" />
+	<script type="text/javascript">
+	    function RetornarListaPregao(){
+	        if(aguarde()){
+				var url;
+
+				url = "ata4.asp?lstSrp=&uf=&numprp=&co_uasg=&codigoModalidade=&rdTpPregao=&lstICMS=&dt_ini_sessao=&dt_fim_sessao=";
+
+	            bloqueiaAcoes(document);
+	            document.location.href = url;
+	        }
+	    }
+		
+	    function VisualizarRecursosPregao() {	
+	        window.open('VisualizarRecursosPregao.asp?prgCod=1099276','TodosRecursos','maximized=yes,screenX=0,screenY=0,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,copyhistory=no,width=800,height=400');
+	    }
+
+	    function ValidaCodigo(NomeArquivo, coduasg) {			
+	        if(aguarde()){
+	            bloqueiaAcoes(document);
+	            document.location.href = 'AtaEletronico.asp?co_no_uasg=' + coduasg + '&' + NomeArquivo;
+	        }
+	        //var url = '/includes/ValidaCodigoAta.asp?arquivo='+NomeArquivo+'&coduasg='+coduasg;
+	        //var MyWindow = window.open(url, 'ValidaCodigo', 'maximized=yes, screenX=250, screenY=0, toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,copyhistory=no,width=550,height=300');			
+	        //MyWindow.focus();
+	    }
+		
+	    function termoAdjudicacaoJulgamento(prgcod,tipo){
+	        if(aguarde()){
+	            bloqueiaAcoes(document);
+	            document.location.href = "termojulg.asp?prgcod=" + prgcod + "&Acao=" + tipo + "&co_no_uasg=158142&numprp=232022&codigoModalidade=5&f_lstSrp=&f_Uf=&f_numPrp=&f_coduasg=&f_codMod=&f_tpPregao=&f_lstICMS=&f_dtAberturaIni=&f_dtAberturaFim=";
+	        }
+	    }
+		
+	    function termoHomologacao(prgcod, coduasg, numprp){
+	        if(aguarde()){
+	            bloqueiaAcoes(document);
+	            document.location.href = "termohom.asp?prgcod=" + prgcod + "&co_no_uasg=158142&numprp=232022&codigoModalidade=5&f_lstSrp=&f_Uf=&f_numPrp=&f_coduasg=&f_codMod=&f_tpPregao=&f_lstICMS=&f_dtAberturaIni=&f_dtAberturaFim=";
+	        }
+	    }
+
+	    function AtaCadReserva(prgcod, coduasg, numprp){
+	        if(aguarde()){
+	            bloqueiaAcoes(document);
+	            document.location.href = "termocadres.asp?prgcod=" + prgcod + "&co_no_uasg=158142&numprp=232022&codigoModalidade=5&f_lstSrp=&f_Uf=&f_numPrp=&f_coduasg=&f_codMod=&f_tpPregao=&f_lstICMS=&f_dtAberturaIni=&f_dtAberturaFim=";
+	        }
+	    }
+		
+	    function resultadoFornecedor(prgcod){
+	        if(aguarde()){
+	            bloqueiaAcoes(document);
+	            
+                    document.location.href ="FornecedorResultadoDecreto.asp?prgcod=" + prgcod + "&f_lstSrp=&f_Uf=&f_numPrp=&f_coduasg=&f_codMod=&f_tpPregao=&f_lstICMS=&f_dtAberturaIni=&f_dtAberturaFim=";
+                
+	        }
+	    }
+		
+	    function exibeQuadro(prgcod,tipo){
+	        if(aguarde()){
+	            var url;
+	            url = "avisos1.asp?prgCod=" + prgcod + "&Origem=Avisos&Tipo=" + tipo
+	            window.open(url,"Ajuda","maximized=yes,screenX=0,screenY=0,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,copyhistory=no,width=550,height=390,left=240,top=190");
+	        }
+	    }
+
+	    function anexosItens() {
+	        var url = "anexosDosItens.asp?uasg=158142&numprp=232022&prgcod=1099276";
+	        window.open(url, 'AnexosProposta', 'maximized=yes, screenX=0, screenY=0, toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,copyhistory=no,width=800,height=400');
+	        return false;
+	    }
+		
+	    function Declaracoes(prgcod){			
+	        window.open('declaracoesProposta.asp?prgCod=1099276','Declarações','maximized=yes,screenX=0,screenY=0,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,copyhistory=no,width=800,height=400');			
+	        return false;
+	    }
+	
+	    function anexosPropostaHabilitacao() {
+	        var url = "anexosPropostaHabilitacao.asp?prgCod=1099276";
+	        window.open(url, 'AnexosDocSicaf', 'maximized=yes, screenX=0, screenY=0, toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,copyhistory=no,width=800,height=400');
+	        return false;
+	    }
+	</script>
+</head>
+<body bgcolor="#FFFFFF" text="#000000">
+    <h2>CONSULTA ATA</h2>
+
+	<table border="0" width="98%" cellspacing="1" cellpadding="2">
+	    <tr>
+		    <td valign="top" align="right" width="23"><img height="14" src="/imagens/tm_bullet.gif" width="6"></td>
+		    <td class="tex3b" colSpan="2">&nbsp;Visualizar Ata</td>
+        </tr>   
+        <tr> 
+	        <td valign="top" align="right" width="23" colspan="2">&nbsp;</td>
+        </tr>
+	    <tr> 
+		    <td valign="top" align="right" width="23">&nbsp;</td>
+		    <td>
+                <span class="tex3b"><strong>UASG</strong></span>&nbsp;&nbsp;<span class="tex3">158142-INST.FED.DE EDUC.,CIENC.E TEC.DO AMAZONAS         
+                </span><br />                
+                <span class="tex3b">Pregão nº: </span>&nbsp;&nbsp;                
+                <span class="mensagem2">Nº 00023/2022 (SRP)</span>
+				<span class="mensagem"> - (Decreto Nº 10.024/2019)</span>
+                
+                    <br/><span class="tex3b"><strong>Modo de Disputa:</strong></span>
+                    <span class="tex3">Aberto</span>
+                
+		    </td>
+	    </tr>
+        <tr> 
+		    <td valign="top" colspan=2>&nbsp;</td>
+	    </tr>
+        <tr>
+		    <td vAlign="top" align="right" width="23"></td>
+		    <td colSpan="2"class="tex3b">
+				
+					    <a href="#158142-232022-1" name="158142-232022-1" onclick="javascript:ValidaCodigo('&uasg=158142&numprp=232022&codigoModalidade=5&Seq=1&f_lstSrp=&f_Uf=&f_numPrp=&f_coduasg=&f_codMod=&f_tpPregao=&f_lstICMS=&f_dtAberturaIni=&f_dtAberturaFim=',158142 );">
+					    Ata do Pregão - 22/12/2022 12:05
+					    </a>
+					    <br/><br/>
+					    
+				    <hr />
+			    </td>
+		    </tr>
+		    <tr>
+			    <td align="center" colspan="2">
+				    <input type="button" name="btnResultadoFornecr" id="btnResultadoFornecr" value="Resultado por Fornecedor" onclick="javascript:resultadoFornecedor(1099276);" class="texField2" style="width:200px" />
+				    <input type="button" name="btnDeclaracoes" id="btnDeclaracoes" value="Declarações" onclick="javascript:Declaracoes(1099276);" class="texField2" />
+                    
+    				 	&nbsp;<input type="button" name="DocSicaf" value="Anexos de Proposta/Habilitação" class="texField2" onclick="anexosPropostaHabilitacao();" />
+                    
+				    <br/><br/>
+
+				    <input type="button" name="btnVoltar" id="btnVoltar" value="Voltar" class="texField2"  onclick="javascript:RetornarListaPregao();" />
+                    &nbsp;<input type="button" name="AnexosProposta" value="Anexos dos Itens" class="texField2" onclick="anexosItens();" />
+				    
+					    &nbsp;<input type="button" name="btnTermAdj" id="btnTermAdj" value="Termo de Adjudicação" onclick="javascript:termoAdjudicacaoJulgamento(1099276,'A');" class="texField2" style="width:180px" />
+				    
+					    &nbsp;<input type="button" name="termodehomologacao" value="Termo de Homologação" onclick="javascript:termoHomologacao(1099276,158142,232022);" class="texField2" style="width:180px" />
+				    
+				    <br/><br/>
+
+				    
+					    <input type="button" name="aviso" id="aviso" value="Avisos" onclick="javascript:exibeQuadro(1099276,'A');" class="texField2" style="width:120px" />
+				    
+			</td>
+		</tr>
+         
+        <tr>
+            <td valign="top" align="right" width="2%"></td>
+			<td  width="98%">
+                 <span class="legenda">
+	Documentos de Proposta/Habilitação: anexos enviados no cadastro de propostas <br/>
+	Anexos dos Itens: anexos enviados por convocação do pregoeiro 
+</span>	
+            </td>
+        </tr>
+        
+	</table>
+	<br/>	
+<!-- frame e tabela que apresentarão a mensagem de aguarde na tela -->
+<iframe id="frameloading" name="frameloading" src="javascript:false;" scrolling="no" frameborder="0" style="display: none; position: absolute; left: 0; top: 0; z-index: -1;"></iframe>
+<table style="display:none; position: absolute;" id="loading" name="loading" class="box">
+	<tr><td class="cabecbox">Aguarde!</td></tr>
+</table>
+</body>
+<script  type="text/javascript">
+    desbloqueiaAcoes(document);
+</script>
+</html>

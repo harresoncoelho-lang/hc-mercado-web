@@ -42,6 +42,8 @@ const MAX_BYTES_REQUISICAO_RESUMO = 48000;
 // anexos + duas tentativas longas de modelo. Um timeout do provedor não pode virar
 // uma resposta HTML/504 que o navegador interpreta como "não conectou".
 const MAX_DOCUMENTOS_PARA_LEITURA = 3;
+// Marca, na lista de não lidos, a falha que pode passar sozinha (o robô lê de novo só nesses casos).
+const MOTIVO_DOWNLOAD_INDISPONIVEL = "download indisponível no PNCP";
 // O robô de dossiês (GitHub Actions) não tem essa janela curta: o workflow define
 // prazos maiores por env, sem mudar o comportamento da Function no site.
 const TIMEOUT_LISTA_PNCP_MS = Number(process.env.TIMEOUT_LISTA_PNCP_MS) || 4000;
@@ -50,7 +52,7 @@ const TIMEOUT_ARQUIVO_PNCP_MS = Number(process.env.TIMEOUT_ARQUIVO_PNCP_MS) || 3
 // nunca continue exibindo um campo operacional contaminado pelo texto seguinte.
 const VERSAO_RESUMO = 17;
 const VERSAO_VALIDACAO_CATALOGO = 17;
-const { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario } = require("../_auth");
+const { cabecalhosPadrao, exigirUsuarioAprovado, verificarLimiteDiario } = require("../_auth");
 const { responderComFallback, haProvedorConfigurado } = require("../_ia_provedores");
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
@@ -153,6 +155,14 @@ function selecionarDocumentosParaLeitura(lista, limite = MAX_DOCUMENTOS_PARA_LEI
       return true;
     }).slice(0, limite);
 }
+// Botão "Tentar ler de novo" do resumo parcial. No máximo uma nova leitura por hora por edital:
+// cada leitura do robô usa a cota gratuita da IA, e quem gera continua sendo o robô (teto diário).
+const INTERVALO_NOVA_LEITURA_MS = 60 * 60 * 1000;
+function pedidoDeNovaLeitura(body, dossie, agora = Date.now()) {
+  if (body?.novaLeitura !== true || !dossie?.estrutura?.coberturaLeitura?.parcial) return false;
+  const gerado = Date.parse(dossie.geradoEm || "");
+  return !Number.isFinite(gerado) || agora - gerado >= INTERVALO_NOVA_LEITURA_MS;
+}
 function leituraPrioritariaPendente(cobertura) {
   return Boolean(cobertura?.parcial && !cobertura.prioridadeDocumentoPrincipal &&
     cobertura.documentosNaoLidos?.some((documento) => /\bedital(?:\.pdf)?\b.*limite de documentos/i.test(documento)));
@@ -162,7 +172,10 @@ function precisaReleituraPrioritaria(cache) {
 }
 
 // Extrai {cnpj, ano, sequencial} de um numeroControlePNCP no formato
-async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DOCUMENTOS_PARA_LEITURA, extrairArquivo = null, ocrPDF } = {}) {
+// prazoLeitura (robô): hora limite para começar a baixar/ler outro anexo. Um edital escaneado com
+// 26 anexos levou 12,5 min só na leitura (18/11/2026), mais que a rodada inteira: o job era morto
+// sem registrar a tentativa e o mesmo edital voltava primeiro na fila, travando os demais.
+async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DOCUMENTOS_PARA_LEITURA, extrairArquivo = null, ocrPDF, prazoLeitura = Infinity } = {}) {
   if (ocrPDF === undefined && process.env.LEITURA_OCR_LOCAL === "1") {
     try { ocrPDF = require("../_pdf_ocr_local").ocrLocalConfigurado(); } catch (_) { ocrPDF = null; }
   }
@@ -360,6 +373,7 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
     const baixados = new Map();
     let bytesBaixados = 0;
     if (extrairArquivo) for (const doc of candidatos) {
+      if (Date.now() >= prazoLeitura) { baixados.set(doc, { semTempo: true }); continue; }
       try {
         const arquivo = await baixarDocumento(doc, 64 * 1024 * 1024 - bytesBaixados);
         bytesBaixados += arquivo.buffer.length;
@@ -371,6 +385,10 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
     for (const doc of candidatos) {
       if (totalCaracteres >= MAX_CARACTERES_TEXTO) {
         documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de texto`);
+        continue;
+      }
+      if (Date.now() >= prazoLeitura || baixados.get(doc)?.semTempo) {
+        documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): limite de tempo da leitura`);
         continue;
       }
       try {
@@ -410,12 +428,18 @@ async function buscarTextoEdital(numeroControlePNCP, { limiteDocumentos = MAX_DO
           totalCaracteres += texto.length;
         }
       } catch (e) {
-        if (e?.name === "AbortError" || e?.name === "TypeError") downloadsIndisponiveis += 1;
-        documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): não foi possível ler`);
+        const falhaRede = e?.name === "AbortError" || e?.name === "TypeError";
+        if (falhaRede) downloadsIndisponiveis += 1;
+        // O motivo decide se vale ler de novo: download que falhou pode dar certo depois;
+        // arquivo ilegível dá o mesmo resultado em toda tentativa.
+        const motivo = falhaRede || /^HTTP (5\d\d|429)$/.test(e?.message || "") ? MOTIVO_DOWNLOAD_INDISPONIVEL
+          : /ilegível|sem texto/.test(e?.message || "") ? "formato ilegível ou sem texto" : /limite de bytes/.test(e?.message || "") ? e.message : "";
+        documentosNaoLidos.push(`${doc.titulo || "Documento"} (#${doc.sequencialDocumento}): não foi possível ler${motivo ? ` (${motivo})` : ""}`);
       }
     }
 
-    if (pedacos.length === 0) return { texto: null, escaneado: algumPdfPareceEscaneado, indisponivel: downloadsIndisponiveis === candidatos.length, coberturaLeitura: { documentosLidos, documentosNaoLidos, ocrDocumentos, avisosOCR, parcial: true, prioridadeDocumentoPrincipal: true } };
+    if (pedacos.length === 0) return { texto: null, escaneado: algumPdfPareceEscaneado, indisponivel: downloadsIndisponiveis === candidatos.length,
+      semTempo: documentosNaoLidos.some((item) => item.endsWith(": limite de tempo da leitura")), coberturaLeitura: { documentosLidos, documentosNaoLidos, ocrDocumentos, avisosOCR, parcial: true, prioridadeDocumentoPrincipal: true } };
     const textoCompleto = pedacos.join("").trim();
     if (textoCompleto.length > MAX_CARACTERES_TEXTO) documentosNaoLidos.push("Texto excedeu o limite de leitura; conteúdo final não analisado");
     return { texto: textoCompleto.slice(0, MAX_CARACTERES_TEXTO), escaneado: false,
@@ -441,7 +465,7 @@ const SCHEMA_ESTRUTURA = `{
   "detalhes": {"valorEstimado": "", "prazoEntrega": "", "margemPreferencia": "", "exigeVisitaTecnica": "", "exigeAmostra": "", "garantia": "", "criterioJulgamento": "", "tipoAnalise": "", "regimeExecucao": "", "preferenciaMeEpp": "", "restricoesRegionalidade": "", "provaConceito": ""},
   "garantias": {"proposta": "", "contrato": "", "adicional": "", "retomada": ""},
   "entregaExecucao": {"prazo": "", "local": "", "condicoes": ""},
-  "prazos": {"limiteEnvioPropostas": "", "prazoDocumentoComplementar": "", "prazoDocumentoOriginal": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": ""},
+  "prazos": {"limiteEnvioPropostas": "", "prazoDocumentoComplementar": "", "prazoDocumentoOriginal": "", "prazoRecurso": "", "prazoContrarrazoes": "", "limiteEsclarecimentos": "", "limiteImpugnacao": "", "vigenciaContrato": "", "tipoFornecimento": "", "prazoManifestacaoRecurso": "", "prazoContratualArp": ""},
   "criteriosProposta": {"validadeProposta": "", "criteriosDesempate": "", "exigenciasPropostaComercial": "", "propostasLancesPor": "", "programaIntegridade": ""},
   "itens": {"totalItens": "", "descricaoGeral": "", "categoriasPrincipais": "", "observacoes": ""},
   "documentosHabilitacao": ["lista de documentos exigidos, um por item ; não crie combinações, variações ou alternativas de certidões — só registre uma exigência que esteja literalmente identificável no texto"],
@@ -457,7 +481,7 @@ const SCHEMA_ESTRUTURA = `{
   "documentosConsultados": ["nomes dos documentos efetivamente lidos"],
   "pendenciasParaConferencia": ["itens que NÃO foram localizados no material lido e precisam ser conferidos no edital oficial; não use esta lista para repetir dados encontrados"],
   "questionamentosSugeridos": ["perguntas objetivas para esclarecimento/impugnação apenas quando houver ambiguidade, conflito ou ausência material relevante"],
-  "possiveisQuestionamentos": ["cada item deve trazer: título — motivo concreto — referência ao trecho ou cláusula; só inclua se houver base no texto"],
+  "possiveisQuestionamentos": ["cada item no formato: [tipo do achado, ex.: Presença Irregular] título — explicação com o artigo da lei aplicável — referência ao trecho ou cláusula do edital; só inclua se houver base no texto"],
   "outrasInformacoesRelevantes": ["lista de TODOS os pontos importantes do texto que não se encaixam nos campos acima — não limite a quantidade, inclua tudo que for relevante pra quem vai decidir participar"],
   "analiseCritica": {"conflitoObjetoMinuta": "", "conflitoPrazoVigenciaArp": "", "conflitoPrazosEntrega": "", "permiteSubcontratacao": "", "previsaoReajuste": "", "permiteRenovacao": "", "estabeleceCondicoesPagamento": ""},
   "resumoGeral": "resumo corrido e DETALHADO (8 a 14 frases), cobrindo objeto completo, órgão, valor, modalidade, datas/prazos, principais exigências de habilitação, forma de disputa e critério de julgamento — não é pra ser curto, é pra ser uma análise completa da oportunidade, como um analista de licitações faria pra um cliente"
@@ -764,7 +788,7 @@ async function chamarSinteseEdital(apiKey, mensagens) {
 }
 
 // Exposto somente para os testes unitários locais; a Netlify continua chamando handler.
-exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, schemaTransporteDaEtapa, mensagensTransporteDaEtapa, traduzirEtapaTransportada, fonteDaEtapa, requisitosConhecidosDaFonte, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, selecionarDocumentosParaLeitura, leituraPrioritariaPendente, precisaReleituraPrioritaria, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
+exports.__test = { montarDossieDaFonte, SCHEMA_ETAPA, SCHEMA_MINUTA, INSTRUCOES_MINUTA, schemaDaEtapa, schemaTransporteDaEtapa, mensagensTransporteDaEtapa, traduzirEtapaTransportada, fonteDaEtapa, requisitosConhecidosDaFonte, blocoDeMinuta, converterEtapaOperacional, tokensEntradaResumo, orcamentoResumo, cabeResumo, INSTRUCOES_ETAPA, chamarGroq, chamarSinteseEdital, montarCorpoGroq, mensagensDaEtapa, valorRotuladoDoTexto, normalizarListaDoDossie, sanitizarListasDoDossie, buscarTextoEdital, MOTIVO_DOWNLOAD_INDISPONIVEL, pedidoDeNovaLeitura, selecionarDocumentosParaLeitura, leituraPrioritariaPendente, precisaReleituraPrioritaria, aplicarCamposOperacionaisDoTexto, montarEstruturaBasica, buscarFichaCanonica };
 
 // Modelos menores (como o 8b gratuito que usamos) às vezes ignoram a instrução de "só
 // JSON" e embrulham a resposta em ```json ... ``` ou colocam uma frase antes/depois. Em vez
@@ -1220,7 +1244,7 @@ exports.handler = async (event) => {
   const chaveRobo = process.env.DOSSIES_EDITAIS_CHAVE;
   const cabecalhosRecebidos = event.headers || {};
   const ehRoboInterno = Boolean(chaveRobo && cabecalhosRecebidos["x-licitaplena-dossies-chave"] === chaveRobo);
-  const sessao = ehRoboInterno ? { ok: true, userId: require("../_resumo_gateway").USUARIO_ROBO } : await exigirUsuarioLogado(event);
+  const sessao = ehRoboInterno ? { ok: true, userId: require("../_resumo_gateway").USUARIO_ROBO } : await exigirUsuarioAprovado(event);
   if (!sessao.ok) return { statusCode: sessao.status, headers, body: JSON.stringify({ erro: sessao.erro }) };
   let body;
   try {
@@ -1306,7 +1330,14 @@ exports.handler = async (event) => {
         cache.versao === VERSAO_RESUMO && cache.versaoValidacao === VERSAO_VALIDACAO_CATALOGO && cache.estrutura;
       let cache = storeResumos && await storeResumos.get(numero, { type: "json" });
       if (!valido(cache)) cache = await buscarDossiePersistido(numero);
-      if (!valido(cache) || precisaReleituraPrioritaria(cache)) return { statusCode: 200, headers, body: JSON.stringify({ disponivel: false, requisitos: [] }) };
+      if (!valido(cache) || precisaReleituraPrioritaria(cache)) {
+        // Mesma fila e mesma regra do modo resumo: o checklist não depende de o cliente abrir o resumo.
+        let enfileirado = false;
+        if (!ehRoboInterno) {
+          try { await enfileirarDossie(numero); enfileirado = true; } catch (_) { /* A consulta continua respondendo sem dossiê. */ }
+        }
+        return { statusCode: 200, headers, body: JSON.stringify({ disponivel: false, enfileirado, requisitos: [] }) };
+      }
       const estrutura = sanitizarListasDoDossie({ ...cache.estrutura });
       const requisitos = [...estrutura.documentosHabilitacao, ...estrutura.declaracoesExigidas];
       return { statusCode: 200, headers, body: JSON.stringify({ disponivel: true, requisitos,
@@ -1380,6 +1411,8 @@ exports.handler = async (event) => {
         // Dossiês concluídos só no Blob (antes da gravação pelo Gateway) entram no Supabase
         // quando o robô passa por eles; é o Supabase que o robô consulta para saber o que falta.
         if (ehRoboInterno && cacheDoBlob) await salvarDossiePersistido(edital.numeroControlePNCP, cache);
+        const novaLeitura = !ehRoboInterno && pedidoDeNovaLeitura(body, cache);
+        if (novaLeitura) await enfileirarDossie(edital.numeroControlePNCP, { novaLeitura: true });
         return {
           statusCode: 200,
           headers,
@@ -1396,7 +1429,9 @@ exports.handler = async (event) => {
             versao: cache.versao,
             revisaoPrazos: Boolean(cache.revisaoPrazos),
             prazosEmConferencia: Boolean(cache.prazosEmConferencia),
+            geradoEm: cache.geradoEm || null,
             doCache: true,
+            ...(novaLeitura ? { dossieEmPreparacao: true } : {}),
             erro: null,
           }),
         };

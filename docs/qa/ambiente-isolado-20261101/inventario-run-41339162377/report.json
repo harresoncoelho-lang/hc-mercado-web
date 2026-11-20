@@ -1,0 +1,64 @@
+{
+  "scope": "inventory_only_no_database_no_sql_execution",
+  "status": "inventory_complete",
+  "phase": "complete",
+  "source_sha256": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c",
+  "source_bytes": 505274,
+  "image": "postgres:17.11-bookworm@sha256:2cd2c0f809604aaeff6f0ec8f40aecbd025613107561015c69369a1a7f1d3416",
+  "expected_version": "17.11",
+  "executions": {
+    "version.txt": {
+      "network": "none",
+      "root_read_only": true,
+      "input_read_only": true,
+      "pgdata_empty_bind_read_only": true,
+      "entrypoint": "pg_restore",
+      "exit_code": 0,
+      "duration_seconds": 0.262
+    },
+    "toc.list": {
+      "network": "none",
+      "root_read_only": true,
+      "input_read_only": true,
+      "pgdata_empty_bind_read_only": true,
+      "entrypoint": "pg_restore",
+      "exit_code": 0,
+      "duration_seconds": 0.203
+    },
+    "schema.sql": {
+      "network": "none",
+      "root_read_only": true,
+      "input_read_only": true,
+      "pgdata_empty_bind_read_only": true,
+      "entrypoint": "pg_restore",
+      "exit_code": 0,
+      "duration_seconds": 0.215
+    }
+  },
+  "schema_filtering": "schema-only; comments, ownership and ACL retained",
+  "restoration_executed": false,
+  "limitations": [
+    "No database started",
+    "No data restoration or ACL/role reconciliation",
+    "No Storage bytes restored",
+    "Not production recovery or capacity proof"
+  ],
+  "outputs": {
+    "version.txt": {
+      "sha256": "ce3c3af2329aa295d232d4eceaaee9708335ec6e37dbbff898bc9866b9d07689",
+      "bytes": 56
+    },
+    "toc.list": {
+      "sha256": "f39abee9f1f10d7607d22bf16a364df65d031c326ddadc92968dfedfe664b0e2",
+      "bytes": 65775
+    },
+    "schema.sql": {
+      "sha256": "ffca645c34a6cf9510bd6fc29cfbba43549e0c6c3fc42bd9ea704d4e110e7c23",
+      "bytes": 317212
+    }
+  },
+  "observed_client_version": "17.11",
+  "observed_source_version": "17.11",
+  "observed_pg_dump_version": "17.11",
+  "toc_entries": 812
+}

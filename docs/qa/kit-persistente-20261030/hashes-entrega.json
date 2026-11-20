@@ -1,0 +1,26 @@
+[
+  {
+    "arquivo": "kit-documentos-ui.js",
+    "sha256": "34DCFD0A1BF6C8BA3B1D402EBA93D927C8A054BCC4E50984811DE856E512B4F1"
+  },
+  {
+    "arquivo": "kit-documentos.css",
+    "sha256": "FFE5F1271CF63F77625D747C3DAF13CD06DF796B9EEE50D651B82961E6FD5A60"
+  },
+  {
+    "arquivo": "scripts/kit_documentos_ui.test.js",
+    "sha256": "72DDE842D532A642222E92788B93A6D24606EC4A2E443AD46CED46CFB1082619"
+  },
+  {
+    "arquivo": "docs/qa/servir-kit-documentos-local.cjs",
+    "sha256": "D9444FDDEC7E045D818DAF177818922DF161C1D6B969FEAD2CFA26C97285DA2A"
+  },
+  {
+    "arquivo": "docs/qa/verificar-kit-documentos.cjs",
+    "sha256": "F96B00B9F34A7DDA7EABC4EB23FFE27800F8C127C8CB46BEE67A40992C41438D"
+  },
+  {
+    "arquivo": "docs/qa/verificar-kit-processos.cjs",
+    "sha256": "7A1E821CDC3DF4714AF67F31B2F64B052504D051CFDFB7C64FED9AC87F1C6A11"
+  }
+]

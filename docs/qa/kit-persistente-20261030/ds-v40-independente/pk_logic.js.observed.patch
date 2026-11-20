@@ -1,0 +1,80 @@
+--- pk_logic.v39.js	2026-10-30 21:15:22.873352719 -0300
++++ pk_logic.js	2026-10-30 21:15:33.910297406 -0300
+@@ -129,7 +129,11 @@
+ /* ===== Peças salvas do processo: repositório SIMULADO em memória desta página (não é banco real; sem localStorage) =====
+    Chave = empresa|processo. A gravação real (versão esperada e hash revalidado no servidor) fica para o backend local separado;
+    o hash deste protótipo não autoriza nada. Custos internos não entram no conteúdo salvo. */
+-var PD_REPO={}, PD_TOK=0;
++var PD_REPO={}, PD_OP=null, PD_SEQ=0, PD_EP=0;
++/* Operação de gravação com dono: uma única operação viva por vez. Qualquer troca de empresa, processo, sessão, papel ou modelo
++   chama pdKill(), que invalida a operação e limpa o estado de ocupado apenas se ele ainda pertence a ela. */
++function pdKill(){ var o=PD_OP; PD_EP++; if(!o) return; o.dead=true; if(o.timer){ clearTimeout(o.timer); o.timer=null } PD_OP=null; var kk=S.pk[o.c]; if(kk && kk.pdOp===o){ kk.pdOp=null; kk.pdMsg=''; kk.pdErr='' } }
++function pdLive(o){ return !o.dead && PD_OP===o && o.ep===PD_EP && ctx()===o.c && !!S.sess && S.role==='editor' && S.mod===o.mod }
+ function pdRepo(){ var k=ctx(); if(!PD_REPO[k]) PD_REPO[k]={seq:0,items:[]}; return PD_REPO[k] }
+ function pdItem(id){ return pdRepo().items.filter(function(x){return x.id===id})[0]||null }
+ function pdModName(m){ var mo=D.modelos.filter(function(x){return x.id===m})[0]; return mo?mo.n:m }
+@@ -141,17 +145,22 @@
+ function pdDeny(){ if(!cur()) return 'Escolha uma empresa antes de salvar peças.'; if(!S.sess) return sessMsg(); if(S.role!=='editor') return 'Acesso negado: o perfil de leitura não salva peças.'; return '' }
+ function pdRestore(snap){ if(snap && snap.precos){ S.prices[ctx()]=JSON.parse(JSON.stringify(snap.precos)); S.conds[ctx()]=JSON.parse(JSON.stringify(snap.condicoes)) } }
+ function pdFocus(id){ var e=document.getElementById(id); if(e) e.focus() }
+-function pdNew(){ var why=pdDeny(); if(why) return guard(why);
++function pdNew(){ var why=pdDeny(); if(why) return guard(why); pdKill();
+   var p=pk(); p.pc={id:null, mod:S.mod, version:0, base:null}; p.pdMsg='Novo documento: '+pdModName(S.mod)+'. Preencha na aba Modelos e proposta e salve.'; p.pdErr=''; p.pdConf=null;
+   clearGuard(); renderPdocs(); pdFocus('pdCurT') }
+ function pdSave(){ var why=pdDeny(); if(why) return guard(why);
+-  var c=ctx(), tok=++PD_TOK, k=pk(), p=pdCur(), ex=p.version, modC=S.mod, snapC=pdSnap(modC), hC=pdHash(modC), incC=pend().length>0, revC=(k.rev[modC]===bindKey(modC));
++  pdKill();                                       /* uma nova gravação invalida a anterior; a anterior não destrava esta */
++  var c=ctx(), k=pk(), p=pdCur(), ex=p.version, modC=S.mod, snapC=pdSnap(modC), hC=pdHash(modC), incC=pend().length>0, revC=(k.rev[modC]===bindKey(modC));
+   var simFail=!!document.getElementById('pdFail') && document.getElementById('pdFail').checked, simConf=!!document.getElementById('pdConf') && document.getElementById('pdConf').checked;
+-  k.pdBusy=true; k.pdErr=''; k.pdMsg='Gravando rascunho…'; clearGuard(); renderPdocs();
+-  setTimeout(function(){
+-    if(tok!==PD_TOK) return;                       /* superada por outra gravação */
+-    if(c!==ctx() || !S.sess || modC!==S.mod){ DS.announce('Resposta de gravação descartada: a empresa, o processo, a sessão ou o modelo mudou. Nada foi gravado aqui.'); return }
+-    var kk=pk(); kk.pdBusy=false;
++  var o={id:++PD_SEQ, c:c, ep:PD_EP, mod:modC, dead:false, timer:null}; PD_OP=o; k.pdOp=o;
++  k.pdErr=''; k.pdMsg='Gravando rascunho…'; clearGuard(); renderPdocs();
++  o.timer=setTimeout(function(){
++    o.timer=null;
++    if(!pdLive(o)){                                /* resposta tardia: nunca libera nem sobrescreve uma operação nova */
++      if(PD_OP===o) pdKill();
++      DS.announce('Resposta de gravação descartada: a empresa, o processo, a sessão, o perfil ou o modelo mudou. Nada foi gravado aqui.');
++      renderPdocs(); return }
++    var kk=pk(); kk.pdOp=null; PD_OP=null; o.dead=true;
+     if(simFail){ kk.pdMsg=''; kk.pdErr='Não foi salvo. O texto continua nesta tela e nada foi gravado. Tente novamente.'; renderPdocs(); pdFocus('pdErrT'); DS.announce(kk.pdErr); return }
+     var R=pdRepo(), it=p.id?pdItem(p.id):null;
+     if(it && simConf){ it.version++ }             /* simulação: outra sessão gravou uma nova versão */
+@@ -161,12 +170,12 @@
+     p.id=it.id; p.version=it.version; p.base=hC; p.mod=modC;
+     kk.pdConf=null; kk.pdErr=''; kk.pdMsg='Salvo como versão '+it.version+(incC?'. Peça incompleta: pode ser salva, mas não revisada nem baixada.':'.');
+     renderPdocs(); pdFocus('pdSt'); DS.announce(kk.pdMsg) }, 500) }
+-function pdOpen(id){ var it=pdItem(id); if(!it) return; var k=pk(), c=ctx();
++function pdOpen(id){ var it=pdItem(id); if(!it) return; pdKill(); var k=pk(), c=ctx();
+   pdRestore(it.snap); S.mod=it.mod; invalidate(); clearGuard();
+   k.pc={id:it.id, mod:it.mod, version:it.version, base:it.hash}; k.pdConf=null; k.pdErr='';
+   k.pdMsg='Peça aberta: '+it.title+' (versão '+it.version+'). Gere e confirme uma nova prévia antes de baixar.';
+   renderAll(); pdFocus('pdCurT'); DS.announce(k.pdMsg) }
+-function pdLoadCur(){ var why=pdDeny(); if(why) return guard(why); var k=pk(), cf=k.pdConf; if(!cf) return;
++function pdLoadCur(){ var why=pdDeny(); if(why) return guard(why); var k=pk(), cf=k.pdConf; if(!cf) return; pdKill();
+   var it=pdItem(cf.id); if(!it) return; pdRestore(it.snap); S.mod=it.mod; invalidate(); clearGuard();
+   k.pc={id:it.id, mod:it.mod, version:it.version, base:it.hash}; k.pdConf=null; k.pdErr='';
+   k.pdMsg='Versão atual carregada (versão '+it.version+'). As alterações locais que não estavam salvas foram descartadas.';
+@@ -176,7 +185,7 @@
+ function renderPdocs(){ var box=document.getElementById('pkDocs'); if(!box) return;
+   var af=document.activeElement, inBox=!!(af&&box.contains(af)), keep=inBox&&af.getAttribute('data-pd-key');
+   var c=cur(); if(!c){ box.innerHTML='<p class="hint">Escolha uma empresa e um processo para ver as peças salvas deste processo.</p>'; return }
+-  var k=pk(), p=pdCur(), pr0=proc(), canE=S.sess&&S.role==='editor', busy=!!k.pdBusy;
++  var k=pk(), p=pdCur(), pr0=proc(), canE=S.sess&&S.role==='editor', busy=!!k.pdOp;
+   var it=p.id?pdItem(p.id):null, un=pdUnsaved(), dis=(canE&&!busy)?'':' disabled';
+   var stChip = !p.id ? chip('wa','…','Ainda não salvo') : un ? chip('wa','…','Alterações não salvas') : chip('ok','✓','Salvo · versão '+p.version+(it&&it.incomplete?' · incompleto':''));
+   var hist = (it && it.revised && !un) ? '<p class="hint">Histórico: esta versão foi revisada ao ser salva. Essa revisão não vale para baixar: gere e confirme uma nova prévia.</p>' : '';
+@@ -215,3 +224,10 @@
+     '</div>';
+   box.innerHTML=h;
+   if(inBox){ var n=keep?box.querySelector('[data-pd-key="'+keep+'"]'):null; if(n&&!n.disabled) n.focus(); else { var t=document.getElementById('pdH'); if(t) t.focus() } } }
++/* Teclado na barra de abas (só pacote): após o foco da aba pelo teclado, revela a aba inteira na faixa horizontal.
++   Só rola na horizontal (scrollLeft); não altera a rolagem vertical da página. */
++document.addEventListener('keydown',function(e){
++  if(!(e.key==='End'||e.key==='Home'||e.key==='ArrowLeft'||e.key==='ArrowRight')) return;
++  setTimeout(function(){ var a=document.activeElement; if(!a||a.getAttribute('role')!=='tab') return; var tl=a.closest('[role=tablist]'); if(!tl) return;
++    var tr=tl.getBoundingClientRect(), ar=a.getBoundingClientRect();
++    if(ar.left<tr.left) tl.scrollLeft-=(tr.left-ar.left); else if(ar.right>tr.right) tl.scrollLeft+=(ar.right-tr.right) },0) });

@@ -1,0 +1,133 @@
+{
+  "capturedUtc": "2026-10-31T11:22:25.795182-03:00",
+  "scope": "Known local QA directory and existing sanitized manifests only; no Docker, credentials, remote SQL, restore or personal row output. Hashes read file bytes without decoding data.",
+  "verifiedDatabaseDumps": [
+    {
+      "name": "antes-kit-documentos-20261031T020748Z.dump",
+      "kind": "PostgreSQL custom-format database dump of local QA",
+      "bytes": 489155,
+      "sha256": "8f2b1dcce8d6fd6d80626e897820245c9a3bd38d7c04e7fd021ac14f1bdbf57f",
+      "matchesPreviousSha256": true,
+      "matchesPreviousBytes": true,
+      "pgdmpHeader": true,
+      "previousEvidence": "docs/qa/homologacao-real-20261031/ambiente-evidencia.json",
+      "previousIndexValidated": true,
+      "previousIndexEntries": 795,
+      "indexRerunNow": false,
+      "restoreExecuted": false
+    },
+    {
+      "name": "antes-correcao-acl-20261031T022043Z.dump",
+      "kind": "PostgreSQL custom-format database dump of local QA",
+      "bytes": 505274,
+      "sha256": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c",
+      "matchesPreviousSha256": true,
+      "matchesPreviousBytes": true,
+      "pgdmpHeader": true,
+      "previousEvidence": "docs/qa/homologacao-real-20261031/correcao-acl-evidencia.json",
+      "previousIndexValidated": true,
+      "previousIndexEntries": 812,
+      "indexRerunNow": false,
+      "restoreExecuted": false
+    }
+  ],
+  "otherLocalArtifacts": [
+    {
+      "name": "antes-seguranca-operacao-20261027.sql",
+      "bytes": 638244,
+      "sha256": "d93e25c57ed9e910cb9c217a10a14fb890a4dc06f1c48245e5969791049be3ac",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    },
+    {
+      "name": "defesa-revisada-backup-18d7f41b-5f5f-431d-9fe0-eb08bee9b44a.json",
+      "bytes": 157298,
+      "sha256": "d52e6e205af2f16fa09b6d4f90cc64f67e73875b625f09862f4178bb33df7a43",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    },
+    {
+      "name": "defesa-revisada-backup-65ab7970-98b4-46e5-88a0-066267cd5f63.json",
+      "bytes": 157298,
+      "sha256": "d52e6e205af2f16fa09b6d4f90cc64f67e73875b625f09862f4178bb33df7a43",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    },
+    {
+      "name": "defesa-revisada-backup-8a6133e5-1a11-454a-8b89-93dfd7e88716.json",
+      "bytes": 157146,
+      "sha256": "6b833090686bb0ac747d25ce9cf3862a33e15b754f7300c3e472c4e86ecb2020",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    },
+    {
+      "name": "defesa-revisada-backup-9883427e-e49d-4795-bed2-1e20c0ca832c.json",
+      "bytes": 45190,
+      "sha256": "f0f1e56d50c59aa6b77d7f0d4c119a8a438cf960d6b494a33befcca8bbe7a1c6",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    },
+    {
+      "name": "fullflow-backup-2904a195-8bc5-4d81-8036-e62f98aef48e.json",
+      "bytes": 203402,
+      "sha256": "609d7210034c5cd26430fb6eaa526bc117ee28664c319363380f4b0600a84483",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    },
+    {
+      "name": "fullflow-backup-6f564120-2db7-40d7-84d7-c2a22043279f.json",
+      "bytes": 203402,
+      "sha256": "1eb0bd7abcef81ccc3b16ae93359e3d0c820cf90081060d3f88401c90c26b04e",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    },
+    {
+      "name": "fullflow-backup-caef5322-280b-4169-a727-cd9584f97322.json",
+      "bytes": 203402,
+      "sha256": "e46c48427b2f96f03d4144edd79c3b4f9e79f8d0812d286e68b97c72ccb6a10f",
+      "classification": "legacy QA preservation artifact; contents and recovery semantics not inspected",
+      "restoreExecuted": false
+    }
+  ],
+  "localStorage": {
+    "priorRecordedVolumes": [
+      "licitaplena-qa-real_arquivos",
+      "licitaplena-qa-real_dados"
+    ],
+    "priorRecordedStorageObjects": 5,
+    "priorRecordedBuckets": 1,
+    "volumeBytesRead": false,
+    "independentFileBackupFoundInReviewedArtifacts": false,
+    "perObjectByteHashesAvailable": false,
+    "productionStorageBackupVerified": false
+  },
+  "toolsOnPath": {
+    "pg_restore": false,
+    "psql": false
+  },
+  "restoreReadiness": "Blocked: isolated PostgreSQL/Storage runtime not active or authorized to start; no independent Storage bytes backup proven.",
+  "remoteEvidence": {
+    "source": "docs/qa/migracoes-capacidade-20261031/observacao-remota.json",
+    "observedBy": "Root coordinator through authenticated IAB; not inspected by this audit agent",
+    "databaseBackupType": "PHYSICAL",
+    "completedBackupsVisible": 8,
+    "latestBackupUtc": "2026-10-31T05:16:47Z",
+    "storageBytesIncluded": false,
+    "pitrEnabled": false,
+    "restoreExecuted": false,
+    "isolatedDestinationAvailable": false,
+    "externalJobDefinitionsReviewed": false
+  },
+  "localListenerCheck": {
+    "ports": [
+      8792,
+      56321,
+      56322,
+      56324,
+      56325
+    ],
+    "listenersFound": 0,
+    "dockerInspected": false,
+    "serviceStarted": false
+  }
+}

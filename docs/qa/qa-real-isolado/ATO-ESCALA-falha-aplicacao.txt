@@ -1,0 +1,32 @@
+  - generic: select 'QA_ESCALA_APLICADA' as status,md5(pg_get_functiondef(p.oid)) as md5_definicao,md5(p.prosrc) as md5_corpo,p.
+      - generic: proacl::text as acl
+      - generic: from pg_proc p where p.oid='public.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)
+      - generic: "'::regprocedure;"
+      - generic: commit;
+      - generic: notify pgrst,'reload schema';
+      - textbox "Editor content" [active]: "-- PREPARADO / NÃO EXECUTADO. Exclusivamente QA luguscapasskcsficckf; conferir conexão externamente. -- Nenhuma credencial, chamada externa, alteração Auth ou dados de cliente. -- Não executar em produção. Revisão independente necessária. -- ATO01: só executar DEPOIS de salvar e verificar capturaATO00 e obter revisão. -- Janela sem execução concorrente da aplicação QA. Não remove nem copia dados. begin; set local statement_timeout='30s';set local lock_timeout='5s'; lock table public.operacao_kit_documentos in share row exclusive mode; do $aplicar$ declare p pg_proc; meta jsonb; …notify pgrst,'reload schema';"
+      - generic: "105"
+      - generic: 
+      - list:
+        - generic: end $$;$candidata$;
+    - separator:
+    - tablist:
+      - tab "Results" [selected]:
+        - generic: Results
+      - tab "Chart":
+        - generic: Chart
+      - button "0 rows":
+        - paragraph:
+          - generic: 0 rows
+      - button "Export" [disabled]:
+        - generic: Export
+    - generic: "Failed to run sql query: ERROR: P0001: Pós-aplicação divergente; rollback automático"
+    - generic: "CONTEXT: PL/pgSQL function inline_code_block line 99 at RAISE"
+    - button:
+      - button:
+    - button "Debug with Assistant":
+      - generic: Debug with Assistant
+    - button "More actions":
+- region "Notifications alt+T"
+- alert
+- alert

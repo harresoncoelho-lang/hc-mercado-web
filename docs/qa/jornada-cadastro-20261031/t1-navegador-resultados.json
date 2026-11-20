@@ -1,0 +1,18 @@
+{
+  "resultados": [
+    "cadastro direto respeita empresa da URL, confirma e recarrega",
+    "link inválido e cadastro vazio não escolhem outra empresa",
+    "falha e leitor mostram erro e permitem repetir sem habilitar gravação",
+    "cadastro pendente encerra a página antes de consultar identificação",
+    "A → B → A descarta resposta antiga",
+    "sessão trocada sem evento invalida resposta",
+    "sessão A → B → A com evento invalida resposta",
+    "atalho do kit preserva rascunho e retorna ao processo autorizado",
+    "retorno de outra empresa não abre dossiê e URL externa é ignorada",
+    "atalho invalida revisão pronta e reconsulta conserva proposta",
+    "cadastro em 375, 704 e 1280 nos temas existentes"
+  ],
+  "falhas": [],
+  "erros": [],
+  "externas": []
+}

@@ -1,0 +1,11 @@
+Lacuna reproduzida somente na fixture: readiness=true com RLS do kit desligada; outsider lê 2 peças. 57 verificações originais aprovadas.
+[{"qual":"(pode_acessar_empresa_operacao(organizacao_id, empresa_id) AND (EXISTS ( SELECT 1\n   FROM clientes c\n  WHERE ((c.id = auth.uid()) AND (c.status = 'aprovado'::text)))) AND (EXISTS ( SELECT 1\n   FROM operacao_empresas e\n  WHERE ((e.id = operacao_kit_documentos.empresa_id) AND (e.organizacao_id = operacao_kit_documentos.organizacao_id) AND e.ativo))))"}]
+AssertionError [ERR_ASSERTION]: Gate somente leitura do kit deve existir
+    at testarPersistencia (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\testar-kit-persistencia-local.cjs:82:3) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}

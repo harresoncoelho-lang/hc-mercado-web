@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "purpose": "private inventory only; no database or SQL execution",
+  "files": {
+    ".github/workflows/inventario.yml": "a5ae9a0d9f4ec7347aa13a4fcccc22433700bbb44cccd9f382faace31fc95720",
+    "inventory.py": "2f935197b884a938b3bba9043fb403d9777e53c8c29c889ad5ea14ab5b1142e5",
+    "test_inventory.py": "a9bb6dd73fa155bcedc8ea6d1f1800909df50ada0653ae3e8c5048f1265d98ce",
+    "README.md": "3daa259cb5cd808b17343348d2dc74727fc4427b71569fcaf975061c84b15df2",
+    "input/ficticio.dump": "30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c"
+  }
+}

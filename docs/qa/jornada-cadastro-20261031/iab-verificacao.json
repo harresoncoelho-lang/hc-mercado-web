@@ -1,0 +1,17 @@
+{
+  "data": "2026-10-31T01:28:19.807Z",
+  "ambiente": "127.0.0.1:60171; HTML/UI reais, SDK e identificação simulados, kit com handler local e armazenamento simulado",
+  "cenarios": [
+    "Aurora salva identificação fictícia com confirmação explícita; aviso não aprova documento",
+    "Horizonte permanece com identificação vazia",
+    "Retorno à Aurora recupera somente sua identificação",
+    "Atalho abre cadastro em nova aba com empresa/processo corretos",
+    "Abrir processo de origem retorna ao dossiê autorizado",
+    "Atualizar lista preserva título/texto do rascunho na aba original; Baixar DOCX segue desabilitado"
+  ],
+  "limites": [
+    "Não valida Auth/PostgREST/Storage reais",
+    "Não foi realizado envio, protocolo, implantação ou publicação"
+  ],
+  "imagem": "cadastro-iab.png"
+}

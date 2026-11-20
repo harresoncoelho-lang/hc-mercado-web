@@ -1,0 +1,280 @@
+{
+  "catalogo": {
+    "colunas": [
+      {
+        "acl": null,
+        "nome": "chave",
+        "tipo": "text",
+        "ordem": 1,
+        "default": null,
+        "identity": "",
+        "not_null": true,
+        "generated": ""
+      },
+      {
+        "acl": null,
+        "nome": "dado",
+        "tipo": "jsonb",
+        "ordem": 2,
+        "default": null,
+        "identity": "",
+        "not_null": true,
+        "generated": ""
+      },
+      {
+        "acl": null,
+        "nome": "atualizado_em",
+        "tipo": "timestamp with time zone",
+        "ordem": 3,
+        "default": "now()",
+        "identity": "",
+        "not_null": true,
+        "generated": ""
+      }
+    ],
+    "indices": [
+      {
+        "nome": "dados_robo_pkey",
+        "definicao": "CREATE UNIQUE INDEX dados_robo_pkey ON public.dados_robo USING btree (chave)"
+      }
+    ],
+    "relacao": {
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true,
+      "dono": "postgres",
+      "nome": "dados_robo",
+      "tipo": "r",
+      "esquema": "public",
+      "force_rls": false
+    },
+    "policies": [
+      {
+        "nome": "dados_robo_select_authenticated",
+        "check": null,
+        "using": "(auth.role() = 'authenticated'::text)",
+        "papeis": [
+          "public"
+        ],
+        "comando": "SELECT",
+        "permissiva": "PERMISSIVE"
+      },
+      {
+        "nome": "dados_robo_write_admin",
+        "check": "((auth.jwt() ->> 'email'::text) IN ( SELECT admins.email\n   FROM admins))",
+        "using": "((auth.jwt() ->> 'email'::text) IN ( SELECT admins.email\n   FROM admins))",
+        "papeis": [
+          "public"
+        ],
+        "comando": "ALL",
+        "permissiva": "PERMISSIVE"
+      }
+    ],
+    "triggers": [],
+    "acl_relacao": [
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "DELETE",
+        "grant_option": false
+      },
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "INSERT",
+        "grant_option": false
+      },
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "MAINTAIN",
+        "grant_option": false
+      },
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "REFERENCES",
+        "grant_option": false
+      },
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "SELECT",
+        "grant_option": false
+      },
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "TRIGGER",
+        "grant_option": false
+      },
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "TRUNCATE",
+        "grant_option": false
+      },
+      {
+        "papel": "postgres",
+        "concedente": "postgres",
+        "privilegio": "UPDATE",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "DELETE",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "INSERT",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "MAINTAIN",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "REFERENCES",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "SELECT",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "TRIGGER",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "TRUNCATE",
+        "grant_option": false
+      },
+      {
+        "papel": "anon",
+        "concedente": "postgres",
+        "privilegio": "UPDATE",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "DELETE",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "INSERT",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "MAINTAIN",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "REFERENCES",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "SELECT",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "TRIGGER",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "TRUNCATE",
+        "grant_option": false
+      },
+      {
+        "papel": "authenticated",
+        "concedente": "postgres",
+        "privilegio": "UPDATE",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "DELETE",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "INSERT",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "MAINTAIN",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "REFERENCES",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "SELECT",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "TRIGGER",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "TRUNCATE",
+        "grant_option": false
+      },
+      {
+        "papel": "service_role",
+        "concedente": "postgres",
+        "privilegio": "UPDATE",
+        "grant_option": false
+      }
+    ],
+    "constraints": [
+      {
+        "nome": "dados_robo_pkey",
+        "tipo": "p",
+        "definicao": "PRIMARY KEY (chave)"
+      }
+    ]
+  },
+  "read_only": "on",
+  "server_version": "17.6",
+  "versao_consulta": 1,
+  "observado_em_utc": "2026-11-01T18:14:34Z",
+  "hash_catalogo_md5": "9f0bb53843a9f268a74a5a527a04f93b"
+}

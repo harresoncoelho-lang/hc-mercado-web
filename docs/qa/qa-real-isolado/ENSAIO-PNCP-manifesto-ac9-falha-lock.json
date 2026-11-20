@@ -1,0 +1,20 @@
+{
+  "destino": "luguscapasskcsficckf",
+  "executado": false,
+  "aprovacaoRevisaoPendente": true,
+  "sha256": "ac9eddcacbf1906823ea46a7e5cdbaf28eb513f4a088c53e9da15a0d939c54a9",
+  "fontes": [
+    {
+      "arquivo": "supabase/importacao_item_pncp.sql",
+      "sha256": "525d521d5eee6473399be604e0a4f43acd808c76286cf6fead888a65a8e0e0e5",
+      "normalizacao": "LF",
+      "sha256Original": "e0b1b44e0c3fd293bed63a3a85cc629007908044006b817d875b5f4199e672b9"
+    },
+    {
+      "arquivo": "supabase/testar_importacao_pncp.sql",
+      "sha256": "eb15e47578e67f12c641f6b6001d05d0e376a81229a4b2edd50f23f72596e528",
+      "normalizacao": "LF",
+      "sha256Original": "eb15e47578e67f12c641f6b6001d05d0e376a81229a4b2edd50f23f72596e528"
+    }
+  ]
+}

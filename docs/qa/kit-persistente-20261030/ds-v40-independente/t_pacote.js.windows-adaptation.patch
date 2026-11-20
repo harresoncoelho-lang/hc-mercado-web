@@ -1,0 +1,17 @@
+--- original-tests/t_pacote.js
++++ adapted-tests/t_pacote.js
+@@ -1,4 +1,4 @@
+-const { chromium } = require('playwright'); const fs=require('fs');
++const { chromium } = require('./isolated-playwright.cjs'); const fs=require('fs');
+ const C=process.argv[2], OUT=process.argv[3]; fs.mkdirSync(OUT,{recursive:true});
+ const TOK=require('path').join(__dirname,'harness_tokens_live.css');
+ const fails=[], pass=[]; const ok=(c,m)=>{ (c?pass:fails).push(m); console.log((c?'PASS ':'FAIL ')+m); };
+@@ -6,7 +6,7 @@
+ let B;
+ async function load(w=1280, dark=false){ const p=await B.newPage({viewport:{width:w,height:900}}); p.setDefaultTimeout(4000);
+   p.errs=[]; p.on('pageerror',e=>p.errs.push(e.message));
+-  await p.goto('file://'+C+'/KitProposta/preview.html'); await p.addStyleTag({path:TOK});
++  await p.goto(require('url').pathToFileURL(require('path').join(C,'KitProposta','preview.html')).href); await p.addStyleTag({path:TOK});
+   if(dark) await p.click('[data-theme-set=dark]'); await wait(120); return p }
+ const tab=(p,n)=>p.locator('[role=tab]').nth(n).click();
+ const pkText=p=>p.evaluate(()=>document.getElementById('pkBox').innerText.replace(/ /g,' '));

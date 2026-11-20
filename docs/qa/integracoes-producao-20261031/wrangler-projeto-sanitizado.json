@@ -1,0 +1,17 @@
+{
+  "utc": "2026-10-30T23:53:48.009753-03:00",
+  "projeto": "licitaplena",
+  "ambiente": "production",
+  "comando": "wrangler pages secret list --project-name licitaplena --env production",
+  "exitCode": 1,
+  "projetoNaoEncontrado": true,
+  "acessoRecusado": false,
+  "listagemReconhecida": false,
+  "nomesSecrets": [],
+  "projetosListados": 1,
+  "correspondenciasNomeDominioLicitaPlena": 0,
+  "valoresDeSecretsPersistidos": false,
+  "mutacaoRemota": false,
+  "outputBrutoPersistidoPeloRoteiro": false,
+  "logsNativosWranglerNaoInspecionados": true
+}

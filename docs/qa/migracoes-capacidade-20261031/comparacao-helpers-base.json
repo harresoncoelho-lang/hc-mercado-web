@@ -1,0 +1,85 @@
+{
+  "metodo": "Comparação lexical de corpos; preserva strings e separação dos tokens, ignora comentários/whitespace. Não é prova geral de equivalência semântica.",
+  "funcoes": [
+    {
+      "assinatura": "aceitar_convite_empresa_operacao(uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "acesso_arquivo_operacao(text)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "bootstrap_operacao()",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "configurar_limite_cnpjs_cliente(uuid,integer)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "consultar_limite_cnpjs_cliente(uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "criar_convite_empresa_operacao(uuid,text,text)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "eh_membro_operacao(uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "eh_owner_admin_operacao(uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "limite_cnpjs_operacao()",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "listar_acessos_empresa_operacao()",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "listar_convites_empresa_operacao()",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "listar_empresas_convite_operacao()",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "meu_acesso_operacao()",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "pode_acessar_empresa_operacao(uuid,uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "pode_acessar_processo_operacao(uuid,uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "proteger_status_cliente_operacao()",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "revogar_acesso_empresa_operacao(uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "revogar_convite_empresa_operacao(uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "tem_vinculo_operacao(uuid)",
+      "tokensIguais": true
+    },
+    {
+      "assinatura": "verificar_limite_cnpjs_operacao()",
+      "tokensIguais": true
+    }
+  ]
+}

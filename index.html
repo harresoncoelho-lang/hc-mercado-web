@@ -1,414 +1,929 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LicitaPlena — Inteligência, gestão e automação em licitações</title>
-<meta name="description" content="Boletins diários, radar de licitações, diagnóstico de mercado e análise de concorrentes. Tudo que você precisa para vender ao governo.">
+<title>LicitaPlena: encontre, entenda e acompanhe licitações públicas</title>
+<meta name="description" content="Busque licitações abertas no PNCP, receba o boletim no e-mail todo dia útil, leia o resumo do edital com IA e veja preços e concorrentes. Para empresas e assessorias.">
 <link rel="icon" type="image/png" href="favicon.png?v=3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds-tokens.css">
+<script>
+  // Tema antes de pintar (sem piscar): mesma chave e mesmo padrão claro do sistema (app-comercial.js).
+  (function () { var t = null; try { t = localStorage.getItem("licitaplena_tema"); if (t === null) { var v = localStorage.getItem("licitaplena.tema"); if (v !== null) { t = v === "dark" ? "escuro" : "claro"; localStorage.setItem("licitaplena_tema", t); localStorage.removeItem("licitaplena.tema"); } } } catch (e) { t = null; } document.documentElement.dataset.theme = t === "escuro" ? "dark" : "light"; })();
+</script>
 <style>
-  :root {
-    --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a; --laranja-forte: #ff9d33;
-    --fundo: #0a121c; --cartao: #141f2e; --cartao-claro: #182638; --borda: #223144;
-    --texto: #eef3f8; --texto-fraco: #90a2b8; --verde: #34c17c; --vermelho: #e8617a;
-    --raio: 14px; --raio-pq: 8px;
-  }
+  /* Design System "Direção A, azul original": cores, raios e tipografia vêm de ds-tokens.css.
+     Sem gradiente e sem sombra (a única sombra do DS é de sobreposição). As seções alternam
+     fundo de página e fundo de superfície para marcar ritmo, em vez de empilhar cartões. */
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    font-family: "Inter", Arial, Helvetica, sans-serif;
-    background: radial-gradient(1200px 600px at 15% -10%, rgba(46,141,255,0.16), transparent 60%), var(--fundo);
-    background-attachment: fixed;
-    color: var(--texto);
-    margin: 0;
-  }
-  a { color: inherit; }
-  .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; font: var(--text-body); color: var(--text-primary); background: var(--surface-page); overflow-wrap: break-word; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  a { color: var(--action-text); text-underline-offset: 3px; }
+  [hidden] { display: none !important; }
+  .sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .container { max-width: 1160px; margin: 0 auto; padding: 0 32px; }
+  .pular { position: absolute; left: -9999px; }
+  .pular:focus { left: 16px; top: 8px; z-index: 100; background: var(--surface-raised); padding: 8px 12px; border-radius: var(--radius-control); }
+  .tn { font-variant-numeric: tabular-nums; }
+  .apoio { color: var(--text-secondary); }
 
-  /* Topbar */
-  .topbar {
-    position: sticky; top: 0; z-index: 50;
-    background: rgba(10,18,28,0.85); backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--borda);
-  }
-  .topbar-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
-  .marca { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-  .marca img { width: 34px; height: 34px; }
-  .marca span { font-weight: 800; font-size: 17px; letter-spacing: -0.3px; }
-  nav.menu { display: flex; align-items: center; gap: 28px; }
-  nav.menu a { text-decoration: none; color: var(--texto-fraco); font-size: 14px; font-weight: 600; }
-  nav.menu a:hover { color: var(--texto); }
-  .topo-acoes { display: flex; gap: 10px; align-items: center; }
+  /* Topo */
+  .topbar { position: sticky; top: 0; z-index: 50; background: var(--surface-default); border-bottom: 1px solid var(--border-default); }
+  .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 60px; }
+  .marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; line-height: 24px; color: var(--text-primary); text-decoration: none; }
+  /* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (regra do DS). */
+  .placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+  .placa img { width: 24px; height: 24px; display: block; }
+  nav.menu { display: flex; align-items: center; gap: 2px; }
+  nav.menu a { text-decoration: none; color: var(--text-secondary); font-weight: 500; padding: 6px 10px; border-radius: var(--radius-control); }
+  nav.menu a:hover { color: var(--text-primary); background: var(--surface-sunken); }
+  .topo-acoes { display: flex; gap: 8px; align-items: center; }
+
   .btn {
-    text-decoration: none; display: inline-block; padding: 10px 18px; border-radius: 9px;
-    font-size: 14px; font-weight: 700; cursor: pointer; border: none; font-family: inherit;
+    height: 36px; padding: 0 16px; border-radius: var(--radius-control); border: 1px solid transparent;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 500; font-size: 14px; line-height: 16px; text-decoration: none; cursor: pointer; white-space: nowrap;
   }
-  .btn-fantasma { background: rgba(255,255,255,0.08); border: 1px solid var(--borda); color: var(--texto); }
-  .btn-fantasma:hover { background: rgba(255,255,255,0.14); }
-  .btn-laranja { background: linear-gradient(120deg, var(--laranja), var(--laranja-forte)); color: #1a1005; }
-  .btn-laranja:hover { filter: brightness(1.06); }
-  .btn-grande { padding: 15px 28px; font-size: 16px; border-radius: 11px; }
+  .btn-pri { background: var(--action-strong); color: var(--action-on); }
+  .btn-pri:hover { background: var(--action-strong-hover); }
+  .btn-sec { background: var(--surface-default); color: var(--text-primary); border-color: var(--border-strong); }
+  .btn-sec:hover { background: var(--surface-sunken); }
+  .btn-ter { background: transparent; color: var(--action-text); padding: 0 8px; }
+  .btn-ter:hover { background: var(--action-tint); }
+  .btn-grande { height: 44px; padding: 0 20px; font-size: 16px; }
+  .btn:disabled { background: var(--surface-sunken); color: var(--text-disabled); border-color: var(--border-default); cursor: progress; }
 
-  /* Hero */
-  .hero { padding: 72px 0 40px; }
-  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 48px; align-items: center; }
-  .selo {
-    display: inline-flex; align-items: center; gap: 8px; background: rgba(46,141,255,0.12);
-    border: 1px solid rgba(46,141,255,0.35); color: #8fc0ff; padding: 7px 14px; border-radius: 999px;
-    font-size: 13px; font-weight: 700; margin-bottom: 18px;
-  }
-  .hero h1 { font-size: 42px; line-height: 1.15; margin: 0 0 18px; letter-spacing: -0.5px; }
-  .hero h1 em { font-style: normal; background: linear-gradient(120deg, var(--azul), #7fb8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .hero p.lead { color: var(--texto-fraco); font-size: 17px; line-height: 1.6; margin: 0 0 28px; max-width: 520px; }
-  .lista-check { list-style: none; margin: 0 0 32px; padding: 0; display: grid; gap: 12px; }
-  .lista-check li { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; color: #d6e0eb; }
-  .lista-check li .ok {
-    flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; background: rgba(52,193,124,0.18);
-    color: var(--verde); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; margin-top: 1px;
-  }
-  .hero-acoes { display: flex; gap: 14px; flex-wrap: wrap; }
+  /* Chips de situação (StatusChip do DS): sempre com texto, nunca só cor. */
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: var(--radius-control); border: 1px solid; font: var(--text-label); white-space: nowrap; }
+  .chip .g { font-size: 10px; font-weight: 700; }
+  .chip.ok { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+  .chip.wa { background: var(--attention-bg); color: var(--attention-text); border-color: var(--attention-border); }
+  .chip.er { background: var(--error-bg); color: var(--error-text); border-color: var(--error-border); }
+  .chip.in { background: var(--info-bg); color: var(--info-text); border-color: var(--info-border); }
+  .chip.ne { background: var(--surface-sunken); color: var(--text-secondary); border-color: var(--border-default); }
+  .chip-portal { white-space: normal; height: auto; min-height: 24px; max-width: 100%; overflow-wrap: anywhere; }
 
-  /* Mockup do painel */
-  .mockup {
-    background: var(--cartao); border: 1px solid var(--borda); border-radius: 16px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.5); overflow: hidden;
-  }
-  .mockup-barra { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--borda); background: var(--cartao-claro); }
-  .mockup-barra .bola { width: 10px; height: 10px; border-radius: 50%; }
-  .mockup-corpo { padding: 20px; }
-  .mockup-titulo { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-  .mockup-titulo img { width: 26px; height: 26px; }
-  .mockup-titulo span { font-weight: 800; font-size: 15px; }
-  .grade-mock { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .card-mock {
-    background: var(--cartao-claro); border: 1px solid var(--borda); border-radius: 11px; padding: 16px 12px;
-    text-align: center; font-size: 12.5px; font-weight: 700; color: #cfdbe8;
-  }
-  .card-mock .ico {
-    width: 38px; height: 38px; border-radius: 10px; margin: 0 auto 10px;
-    background: rgba(46,141,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 18px;
-  }
+  .msg { display: flex; gap: 8px; align-items: flex-start; padding: 12px 16px; border-radius: var(--radius-card); border: 1px solid; margin: 0; }
+  .msg.wa { background: var(--attention-bg); border-color: var(--attention-border); color: var(--attention-text); }
+  .msg.in { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
+  .msg .tx { color: var(--text-primary); }
 
-  /* Prova social / números */
-  .faixa-numeros { border-top: 1px solid var(--borda); border-bottom: 1px solid var(--borda); padding: 28px 0; margin-top: 40px; }
-  .grade-numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
-  .grade-numeros .num { font-size: 28px; font-weight: 800; color: var(--laranja-forte); }
-  .grade-numeros .rot { color: var(--texto-fraco); font-size: 13px; margin-top: 4px; }
+  /* Tipografia de página: títulos maiores que os do sistema, mesma família e pesos do DS. */
+  .sobretitulo { font: var(--text-label); color: var(--text-secondary); letter-spacing: 0.02em; text-transform: uppercase; margin: 0 0 12px; }
+  h2.titulo { font-size: 30px; line-height: 38px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 12px; max-width: 22ch; }
+  .intro { font: var(--text-body-lg); color: var(--text-secondary); margin: 0; max-width: 62ch; }
+  .cabeca-secao { margin-bottom: 40px; }
 
-  /* Prévia pública de Convênios e Emendas Federais (lê netlify/functions/convenios-publico.js) */
-  .cv-preview-resumo { text-align: center; margin-bottom: 32px; }
-  .cv-preview-resumo .num { font-size: 40px; font-weight: 800; color: var(--laranja-forte); }
-  .cv-preview-resumo .rot { color: var(--texto-fraco); font-size: 14px; margin-top: 4px; }
-  .cv-preview-lista { display: grid; gap: 12px; max-width: 720px; margin: 0 auto 32px; }
-  .cv-preview-status { text-align: center; color: var(--texto-fraco); font-size: 14px; }
-  .cv-preview-item {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px 20px;
-  }
-  .cv-preview-item .cv-preview-item-org { font-weight: 600; font-size: 14.5px; }
-  .cv-preview-item .cv-preview-item-meta { color: var(--texto-fraco); font-size: 13px; margin-top: 3px; }
-  .cv-preview-item .cv-preview-item-valor { font-weight: 700; color: var(--verde); font-size: 15px; white-space: nowrap; }
-  .cv-preview-cta { text-align: center; }
-  .cv-preview-cta p { color: var(--texto-fraco); margin: 0 0 14px; font-size: 14.5px; }
+  section.bloco { padding: 88px 0; }
+  section.bloco.superficie { background: var(--surface-default); border-top: 1px solid var(--border-default); border-bottom: 1px solid var(--border-default); }
 
-  /* Seções */
-  section.bloco { padding: 76px 0; }
-  .titulo-secao { text-align: center; max-width: 640px; margin: 0 auto 48px; }
-  .titulo-secao .tag { color: var(--laranja-forte); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; display: block; }
-  .titulo-secao h2 { font-size: 30px; margin: 0 0 12px; letter-spacing: -0.4px; }
-  .titulo-secao p { color: var(--texto-fraco); font-size: 15.5px; line-height: 1.6; }
+  /* 1. Primeira tela com busca */
+  .hero { padding: 64px 0 72px; background: var(--surface-default); border-bottom: 1px solid var(--border-default); }
+  /* Áreas: no celular a busca sobe logo depois do título, antes dos botões. */
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-areas: "texto busca" "resto busca"; column-gap: 56px; align-items: start; }
+  .hero-texto { grid-area: texto; }
+  .hero-resto { grid-area: resto; }
+  .busca { grid-area: busca; }
+  .hero h1 { font-size: 40px; line-height: 48px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 20px; }
+  .hero h1 .segunda { display: block; color: var(--text-secondary); }
+  .hero .lead { font-size: 18px; line-height: 28px; color: var(--text-secondary); margin: 0 0 32px; max-width: 46ch; }
+  .hero-acoes { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .hero-nota { font: var(--text-label); color: var(--text-secondary); margin: 0; max-width: 52ch; }
+  .fontes-linha { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 40px 0 0; padding: 16px 0 0; border-top: 1px solid var(--border-default); list-style: none; font: var(--text-label); color: var(--text-secondary); }
+  .fontes-linha strong { color: var(--text-primary); font-weight: 600; }
 
-  .grade-ferramentas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .ferramenta {
-    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); padding: 26px;
-    transition: transform 0.15s, border-color 0.15s;
-  }
-  .ferramenta:hover { transform: translateY(-3px); border-color: rgba(46,141,255,0.4); }
-  .ferramenta .ico {
-    width: 46px; height: 46px; border-radius: 12px; background: rgba(46,141,255,0.14);
-    display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 16px;
-  }
-  .ferramenta h3 { font-size: 16.5px; margin: 0 0 8px; }
-  .ferramenta p { font-size: 14px; color: var(--texto-fraco); line-height: 1.55; margin: 0; }
+  .busca { background: var(--surface-page); border: 1px solid var(--border-default); border-radius: var(--radius-card); padding: 24px; }
+  .busca h2 { font: var(--text-section); margin: 0 0 4px; }
+  .busca > p { margin: 0 0 20px; color: var(--text-secondary); }
+  .busca-form { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 12px; align-items: start; }
+  .fld { display: grid; gap: 6px; min-width: 0; }
+  .fld label { font: var(--text-label); color: var(--text-primary); }
+  .inp { height: 44px; width: 100%; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface-default); color: var(--text-primary); font-size: 16px; min-width: 0; }
+  .inp::placeholder { color: var(--text-secondary); opacity: 1; }
+  .inp[aria-invalid="true"] { border-color: var(--error-text); box-shadow: inset 0 0 0 1px var(--error-text); }
+  .erro-campo { font: var(--text-label); color: var(--error-text); margin: 0; }
+  .busca-form .btn { grid-column: 1 / -1; height: 44px; font-size: 16px; }
+  .sugestoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0 0; }
+  .sugestoes span { font: var(--text-label); color: var(--text-secondary); }
+  .sugestao { height: 28px; padding: 0 10px; border-radius: var(--radius-control); border: 1px solid var(--border-default); background: var(--surface-default); color: var(--text-primary); font-size: 13px; cursor: pointer; }
+  .sugestao:hover { border-color: var(--border-strong); }
 
-  /* Como funciona */
-  .passos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-  .passo { position: relative; padding: 28px 24px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); }
-  .passo .num-passo {
-    width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(120deg, var(--azul), var(--azul-escuro));
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; margin-bottom: 14px;
-  }
-  .passo h3 { font-size: 16px; margin: 0 0 8px; }
-  .passo p { font-size: 14px; color: var(--texto-fraco); margin: 0; line-height: 1.55; }
+  .resultados { margin-top: 20px; }
+  .resultados-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .resultados-topo h3 { font-size: 14px; line-height: 22px; font-weight: 600; margin: 0; }
+  .lista-op { list-style: none; margin: 0; padding: 0; background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); }
+  .op { padding: 14px 16px; display: grid; gap: 6px; }
+  .op + .op { border-top: 1px solid var(--border-default); }
+  .op-obj { font-weight: 600; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .op-meta { font: var(--text-label); color: var(--text-secondary); margin: 0; }
+  .op-pe { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .op-pe a { font-weight: 500; font-size: 13px; }
+  .convite { margin-top: 12px; padding: 16px; border: 1px solid var(--info-border); background: var(--info-bg); border-radius: var(--radius-card); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .convite p { margin: 0; color: var(--text-primary); font-weight: 500; }
+  .status-busca { margin: 0; padding: 16px; background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); color: var(--text-secondary); }
 
-  /* CTA final */
-  .cta-final {
-    background: linear-gradient(120deg, var(--azul-escuro) 0%, var(--azul) 60%, #1c63c7 100%);
-    border-radius: 20px; padding: 56px 48px; text-align: center; position: relative; overflow: hidden;
-  }
-  .cta-final h2 { font-size: 28px; margin: 0 0 12px; }
-  .cta-final p { color: rgba(255,255,255,0.85); font-size: 15.5px; margin: 0 0 28px; }
+  /* 2. Duas rotas: duas colunas separadas por fio, sem cartões */
+  .rotas { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border-default); }
+  .rota { padding: 32px 40px 0 0; }
+  .rota + .rota { padding: 32px 0 0 40px; border-left: 1px solid var(--border-default); }
+  .rota h3 { font-size: 22px; line-height: 30px; font-weight: 600; margin: 0 0 8px; }
+  .rota > p { color: var(--text-secondary); margin: 0 0 24px; font-size: 15px; line-height: 24px; }
+  .beneficios { list-style: none; counter-reset: b; margin: 0 0 28px; padding: 0; display: grid; gap: 20px; }
+  .beneficios li { counter-increment: b; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px 12px; }
+  .beneficios li::before { content: counter(b, decimal-leading-zero); font: var(--text-label); color: var(--text-secondary); padding-top: 3px; font-variant-numeric: tabular-nums; }
+  .beneficios strong { display: block; font-weight: 600; }
+  .beneficios span { color: var(--text-secondary); grid-column: 2; }
 
-  footer { border-top: 1px solid var(--borda); padding: 32px 0; }
-  .rodape-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-  .rodape-inner .marca span { font-size: 15px; }
-  footer .direitos { color: var(--texto-fraco); font-size: 13px; }
+  /* 3. Boletim de exemplo: imita o e-mail diário (scripts/boletim_editais.py) */
+  .boletim-grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 56px; align-items: start; }
+  .boletim-lado ul { margin: 24px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .boletim-lado li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding-top: 12px; border-top: 1px solid var(--border-default); }
+  .boletim-lado li b { font: var(--text-label); color: var(--text-secondary); padding-top: 3px; }
+  .email { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); overflow: hidden; }
+  .email-cab { padding: 14px 20px; border-bottom: 1px solid var(--border-default); background: var(--surface-sunken); display: grid; gap: 2px; font-size: 13px; }
+  .email-cab .linha { display: flex; gap: 8px; min-width: 0; }
+  .email-cab .linha b { font-weight: 500; color: var(--text-secondary); width: 56px; flex: none; }
+  .email-cab .topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .email-corpo { padding: 20px; display: grid; gap: 12px; }
+  .email-corpo .ola { font-size: 18px; line-height: 26px; font-weight: 600; margin: 0; }
+  .email-corpo .ola + p { margin: 0 0 4px; color: var(--text-secondary); }
+  .ed { border: 1px solid var(--border-default); border-radius: var(--radius-card); padding: 16px; display: grid; gap: 6px; }
+  .ed-mod { font: var(--text-label); color: var(--action-text); text-transform: uppercase; letter-spacing: 0.02em; margin: 0; }
+  .ed-org { font-weight: 600; margin: 0; }
+  .ed-obj { margin: 0; }
+  .ed-fatos { font-size: 13px; color: var(--text-secondary); margin: 0; }
+  .ed-fatos b { color: var(--text-primary); font-weight: 600; }
+  .ed-link { justify-self: start; margin-top: 4px; }
+  #email-cartoes { display: grid; gap: 12px; }
+  .email-rodape { font: var(--text-label); color: var(--text-secondary); margin: 4px 0 0; }
 
-  @media (max-width: 880px) {
+  /* 4. Etapas: linhas alternadas de texto e mini tela, numeradas */
+  .etapas { display: grid; gap: 72px; }
+  .etapa { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 56px; align-items: center; }
+  .etapa:nth-child(even) .etapa-texto { order: 2; }
+  .etapa-num { font-size: 13px; line-height: 16px; font-weight: 600; color: var(--action-text); font-variant-numeric: tabular-nums; margin: 0 0 12px; }
+  .etapa h3 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 12px; }
+  .etapa-texto > p { font: var(--text-body-lg); color: var(--text-secondary); margin: 0 0 16px; }
+  .etapa-texto ul { margin: 0; padding: 0 0 0 18px; display: grid; gap: 6px; color: var(--text-primary); }
+  .etapa-texto ul li::marker { color: var(--text-secondary); }
+
+  /* Mini telas: ilustração em HTML no estilo do sistema, com dados fictícios. */
+  figure.tela { margin: 0; }
+  .tela-moldura { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); overflow: hidden; }
+  .tela-barra { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border-default); font: var(--text-label); color: var(--text-secondary); }
+  .tela-barra b { color: var(--text-primary); font-weight: 600; font-size: 13px; }
+  .tela-corpo { padding: 16px; display: grid; gap: 12px; font-size: 13px; line-height: 20px; }
+  figure.tela figcaption { font: var(--text-label); color: var(--text-secondary); margin-top: 8px; }
+  .filtros { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filtro { height: 26px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); display: inline-flex; align-items: center; font-size: 12px; }
+  .linhas-mini { border: 1px solid var(--border-default); border-radius: var(--radius-control); }
+  .linha-mini { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; }
+  .linha-mini + .linha-mini { border-top: 1px solid var(--border-default); }
+  .linha-mini .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .linha-mini .m { color: var(--text-secondary); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fatos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .fatos div { border-top: 1px solid var(--border-default); padding-top: 8px; min-width: 0; }
+  .fatos span { display: block; font-size: 11px; line-height: 16px; color: var(--text-secondary); }
+  .fatos b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .exig { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .exig li { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .fonte-mini { font-size: 12px; color: var(--text-secondary); border-top: 1px dashed var(--border-default); padding-top: 8px; }
+  .barras { display: grid; gap: 8px; }
+  .barra { display: grid; grid-template-columns: 92px minmax(0, 1fr) 76px; gap: 8px; align-items: center; font-size: 12px; }
+  .barra i { display: block; height: 10px; border-radius: 3px; background: var(--brand-blue); }
+  .barra.voce i { background: var(--text-primary); }
+  .barra .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .kanban { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .col { background: var(--surface-sunken); border-radius: var(--radius-control); padding: 8px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .col > b { font-size: 11px; line-height: 16px; color: var(--text-secondary); font-weight: 500; }
+  .ficha { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: 4px; padding: 6px 8px; font-size: 12px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .docs { display: grid; gap: 6px; }
+  .doc { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+  /* 5. Diferenciais: três colunas com fio superior forte */
+  .difs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+  .dif { border-top: 2px solid var(--text-primary); padding-top: 20px; }
+  .dif h3 { font-size: 18px; line-height: 26px; font-weight: 600; margin: 0 0 8px; }
+  .dif p { color: var(--text-secondary); margin: 0 0 16px; font-size: 15px; line-height: 24px; }
+  .dif .onde { font: var(--text-label); color: var(--text-secondary); margin: 0; }
+
+  /* 6. Dados ao vivo */
+  .vivo-grid { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 56px; align-items: start; }
+  .numeros { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--border-default); margin: 32px 0 0; }
+  .numeros div { padding: 20px 16px 20px 0; border-bottom: 1px solid var(--border-default); }
+  .numeros dt { font: var(--text-label); color: var(--text-secondary); margin-bottom: 4px; }
+  .numeros dd { margin: 0; font-size: 28px; line-height: 36px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .numeros dd small { display: block; font-size: 13px; line-height: 20px; font-weight: 400; color: var(--text-secondary); letter-spacing: 0; }
+  .origem { margin: 24px 0 0; font-size: 13px; color: var(--text-secondary); }
+  .origem b { color: var(--text-primary); font-weight: 600; }
+  .cv-lista { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); overflow: hidden; }
+  .cv-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border-default); background: var(--surface-sunken); }
+  .cv-cab b { font-weight: 600; }
+  .cv-preview-status { color: var(--text-secondary); margin: 0; padding: 16px; }
+  .cv-preview-status.erro { color: var(--attention-text); background: var(--attention-bg); }
+  .cv-preview-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; }
+  .cv-preview-item + .cv-preview-item { border-top: 1px solid var(--border-default); }
+  .cv-preview-item-org { font-weight: 600; }
+  .cv-preview-item-meta { color: var(--text-secondary); font: var(--text-label); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .cv-preview-item-valor { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  /* 7. Planos */
+  .planos { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 920px; }
+  .plano { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); padding: 28px; display: flex; flex-direction: column; }
+  .plano.destaque { border-color: var(--action-strong); box-shadow: inset 0 0 0 1px var(--action-strong); }
+  .plano-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .plano h3 { font-size: 20px; line-height: 28px; font-weight: 600; margin: 0; }
+  .plano .para { color: var(--text-secondary); margin: 0 0 20px; }
+  .preco { display: flex; align-items: baseline; gap: 6px; margin: 0 0 4px; }
+  .preco b { font-size: 40px; line-height: 48px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .preco span { color: var(--text-secondary); }
+  .plano .obs { font: var(--text-label); color: var(--text-secondary); margin: 0 0 24px; }
+  .inclui { list-style: none; margin: 0 0 28px; padding: 20px 0 0; border-top: 1px solid var(--border-default); display: grid; gap: 10px; flex: 1; }
+  .inclui li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; }
+  .inclui li::before { content: "\2713"; color: var(--success-text); font-weight: 700; font-size: 13px; }
+  .inclui li.titulo-lista { display: block; font: var(--text-label); color: var(--text-secondary); }
+  .inclui li.titulo-lista::before { content: none; }
+  .plano .btn { width: 100%; }
+  .planos-nota { margin: 20px 0 0; color: var(--text-secondary); max-width: 920px; font-size: 13px; }
+
+  /* 8. FAQ */
+  .faq-grid { display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); gap: 56px; align-items: start; }
+  .faq { border-top: 1px solid var(--border-default); }
+  .faq details { border-bottom: 1px solid var(--border-default); }
+  .faq summary { list-style: none; cursor: pointer; padding: 20px 40px 20px 0; position: relative; font-size: 16px; line-height: 24px; font-weight: 600; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; position: absolute; right: 4px; top: 18px; font-size: 20px; font-weight: 400; color: var(--text-secondary); }
+  .faq details[open] summary::after { content: "\2212"; }
+  .faq summary:focus-visible { outline-offset: -2px; border-radius: var(--radius-control); }
+  .faq .resp { padding: 0 40px 20px 0; color: var(--text-secondary); font-size: 15px; line-height: 24px; }
+  .faq .resp p { margin: 0 0 8px; }
+
+  /* 9. CTA final */
+  .cta-final { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: center; padding: 40px; border: 1px solid var(--border-default); border-radius: var(--radius-card); background: var(--surface-default); }
+  .cta-final h2 { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+  .cta-final p { color: var(--text-secondary); margin: 0; }
+  .cta-final .acoes { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  footer { border-top: 1px solid var(--border-default); padding: 32px 0; background: var(--surface-default); }
+  .rodape-inner { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  footer .direitos { color: var(--text-secondary); font: var(--text-label); max-width: 640px; margin: 0; }
+  .rodape-legal { margin-top: 16px; font: var(--text-label); color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .rodape-legal a { color: var(--text-secondary); }
+  .rodape-legal a:hover { color: var(--action-text); }
+
+  @media (max-width: 1000px) {
     nav.menu { display: none; }
-    .hero-grid { grid-template-columns: 1fr; }
-    .hero h1 { font-size: 32px; }
-    .grade-ferramentas, .passos { grid-template-columns: 1fr 1fr; }
-    .grade-numeros { grid-template-columns: 1fr 1fr; }
+    .hero-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "texto" "busca" "resto"; }
+    .hero-resto { margin-top: 32px; }
+    .boletim-grid, .vivo-grid, .faq-grid, .etapa { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .etapa:nth-child(even) .etapa-texto { order: 0; }
+    .difs { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   }
-  @media (max-width: 560px) {
-    .grade-ferramentas, .passos, .grade-numeros { grid-template-columns: 1fr; }
-    .hero-acoes { flex-direction: column; align-items: stretch; }
-    .cta-final { padding: 40px 24px; }
+  @media (max-width: 760px) {
+    .container { padding: 0 20px; }
+    section.bloco { padding: 64px 0; }
+    .hero { padding: 40px 0 48px; }
+    .hero h1 { font-size: 32px; line-height: 40px; }
+    h2.titulo { font-size: 24px; line-height: 32px; }
+    .rotas, .planos { grid-template-columns: minmax(0, 1fr); }
+    .rota, .rota + .rota { padding: 28px 0 0; border-left: 0; }
+    .rota + .rota { margin-top: 36px; border-top: 1px solid var(--border-default); }
+    .cta-final { grid-template-columns: minmax(0, 1fr); padding: 28px 20px; }
+    .etapas { gap: 56px; }
   }
   /* Celular grande (414px) e pequeno (375px) */
   @media (max-width: 480px) {
     .container { padding: 0 16px; }
-    .topbar-inner { flex-wrap: wrap; row-gap: 10px; }
-    .marca span { font-size: 15px; }
-    .topo-acoes { width: 100%; gap: 8px; }
-    .topo-acoes .btn { flex: 1 1 0; text-align: center; padding: 10px 8px; font-size: 13px; }
-    .hero { padding: 36px 0 24px; }
-    .hero h1 { font-size: 26px; }
-    .hero p.lead { font-size: 14.5px; }
-    .selo { font-size: 12px; padding: 6px 12px; }
-    .grade-mock { grid-template-columns: repeat(2, 1fr); }
-    .cta-final { padding: 32px 20px; }
-    .cta-final h2 { font-size: 22px; }
-    .cta-final p { font-size: 14px; }
-    .rodape-inner { flex-direction: column; text-align: center; }
-    .cv-preview-item { flex-direction: column; align-items: flex-start; gap: 6px; }
-    .cv-preview-item .cv-preview-item-valor { align-self: flex-end; }
+    .topbar-inner { height: auto; padding: 10px 0; flex-wrap: wrap; row-gap: 8px; }
+    .topo-acoes { width: 100%; }
+    .topo-acoes .btn { flex: 1 1 0; padding: 0 8px; }
+    .hero h1 { font-size: 26px; line-height: 34px; margin-bottom: 12px; }
+    .hero .lead { font-size: 16px; line-height: 24px; margin-bottom: 24px; }
+    .hero { padding: 28px 0 40px; }
+    .hero-acoes .btn, .cta-final .btn, .convite .btn { width: 100%; }
+    .busca { padding: 16px; }
+    .busca-form { grid-template-columns: minmax(0, 1fr) 96px; }
+    .fatos { grid-template-columns: 1fr 1fr; }
+    .barra { grid-template-columns: 76px minmax(0, 1fr) 68px; }
+    .numeros dd { font-size: 24px; line-height: 32px; }
+    .cv-preview-item { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .boletim-lado li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+    .plano { padding: 20px; }
+    .email-corpo { padding: 16px; }
   }
 </style>
 </head>
 <body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
-<div class="topbar">
+<header class="topbar">
   <div class="container topbar-inner">
-    <a href="index.html" class="marca">
-      <img src="logo-icone.svg" alt="LicitaPlena">
-      <span>LicitaPlena</span>
-    </a>
-    <nav class="menu">
-      <a href="#ferramentas">Ferramentas</a>
+    <a href="index.html" class="marca"><span class="placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a>
+    <nav class="menu" aria-label="Seções da página">
+      <a href="#boletim-exemplo">Boletim</a>
       <a href="#como-funciona">Como funciona</a>
-      <a href="#numeros">Resultados</a>
+      <a href="#planos">Planos</a>
+      <a href="#perguntas">Perguntas</a>
     </nav>
     <div class="topo-acoes">
-      <a href="login.html" class="btn btn-fantasma">Acessar Conta</a>
-      <a href="cadastro.html" class="btn btn-laranja">Cadastrar</a>
+      <button type="button" class="btn btn-ter" id="tema">Tema escuro</button>
+      <a href="login.html" class="btn btn-sec">Entrar</a>
+      <a href="cadastro.html" class="btn btn-pri">Testar grátis</a>
     </div>
   </div>
-</div>
+</header>
 
+<main id="conteudo">
+
+<!-- 1. Primeira tela: pergunta principal "tem licitação aberta para o que eu vendo?" -->
 <div class="hero">
   <div class="container hero-grid">
-    <div>
-      <span class="selo">🚀 Inteligência, gestão e automação em licitações</span>
-      <h1>Venda mais para o <em>governo</em>, com menos esforço</h1>
-      <p class="lead">Boletim diário de oportunidades, radar de licitações, diagnóstico de mercado e análise de concorrentes — tudo em um só lugar, pronto pra sua empresa não perder nenhuma oportunidade.</p>
-      <ul class="lista-check">
-        <li><span class="ok">✓</span> Receba as licitações certas pro seu ramo, todos os dias</li>
-        <li><span class="ok">✓</span> Descubra quem são seus concorrentes e quanto eles cobram</li>
-        <li><span class="ok">✓</span> Acompanhe convênios, emendas e despesas públicas em tempo real</li>
-      </ul>
+    <div class="hero-texto">
+      <p class="sobretitulo">Para empresas e assessorias que vendem ao governo</p>
+      <h1>Encontre, entenda e acompanhe licitações públicas. <span class="segunda">Todo dia útil, no seu <span style="white-space:nowrap">e-mail</span>.</span></h1>
+      <p class="lead">Dados oficiais do PNCP e do Compras.gov, resumo de edital com IA e inteligência de mercado em um só sistema.</p>
+    </div>
+    <div class="hero-resto">
       <div class="hero-acoes">
-        <a href="cadastro.html" class="btn btn-laranja btn-grande">Cadastre-se gratuitamente</a>
-        <a href="login.html" class="btn btn-fantasma btn-grande">Já tenho conta</a>
+        <a href="cadastro.html" class="btn btn-pri btn-grande">Testar grátis por 5 dias</a>
+        <a href="#boletim-exemplo" class="btn btn-sec btn-grande">Ver um boletim de exemplo</a>
       </div>
+      <!-- Dono confirmar: o cadastro (cadastro.html) hoje não pede cartão e toda conta passa por aprovação manual. Se isso mudar, ajustar esta frase. -->
+      <p class="hero-nota">O cadastro não pede cartão de crédito. Cada conta é liberada pela nossa equipe, e a resposta chega por e-mail.</p>
+      <ul class="fontes-linha" aria-label="Fontes de dados">
+        <li><strong>PNCP</strong> editais e contratos</li>
+        <li><strong>Compras.gov</strong> preços praticados</li>
+        <li><strong>Portal da Transparência</strong> convênios e emendas</li>
+      </ul>
     </div>
-    <div class="mockup">
-      <div class="mockup-barra">
-        <div class="bola" style="background:#ff5f57;"></div>
-        <div class="bola" style="background:#febc2e;"></div>
-        <div class="bola" style="background:#28c840;"></div>
-      </div>
-      <div class="mockup-corpo">
-        <div class="mockup-titulo">
-          <img src="logo-icone.svg" alt="">
-          <span>Painel LicitaPlena</span>
+
+    <section class="busca" id="busca" aria-labelledby="busca-titulo">
+      <h2 id="busca-titulo">Veja agora o que está aberto</h2>
+      <p>Busca nas licitações abertas do PNCP coletadas pelo LicitaPlena. Sem cadastro.</p>
+      <form class="busca-form" id="busca-form" novalidate>
+        <div class="fld">
+          <label for="busca-termo">O que sua empresa vende?</label>
+          <input class="inp" id="busca-termo" name="termo" type="search" inputmode="search" enterkeyhint="search" autocomplete="off" minlength="2" maxlength="60" placeholder="Ex.: uniformes" aria-describedby="busca-erro">
         </div>
-        <div class="grade-mock">
-          <div class="card-mock"><div class="ico">📋</div>Boletim de Oportunidades</div>
-          <div class="card-mock"><div class="ico">🔎</div>Encontrar Licitações</div>
-          <div class="card-mock"><div class="ico">📊</div>Diagnóstico de Mercado</div>
-          <div class="card-mock"><div class="ico">🏢</div>Analisar Empresa</div>
-          <div class="card-mock"><div class="ico">🤝</div>Convênios e Emendas Federais</div>
-          <div class="card-mock"><div class="ico">💰</div>Pesquisa de Preços</div>
+        <div class="fld">
+          <label for="busca-uf">UF (opcional)</label>
+          <select class="inp" id="busca-uf" name="uf">
+            <option value="">Todas</option>
+            <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option>
+            <option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option>
+            <option>PB</option><option>PR</option><option>PE</option><option>PI</option><option>RJ</option><option>RN</option><option>RS</option>
+            <option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>
+          </select>
         </div>
+        <p class="erro-campo" id="busca-erro" role="alert" hidden></p>
+        <button type="submit" class="btn btn-pri" id="busca-botao">Buscar licitações abertas</button>
+      </form>
+      <div class="sugestoes">
+        <span>Experimente:</span>
+        <button type="button" class="sugestao" data-termo="material de limpeza">material de limpeza</button>
+        <button type="button" class="sugestao" data-termo="merenda escolar">merenda escolar</button>
+        <button type="button" class="sugestao" data-termo="manutenção predial">manutenção predial</button>
       </div>
-    </div>
+      <div class="resultados" id="busca-resultados" aria-live="polite"></div>
+    </section>
   </div>
 </div>
 
-<div class="faixa-numeros" id="numeros">
-  <div class="container grade-numeros">
-    <div><div class="num">Diário</div><div class="rot">Boletim automático por e-mail e WhatsApp</div></div>
-    <div><div class="num">24 meses</div><div class="rot">De histórico acumulado por fornecedor</div></div>
-    <div><div class="num">Nacional</div><div class="rot">Cobertura via PNCP e fontes estaduais</div></div>
-    <div><div class="num">100%</div><div class="rot">Dados públicos e oficiais</div></div>
-  </div>
-</div>
-
-<section class="bloco" id="convenios-preview" style="padding-bottom:56px;">
+<!-- 2. Duas rotas -->
+<section class="bloco" id="para-quem" aria-labelledby="rotas-titulo">
   <div class="container">
-    <div class="titulo-secao">
-      <span class="tag">Dados reais, ao vivo</span>
-      <h2>Convênios e Emendas Federais monitorados agora</h2>
-      <p>Recursos federais liberados pra municípios e órgãos — sinal de que uma licitação pode estar a caminho. Prévia pública, sem precisar criar conta. Dados via Portal da Transparência.</p>
+    <div class="cabeca-secao">
+      <p class="sobretitulo">Para quem é</p>
+      <h2 class="titulo" id="rotas-titulo">Dois jeitos de usar, conforme quem participa da licitação</h2>
     </div>
-    <div class="cv-preview-resumo">
-      <div class="num" id="cv-preview-total">—</div>
-      <div class="rot">convênios e emendas monitorados</div>
-    </div>
-    <div class="cv-preview-lista" id="cv-preview-lista">
-      <p class="cv-preview-status">Carregando dados...</p>
-    </div>
-    <div class="cv-preview-cta">
-      <p>Quer ver todos os convênios da sua região?</p>
-      <a href="cadastro.html" class="btn btn-laranja btn-grande">Crie sua conta grátis</a>
-    </div>
-  </div>
-</section>
-
-<section class="bloco" id="ferramentas">
-  <div class="container">
-    <div class="titulo-secao">
-      <span class="tag">Ferramentas</span>
-      <h2>Tudo que você precisa para vender ao governo</h2>
-      <p>Simplificamos o processo de encontrar, entender e monitorar oportunidades de licitação — do edital ao concorrente.</p>
-    </div>
-    <div class="grade-ferramentas">
-      <div class="ferramenta">
-        <div class="ico">📋</div>
-        <h3>Boletim de Oportunidades</h3>
-        <p>Editais novos filtrados por UF e palavra-chave, enviados automaticamente por e-mail e WhatsApp todos os dias.</p>
+    <div class="rotas">
+      <div class="rota">
+        <p class="sobretitulo">Sou empresa</p>
+        <h3>Você vende com o próprio CNPJ</h3>
+        <p>Quer saber o que abriu, se vale a pena entrar e o que o edital pede.</p>
+        <ol class="beneficios">
+          <li><strong>Boletim no e-mail em todo dia útil</strong><span>Licitações novas do seu segmento, nas UFs que você escolher, com link direto para o PNCP.</span></li>
+          <li><strong>Resumo do edital com IA</strong><span>Prazos, exigências de habilitação e documentos pedidos. O resumo avisa se leu o PDF do edital ou só os dados do PNCP.</span></li>
+          <li><strong>Preço e concorrência antes de decidir</strong><span>Quanto o governo já pagou pelo item, quem costuma vencer e o histórico de um CNPJ concorrente.</span></li>
+        </ol>
+        <a href="cadastro.html" class="btn btn-sec">Testar como empresa</a>
       </div>
-      <div class="ferramenta">
-        <div class="ico">🔎</div>
-        <h3>Encontrar Licitações</h3>
-        <p>Busca avançada em todo o banco de licitações públicas, com filtros por estado, município, órgão e período.</p>
-      </div>
-      <div class="ferramenta">
-        <div class="ico">📊</div>
-        <h3>Diagnóstico de Mercado</h3>
-        <p>Veja o panorama completo de um segmento: quem compra, quem vende, valores praticados e ranking de concorrentes.</p>
-      </div>
-      <div class="ferramenta">
-        <div class="ico">🏢</div>
-        <h3>Analisar Empresa</h3>
-        <p>Ficha cadastral completa de qualquer fornecedor: contratos, histórico, sanções e órgãos com quem já negociou.</p>
-      </div>
-      <div class="ferramenta">
-        <div class="ico">🤝</div>
-        <h3>Convênios e Emendas Federais</h3>
-        <p>Radar de convênios, emendas parlamentares e despesas por fornecedor, com dados via Portal da Transparência.</p>
-      </div>
-      <div class="ferramenta">
-        <div class="ico">💰</div>
-        <h3>Pesquisa de Preços</h3>
-        <p>Descubra o preço médio praticado em contratos públicos antes de montar sua proposta.</p>
+      <div class="rota">
+        <p class="sobretitulo">Sou assessoria</p>
+        <h3>Você cuida das licitações de várias empresas</h3>
+        <p>Precisa de tudo separado por cliente e de nenhum prazo esquecido.</p>
+        <ol class="beneficios">
+          <li><strong>Empresas clientes em um só acesso</strong><span>Troque a empresa ativa e veja dados, documentos e processos de cada CNPJ separadamente.</span></li>
+          <li><strong>Certidões com vencimento à vista</strong><span>Federal, estadual, municipal, FGTS, CNDT e outros documentos, com alerta de 30, 15, 7, 3 e 1 dia antes de vencer.</span></li>
+          <li><strong>Agenda e Kanban por processo</strong><span>Compromissos com prazo, checklist de habilitação e cada licitação na etapa em que está.</span></li>
+        </ol>
+        <a href="cadastro.html" class="btn btn-sec">Testar como assessoria</a>
       </div>
     </div>
   </div>
 </section>
 
-<section class="bloco" id="como-funciona" style="padding-top:0;">
-  <div class="container">
-    <div class="titulo-secao">
-      <span class="tag">Como funciona</span>
-      <h2>Comece a usar em 3 passos</h2>
+<!-- 3. Boletim de exemplo -->
+<section class="bloco superficie" id="boletim-exemplo" aria-labelledby="boletim-titulo">
+  <div class="container boletim-grid">
+    <div class="boletim-lado">
+      <p class="sobretitulo">Boletim de exemplo</p>
+      <h2 class="titulo" id="boletim-titulo">É isso que chega no seu <span style="white-space:nowrap">e-mail</span></h2>
+      <p class="intro">O robô cruza as licitações publicadas no PNCP com o segmento e as UFs do seu cadastro e manda só o que é novo.</p>
+      <ul>
+        <li><b>Quando</b><span>Dias úteis, com envios de manhã, ao meio-dia e no fim da tarde quando há novidade.</span></li>
+        <li><b>O que vem</b><span>Modalidade, cidade, órgão, objeto, valor estimado, data de encerramento e link do edital.</span></li>
+        <li><b>Sem novidade</b><span>Você recebe um aviso curto dizendo que não houve oportunidade nova.</span></li>
+      </ul>
     </div>
-    <div class="passos">
-      <div class="passo">
-        <div class="num-passo">1</div>
-        <h3>Faça seu cadastro</h3>
-        <p>Preencha seus dados e os da sua empresa. É rápido e gratuito.</p>
-      </div>
-      <div class="passo">
-        <div class="num-passo">2</div>
-        <h3>Aguarde a aprovação</h3>
-        <p>Nossa equipe valida seu cadastro e libera o acesso à plataforma.</p>
-      </div>
-      <div class="passo">
-        <div class="num-passo">3</div>
-        <h3>Acesse o painel</h3>
-        <p>Entre com seu e-mail e senha e comece a acompanhar as oportunidades.</p>
+    <div>
+      <div class="email" id="email-exemplo">
+        <div class="email-cab">
+          <div class="topo">
+            <span class="chip in" id="email-selo"><span class="g" aria-hidden="true">i</span>Exemplo com dados fictícios</span>
+            <span class="apoio tn">Hoje, 06:04</span>
+          </div>
+          <div class="linha"><b>De</b><span>LicitaPlena</span></div>
+          <div class="linha"><b>Assunto</b><span id="email-assunto">Novos editais encontrados (2)</span></div>
+        </div>
+        <div class="email-corpo">
+          <p class="ola">Olá, Empresa Exemplo!</p>
+          <p>Encontramos <b id="email-qtd">2</b> nova(s) oportunidade(s) de licitação para você hoje. Segmento: <span id="email-segmento">material de limpeza</span> · AM.</p>
+          <div id="email-cartoes">
+            <div class="ed">
+              <p class="ed-mod">Pregão Eletrônico · Município Exemplo/AM</p>
+              <p class="ed-org">Prefeitura Exemplo</p>
+              <p class="ed-obj">Aquisição de material de limpeza e higiene para as unidades básicas de saúde.</p>
+              <p class="ed-fatos tn">Valor estimado: <b>R$ 184.320,00</b> · Encerra em: <b>02/12/2026</b></p>
+              <span class="btn btn-pri ed-link" aria-hidden="true">Ver edital no PNCP</span>
+            </div>
+            <div class="ed">
+            <p class="ed-mod">Dispensa Eletrônica · Cidade Exemplo/AM</p>
+            <p class="ed-org">Secretaria de Educação Exemplo</p>
+            <p class="ed-obj">Fornecimento de kits de limpeza para as escolas da rede municipal.</p>
+              <p class="ed-fatos tn">Valor estimado: <b>R$ 46.900,00</b> · Encerra em: <b>27/11/2026</b></p>
+              <span class="btn btn-pri ed-link" aria-hidden="true">Ver edital no PNCP</span>
+            </div>
+          </div>
+          <p class="email-rodape">Alerta automático gerado por LicitaPlena com base em dados públicos do PNCP.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="bloco" style="padding-top:0;">
+<!-- 4. Quatro etapas, com ilustrações de dados fictícios -->
+<section class="bloco" id="como-funciona" aria-labelledby="etapas-titulo">
+  <div class="container">
+    <div class="cabeca-secao">
+      <p class="sobretitulo">Como funciona</p>
+      <h2 class="titulo" id="etapas-titulo">Do edital publicado à proposta organizada</h2>
+      <p class="intro">Quatro etapas, cada uma com uma ferramenta do sistema. As telas abaixo são ilustrações com dados fictícios.</p>
+    </div>
+    <div class="etapas">
+
+      <article class="etapa">
+        <div class="etapa-texto">
+          <p class="etapa-num">01 · Encontrar</p>
+          <h3>Ache as licitações do seu ramo sem abrir portal por portal</h3>
+          <p>Busque por palavra, UF, município, órgão e período, ou deixe o boletim fazer isso por você.</p>
+          <ul><li>Encontrar Licitações e Boletim</li><li>Licitações abertas do PNCP, de todas as UFs</li></ul>
+        </div>
+        <figure class="tela">
+          <div class="tela-moldura" aria-hidden="true">
+            <div class="tela-barra"><b>Encontrar Licitações</b><span>3 resultados</span></div>
+            <div class="tela-corpo">
+              <div class="filtros"><span class="filtro">uniformes</span><span class="filtro">AM</span><span class="filtro">Abertas</span></div>
+              <div class="linhas-mini">
+                <div class="linha-mini"><div style="min-width:0"><div class="t">Uniformes escolares para a rede municipal</div><div class="m">Prefeitura Exemplo · Município A/AM</div></div><span class="chip wa"><span class="g">!</span>Encerra em 2 dias</span></div>
+                <div class="linha-mini"><div style="min-width:0"><div class="t">Fardamento para agentes de trânsito</div><div class="m">Secretaria Exemplo · Município B/AM</div></div><span class="chip ne">Encerra 09/12</span></div>
+                <div class="linha-mini"><div style="min-width:0"><div class="t">Camisetas para campanha de vacinação</div><div class="m">Fundação Exemplo · Município C/AM</div></div><span class="chip ne">Encerra 15/12</span></div>
+              </div>
+            </div>
+          </div>
+          <figcaption>Ilustração com dados fictícios: lista de licitações abertas filtrada por palavra e UF.</figcaption>
+        </figure>
+      </article>
+
+      <article class="etapa">
+        <div class="etapa-texto">
+          <p class="etapa-num">02 · Entender</p>
+          <h3>Leia o essencial do edital em poucos minutos</h3>
+          <p>O resumo com IA destaca datas, valor, exigências e documentos. Você vê de onde veio cada informação e confere no edital original.</p>
+          <ul><li>Resumo de edital e perguntas ao edital</li><li>Jurídico e Dúvidas para o que ficar em aberto</li></ul>
+        </div>
+        <figure class="tela">
+          <div class="tela-moldura" aria-hidden="true">
+            <div class="tela-barra"><b>Resumo do edital</b><span>PE 000/2026 · exemplo</span></div>
+            <div class="tela-corpo">
+              <div class="fatos">
+                <div><span>Abertura</span><b>25/11 · 09:00</b></div>
+                <div><span>Valor estimado</span><b>R$ 240.000,00</b></div>
+                <div><span>Disputa</span><b>Aberto</b></div>
+              </div>
+              <ul class="exig">
+                <li><span>Atestado de capacidade técnica</span><span class="chip in"><span class="g">i</span>Exigido</span></li>
+                <li><span>Amostra em até 3 dias úteis</span><span class="chip wa"><span class="g">!</span>Atenção</span></li>
+                <li><span>Balanço patrimonial do último exercício</span><span class="chip in"><span class="g">i</span>Exigido</span></li>
+              </ul>
+              <div class="fonte-mini">Fonte: PDF do edital, item 8.2 e Termo de Referência, item 5.</div>
+            </div>
+          </div>
+          <figcaption>Ilustração com dados fictícios: resumo de edital com datas, exigências e fonte.</figcaption>
+        </figure>
+      </article>
+
+      <article class="etapa">
+        <div class="etapa-texto">
+          <p class="etapa-num">03 · Decidir</p>
+          <h3>Saiba quanto o governo paga e quem costuma vencer</h3>
+          <p>Antes de montar a proposta, compare o seu preço com o histórico de compras públicas e veja quem já fornece para aquele órgão.</p>
+          <ul><li>Inteligência de Mercado e Pesquisa de Preços</li><li>Analisar Empresa: histórico de um CNPJ concorrente</li></ul>
+        </div>
+        <figure class="tela">
+          <div class="tela-moldura" aria-hidden="true">
+            <div class="tela-barra"><b>Pesquisa de Preços</b><span>Item exemplo · unidade</span></div>
+            <div class="tela-corpo">
+              <div class="barras">
+                <div class="barra"><span>Menor preço</span><i style="width:58%"></i><span class="v">R$ 31,90</span></div>
+                <div class="barra"><span>Mediana</span><i style="width:74%"></i><span class="v">R$ 40,50</span></div>
+                <div class="barra"><span>Maior preço</span><i style="width:100%"></i><span class="v">R$ 54,80</span></div>
+                <div class="barra voce"><span>Seu preço</span><i style="width:70%"></i><span class="v">R$ 38,00</span></div>
+              </div>
+              <div class="linhas-mini">
+                <div class="linha-mini"><span class="t">Fornecedor A</span><span class="m tn">12 contratos</span></div>
+                <div class="linha-mini"><span class="t">Fornecedor B</span><span class="m tn">7 contratos</span></div>
+              </div>
+            </div>
+          </div>
+          <figcaption>Ilustração com dados fictícios: faixa de preços pagos e fornecedores que mais vendem o item.</figcaption>
+        </figure>
+      </article>
+
+      <article class="etapa">
+        <div class="etapa-texto">
+          <p class="etapa-num">04 · Organizar</p>
+          <h3>Acompanhe cada processo e não deixe certidão vencer</h3>
+          <p>Cada licitação vira uma ficha no Kanban. Na Central Operacional ficam os documentos de cada empresa, com o vencimento visível.</p>
+          <ul><li>Kanban de acompanhamento</li><li>Documentos, certidões e agenda por empresa</li></ul>
+        </div>
+        <figure class="tela">
+          <div class="tela-moldura" aria-hidden="true">
+            <div class="tela-barra"><b>Central Operacional</b><span>Empresa Exemplo</span></div>
+            <div class="tela-corpo">
+              <div class="kanban">
+                <div class="col"><b>Analisando</b><div class="ficha">Uniformes · Mun. A</div><div class="ficha">Limpeza · Mun. D</div></div>
+                <div class="col"><b>Proposta</b><div class="ficha">Fardamento · Mun. B</div></div>
+                <div class="col"><b>Enviada</b><div class="ficha">Camisetas · Mun. C</div></div>
+              </div>
+              <div class="docs">
+                <div class="doc"><span>Certidão Federal</span><span class="chip ok"><span class="g">&#10003;</span>Válida</span></div>
+                <div class="doc"><span>CNDT</span><span class="chip wa"><span class="g">!</span>Vence em 9 dias</span></div>
+                <div class="doc"><span>Certidão Municipal</span><span class="chip er"><span class="g">&#10005;</span>Vencida</span></div>
+              </div>
+            </div>
+          </div>
+          <figcaption>Ilustração com dados fictícios: Kanban de processos e situação das certidões.</figcaption>
+        </figure>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- 5. Diferenciais -->
+<section class="bloco superficie" id="diferenciais" aria-labelledby="dif-titulo">
+  <div class="container">
+    <div class="cabeca-secao">
+      <p class="sobretitulo">O que pouca gente mostra</p>
+      <h2 class="titulo" id="dif-titulo">Informação que costuma ficar fora dos sistemas de licitação</h2>
+    </div>
+    <div class="difs">
+      <div class="dif">
+        <h3>Convênios e emendas federais</h3>
+        <p>Dinheiro federal liberado para um município costuma virar compra pública depois. Acompanhe convênios e emendas antes de o edital sair.</p>
+        <p class="onde">Fonte: Portal da Transparência</p>
+      </div>
+      <div class="dif">
+        <h3>Pesquisa de preços do Compras.gov</h3>
+        <p>Veja por quanto o mesmo item foi comprado em outras licitações e chegue à disputa com um preço que você consegue defender.</p>
+        <p class="onde">Fonte: Compras.gov</p>
+      </div>
+      <div class="dif">
+        <h3>Raio-X do concorrente por CNPJ</h3>
+        <p>Digite o CNPJ e veja contratos, órgãos atendidos, valores e sanções registradas. Útil para entender com quem você vai disputar.</p>
+        <p class="onde">Fontes: PNCP e Portal da Transparência</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Dados ao vivo -->
+<section class="bloco" id="dados" aria-labelledby="dados-titulo">
+  <div class="container vivo-grid">
+    <div>
+      <p class="sobretitulo">Dados ao vivo</p>
+      <h2 class="titulo" id="dados-titulo">Convênios e emendas federais monitorados agora</h2>
+      <p class="intro">Prévia pública do que o robô coletou. A lista mostra os mais recentes, sem precisar de conta.</p>
+      <dl class="numeros">
+        <!-- Valor legível sem JavaScript: o número real só substitui o texto quando a prévia responde com total maior que zero. -->
+        <div><dt>Convênios e emendas</dt><dd id="cv-preview-total">Diário<small>atualizado pelo robô</small></dd></div>
+        <div><dt>UFs cobertas no PNCP</dt><dd class="tn">27<small>todas as unidades da federação</small></dd></div>
+        <div><dt>Boletim por e-mail</dt><dd>Dias úteis<small>até 3 envios por dia</small></dd></div>
+        <div><dt>Fontes oficiais</dt><dd class="tn">3<small>PNCP, Compras.gov e Transparência</small></dd></div>
+      </dl>
+      <p class="origem"><b>De onde vêm os dados:</b> PNCP (Portal Nacional de Contratações Públicas), Compras.gov e Portal da Transparência. São dados públicos; o LicitaPlena coleta, organiza e mostra a fonte.</p>
+    </div>
+    <div class="cv-lista">
+      <div class="cv-cab"><b>Mais recentes</b><span class="apoio" style="font:var(--text-label)">Portal da Transparência</span></div>
+      <div id="cv-preview-lista" aria-live="polite">
+        <p class="cv-preview-status">Carregando dados...</p>
+        <noscript><p class="cv-preview-status">Ative o JavaScript para ver a lista ao vivo.</p></noscript>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. Planos -->
+<section class="bloco superficie" id="planos" aria-labelledby="planos-titulo">
+  <div class="container">
+    <div class="cabeca-secao">
+      <p class="sobretitulo">Planos</p>
+      <h2 class="titulo" id="planos-titulo">Preço público, sem precisar falar com vendedor</h2>
+      <p class="intro">Os dois planos começam com 5 dias de teste. Os valores abaixo são de lançamento.</p>
+    </div>
+    <div class="planos">
+      <div class="plano">
+        <div class="plano-topo"><h3>Empresa</h3><span class="chip in"><span class="g" aria-hidden="true">i</span>Preço de lançamento</span></div>
+        <p class="para">Para quem participa de licitações com o próprio CNPJ.</p>
+        <p class="preco"><b>R$ 149</b><span>/mês</span></p>
+        <p class="obs">Valor de lançamento, sujeito a reajuste para novas assinaturas.</p>
+        <!-- a definir pelo dono: número de usuários por conta, limite de resumos de edital com IA por dia (hoje há cota diária no servidor) e se a Central Operacional entra neste plano. Texto mantido neutro. -->
+        <ul class="inclui">
+          <li>Boletim por e-mail em todo dia útil</li>
+          <li>Encontrar Licitações em todas as UFs</li>
+          <li>Resumo de edital com IA, com cota diária de uso</li>
+          <li>Inteligência de Mercado e Pesquisa de Preços</li>
+          <li>Analisar Empresa (raio-X por CNPJ)</li>
+          <li>Convênios e Emendas Federais</li>
+          <li>Kanban e Jurídico e Dúvidas</li>
+        </ul>
+        <a href="cadastro.html" class="btn btn-sec btn-grande">Testar o plano Empresa</a>
+      </div>
+      <div class="plano destaque">
+        <div class="plano-topo"><h3>Assessoria</h3><span class="chip in"><span class="g" aria-hidden="true">i</span>Preço de lançamento</span></div>
+        <p class="para">Para quem cuida das licitações de mais de uma empresa.</p>
+        <p class="preco"><b>R$ 299</b><span>/mês</span></p>
+        <p class="obs">Valor de lançamento, sujeito a reajuste para novas assinaturas.</p>
+        <!-- a definir pelo dono: quantas empresas clientes e quantos usuários entram no plano Assessoria. O sistema hoje não aplica esse limite; não prometer número. -->
+        <ul class="inclui">
+          <li class="titulo-lista">Tudo do plano Empresa, mais:</li>
+          <li>Várias empresas clientes no mesmo acesso</li>
+          <li>Documentos e certidões por empresa, com alertas de vencimento</li>
+          <li>Agenda operacional e checklist de habilitação</li>
+          <li>Exportação dos documentos da empresa em CSV</li>
+        </ul>
+        <a href="cadastro.html" class="btn btn-pri btn-grande">Testar o plano Assessoria</a>
+      </div>
+    </div>
+    <p class="planos-nota">Quantidade de empresas e de usuários por plano: fale com a gente em <a href="mailto:licitaplena.site@gmail.com">licitaplena.site@gmail.com</a> antes de assinar se a sua operação for grande.</p>
+  </div>
+</section>
+
+<!-- 8. Perguntas frequentes -->
+<section class="bloco" id="perguntas" aria-labelledby="faq-titulo">
+  <div class="container faq-grid">
+    <div>
+      <p class="sobretitulo">Perguntas frequentes</p>
+      <h2 class="titulo" id="faq-titulo">Respostas diretas</h2>
+      <p class="intro">Não achou o que procura? Escreva para <a href="mailto:licitaplena.site@gmail.com">licitaplena.site@gmail.com</a>.</p>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>O LicitaPlena garante que vou ganhar licitações?</summary>
+        <div class="resp"><p>Não. Ninguém pode garantir isso. O sistema ajuda você a encontrar mais oportunidades, entender o edital mais rápido e decidir melhor onde entrar. Preço, documentação e a disputa continuam sendo seus.</p></div>
+      </details>
+      <details>
+        <summary>Quais fontes vocês usam?</summary>
+        <div class="resp"><p>Licitações e contratos vêm do PNCP (Portal Nacional de Contratações Públicas). Preços praticados vêm do Compras.gov. Convênios, emendas, despesas e sanções vêm do Portal da Transparência. São dados públicos e oficiais, coletados por robôs todos os dias.</p><p>O resumo com IA é um apoio de leitura. Confira sempre no edital original antes de enviar a proposta.</p></div>
+      </details>
+      <details>
+        <summary>Tem robô de lances?</summary>
+        <div class="resp"><p>Ainda não. O LicitaPlena não dá lances por você nem acompanha o chat do pregoeiro. O foco é encontrar, entender e organizar: o que acontece antes da sessão de disputa.</p></div>
+      </details>
+      <details>
+        <summary>Como funciona o teste de 5 dias?</summary>
+        <div class="resp"><p>Você faz o cadastro com os dados da empresa, nossa equipe aprova a conta e você usa as ferramentas por 5 dias. O cadastro não pede cartão de crédito.</p></div>
+      </details>
+      <details>
+        <summary>Como cancelo?</summary>
+        <!-- Dono confirmar: hoje não há botão de cancelamento no sistema nem cobrança automática integrada. Texto neutro até existir o fluxo. -->
+        <div class="resp"><p>Escreva para <a href="mailto:licitaplena.site@gmail.com">licitaplena.site@gmail.com</a> a partir do e-mail cadastrado pedindo o cancelamento. Nossa equipe orienta os próximos passos.</p></div>
+      </details>
+      <details>
+        <summary>Para quem é?</summary>
+        <div class="resp"><p>Para empresas que vendem ou querem vender ao governo, de qualquer porte, e para assessorias e consultorias que cuidam das licitações de várias empresas. Se você ainda está começando, o boletim e o resumo do edital já ajudam a entender o caminho.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- 9. CTA final -->
+<section class="bloco" style="padding-top:0" aria-labelledby="cta-titulo">
   <div class="container">
     <div class="cta-final">
-      <h2>Pronto para não perder mais nenhuma licitação?</h2>
-      <p>Crie seu cadastro gratuito agora e aguarde a liberação do seu acesso.</p>
-      <a href="cadastro.html" class="btn btn-laranja btn-grande">Cadastre-se gratuitamente</a>
+      <div>
+        <h2 id="cta-titulo">Receba amanhã cedo as licitações do seu segmento</h2>
+        <p>Cadastre a empresa, escolha o segmento e as UFs. Depois da aprovação, o boletim começa a chegar.</p>
+      </div>
+      <div class="acoes">
+        <a href="cadastro.html" class="btn btn-pri btn-grande">Testar grátis por 5 dias</a>
+        <a href="login.html" class="btn btn-sec btn-grande">Já tenho conta</a>
+      </div>
     </div>
   </div>
 </section>
+</main>
 
 <footer>
   <div class="container rodape-inner">
-    <a href="index.html" class="marca">
-      <img src="logo-icone.svg" alt="LicitaPlena" style="width:28px;height:28px;">
-      <span>LicitaPlena</span>
-    </a>
-    <div class="direitos">LicitaPlena — inteligência, gestão e automação em licitações. Uma solução HC Licitações, desenvolvida e operada pela HCM LTDA, CNPJ nº 28.786.260/0001-53, Manaus/AM.</div>
+    <a href="index.html" class="marca"><span class="placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a>
+    <p class="direitos">LicitaPlena: inteligência, gestão e automação em licitações. Uma solução HC Licitações, desenvolvida e operada pela HCM LTDA, CNPJ nº 28.786.260/0001-53, Manaus/AM.</p>
   </div>
-      <div style="text-align:center;margin-top:10px;font-size:12.5px;color:var(--texto-fraco);"><a href="termos-de-uso.html" style="color:inherit;text-decoration:underline;margin:0 6px;">Termos de uso</a><a href="politica-privacidade.html" style="color:inherit;text-decoration:underline;margin:0 6px;">Privacidade</a><a href="politica-cookies.html" style="color:inherit;text-decoration:underline;margin:0 6px;">Cookies</a></div>
+  <div class="container rodape-legal">
+    <a href="termos-de-uso.html">Termos de uso</a>
+    <a href="politica-privacidade.html">Privacidade</a>
+    <a href="politica-cookies.html">Cookies</a>
+    <a href="mailto:licitaplena.site@gmail.com">licitaplena.site@gmail.com</a>
+  </div>
 </footer>
 
 <script>
-  // Prévia pública de "Convênios e Emendas Federais" — lê o resumo mínimo (total + 5 mais
-  // recentes) da netlify/functions/convenios-publico.js, que por sua vez lê a mesma chave
-  // "convenios" do Supabase que scripts/coletar_convenios.js já mantém atualizada (nenhuma
-  // lógica de coleta nova aqui, só leitura pública e limitada do que já existe).
+  // Alternar tema: grava na mesma chave que o sistema lê.
+  (function () {
+    const b = document.getElementById("tema");
+    const pintar = () => { b.textContent = document.documentElement.dataset.theme === "dark" ? "Tema claro" : "Tema escuro"; };
+    pintar();
+    b.addEventListener("click", () => {
+      const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem("licitaplena_tema", t === "dark" ? "escuro" : "claro"); } catch (e) { /* preferência opcional */ }
+      pintar();
+    });
+  })();
+</script>
+<script>
+  // Busca pública (netlify/functions/busca-publica.js) e prévia de convênios
+  // (netlify/functions/convenios-publico.js). Só leitura, sem login.
   (function () {
     function escapeHtml(s) {
       if (s === null || s === undefined) return "";
-      return String(s).replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[c]));
+      return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
-    function formatarValor(v) {
-      const n = Number(v) || 0;
-      return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+    const brl = (n, casas) => Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: casas, maximumFractionDigits: casas });
+    // "AAAA-MM-DD" vem do banco como data sem fuso: montar a data local evita mostrar o dia anterior.
+    function dataLocal(iso) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+      return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
     }
+    // Mesmo formatador da prévia anterior: a data de publicação do convênio vem como texto ISO.
     function formatarData(iso) {
       if (!iso) return "";
       const d = new Date(iso);
-      if (isNaN(d.getTime())) return "";
-      return d.toLocaleDateString("pt-BR");
+      return isNaN(d.getTime()) ? "" : d.toLocaleDateString("pt-BR");
+    }
+    const dataBr = (iso) => { const d = dataLocal(iso); return d ? d.toLocaleDateString("pt-BR") : ""; };
+
+    // Situação por cor e por texto: até 3 dias é atenção; sem data, neutro explicando.
+    function chipEncerramento(iso) {
+      const d = dataLocal(iso);
+      if (!d) return '<span class="chip ne">Sem data de encerramento no PNCP</span>';
+      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      const dias = Math.round((d - hoje) / 86400000);
+      if (dias <= 0) return '<span class="chip wa"><span class="g" aria-hidden="true">!</span>Encerra hoje</span>';
+      if (dias <= 3) return `<span class="chip wa"><span class="g" aria-hidden="true">!</span>Encerra em ${dias} dia${dias > 1 ? "s" : ""}</span>`;
+      return `<span class="chip ne">Encerra em ${escapeHtml(dataBr(iso))}</span>`;
     }
 
-    async function carregarPreviaConvenios() {
+    async function buscar(termo, uf) {
+      const p = new URLSearchParams({ termo });
+      if (uf) p.set("uf", uf);
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 12000);
+      try {
+        const resp = await fetch("/api/busca-publica?" + p.toString(), { signal: ctrl.signal });
+        const tipo = resp.headers.get("content-type") || "";
+        const corpo = tipo.includes("application/json") ? await resp.json() : null;
+        if (!resp.ok || !corpo || !Array.isArray(corpo.resultados)) {
+          throw new Error((corpo && corpo.erro) || "indisponivel");
+        }
+        return corpo.resultados;
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
+    // --- 1. Busca da primeira tela ---
+    const form = document.getElementById("busca-form");
+    const campo = document.getElementById("busca-termo");
+    const uf = document.getElementById("busca-uf");
+    const erro = document.getElementById("busca-erro");
+    const botao = document.getElementById("busca-botao");
+    const area = document.getElementById("busca-resultados");
+
+    function validar() {
+      const termo = campo.value.trim();
+      const msg = termo.length < 2 ? "Digite pelo menos 2 letras do que sua empresa vende, por exemplo: uniformes."
+        : termo.length > 60 ? "Use até 60 caracteres. Tente só o nome do produto ou serviço." : "";
+      erro.textContent = msg;
+      erro.hidden = !msg;
+      campo.setAttribute("aria-invalid", msg ? "true" : "false");
+      return msg ? null : termo;
+    }
+
+    function itemHtml(r) {
+      const local = [r.municipio, r.uf].filter(Boolean).join("/");
+      const meta = [r.orgao, local, r.modalidade].filter(Boolean).map(escapeHtml).join(" · ");
+      const link = r.link ? `<a href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">Ver no PNCP<span class="sr"> (abre em nova aba)</span></a>` : "";
+      // Portal da disputa: nome e link já normalizados/validados pela function (só http/https).
+      const portal = r.portal ? `<span class="chip in chip-portal">Portal: ${escapeHtml(r.portal)}</span>` : "";
+      const disputa = r.linkDisputa ? `<a href="${escapeHtml(r.linkDisputa)}" target="_blank" rel="noopener noreferrer">Acessar local da disputa<span class="sr"> (abre em nova aba)</span></a>` : "";
+      return `<li class="op"><p class="op-obj">${escapeHtml(r.objeto)}</p><p class="op-meta">${meta}</p><div class="op-pe">${chipEncerramento(r.encerramento)}${portal}${link}${disputa}</div></li>`;
+    }
+
+    async function executarBusca() {
+      const termo = validar();
+      if (!termo) { campo.focus(); return; }
+      botao.disabled = true;
+      botao.textContent = "Buscando...";
+      area.innerHTML = '<p class="status-busca">Consultando licitações abertas...</p>';
+      try {
+        const resultados = await buscar(termo, uf.value);
+        if (resultados.length === 0) {
+          area.innerHTML = `<p class="status-busca">Nenhuma licitação aberta com "${escapeHtml(termo)}"${uf.value ? " em " + escapeHtml(uf.value) : ""} agora. Tente uma palavra mais geral ou tire o filtro de UF.</p>`;
+          return;
+        }
+        area.innerHTML = `
+          <div class="resultados-topo"><h3>${resultados.length} licitaç${resultados.length > 1 ? "ões abertas" : "ão aberta"} para "${escapeHtml(termo)}"${uf.value ? " em " + escapeHtml(uf.value) : ""}</h3><span class="apoio" style="font:var(--text-label)">Fonte: PNCP</span></div>
+          <ul class="lista-op">${resultados.map(itemHtml).join("")}</ul>
+          <div class="convite"><p>Crie sua conta para receber essas oportunidades todo dia útil.</p><a href="cadastro.html" class="btn btn-pri">Testar grátis por 5 dias</a></div>`;
+      } catch (e) {
+        area.innerHTML = '<p class="msg wa"><span aria-hidden="true">!</span><span class="tx">A busca não respondeu agora. Tente de novo em instantes ou <a href="#boletim-exemplo">veja um boletim de exemplo</a>.</span></p>';
+      } finally {
+        botao.disabled = false;
+        botao.textContent = "Buscar licitações abertas";
+      }
+    }
+
+    form.addEventListener("submit", (ev) => { ev.preventDefault(); executarBusca(); });
+    campo.addEventListener("input", () => { if (campo.getAttribute("aria-invalid") === "true") validar(); });
+    document.querySelectorAll(".sugestao").forEach((b) => b.addEventListener("click", () => {
+      campo.value = b.dataset.termo;
+      executarBusca();
+    }));
+
+    // --- 3. Boletim de exemplo: tenta trocar os cartões fictícios por licitações reais abertas
+    // (segmento exemplo, AM). Se a busca falhar, o exemplo fictício continua, já marcado como tal.
+    (async function boletimReal() {
+      try {
+        const resultados = (await buscar("material de limpeza", "AM")).slice(0, 3);
+        if (resultados.length === 0) return;
+        document.getElementById("email-selo").innerHTML = '<span class="g" aria-hidden="true">i</span>Exemplo com licitações reais abertas no PNCP';
+        document.getElementById("email-assunto").textContent = `Novos editais encontrados (${resultados.length})`;
+        document.getElementById("email-qtd").textContent = String(resultados.length);
+        document.getElementById("email-cartoes").innerHTML = resultados.map((r) => `
+          <div class="ed">
+            <p class="ed-mod">${escapeHtml([r.modalidade, [r.municipio, r.uf].filter(Boolean).join("/")].filter(Boolean).join(" · "))}</p>
+            <p class="ed-org">${escapeHtml(r.orgao)}</p>
+            <p class="ed-obj">${escapeHtml(r.objeto)}</p>
+            <p class="ed-fatos tn">Valor estimado: <b>${r.valorEstimado ? brl(r.valorEstimado, 2) : "não informado"}</b> · Encerra em: <b>${escapeHtml(dataBr(r.encerramento)) || "não informado"}</b></p>
+            ${r.link ? `<a class="btn btn-pri ed-link" href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">Ver edital no PNCP<span class="sr"> (abre em nova aba)</span></a>` : ""}
+          </div>`).join("");
+      } catch (e) { /* mantém o exemplo fictício */ }
+    })();
+
+    // --- 6. Prévia pública de Convênios e Emendas Federais ---
+    (async function carregarPreviaConvenios() {
       const elTotal = document.getElementById("cv-preview-total");
       const elLista = document.getElementById("cv-preview-lista");
-      if (!elTotal || !elLista) return;
       try {
-        // A função também possui timeout no servidor, mas este limite no navegador
-        // evita a mensagem "Carregando dados..." ficar presa caso a conexão com o
-        // CDN seja interrompida antes de a função responder.
+        // A função também possui timeout no servidor; este limite evita "Carregando" preso.
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 12000);
         const resp = await fetch("/api/convenios-publico", { signal: controller.signal });
         clearTimeout(timeout);
         if (!resp.ok) throw new Error("resposta não-ok");
         const dados = await resp.json();
-        elTotal.textContent = (dados.total || 0).toLocaleString("pt-BR");
+        // Só troca o texto padrão por número quando há total real: nunca mostrar "0".
+        if (dados.total > 0) elTotal.innerHTML = `${Number(dados.total).toLocaleString("pt-BR")}<small>registros monitorados</small>`;
         if (!dados.recentes || dados.recentes.length === 0) {
-          elLista.innerHTML = '<p class="cv-preview-status">Nenhum convênio monitorado ainda — volte em breve.</p>';
+          elLista.innerHTML = '<p class="cv-preview-status">Nenhum convênio monitorado ainda. Volte em breve.</p>';
           return;
         }
         elLista.innerHTML = dados.recentes.map((r) => `
@@ -417,16 +932,12 @@
               <div class="cv-preview-item-org">${escapeHtml(r.orgao)}</div>
               <div class="cv-preview-item-meta">${escapeHtml(r.uf || "-")} · ${escapeHtml(formatarData(r.dataPublicacao)) || "Data não informada"}</div>
             </div>
-            <div class="cv-preview-item-valor">${r.valor ? formatarValor(r.valor) : "Valor não informado"}</div>
-          </div>
-        `).join("");
+            <div class="cv-preview-item-valor">${r.valor ? brl(r.valor, 0) : "Valor não informado"}</div>
+          </div>`).join("");
       } catch (e) {
-        elTotal.textContent = "—";
-        elLista.innerHTML = '<p class="cv-preview-status">Não foi possível carregar a prévia agora. Tente novamente em instantes.</p>';
+        elLista.innerHTML = '<p class="cv-preview-status erro">! Não foi possível carregar a prévia agora. Tente novamente em instantes.</p>';
       }
-    }
-
-    carregarPreviaConvenios();
+    })();
   })();
 </script>
 

@@ -32,6 +32,7 @@
     }
 
     function renderizar(processo) {
+      versaoLeitura++;
       if (!estado.detalhesCarregados) {
         $("d-acompanhamento").innerHTML = estado.erroDetalhes
           ? '<p class="aviso-dados">O acompanhamento não pôde ser carregado. Confira o aviso no topo e tente atualizar. Nenhum resultado foi presumido.</p>'
@@ -44,6 +45,10 @@
       const anexos = doProcesso(estado.anexos, processo.id);
       const prazos = doProcesso(estado.prazos, processo.id);
       const empenhos = doProcesso(estado.empenhos, processo.id);
+      const CP = raiz.ContratoPublico;
+      const hoje = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10);
+      const publicos = doProcesso(estado.contratosPublicos || [], processo.id);
+      const sugeridos = CP.itensAindaPendentes(((estado.esteiraResultado || []).find(t => t.processo_id === processo.id) || {}).detalhe?.sugestao, itens);
       const apurado = raiz.LicitaAcompanhamento.resultadoEfetivo(processo, itens);
       const lista = (registros, montar, vazio) => registros.length ? registros.map(montar).join("") : `<p class="nota">${vazio}</p>`;
       $("d-acompanhamento").innerHTML = `
@@ -53,6 +58,7 @@
           <p class="nota">Data: ${data(processo.data_resultado)} · ${origem(processo.fonte_resultado) || "Fonte oficial não vinculada"}${processo.motivo_perda ? ` · ${esc(processo.motivo_perda)}` : ""}</p>
           ${processo.resultado ? `<p class="nota">Registro anterior do processo: ${esc(processo.resultado)}</p>` : ""}
           <div class="acoes-bloco"><button class="btn" data-editar-processo="${processo.id}">Editar cadastro e sessão</button><button class="btn" data-resultado="${processo.id}">Registrar resultado</button><button class="btn" data-item="${processo.id}">+ Item/lote</button></div>
+          ${sugeridos.length ? `<div class="linha-registro" data-sugestao-resultado="${processo.id}"><strong>Resultado encontrado no PNCP</strong><small>${esc(CP.textoSugestao(sugeridos, dinheiro))}</small><small>Nada foi gravado ainda. Confira e confirme para preencher o resultado de ${sugeridos.length} ${sugeridos.length === 1 ? "item" : "itens"}.</small><button class="btn" data-confirmar-sugestao="${processo.id}">Confirmar resultado</button></div>` : ""}
           ${lista(itens, item => `<div class="linha-registro"><span class="tag">${esc(item.tipo)} ${esc(item.identificador)}</span><strong>${esc(item.descricao || "Sem descrição")}</strong><small>${esc(rotulo(item.situacao))} · qtd.: ${esc(item.quantidade ?? "Não informada")} · proposta: ${valorOpcional(item.valor_proposta)} · homologado à empresa: ${valorOpcional(item.valor_homologado)}</small>${item.valor_unitario_proposta != null || item.valor_unitario_homologado != null ? `<small>Unitário proposto: ${valorOpcional(item.valor_unitario_proposta)} · unitário homologado: ${valorOpcional(item.valor_unitario_homologado)}</small>` : ""}${item.marca || item.modelo ? `<small>Marca: ${esc(item.marca || "—")} · Modelo: ${esc(item.modelo || "—")}</small>` : ""}${item.motivo ? `<small>${esc(item.motivo)}</small>` : ""}${origem(item.fonte_oficial)} <button class="btn" data-corrigir-item="${item.id}">Corrigir</button> <button class="btn perigo" data-excluir-item="${item.id}">Excluir lançamento</button></div>`, "Nenhum item/lote registrado. O resultado geral pode ser informado manualmente.")}
         </section>
         <section class="bloco-dossie"><h3>Relatório cronológico</h3><div class="acoes-bloco"><button class="btn" data-ocorrencia="${processo.id}">+ Ocorrência</button></div>
@@ -62,12 +68,15 @@
           <p class="nota">Sessão: ${dataHora(processo.data_sessao)}</p>
           ${lista(prazos, prazo => `<div class="linha-registro"><strong>${esc(prazo.titulo)}</strong><small>${dataHora(prazo.vencimento)} · ${esc(prazo.responsavel || "Sem responsável")} · ${prazo.concluido_em ? `concluído em ${dataHora(prazo.concluido_em)}` : "pendente"}</small><button class="btn" data-editar-prazo="${prazo.id}">Editar prazo</button> ${prazo.concluido_em ? "" : `<button class="btn" data-concluir-prazo="${prazo.id}">Concluir prazo</button>`}</div>`, "Nenhum prazo cadastrado.")}
         </section>
+        <section class="bloco-dossie" data-quadro-contrato="${processo.id}"><h3>Contrato</h3>
+          ${CP.htmlQuadroContrato(publicos, hoje, { esc, dinheiro, data })}
+        </section>
         <section class="bloco-dossie"><h3>Contratos e execução</h3><div class="acoes-bloco"><button class="btn" data-contrato="${processo.id}">+ Contrato</button><button class="btn" data-add-empenho="${processo.id}">+ Empenho</button></div>
           ${lista(contratos, contrato => `<div class="linha-registro"><strong>Contrato ${esc(contrato.numero)}</strong><small>${esc(rotulo(contrato.situacao))} · assinado: ${data(contrato.assinado_em)} · vigência: ${data(contrato.vigencia_inicio)} a ${data(contrato.vigencia_fim)} · valor: ${valorOpcional(contrato.valor)}</small>${contrato.observacoes ? `<small>${esc(contrato.observacoes)}</small>` : ""}<button class="btn" data-editar-contrato="${contrato.id}">Editar contrato</button></div>`, "Nenhum contrato cadastrado.")}
           ${lista(empenhos, empenho => `<div class="linha-registro"><strong>Empenho ${esc(empenho.numero)}</strong><small>${esc(rotulo(empenho.status))} · emitido: ${data(empenho.emitido_em)} · valor: ${dinheiro(empenho.valor)} · saldo: ${dinheiro(empenho.saldo ?? empenho.valor)}</small><button class="btn" data-editar-empenho="${empenho.id}">Editar empenho</button></div>`, "Nenhum empenho cadastrado.")}
         </section>
         <section class="bloco-dossie"><h3>Arquivos do processo</h3><div class="acoes-bloco"><button class="btn" data-anexo="${processo.id}">+ Anexar contrato, empenho ou documento</button></div>
-          ${lista(anexos, anexo => `<div class="linha-registro"><strong>${esc(rotulo(anexo.tipo))}: ${esc(anexo.titulo)}</strong><small>${esc(anexo.referencia_numero || "Sem número")} · ${esc(anexo.arquivo_nome)} · ${dataHora(anexo.criado_em)}</small><button class="btn" data-abrir-anexo="${anexo.id}">Abrir arquivo</button></div>`, "Nenhum arquivo vinculado a este processo.")}
+          ${lista(anexos, anexo => `<div class="linha-registro"><strong>${esc(rotulo(anexo.tipo))}: ${esc(anexo.titulo)}</strong><small>${esc(anexo.referencia_numero || "Sem número")} · ${esc(anexo.arquivo_nome)} · ${dataHora(anexo.criado_em)}</small><button class="btn" data-abrir-anexo="${anexo.id}">Abrir arquivo</button>${anexo.tipo === "edital" && deps.evidenciasAnexo ? `<button class="btn" data-ler-evidencia="${anexo.id}">Ler versão do edital</button>` : ""}</div>`, "Nenhum arquivo vinculado a este processo.")}
         </section>`;
     }
 
@@ -99,6 +108,23 @@
       formulario.reset(); fechar("modal-resultado"); await atualizarEReabrir(id);
     }
 
+    // Confirma a sugestão do robô: grava só em item ainda pendente (o que o usuário já decidiu não é sobrescrito).
+    async function confirmarSugestao(processoId) {
+      const itens = doProcesso(estado.itens, processoId);
+      const tarefa = (estado.esteiraResultado || []).find(t => t.processo_id === processoId);
+      const sugeridos = raiz.ContratoPublico.itensAindaPendentes(tarefa?.detalhe?.sugestao, itens);
+      let gravados = 0;
+      for (const s of sugeridos) {
+        const registro = itens.find(i => i.tipo === "item" && String(i.identificador) === String(s.numero));
+        const dados = { ...raiz.ContratoPublico.dadosDoItem(s, s.fonte), atualizado_em: new Date().toISOString() };
+        const { data: linhas, error } = await sb.from("operacao_itens_resultado").update(dados).eq("id", registro.id).eq("processo_id", processoId).eq("organizacao_id", estado.orgId).eq("situacao", "pendente").select("id");
+        if (error) { aviso("Não foi possível gravar o item " + s.numero + ": " + mensagemErro(error), "erro"); break; }
+        gravados += linhas?.length || 0;
+      }
+      await atualizarEReabrir(processoId);
+      if (gravados) aviso(`Resultado confirmado em ${gravados} ${gravados === 1 ? "item" : "itens"}.`, "info");
+    }
+
     async function salvarItem(ev) {
       ev.preventDefault();
       const formulario = ev.currentTarget, f = new FormData(formulario), id = f.get("processo_id");
@@ -128,6 +154,7 @@
       if (!item || !window.confirm(`Excluir o lançamento do ${item.tipo} ${item.identificador}? A apuração e os indicadores serão recalculados.`)) return;
       const { data: excluidos, error } = await sb.from("operacao_itens_resultado").delete()
         .eq("id", item.id).eq("processo_id", item.processo_id).eq("organizacao_id", estado.orgId).select("id");
+      if (error?.code === "23503") { aviso(error.message, "erro"); return; }
       if (error || !excluidos?.length) { aviso("Não foi possível excluir o item/lote. Atualize a página e tente novamente." + (error ? ` ${error.message}` : ""), "erro"); return; }
       await atualizarEReabrir(item.processo_id);
       const processo = estado.processos.find(registro => registro.id === item.processo_id);
@@ -173,7 +200,10 @@
       const storage = sb.storage.from("operacao-documentos");
       let enviado = false, registrado = false;
       try {
-        const { error: uploadError } = await storage.upload(caminho, arquivo, { upsert: false });
+        // Tipo explícito pela extensão: sem Office o navegador manda .docx sem tipo e o bucket recusa (seguranca_aprovacao_20261119.sql, M4).
+        const ext = arquivo.name.split(".").pop().toLowerCase();
+        const contentType = { pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" }[ext];
+        const { error: uploadError } = await storage.upload(caminho, arquivo, { upsert: false, contentType });
         if (uploadError) throw uploadError;
         enviado = true;
         const { error } = await sb.from("operacao_anexos_processo").insert({ organizacao_id: estado.orgId, processo_id: id, tipo: f.get("tipo"), titulo: String(f.get("titulo")).trim(), referencia_numero: f.get("referencia_numero") || null, arquivo_caminho: caminho, arquivo_nome: arquivo.name });
@@ -194,6 +224,25 @@
       finally { botao.disabled = false; }
     }
 
+    let versaoLeitura=0,painelEvidencia=null;
+    async function lerEvidencia(id) {
+      const anexo=estado.anexos.find(a=>a.id===id),processo=estado.processos.find(p=>p.id===anexo?.processo_id);
+      if(!anexo||!processo||!deps.evidenciasAnexo)return;
+      painelEvidencia?.remove();painelEvidencia=null;
+      const rodada=++versaoLeitura,empresa=estado.empresaId,org=estado.orgId;
+      const body={empresaId:empresa,processoId:processo.id,anexoId:id};
+      try {
+        const r=await deps.evidenciasAnexo({...body,acao:'ler'});
+        if(rodada!==versaoLeitura||estado.empresaId!==empresa||estado.orgId!==org)return;
+        const alvo=$('d-acompanhamento'),sec=raiz.document.createElement('section');sec.className='bloco-dossie';
+        const titulo=raiz.document.createElement('h3');titulo.textContent='Versão documental para revisão';sec.append(titulo);
+        const nota=raiz.document.createElement('p');nota.textContent='Fonte: '+anexo.arquivo_nome+' · SHA256: '+r.hash+' · Seleção do operador, sem comprovação de vigência jurídica.';sec.append(nota);
+        for(const p of r.paginas){const pre=raiz.document.createElement('pre');pre.textContent='Página '+p.pagina+'\n'+p.texto;sec.append(pre);}
+        const botao=raiz.document.createElement('button');botao.className='btn';botao.textContent='Selecionar esta versão após conferir';sec.append(botao);
+        botao.onclick=async()=>{if(rodada!==versaoLeitura||estado.empresaId!==empresa||estado.orgId!==org){sec.remove();return;}botao.disabled=true;try{await deps.evidenciasAnexo({...body,acao:'selecionar',hash:r.hash});if(rodada===versaoLeitura&&estado.empresaId===empresa&&estado.orgId===org)botao.textContent='Versão selecionada; vigência jurídica não comprovada';else sec.remove();}catch{botao.textContent='Arquivo alterado ou revisão indisponível. Leia novamente.';}};
+        painelEvidencia=sec;alvo.append(sec);
+      }catch{aviso('Não foi possível ler esta versão. Arquivo preservado; confira os limites e o acesso.','erro');}
+    }
     async function abrirAnexo(id) {
       const anexo = estado.anexos.find(item => item.id === id);
       if (!anexo) return;
@@ -211,9 +260,10 @@
       $("form-contrato").addEventListener("submit", salvarContrato);
       $("form-anexo").addEventListener("submit", salvarAnexo);
       $("d-conteudo").addEventListener("click", async ev => {
-        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-excluir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-concluir-prazo]");
+        const botao = ev.target.closest("[data-editar-processo],[data-resultado],[data-item],[data-corrigir-item],[data-excluir-item],[data-ocorrencia],[data-editar-ocorrencia],[data-editar-prazo],[data-contrato],[data-editar-contrato],[data-editar-empenho],[data-anexo],[data-abrir-anexo],[data-ler-evidencia],[data-concluir-prazo],[data-confirmar-sugestao]");
         if (!botao) return;
         const { editarProcesso: editar, resultado, item, corrigirItem, excluirItem: excluirId, ocorrencia, editarOcorrencia, editarPrazo, contrato, editarContrato, editarEmpenho, anexo, abrirAnexo: abrirId, concluirPrazo } = botao.dataset;
+        if (botao.dataset.confirmarSugestao) { botao.disabled = true; await confirmarSugestao(botao.dataset.confirmarSugestao); return; }
         if (editar) { editarProcesso(editar); return; }
         if (excluirId) { await excluirItem(excluirId); return; }
         if (resultado) {
@@ -262,6 +312,7 @@
           return;
         }
         if (anexo) { prepararFormulario("anexo", anexo); return; }
+        if (botao.dataset.lerEvidencia) { await lerEvidencia(botao.dataset.lerEvidencia); return; }
         if (abrirId) { await abrirAnexo(abrirId); return; }
         if (concluirPrazo) {
           const prazo = estado.prazos.find(x => x.id === concluirPrazo);

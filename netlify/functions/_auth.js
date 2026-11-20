@@ -19,7 +19,6 @@ const SUPABASE_ANON_KEY = "sb_publishable_yH695cc52QUKYfFEgV5RwQ_0a8GLIeb";
 const ORIGENS_PERMITIDAS = [
   "https://licitaplena.com.br",
   "https://www.licitaplena.com.br",
-  "https://hc-mercado-web.netlify.app",
   "https://licitaplena.pages.dev",
 ];
 
@@ -73,7 +72,7 @@ async function exigirUsuarioLogado(event) {
 // IA só prossegue com contagem válida. Os demais consumidores mantêm o comportamento
 // anterior de contingência para não alterar envios e consultas fora deste fluxo.
 async function verificarLimiteDiario(userId, nomeFuncao, limite) {
-  const ehIA = nomeFuncao === "ia-edital";
+  const ehIA = nomeFuncao === "ia-edital" || nomeFuncao === "monte-busca-ia";
   const indisponivel = ehIA ? { ok: false, status: 503, erro: "Não foi possível verificar o limite de uso da IA agora. Tente novamente em instantes." } : { ok: true };
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) {
@@ -108,4 +107,65 @@ async function verificarLimiteDiario(userId, nomeFuncao, limite) {
   }
 }
 
-module.exports = { cabecalhosPadrao, exigirUsuarioLogado, verificarLimiteDiario, origemPermitida };
+// Cadastro aprovado (clientes.status), como login.html e criar-processo.js: conta suspensa ou pendente com JWT
+// ainda válido não usa ferramenta nem grava na base compartilhada. Lê com o token do próprio usuário (a RLS de
+// clientes só mostra a própria linha), então não depende da chave de serviço e falha fechado.
+async function exigirClienteAprovado(event, userId) {
+  const auth = event.headers?.authorization || event.headers?.Authorization || "";
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/clientes?id=eq.${encodeURIComponent(userId)}&select=status`, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: auth }, signal: globalThis.AbortSignal.timeout(8000),
+    });
+    if (!resp.ok) return { ok: false, status: 503, erro: "Não foi possível conferir seu cadastro agora. Tente novamente em instantes." };
+    const linhas = await resp.json();
+    if (!Array.isArray(linhas) || linhas[0]?.status !== "aprovado") return { ok: false, status: 403, erro: "Acesso não autorizado." };
+    return { ok: true };
+  } catch {
+    return { ok: false, status: 503, erro: "Não foi possível conferir seu cadastro agora. Tente novamente em instantes." };
+  }
+}
+
+// Login + cadastro aprovado numa chamada só (o que todo endpoint de ferramenta precisa).
+async function exigirUsuarioAprovado(event) {
+  const usuario = await exigirUsuarioLogado(event);
+  if (!usuario.ok) return usuario;
+  const cadastro = await exigirClienteAprovado(event, usuario.userId);
+  return cadastro.ok ? usuario : cadastro;
+}
+
+// Proxies públicos (pncp-*, comprasgov-*): o painel chama sem token, então o teto é diário por IP (teste de ataque
+// 19/11, M5: script anônimo esgotava a cota do Cloudflare ou fazia o PNCP/Compras.gov bloquear nosso IP de saída).
+// IP: só o cabeçalho que a própria plataforma define (mesma regra de portal-cliente.js): cf-connecting-ip no runtime
+// do Workers, x-nf-client-connection-ip fora dele. O banco recebe HMAC-SHA256(chave de serviço, IP), nunca o IP.
+// Sem IP confiável (ambiente local) ou sem chave de serviço não limita; falha do contador também não bloqueia
+// (fail-open, como verificarLimiteDiario fora da IA): o teto protege contra abuso, não é controle de acesso.
+const LIMITE_PROXY_POR_IP = 3000;
+function ipConfiavel(event) {
+  const h = event.headers || {};
+  const ip = globalThis.navigator?.userAgent === "Cloudflare-Workers" ? h["cf-connecting-ip"] : h["x-nf-client-connection-ip"];
+  return typeof ip === "string" && ip.trim() ? ip.trim() : null;
+}
+async function limitarPorIp(event, nomeFuncao, limite = LIMITE_PROXY_POR_IP) {
+  const ip = ipConfiavel(event);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!ip || !serviceKey) return { ok: true };
+  try {
+    const chave = require("node:crypto").createHmac("sha256", serviceKey).update(`ip:${ip}`).digest("hex");
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/incrementar_uso_ip`, {
+      method: "POST",
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_chave: chave, p_funcao: nomeFuncao }),
+      signal: globalThis.AbortSignal.timeout(3000),
+    });
+    if (!resp.ok) return { ok: true };
+    const contagem = await resp.json();
+    if (typeof contagem === "number" && contagem > limite) {
+      return { ok: false, status: 429, erro: "Muitas consultas a partir desta rede hoje. Tente de novo amanhã." };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: true };
+  }
+}
+
+module.exports = { cabecalhosPadrao, exigirUsuarioLogado, exigirClienteAprovado, exigirUsuarioAprovado, verificarLimiteDiario, origemPermitida, limitarPorIp };

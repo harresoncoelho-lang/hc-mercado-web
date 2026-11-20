@@ -1,0 +1,19 @@
+✔ dados da empresa ficam recolhidos e carregam cadastro canônico sem aplicar na minuta automaticamente (2.7276ms)
+✔ confirmação manual exige revisão e não envia documentos ou dados para IA (0.5072ms)
+✔ troca de contexto e resposta de outra empresa não preenchem dados nem editor (0.309ms)
+✔ extração manual conserva anexo e formulário editável e mostra limite sem gerar documento (0.4301ms)
+✔ upload recusa tamanho e conteúdo inválido antes de enviar arquivo (0.4908ms)
+✔ dois uploads selecionam o novo documento e conservam os campos em edição (0.5365ms)
+✔ recarregar e aplicar preservam o documento selecionado se ele ainda existe (0.2438ms)
+✔ sugestão é explícita e editar o valor remove sua proveniência (0.5047ms)
+✔ três campos em três páginas do mesmo contrato conservam todas as provas ao confirmar (0.4923ms)
+✔ cadastro independente abre os campos sem ação ou mensagens de minuta (1.818ms)
+✔ cadastro independente confirma apenas após conferência e informa uso em documentos (1.5778ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 98.2507

@@ -1,0 +1,23 @@
+{
+  "aprovado": true,
+  "checks": 520,
+  "casos": [
+    "arquivo de produção rejeita ambiente diferente",
+    "policy extra",
+    "helper alterado",
+    "ACL inesperada",
+    "instalação parcial",
+    "legado inconsistente aborta todas as DDLs",
+    "erro depois dos gates reverte todo o delta",
+    "segunda aplicação aborta sem ampliar grants"
+  ],
+  "deltaSha256": "7cbe38e48980e9d58f73f95d69e8f926950517d616fe6d00f92dfd091b5502bf",
+  "postgresLocal": "18.6",
+  "postgresRemoto": "17.6",
+  "replica": "Tabelas públicas, colunas, constraints, índices e funções operacionais do catálogo real; policies e ACLs operacionais. Auth e Storage são compatibilidade local, não serviços completos.",
+  "fingerprintTeste": "Somente o hash esperado foi substituído na string SQL em memória. O SQL candidato em disco conserva o hash remoto.",
+  "hashPreLocal": "b765f1956edd2947ea4be5b1aa246e3e",
+  "hashPosLocal": "9c91902f5a46852dfc25cf84bded0518",
+  "objetosPreservados": 488,
+  "dadosPreservados": 18
+}

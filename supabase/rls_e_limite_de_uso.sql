@@ -56,7 +56,9 @@ $$;
 -- Revoga execução direta do público em geral e libera só pro service_role
 -- (que é quem a Netlify Function usa) — assim ninguém no navegador consegue
 -- chamar isso direto via REST com a chave anon.
-revoke all on function public.incrementar_uso(uuid, text) from public;
+-- anon/authenticated entram explicitamente: o Supabase concede EXECUTE a eles por privilégio
+-- padrão, e revogar só de `public` deixou a função aberta sem login (advisor, 17/11/2026).
+revoke all on function public.incrementar_uso(uuid, text) from public, anon, authenticated;
 grant execute on function public.incrementar_uso(uuid, text) to service_role;
 
 -- ============================================================================

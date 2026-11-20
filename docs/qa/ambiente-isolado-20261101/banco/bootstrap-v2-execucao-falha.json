@@ -1,0 +1,8 @@
+{
+  "projeto": "luguscapasskcsficckf",
+  "sha256": "0ca77f649ad34d1a383c268f7c34e97bdb0a4782a373681eaa9ae3b6762f3ceb",
+  "observadoEmUtc": "2026-11-01T18:32:49.927Z",
+  "resultado": "ERROR 42830: there is no unique constraint matching given keys for referenced table \"operacao_processos\"",
+  "sqlComparadoIntegralmente": true,
+  "retentativa": false
+}

@@ -1,0 +1,135 @@
+diff --git "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix1\\homologar-kit-real-local.cjs" "b/docs\\qa\\homologar-kit-real-local.cjs"
+index fe73cb9..c3bf259 100644
+--- "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix1\\homologar-kit-real-local.cjs"
++++ "b/docs\\qa\\homologar-kit-real-local.cjs"
+@@ -54,13 +54,15 @@ function snapshot() {
+     return { tabela: table, ...JSON.parse(sql(`select json_build_object('linhas',count(*),'hash',md5(coalesce(string_agg(md5(row_to_json(t)::text),'' order by md5(row_to_json(t)::text)),''))) from ${table} t`)) };
+   });
+ }
+-async function exported(r, company, filename) {
++async function exported(r, company, filename, cnpj, outroCnpj) {
+   const d = expect(r, 200, 'Exportar');
+   assert.equal(d.mime, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+   const buffer = Buffer.from(d.arquivoBase64, 'base64');
+   assert.equal(buffer.subarray(0, 2).toString(), 'PK');
+   const text = (await mammoth.extractRawText({ buffer })).value;
+   assert(text.includes(company));
++  assert(new RegExp(`(?:^|\\D)${cnpj}(?:\\D|$)`).test(text), 'CNPJ exato no DOCX');
++  assert(!text.includes(outroCnpj), 'DOCX nao contem CNPJ da outra empresa');
+   fs.writeFileSync(path.join(evidencias, filename), buffer, { flag: 'wx' });
+   return text;
+ }
+@@ -104,13 +106,13 @@ async function persistente({ owner, other, operator, reader, ea, eb, pa, pb, ia,
+   expect(await api(operator, ea, pa, 'confirmarRevisao', { ...review, revisaoHash: '0'.repeat(64) }), 409, 'Hash falso persistente');
+   const reviewed = expect(await api(operator, ea, pa, 'confirmarRevisao', review), 200, 'Confirmar salva').documento;
+   assert.equal(reviewed.revisao.hash, preview.revisaoHash); assert.equal(reviewed.revisao.versao, 1); assert.equal(reviewed.revisadoPor, operator.id);
+-  const alfa = await exported(await api(operator, ea, pa, 'exportar', review), 'Alfa Ficticia Homologacao', 'persistida-declaracao-alfa.docx');
++  const alfa = await exported(await api(operator, ea, pa, 'exportar', review), 'Alfa Ficticia Homologacao', 'persistida-declaracao-alfa.docx', '11222333000181', '11222333000262');
+   assert(alfa.includes('FIM INTEGRAL QA.') && !alfa.includes('Beta Ficticia'));
+   expect(await api(owner, ea, pa, 'exportar', review), 409, 'Outro usuario nao herda revisao');
+   const bPreview = expect(await api(owner, eb, pb, 'preparar', ref(db, 1)), 200, 'Preparar salva B');
+   const bReview = { ...ref(db, 1), revisado: true, revisaoHash: bPreview.revisaoHash };
+   expect(await api(owner, eb, pb, 'confirmarRevisao', bReview), 200, 'Confirmar B');
+-  const beta = await exported(await api(owner, eb, pb, 'exportar', bReview), 'Beta Ficticia Homologacao', 'persistida-declaracao-beta.docx');
++  const beta = await exported(await api(owner, eb, pb, 'exportar', bReview), 'Beta Ficticia Homologacao', 'persistida-declaracao-beta.docx', '11222333000262', '11222333000181');
+   assert(!beta.includes('Alfa Ficticia'));
+   const editada = { ...declaracao, declaracao: { ...declaracao.declaracao, titulo: 'Versao dois' } };
+   const v2 = expect(await salvar(operator, ea, pa, da, 1, editada), 200, 'Versao dois').documento;
+@@ -127,8 +129,10 @@ async function persistente({ owner, other, operator, reader, ea, eb, pa, pb, ia,
+   assert(p.previa.texto.includes('Total da proposta: R$ 3,71'));
+   const pr = { ...ref(dp, 1), revisado: true, revisaoHash: p.revisaoHash };
+   expect(await api(operator, ea, pa, 'confirmarRevisao', pr), 200, 'Confirmar proposta');
+-  const texto = await exported(await api(operator, ea, pa, 'exportar', pr), 'Alfa Ficticia Homologacao', 'persistida-proposta-alfa.docx');
++  const texto = await exported(await api(operator, ea, pa, 'exportar', pr), 'Alfa Ficticia Homologacao', 'persistida-proposta-alfa.docx', '11222333000181', '11222333000262');
+   assert(texto.includes('Total da proposta: R$ 3,71') && !texto.includes('Beta Ficticia'));
++  for (const descricao of ['Item decimal QA', 'Item inteiro QA']) assert(texto.includes(descricao), 'Item selecionado no DOCX');
++  assert(!texto.includes('Item valido excluido QA'), 'Item valido nao selecionado ausente do DOCX');
+   expect(await req('/rest/v1/operacao_itens_resultado?id=eq.' + ib, operator.token, 'PATCH', { valor_unitario_proposta: '2.34' }), 204, 'Preco proposta salva');
+   expect(await api(operator, ea, pa, 'exportar', pr), 409, 'Preco invalida proposta salva');
+   assert.equal(expect(await api(operator, ea, pa, 'abrir', { documentoId: dp }), 200, 'Revisao antiga').revisaoVigente, false);
+@@ -156,19 +160,20 @@ async function main() {
+     fs.writeFileSync(path.join(evidencias, 'baseline-dados.json'), JSON.stringify(baseline, null, 2), { flag: 'wx' });
+     results.push('PostgreSQL17/Auth/PostgREST16/Storage reais; portas apenas loopback');
+     const owner = await makeUser(), other = await makeUser(), operator = await makeUser(), reader = await makeUser();
+-    const oa = randomUUID(), ob = randomUUID(), ea = randomUUID(), eb = randomUUID(), ec = randomUUID(), pa = randomUUID(), pb = randomUUID(), ia = randomUUID(), ib = randomUUID(), ic = randomUUID();
++    const oa = randomUUID(), ob = randomUUID(), ea = randomUUID(), eb = randomUUID(), ec = randomUUID(), pa = randomUUID(), pb = randomUUID(), ia = randomUUID(), ib = randomUUID(), ic = randomUUID(), idExcluido = randomUUID();
+     orgs.push(oa, ob);
+     sql(`insert into public.operacao_organizacoes(id,nome,owner_id) values('${oa}','QA kit real A','${owner.id}'),('${ob}','QA kit real B','${other.id}');
+       insert into public.operacao_empresas(id,organizacao_id,razao_social,cnpj) values('${ea}','${oa}','Alfa Ficticia Homologacao','11222333000181'),('${eb}','${oa}','Beta Ficticia Homologacao','11222333000262'),('${ec}','${ob}','Externa Ficticia Homologacao','11222333000343');
+       insert into public.operacao_membros(organizacao_id,usuario_id,papel,empresa_id) values('${oa}','${owner.id}','gestor',null),('${ob}','${other.id}','gestor',null),('${oa}','${operator.id}','operador','${ea}'),('${oa}','${reader.id}','leitura','${ea}');
+       insert into public.operacao_processos(id,organizacao_id,empresa_id,numero,orgao,objeto) values('${pa}','${oa}','${ea}','PE QA-001','Orgao Ficticio QA','Materiais ficticios'),('${pb}','${oa}','${eb}','PE QA-002','Orgao Ficticio Beta','Materiais ficticios');
+-      insert into public.operacao_itens_resultado(id,organizacao_id,processo_id,tipo,identificador,descricao,quantidade,valor_unitario_proposta) values('${ia}','${oa}','${pa}','item','1','Item decimal QA',0.125,0.12),('${ib}','${oa}','${pa}','item','2','Item inteiro QA',3,1.23),('${ic}','${oa}','${pb}','item','1','Item exclusivo Beta',1,10.00);`);
++      insert into public.operacao_itens_resultado(id,organizacao_id,processo_id,tipo,identificador,descricao,quantidade,valor_unitario_proposta) values('${ia}','${oa}','${pa}','item','1','Item decimal QA',0.125,0.12),('${ib}','${oa}','${pa}','item','2','Item inteiro QA',3,1.23),('${ic}','${oa}','${pb}','item','1','Item exclusivo Beta',1,10.00),('${idExcluido}','${oa}','${pa}','item','3','Item valido excluido QA',1,999.00);`);
+     expect(await req('/rest/v1/rpc/identificacao_empresa_habilitada', owner.token, 'POST', {}), 200, 'Gate HTTP');
+     assert.equal((await req('/rest/v1/rpc/identificacao_empresa_habilitada', owner.token, 'POST', {})).data, true);
+     const pending = expect(await api(owner, ea, pa, 'consultar'), 200, 'Consulta sem identificacao');
+     assert.equal(pending.identificacao.status, 'pendente');
+     assert.equal(pending.itens.find(i => i.id === ia).quantidade, '0.125');
+     assert.equal(pending.itens.find(i => i.id === ia).valorUnitario, '0.12');
++    assert.equal(pending.itens.find(i => i.id === idExcluido).descricao, 'Item valido excluido QA');
+     results.push('Gate real aprovado e projeções numeric::text preservadas pelo PostgREST');
+     expect(await api({ token: c.anon }, ea, pa, 'consultar'), 401, 'Anonimo');
+     expect(await api(other, ea, pa, 'consultar'), 404, 'Outra organizacao');
+@@ -186,17 +191,19 @@ async function main() {
+     const da = expect(await api(operator, ea, pa, 'preparar', declaration), 200, 'Declaracao Alfa');
+     expect(await api(operator, ea, pa, 'exportar', { ...declaration, revisaoHash: da.revisaoHash }), 422, 'Revisao obrigatoria');
+     expect(await api(operator, ea, pa, 'exportar', { ...declaration, revisado: true, revisaoHash: '0'.repeat(64) }), 409, 'Hash adulterado');
+-    const alfa = await exported(await api(operator, ea, pa, 'exportar', { ...declaration, revisado: true, revisaoHash: da.revisaoHash }), 'Alfa Ficticia Homologacao', 'kit-real-declaracao-alfa-ficticia.docx');
++    const alfa = await exported(await api(operator, ea, pa, 'exportar', { ...declaration, revisado: true, revisaoHash: da.revisaoHash }), 'Alfa Ficticia Homologacao', 'kit-real-declaracao-alfa-ficticia.docx', '11222333000181', '11222333000262');
+     assert(!alfa.includes('Beta Ficticia'));
+     const db = expect(await api(owner, eb, pb, 'preparar', declaration), 200, 'Declaracao Beta');
+-    const beta = await exported(await api(owner, eb, pb, 'exportar', { ...declaration, revisado: true, revisaoHash: db.revisaoHash }), 'Beta Ficticia Homologacao', 'kit-real-declaracao-beta-ficticia.docx');
++    const beta = await exported(await api(owner, eb, pb, 'exportar', { ...declaration, revisado: true, revisaoHash: db.revisaoHash }), 'Beta Ficticia Homologacao', 'kit-real-declaracao-beta-ficticia.docx', '11222333000262', '11222333000181');
+     assert(!beta.includes('Alfa Ficticia'));
+     results.push('Declaracoes DOCX reais por CNPJ, revisao obrigatoria e hash adulterado rejeitado');
+     const proposal = { tipo: 'proposta', proposta: { itemIds: [ia, ib], unidades: { [ia]: 'un', [ib]: 'un' }, validade: '60 dias', prazoEntrega: '10 dias', pagamento: '30 dias' } };
+     const p = expect(await api(operator, ea, pa, 'preparar', proposal), 200, 'Proposta decimal');
+     assert(p.previa.texto.includes('Total da proposta: R$ 3,71'));
+-    const texto = await exported(await api(operator, ea, pa, 'exportar', { ...proposal, revisado: true, revisaoHash: p.revisaoHash }), 'Alfa Ficticia Homologacao', 'kit-real-proposta-alfa-ficticia.docx');
++    const texto = await exported(await api(operator, ea, pa, 'exportar', { ...proposal, revisado: true, revisaoHash: p.revisaoHash }), 'Alfa Ficticia Homologacao', 'kit-real-proposta-alfa-ficticia.docx', '11222333000181', '11222333000262');
+     assert(texto.includes('Total da proposta: R$ 3,71'));
++    for (const descricao of ['Item decimal QA', 'Item inteiro QA']) assert(texto.includes(descricao), 'Item selecionado no DOCX legado');
++    assert(!texto.includes('Item valido excluido QA'), 'Item valido nao selecionado ausente do DOCX legado');
+     expect(await api(operator, ea, pa, 'preparar', { ...proposal, proposta: { ...proposal.proposta, itemIds: [ic], unidades: { [ic]: 'un' } } }), 404, 'Item cruzado');
+     expect(await req('/rest/v1/operacao_itens_resultado?id=eq.' + ib, operator.token, 'PATCH', { valor_unitario_proposta: '2.34' }), 204, 'Editar preco via RLS');
+     expect(await api(operator, ea, pa, 'exportar', { ...proposal, revisado: true, revisaoHash: p.revisaoHash }), 409, 'Preco alterado invalida revisao');
+@@ -234,7 +241,7 @@ async function main() {
+     results.push('Storage privado real: download permitido por escopo, leitor nao sobrescreve, hash da fonte invalida DOCX');
+     expect(await req(storagePath, operator.token, 'PUT', pdf, { 'Content-Type': 'application/pdf' }), 200, 'Restaurar fonte da fixture para UI');
+     const { verificarUIReal } = require('./homologacao-real-20261031/verificar-ui-real.cjs');
+-    ui = await verificarUIReal({ base, evidencias, owner, empresas: [{ id: ea, nome: 'Alfa Ficticia Homologacao', processoId: pa }, { id: eb, nome: 'Beta Ficticia Homologacao', processoId: pb }], itemIds: [ia, ib], sanear });
++    ui = await verificarUIReal({ base, evidencias, owner, empresas: [{ id: ea, nome: 'Alfa Ficticia Homologacao', cnpj: '11222333000181', processoId: pa }, { id: eb, nome: 'Beta Ficticia Homologacao', cnpj: '11222333000262', processoId: pb }], itemIds: [ia, ib], sanear });
+     results.push(...ui.resultados);
+     ok = true;
+   } catch (e) {
+diff --git "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix1\\verificar-ui-real.cjs" "b/docs\\qa\\homologacao-real-20261031\\verificar-ui-real.cjs"
+index 0cca8fe..5ff34d0 100644
+--- "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix1\\verificar-ui-real.cjs"
++++ "b/docs\\qa\\homologacao-real-20261031\\verificar-ui-real.cjs"
+@@ -64,7 +64,11 @@ async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, san
+     const buffer = fs.readFileSync(destino); assert.equal(buffer.subarray(0, 2).toString(), 'PK');
+     const texto = (await mammoth.extractRawText({ buffer })).value;
+     assert(texto.includes(empresa.nome)); assert(texto.includes(textoEsperado));
+-    assert(!texto.includes(empresas.find(e => e.id !== empresa.id).nome));
++    const outraEmpresa = empresas.find(e => e.id !== empresa.id);
++    assert(!texto.includes(outraEmpresa.nome));
++    assert(new RegExp(`(?:^|\\D)${empresa.cnpj}(?:\\D|$)`).test(texto), 'CNPJ exato no DOCX da UI');
++    assert(!texto.includes(outraEmpresa.cnpj), 'DOCX da UI nao contem CNPJ da outra empresa');
++    return texto;
+   }
+   try {
+     const p = await contexto.newPage();
+@@ -139,9 +143,12 @@ async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, san
+     etapa = 'proposta UI';
+     await p.getByRole('button', { name: 'Nova proposta', exact: true }).click();
+     for (const id of itemIds) { await p.locator(`[data-item][value="${id}"]`).check(); await p.locator(`[name="unidade-${id}"]`).fill('un'); }
++    assert.equal(await p.getByRole('checkbox', { name: /Item valido excluido QA/ }).isChecked(), false);
+     for (const [label, value] of [['Validade da proposta', '60 dias'], ['Prazo de entrega', '12 dias'], ['Condições de pagamento', '30 dias']]) await p.getByLabel(label, { exact: true }).fill(value);
+     const proposal = (await salvar(p)).documento; documentos.push(proposal.id);
+-    await revisar(p); await baixar(p, 'ui-proposta-real.docx', empresas[0], 'Total da proposta: R$ 7,04');
++    await revisar(p); const textoProposta = await baixar(p, 'ui-proposta-real.docx', empresas[0], 'Total da proposta: R$ 7,04');
++    for (const descricao of ['Item decimal QA', 'Item inteiro QA']) assert(textoProposta.includes(descricao), 'Item selecionado no DOCX da UI');
++    assert(!textoProposta.includes('Item valido excluido QA'), 'Item valido nao selecionado ausente do DOCX da UI');
+     const [dados] = await Promise.all([contexto.waitForEvent('page'), p.getByRole('link', { name: 'Conferir dados da empresa (nova aba)' }).click()]);
+     await cadastroPronto(dados, empresas[0]);
+     assert(await p.locator('[data-exportar]').isDisabled()); assert.equal(await p.locator('[data-revisado]').isChecked(), false);

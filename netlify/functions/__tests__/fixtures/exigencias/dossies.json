@@ -1,0 +1,63 @@
+{
+  "pe-limpeza": {
+    "ufSede": "AM",
+    "coberturaLeitura": {
+      "documentosLidos": ["Edital PE 12-2026 (#1)", "Termo de Referencia (#2)", "Minuta de Contrato (#3)"],
+      "documentosNaoLidos": []
+    },
+    "dossieIA": {
+      "estrutura": {
+        "documentosHabilitacao": [
+          { "texto": "Contrato social ou ato constitutivo registrado na Junta Comercial [Edital PE 12-2026 (#1), página 2]", "categoria": "Jurídica" },
+          { "texto": "Certificado de regularidade do FGTS e CNDT [Edital PE 12-2026 (#1), página 2]", "categoria": "Fiscal, social e trabalhista" },
+          { "texto": "Certificado ISO 9001 válido emitido por organismo acreditado [Edital PE 12-2026 (#1), página 2]", "categoria": "Técnica" }
+        ],
+        "documentosCredenciamento": [],
+        "requisitosProposta": [],
+        "declaracoesExigidas": [
+          "Declaração de que não emprega menor de dezoito anos em trabalho noturno [Edital PE 12-2026 (#1), página 3]",
+          "Declaração de que cumpre plenamente os requisitos de habilitação [Edital PE 12-2026 (#1), página 3]"
+        ],
+        "detalhes": {
+          "exigeAmostra": "Sim: amostra dos produtos saneantes em 3 dias úteis [Minuta de Contrato (#3), página 1]",
+          "exigeVisitaTecnica": "Sim: vistoria técnica obrigatória ao local da prestação dos serviços [Termo de Referencia (#2), página 14]"
+        },
+        "garantias": { "proposta": "Não informado" },
+        "entregaExecucao": { "prazo": "Entrega dos materiais de limpeza em até 2 dias corridos após a ordem de fornecimento [Minuta de Contrato (#3), página 1]" }
+      }
+    }
+  },
+  "pe-material": {
+    "ufSede": "AM",
+    "coberturaLeitura": {
+      "documentosLidos": ["Edital PE 30-2026 (#1)", "Termo de Referencia (#2)"],
+      "documentosNaoLidos": ["Anexo IV - Planilha de Precos (#4): não foi possível ler"]
+    },
+    "dossieIA": {
+      "estrutura": {
+        "documentosHabilitacao": [
+          { "texto": "Registro no CRQ da empresa e do responsável técnico [Edital PE 30-2026 (#1), página 4]", "categoria": "Técnica" }
+        ],
+        "declaracoesExigidas": [],
+        "garantias": { "proposta": "Garantia de proposta de 1% do valor estimado [Edital PE 30-2026 (#1), página 4]" },
+        "entregaExecucao": { "prazo": "30 dias corridos do recebimento da nota de empenho [Termo de Referencia (#2), página 1]" }
+      }
+    }
+  },
+  "cc-reforma": {
+    "ufSede": "AM",
+    "coberturaLeitura": {
+      "documentosLidos": ["Edital CC 5-2026 (#1)", "Termo de Referencia (#2)"],
+      "documentosNaoLidos": []
+    },
+    "dossieIA": {
+      "estrutura": {
+        "documentosHabilitacao": [
+          { "texto": "Contrato social em vigor [Edital CC 5-2026 (#1), página 1]", "categoria": "Jurídica" },
+          { "texto": "Certificado de regularidade do FGTS [Edital CC 5-2026 (#1), página 1]", "categoria": "Fiscal, social e trabalhista" }
+        ],
+        "declaracoesExigidas": []
+      }
+    }
+  }
+}

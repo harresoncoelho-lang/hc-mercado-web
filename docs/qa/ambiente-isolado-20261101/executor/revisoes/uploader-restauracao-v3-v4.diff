@@ -1,0 +1,64 @@
+--- v3/enviar-restauracao-privada-v3.ps1
++++ v4/enviar-restauracao-privada-v4.ps1
+@@ -1,11 +1,11 @@
+ # Preparado para revisao. Nao executa workflow, nao publica site e nao altera o login global do gh.
+-# Candidato V3: atualiza somente tres payloads; conserva os demais oito arquivos remotos.
++# Candidato V4: atualiza somente tres payloads; conserva os demais oito arquivos remotos.
+ # Executar somente apos revisao independente; HEAD e todos os onze blobs anteriores sao conferidos.
+ $ErrorActionPreference = 'Stop'
+ $repoName = 'harresoncoelho-lang/licitaplena-homologacao'
+ $accountName = 'harresoncoelho-lang'
+ $packageRoot = Join-Path $PSScriptRoot 'executor'
+-$expectedHeadSha = '702663b5af7551896551eef253a7f425d144bc5d'
++$expectedHeadSha = 'a0a9c7e4b66ac36a564f4f9eafd97646bc6efbf1'
+ $workflowPath = '.github/workflows/restauracao.yml'
+ $expected = [ordered]@{
+     '.github/workflows/inventario.yml' = 'a5ae9a0d9f4ec7347aa13a4fcccc22433700bbb44cccd9f382faace31fc95720'
+@@ -15,18 +15,18 @@
+     'package-manifest.json' = '0ef9542dc690dda39184e4dd9e23cef6ebc4bc1b4bb300e89d183e2c6a864994'
+     'input/ficticio.dump' = '30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c'
+     '.github/workflows/restauracao.yml' = '2b2e01c82652e4f5ea868ee688946a42c3c31800621d21605f570f093baef08f'
+-    'restauracao/restore.py' = '6e6d588d8a9ec0598002f3e4cc76607605f541b850e1a6de1c61cc689ec967f5'
+-    'restauracao/test_restore.py' = 'e17889fe2cb66f0abf27b037751da8205a8b6cbe0e9dc17db3bfd9810633e78a'
++    'restauracao/restore.py' = 'fd0caa76421b27e25402cc1d4be34419faaf2a5ce30972b335398957b602e10e'
++    'restauracao/test_restore.py' = 'ef4c905a0bdf9b72c644509b8ccba1a80688257a6b6bf369ecc6567002f214f9'
+     'restauracao/baseline.json' = '43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0'
+-    'restauracao/README.md' = 'ced775f10a668be00351a40080fb2a299ec4cf1a7132acb600306f95521acc3f'
++    'restauracao/README.md' = 'f649a1803f882a3f083ce06805638711800c9068b7b761c879e7fb17bd126e6a'
+ }
+ $payloads = @('restauracao/restore.py','restauracao/test_restore.py','restauracao/README.md')
+ $inventoryFiles = @('.github/workflows/inventario.yml','inventory.py','test_inventory.py','README.md','input/ficticio.dump')
+ $previousSha256 = [ordered]@{}
+ foreach ($name in $expected.Keys) { $previousSha256[$name] = $expected[$name] }
+-$previousSha256['restauracao/restore.py'] = '61c63c53a6ba71dfbd2139ab7d5aaecb4474fd0cd0ccb43700b1c6906510678f'
+-$previousSha256['restauracao/test_restore.py'] = 'acc22af0b0912a04dcafdb0d5d1abded2711dbb3987f70174bf02122a830daad'
+-$previousSha256['restauracao/README.md'] = 'a0da1b7fe7dee75e8ed1832976eb6816f3e8496ee19149d47423fe1738b3f964'
++$previousSha256['restauracao/restore.py'] = '6e6d588d8a9ec0598002f3e4cc76607605f541b850e1a6de1c61cc689ec967f5'
++$previousSha256['restauracao/test_restore.py'] = 'e17889fe2cb66f0abf27b037751da8205a8b6cbe0e9dc17db3bfd9810633e78a'
++$previousSha256['restauracao/README.md'] = 'ced775f10a668be00351a40080fb2a299ec4cf1a7132acb600306f95521acc3f'
+ $previousGitBlobs = [ordered]@{
+     '.github/workflows/inventario.yml' = '92ed46c1f96bce2de654a9d8157b648abda038c9'
+     'inventory.py' = '444663da8cded7ea39adda233723bcd4169634b2'
+@@ -35,10 +35,10 @@
+     'package-manifest.json' = '422943f85459b075bf74360a6d5d9b42b06fcff1'
+     'input/ficticio.dump' = '459957061a7e09628c6661c562b5839351dbfbea'
+     '.github/workflows/restauracao.yml' = '5606caae9120e07ea942d64a9a72cdb2dd06437c'
+-    'restauracao/restore.py' = 'ad19f3bdace4793301d67dd8bf6abd6e18b70359'
+-    'restauracao/test_restore.py' = '7608a3a58347ed01ab59a5e7a7bcccf0f2f19fc8'
++    'restauracao/restore.py' = '1050a7e7f62d96e5f6c7d99891b80f8a7f491a4c'
++    'restauracao/test_restore.py' = '944aaf9a7b3e20545731388b531ebfd69d744891'
+     'restauracao/baseline.json' = '0038944322952fab41dba2cead325d17adec5285'
+-    'restauracao/README.md' = '5d1a8e9fed4d30ea184a310f9ef7d15da2063f29'
++    'restauracao/README.md' = 'dd45280fc9555ceaf706cb8e0124328ec51b77a5'
+ }
+ $hadToken = Test-Path Env:GH_TOKEN
+ $priorToken = [Environment]::GetEnvironmentVariable('GH_TOKEN', 'Process')
+@@ -145,7 +145,7 @@
+     foreach ($entry in $finalFiles) {
+         if ($entry.sha -cne (Get-GitBlobSha $contents[$entry.path])) { throw 'Final tree payload mismatch' }
+     }
+-    $commit = Invoke-GitHub 'POST' "repos/$repoName/git/commits" @{ message = 'Validate required libraries through PostgreSQL loader'; tree = $tree.sha; parents = @($headSha) }
++    $commit = Invoke-GitHub 'POST' "repos/$repoName/git/commits" @{ message = 'Preserve library list and compare independent default grants'; tree = $tree.sha; parents = @($headSha) }
+     $evidence.prepared_commit = $commit.sha
+     $evidence.tree_sha = $tree.sha
+     $phase = 'head_recheck_and_nonforce_update'

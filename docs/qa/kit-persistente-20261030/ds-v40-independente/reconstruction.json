@@ -1,0 +1,116 @@
+{
+  "method": "Exact replacement of JS_LOGIC composed with PK_LOGIC in baseline HTML; full generator dependencies missing",
+  "expected": "c8f44a4de6c4dbb1b94854a050d21c15a8260dd92ff379579a942ab13744cb47",
+  "actual": "c8f44a4de6c4dbb1b94854a050d21c15a8260dd92ff379579a942ab13744cb47",
+  "matches": true,
+  "source_patches": [
+    {
+      "file": "pk_logic.js",
+      "hunks": [
+        {
+          "header": "@@ -129,7 +129,11 @@",
+          "old_lines": 7,
+          "new_lines": 11
+        },
+        {
+          "header": "@@ -141,17 +145,22 @@",
+          "old_lines": 17,
+          "new_lines": 22
+        },
+        {
+          "header": "@@ -161,12 +170,12 @@",
+          "old_lines": 12,
+          "new_lines": 12
+        },
+        {
+          "header": "@@ -176,7 +185,7 @@",
+          "old_lines": 7,
+          "new_lines": 7
+        },
+        {
+          "header": "@@ -215,3 +224,10 @@",
+          "old_lines": 3,
+          "new_lines": 10
+        }
+      ],
+      "original_sha256": "d764e1db5f84865c29246820e85bb8662321c3a1902bff74d12aa950d101e9fd",
+      "patched_sha256": "1105eeb530d716d5622618fc93eaa60f3db171f0f8b7cca6186f86d6519a571f",
+      "terminal_newline_preserved": true
+    },
+    {
+      "file": "cadastro.py",
+      "hunks": [
+        {
+          "header": "@@ -110,7 +110,7 @@",
+          "old_lines": 7,
+          "new_lines": 7
+        },
+        {
+          "header": "@@ -288,8 +288,8 @@",
+          "old_lines": 8,
+          "new_lines": 8
+        }
+      ],
+      "original_sha256": "d722659c9ba225c9314b91842959a7e3df9aa33d9111519bfb99d168f3653350",
+      "patched_sha256": "f1b8089f273895f3be4fd2dc133329d7ac32f7f23ce63ead573813c04bf1d808",
+      "terminal_newline_preserved": true
+    }
+  ],
+  "project_comparison": [
+    {
+      "path": "components/BoletimOportunidades/preview.html",
+      "baseline": "823df71618746dc9ebb77432eb30a0d96130692502206961b1dac03fe9acd2fe",
+      "reconstructed": "823df71618746dc9ebb77432eb30a0d96130692502206961b1dac03fe9acd2fe",
+      "same": true
+    },
+    {
+      "path": "components/InteligenciaHub/preview.html",
+      "baseline": "56c9cca23892d8ee9d50a2351f84df0b3a5e0e2cd52660773750ff8cf4bbff73",
+      "reconstructed": "56c9cca23892d8ee9d50a2351f84df0b3a5e0e2cd52660773750ff8cf4bbff73",
+      "same": true
+    },
+    {
+      "path": "components/JornadaIntegrada/preview.html",
+      "baseline": "9f3673a3c076a92c32fef3be0536dee59c2721f7eaf0b7fdc7488fd573b3ce13",
+      "reconstructed": "9f3673a3c076a92c32fef3be0536dee59c2721f7eaf0b7fdc7488fd573b3ce13",
+      "same": true
+    },
+    {
+      "path": "components/KitProposta/preview.html",
+      "baseline": "09261d0bc6950b6efe7424f6ee60aa58921bda145c26798d5ab74ef3b1ebdff9",
+      "reconstructed": "c8f44a4de6c4dbb1b94854a050d21c15a8260dd92ff379579a942ab13744cb47",
+      "same": false
+    },
+    {
+      "path": "components/KitProposta/README.md",
+      "baseline": "3493e6f7cf6940c8323b74d24e12aa579b74ffc284888c79b2d31808e37a76fb",
+      "reconstructed": "3493e6f7cf6940c8323b74d24e12aa579b74ffc284888c79b2d31808e37a76fb",
+      "same": true
+    },
+    {
+      "path": "components/ResumoCompleto/preview.html",
+      "baseline": "f93cb9e29533308dc6cb0612e1edf23fb3304133faa1344b02d6857d83af8430",
+      "reconstructed": "f93cb9e29533308dc6cb0612e1edf23fb3304133faa1344b02d6857d83af8430",
+      "same": true
+    },
+    {
+      "path": "components/SummaryFull/preview.html",
+      "baseline": "58c2b431ea5d24f1c3b862767c4957641485d995873d09fb70bee8708b0bd361",
+      "reconstructed": "58c2b431ea5d24f1c3b862767c4957641485d995873d09fb70bee8708b0bd361",
+      "same": true
+    },
+    {
+      "path": "design-system.json",
+      "baseline": "4903bd61d7876952bff9f0e10b3446f7e2c40dad8f2af40258d0cac5e8c09399",
+      "reconstructed": "4903bd61d7876952bff9f0e10b3446f7e2c40dad8f2af40258d0cac5e8c09399",
+      "same": true
+    },
+    {
+      "path": "tokens.json",
+      "baseline": "1e8bcb110f9df25ea035a637f45f42afb9aef649ec05cdfc7175e9ffc70b7c85",
+      "reconstructed": "1e8bcb110f9df25ea035a637f45f42afb9aef649ec05cdfc7175e9ffc70b7c85",
+      "same": true
+    }
+  ],
+  "perfil_documentos_available": false
+}

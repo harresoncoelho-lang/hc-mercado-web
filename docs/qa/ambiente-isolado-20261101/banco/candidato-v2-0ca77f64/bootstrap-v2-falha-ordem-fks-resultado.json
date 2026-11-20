@@ -1,0 +1,431 @@
+{
+  "aprovado": false,
+  "arquivo": "01-bootstrap-prekit-staging-v2.sql",
+  "sha256": "0ca77f649ad34d1a383c268f7c34e97bdb0a4782a373681eaa9ae3b6762f3ceb",
+  "sqlExecutado": false,
+  "fksVerificadas": 29,
+  "falhas": [
+    {
+      "fk": "operacao_anexos_processo_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 533,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    },
+    {
+      "fk": "operacao_contratos_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 535,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    },
+    {
+      "fk": "operacao_convites_empresa_empresa_id_organizacao_id_fkey",
+      "referencia": "public.operacao_empresas(id,organizacao_id)",
+      "linhaFk": 539,
+      "provedores": [
+        {
+          "nome": "operacao_empresas_id_org_idx",
+          "gerenciada": false,
+          "linha": 595
+        }
+      ]
+    },
+    {
+      "fk": "operacao_itens_resultado_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 555,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    },
+    {
+      "fk": "operacao_membros_empresa_org_fk",
+      "referencia": "public.operacao_empresas(id,organizacao_id)",
+      "linhaFk": 559,
+      "provedores": [
+        {
+          "nome": "operacao_empresas_id_org_idx",
+          "gerenciada": false,
+          "linha": 595
+        }
+      ]
+    },
+    {
+      "fk": "operacao_ocorrencias_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 565,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    }
+  ],
+  "dependencias": [
+    {
+      "fk": "clientes_id_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 527,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_agenda_empresa_id_fkey",
+      "referencia": "public.operacao_empresas(id)",
+      "linhaFk": 529,
+      "provedores": [
+        {
+          "nome": "operacao_empresas_pkey",
+          "gerenciada": false,
+          "linha": 441
+        }
+      ]
+    },
+    {
+      "fk": "operacao_agenda_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 531,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_anexos_processo_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 533,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    },
+    {
+      "fk": "operacao_contratos_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 535,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    },
+    {
+      "fk": "operacao_convites_empresa_criado_por_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 537,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_convites_empresa_empresa_id_organizacao_id_fkey",
+      "referencia": "public.operacao_empresas(id,organizacao_id)",
+      "linhaFk": 539,
+      "provedores": [
+        {
+          "nome": "operacao_empresas_id_org_idx",
+          "gerenciada": false,
+          "linha": 595
+        }
+      ]
+    },
+    {
+      "fk": "operacao_convites_empresa_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 541,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_documentos_criado_por_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 543,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_documentos_empresa_id_fkey",
+      "referencia": "public.operacao_empresas(id)",
+      "linhaFk": 545,
+      "provedores": [
+        {
+          "nome": "operacao_empresas_pkey",
+          "gerenciada": false,
+          "linha": 441
+        }
+      ]
+    },
+    {
+      "fk": "operacao_documentos_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 547,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_empenhos_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 549,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_empenhos_processo_id_fkey",
+      "referencia": "public.operacao_processos(id)",
+      "linhaFk": 551,
+      "provedores": [
+        {
+          "nome": "operacao_processos_pkey",
+          "gerenciada": false,
+          "linha": 455
+        }
+      ]
+    },
+    {
+      "fk": "operacao_empresas_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 553,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_itens_resultado_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 555,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    },
+    {
+      "fk": "operacao_limites_cnpj_usuario_id_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 557,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_membros_empresa_org_fk",
+      "referencia": "public.operacao_empresas(id,organizacao_id)",
+      "linhaFk": 559,
+      "provedores": [
+        {
+          "nome": "operacao_empresas_id_org_idx",
+          "gerenciada": false,
+          "linha": 595
+        }
+      ]
+    },
+    {
+      "fk": "operacao_membros_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 561,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_membros_usuario_id_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 563,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_ocorrencias_processo_id_organizacao_id_fkey",
+      "referencia": "public.operacao_processos(id,organizacao_id)",
+      "linhaFk": 565,
+      "provedores": [
+        {
+          "nome": "operacao_processos_id_org_idx",
+          "gerenciada": false,
+          "linha": 605
+        }
+      ]
+    },
+    {
+      "fk": "operacao_organizacoes_owner_id_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 567,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_prazos_processo_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 569,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_prazos_processo_processo_id_fkey",
+      "referencia": "public.operacao_processos(id)",
+      "linhaFk": 571,
+      "provedores": [
+        {
+          "nome": "operacao_processos_pkey",
+          "gerenciada": false,
+          "linha": 455
+        }
+      ]
+    },
+    {
+      "fk": "operacao_processos_criado_por_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 573,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_processos_empresa_id_fkey",
+      "referencia": "public.operacao_empresas(id)",
+      "linhaFk": 575,
+      "provedores": [
+        {
+          "nome": "operacao_empresas_pkey",
+          "gerenciada": false,
+          "linha": 441
+        }
+      ]
+    },
+    {
+      "fk": "operacao_processos_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 577,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    },
+    {
+      "fk": "operacao_renovacoes_documento_documento_id_fkey",
+      "referencia": "public.operacao_documentos(id)",
+      "linhaFk": 579,
+      "provedores": [
+        {
+          "nome": "operacao_documentos_pkey",
+          "gerenciada": false,
+          "linha": 437
+        }
+      ]
+    },
+    {
+      "fk": "operacao_renovacoes_documento_registrado_por_fkey",
+      "referencia": "auth.users(id)",
+      "linhaFk": 581,
+      "provedores": [
+        {
+          "nome": "users_pkey",
+          "gerenciada": true,
+          "linha": null
+        }
+      ]
+    },
+    {
+      "fk": "operacao_tipos_documento_organizacao_id_fkey",
+      "referencia": "public.operacao_organizacoes(id)",
+      "linhaFk": 583,
+      "provedores": [
+        {
+          "nome": "operacao_organizacoes_pkey",
+          "gerenciada": false,
+          "linha": 451
+        }
+      ]
+    }
+  ]
+}

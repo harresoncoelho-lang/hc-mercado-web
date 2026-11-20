@@ -1,0 +1,60 @@
+{
+  "capturadoEmUtc": "2026-10-31T03:03:07.5435913+00:00",
+  "origem": "Leitura da UI autenticada no navegador interno após login manual do usuário",
+  "projeto": "licitaplena",
+  "dominios": [
+    "licitaplena.com.br",
+    "www.licitaplena.com.br",
+    "licitaplena.pages.dev"
+  ],
+  "repositorio": "harresoncoelho-lang/hc-mercado-web",
+  "producao": {
+    "branch": "main",
+    "deployAutomatico": true,
+    "watchPaths": [
+      "*"
+    ],
+    "buildCommand": "npm run build:cloudflare",
+    "buildOutput": "publico",
+    "rootDirectory": "",
+    "buildSystem": "Version 3",
+    "buildCache": "Disabled",
+    "deployHooks": "No deploy hooks defined",
+    "deployment": "c18c02e5-ba7b-4f1c-8e55-81eb78b8fa4b",
+    "commit": "e007249baa13fe863fae4b3b9e783001814282f7",
+    "mensagemCommit": "Atualização automática de dados do PNCP - 2026-10-29 17:32 UTC"
+  },
+  "runtime": {
+    "compatibilityDate": "2025-09-01",
+    "compatibilityFlags": [
+      "nodejs_compat"
+    ],
+    "placement": "Default",
+    "fallback": "Fail open",
+    "bindingsListados": [],
+    "planoAtual": "Free",
+    "requestsPorDiaExibidos": 100000,
+    "cpuMsPorRequestExibidos": 10
+  },
+  "variaveisProducaoNomes": [
+    "CLOUDFLARE_ACCOUNT_ID",
+    "CLOUDFLARE_AI_TOKEN",
+    "DEFESA_IA_GRATUITA_CONFIRMADA",
+    "GEMINI_API_KEY",
+    "GROQ_API_KEY",
+    "OPENROUTER_API_KEY",
+    "OPENROUTER_MODELOS",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "TRANSPARENCIA_TOKEN",
+    "ZEPTOMAIL_TOKEN"
+  ],
+  "habilitacaoIdentificacaoExibida": false,
+  "valoresDeSecretsAcessados": false,
+  "configuracoesAlteradas": false,
+  "limites": [
+    "Presença nominal não comprova validade, projeto ou valor da chave",
+    "Não foram inspecionados SQL, RLS, Storage ou variáveis de preview remotos",
+    "Estado de UI observado não certifica todos os deploys futuros",
+    "Cliente CLI permaneceu em sua autenticação anterior; não foi trocado"
+  ]
+}

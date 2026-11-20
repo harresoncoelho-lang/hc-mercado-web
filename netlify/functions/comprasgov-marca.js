@@ -4,6 +4,7 @@
 // A chamada é feita somente após ação explícita do usuário no dossiê de um
 // resultado homologado. Não acessa área autenticada nem coleta documentos.
 
+const { cabecalhosPadrao, limitarPorIp } = require("./_auth");
 const BASE_URL = "https://dadosabertos.compras.gov.br/modulo-pesquisa-preco/1_consultarMaterial";
 
 function soDigitos(valor) {
@@ -16,7 +17,10 @@ function marcaUtil(valor) {
 }
 
 exports.handler = async (event) => {
-  const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
+  // Proxy público: CORS só do nosso domínio e teto diário por IP (teste de ataque 19/11, M5).
+  const headers = cabecalhosPadrao(event);
+  const limite = await limitarPorIp(event, "comprasgov-marca");
+  if (!limite.ok) return { statusCode: limite.status, headers, body: JSON.stringify({ erro: limite.erro }) };
   const q = event.queryStringParameters || {};
   const catalogo = soDigitos(q.catalogo);
   const compra = soDigitos(q.compra);

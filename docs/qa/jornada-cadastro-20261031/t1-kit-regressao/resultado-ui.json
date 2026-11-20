@@ -1,0 +1,27 @@
+{
+  "resultados": [
+    "salvar, recarregar, fechar/reabrir, revisão explícita no servidor, edição e DOCX real",
+    "duas declarações e proposta coexistem, revisão individual, isolamento, temas e 375/704/1280 px",
+    "rascunhos incompletos salvam; proposta incompleta e variável desconhecida não geram",
+    "timeout após persistir repete UUID e payload, sem duplicação ou perda de alterações posteriores",
+    "duas abas causam 409; formulário preservado e versão remota só após ação explícita",
+    "falhas listar/abrir/salvar/revisar e resposta de versão anterior não concedem sucesso ou exportação",
+    "salvar/abrir/preparar/confirmar tardios descartados em A→B→A; troca de peça e exportação após fechar bloqueadas",
+    "salvar/abrir/confirmar tardios após usuário trocado, sessão expirada ou fechamento",
+    "item removido do cadastro permanece no formulário, com pendência e sem perda silenciosa",
+    "alteração externa bloqueia exportação; rede externa zero; erros JavaScript zero",
+    "listagem independente de edição/nova peça; versões da lista, ocupado e invalidação de sessão/contexto/fechamento preservados"
+  ],
+  "downloads": 2,
+  "erros": [],
+  "redeExterna": 0,
+  "acoes": {
+    "consultar": 38,
+    "listar": 47,
+    "salvar": 21,
+    "abrir": 35,
+    "preparar": 19,
+    "confirmarRevisao": 13,
+    "exportar": 4
+  }
+}

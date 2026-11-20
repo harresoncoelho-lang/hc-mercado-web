@@ -10,7 +10,7 @@ test("o publico inclui as páginas, os assets referenciados e o _headers, sem ar
   for (const esperado of ["index.html", "painel.html", "supabase-config.js", "resumo-modelo.js", "favicon.png", "logo.svg", "_headers"]) {
     assert.ok(arquivos.includes(esperado), `faltou ${esperado}`);
   }
-  for (const proibido of ["eslint.config.js", "package.json", "package-lock.json", "netlify.toml"]) {
+  for (const proibido of ["eslint.config.js", "package.json", "package-lock.json", "netlify.toml", "perfil-empresa.test.js", "painel-esteira.test.js"]) {
     assert.ok(!arquivos.includes(proibido), `não deveria publicar ${proibido}`);
   }
 });

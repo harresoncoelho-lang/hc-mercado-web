@@ -1,0 +1,4 @@
+status
+md5_funcao_restaurada
+QA_ESCALA_GATES_E_ROLLBACK_OK
+64c94369bded0ca5721959406a8d5434

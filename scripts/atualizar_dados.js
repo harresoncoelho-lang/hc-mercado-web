@@ -12,6 +12,8 @@
 //   CONCORRENCIA_PAGINAS=5        -> quantas páginas buscar em paralelo na coleta de contratos (padrão 5)
 //   CONCORRENCIA_ATAS=6           -> quantas chamadas de "resultados de item" buscar em paralelo por
 //                                    ata, dentro de enriquecerAta() (padrão 6) — ver comentário lá
+//   PAUSA_429_MS_OPORTUNIDADES=5000 -> base do backoff global após 429 sem Retry-After (dobra a
+//                                    cada tentativa, teto 60s) — ver esperaAposRateLimitMs()
 //
 // IMPORTANTE: a partir desta versão o robô é INCREMENTAL — ele não re-varre tudo do zero
 // a cada execução. Ele lê os arquivos já existentes (comitados no repo), busca só o que é
@@ -24,7 +26,7 @@
 //      Coleta atas de TODOS os segmentos, nacional (SEGMENTOS abaixo é só um rótulo
 //      informativo por ata, não filtra mais a coleta — ver segmentosQueBatem()). Essa etapa é
 //      cara por ata (precisa consultar itens e resultados de cada contratação vinculada, até
-//      ~32 chamadas por ata), por isso o gargalo real é tempo de rede, não escopo de busca.
+//      uma chamada por item), por isso o gargalo real é tempo de rede, não escopo de busca.
 
 const DIAS_HISTORICO_INICIAL = parseInt(process.env.DIAS_HISTORICO_INICIAL || "30", 10);
 const RETENCAO_DIAS = parseInt(process.env.RETENCAO_DIAS || "730", 10);
@@ -33,9 +35,9 @@ const LIMITE_MINUTOS_CONTRATOS = parseFloat(process.env.LIMITE_MINUTOS_CONTRATOS
 const LIMITE_MINUTOS_MERCADO = parseFloat(process.env.LIMITE_MINUTOS_MERCADO || "13");
 const CONCORRENCIA_PAGINAS = parseInt(process.env.CONCORRENCIA_PAGINAS || "5", 10);
 // Quantas chamadas de "resultados de item" (o passo mais repetitivo do enriquecimento de uma
-// ata — até 30 por ata, uma por item) rodam em paralelo. Cada ata é enriquecida por completo
+// ata — uma por item) rodam em paralelo. Cada ata é enriquecida por completo
 // antes de passar pra próxima (não paraleliza ENTRE atas), então nunca mistura itens de atas
-// diferentes — só acelera os até 30 itens de UMA MESMA ata, que antes eram sequenciais.
+// diferentes — só acelera os itens de UMA MESMA ata, que antes eram sequenciais.
 // Comece baixo (6) e suba com cuidado se o PNCP não reclamar (ver log de 429/rate-limit).
 const CONCORRENCIA_ATAS = parseInt(process.env.CONCORRENCIA_ATAS || "6", 10);
 const TAMANHO_PAGINA = 100;
@@ -115,8 +117,12 @@ function esperarComBackoff(tentativaZeroIndexed) {
   return new Promise((r) => setTimeout(r, base + Math.random() * 300));
 }
 
-async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "", antesDaTentativa = null) {
+// aoLimitarTaxa(retryAfter, tentativa): opcional. Quando a fonte devolve 429, o chamador
+// que tem um limitador global pausa TODOS os workers de uma vez (ver
+// coletarOportunidadesAbertas). Sem ele, esta função espera sozinha.
+async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotulo = "", antesDaTentativa = null, aoLimitarTaxa = null) {
   for (let i = 0; i < tentativas; i++) {
+    let t;
     try {
       // Algumas fontes (em especial o endpoint de propostas do PNCP) aplicam o
       // limite por IP, não por requisição individual. O chamador pode fornecer
@@ -124,18 +130,19 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotul
       // cadência da fonte, sem tornar os demais coletores mais lentos.
       if (antesDaTentativa) await antesDaTentativa();
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      t = setTimeout(() => ctrl.abort(), timeoutMs);
       const resp = await fetch(url, {
         headers: { Accept: "application/json" },
         signal: ctrl.signal,
       });
-      clearTimeout(t);
       if (resp.status === 429) {
         if (i === tentativas - 1) {
           console.log(`[fetch${rotulo ? " " + rotulo : ""}] Rate-limit (429) persistente após ${tentativas} tentativa(s) em ${url}`);
           return null;
         }
-        await esperarComBackoff(i);
+        const retryAfter = resp.headers && resp.headers.get ? resp.headers.get("retry-after") : null;
+        if (aoLimitarTaxa) aoLimitarTaxa(retryAfter, i);
+        else await new Promise((r) => setTimeout(r, esperaAposRateLimitMs(retryAfter, i, 1000)));
         continue;
       }
       if (resp.status === 204) return { data: [], totalPaginas: 0 };
@@ -153,9 +160,25 @@ async function fetchComRetentativa(url, tentativas = 2, timeoutMs = 20000, rotul
         return null;
       }
       await esperarComBackoff(i);
+    } finally {
+      // O prazo inclui o corpo da resposta, não apenas os cabeçalhos.
+      if (t) clearTimeout(t);
     }
   }
   return null;
+}
+
+// Antes o 429 esperava 1s, 2s, 4s (7s no total em 4 tentativas) e ignorava Retry-After:
+// em 18/11 a recuperação teve 26 de 27 UFs com "429 persistente" na primeira passada e 11
+// na segunda, todas dentro desses 7s.
+// Agora respeita Retry-After (segundos ou data HTTP) e, sem ele, dobra a partir de baseMs.
+// O teto impede que um único pedido da fonte consuma o orçamento da fase.
+const TETO_PAUSA_429_MS = 60000;
+function esperaAposRateLimitMs(retryAfter, tentativa, baseMs) {
+  const segundos = Number(retryAfter);
+  const pedido = retryAfter && Number.isFinite(segundos) ? segundos * 1000 : Date.parse(retryAfter) - Date.now();
+  const backoff = baseMs * 2 ** tentativa + Math.random() * 300;
+  return Math.min(TETO_PAUSA_429_MS, Math.max(backoff, Number.isFinite(pedido) ? pedido : 0));
 }
 
 async function lerJsonExistente(caminho) {
@@ -191,38 +214,85 @@ function partesNumeroControle(numeroControlePNCP) {
 }
 
 // ---------- Utilitário: busca um lote de páginas em paralelo (com limite de concorrência) ----------
-async function buscarPaginasEmLote(montarUrl, paginaInicial, totalPaginasConhecido, concorrencia, aoReceberPagina) {
-  let proximaPagina = paginaInicial;
+async function buscarPaginasEmLote(montarUrl, paginaInicial, totalPaginasConhecido, concorrencia, aoReceberPagina, anterior = null) {
   let totalPaginas = totalPaginasConhecido || 1;
   let paginasVarridas = 0;
   let parouPorTempo = false;
   let falhaConsecutivas = 0;
+  let houveFalha = false;
+  const valida = (dado, numero) => dado && Array.isArray(dado.data) && Number.isSafeInteger(dado.totalPaginas) && dado.totalPaginas >= 0 &&
+    (dado.totalRegistros === undefined || (Number.isSafeInteger(dado.totalRegistros) && dado.totalRegistros >= 0)) &&
+    (dado.totalPaginas > 0 || (dado.data.length === 0 && !dado.totalRegistros)) && (dado.data.length > 0 || !dado.totalRegistros) &&
+    dado.data.every((r) => typeof r?.numeroControlePNCP === "string" && r.numeroControlePNCP.trim()) &&
+    new Set(dado.data.map((r) => r.numeroControlePNCP)).size === dado.data.length &&
+    (dado.numeroPagina === undefined || dado.numeroPagina === numero);
+  const assinatura = (dado) => JSON.stringify([dado.totalPaginas, dado.totalRegistros, dado.data.map((r) => r.numeroControlePNCP)]);
+  if (tempoRestanteMs() < 12000) return { paginasVarridas, totalPaginas, parcial: true, progresso: anterior };
+  const primeira = await fetchComRetentativa(montarUrl(1));
+  if (!valida(primeira, 1)) return { paginasVarridas, totalPaginas, parcial: true, progresso: anterior };
+  totalPaginas = primeira.totalPaginas;
+  let progresso = anterior && anterior.consulta === montarUrl(1) && anterior.primeiraPagina === assinatura(primeira) &&
+    Array.isArray(anterior.ids) && new Set(anterior.ids).size === anterior.ids.length &&
+    (anterior.proximaPagina === 1 || anterior.ids.length >= primeira.data.length) &&
+    Number.isSafeInteger(anterior.proximaPagina) && anterior.proximaPagina > 0 && anterior.proximaPagina <= Math.max(1, totalPaginas) + 1
+    ? { ...anterior, ids: [...anterior.ids] }
+    : { consulta: montarUrl(1), primeiraPagina: assinatura(primeira), iniciadoEm: new Date().toISOString(), proximaPagina: paginaInicial, ids: [] };
+  let proximaPagina = progresso.proximaPagina;
+  const recebidas = new Map();
+  const ids = new Set(progresso.ids);
+  if (proximaPagina === 1) {
+    for (const item of primeira.data) ids.add(item.numeroControlePNCP);
+    progresso.ids = Array.from(ids);
+    aoReceberPagina(primeira, 1);
+    paginasVarridas++;
+    proximaPagina = 2;
+    progresso.proximaPagina = 2;
+  }
 
   async function trabalhador() {
     while (true) {
+      if (!progresso) return;
       if (tempoRestanteMs() < 12000) { parouPorTempo = true; return; }
       if (proximaPagina > totalPaginas) return;
       const paginaAtual = proximaPagina;
       proximaPagina += 1;
       const dados = await fetchComRetentativa(montarUrl(paginaAtual));
-      if (!dados) {
+      if (!progresso) return;
+      if (!valida(dados, paginaAtual)) {
+        houveFalha = true;
         falhaConsecutivas += 1;
         if (falhaConsecutivas > 8) { parouPorTempo = true; return; }
         continue;
       }
       falhaConsecutivas = 0;
-      if (typeof dados.totalPaginas === "number" && dados.totalPaginas > 0) {
-        totalPaginas = dados.totalPaginas;
-      }
+      if (dados.totalPaginas !== totalPaginas || dados.totalRegistros !== primeira.totalRegistros) { houveFalha = true; progresso = null; return; }
+      const idsPagina = dados.data.map((r) => r.numeroControlePNCP);
+      if (idsPagina.some((id) => ids.has(id))) { houveFalha = true; progresso = null; return; }
+      for (const id of idsPagina) ids.add(id);
       paginasVarridas += 1;
       aoReceberPagina(dados, paginaAtual);
+      recebidas.set(paginaAtual, idsPagina);
+      while (recebidas.has(progresso.proximaPagina)) {
+        progresso.ids.push(...recebidas.get(progresso.proximaPagina));
+        recebidas.delete(progresso.proximaPagina++);
+      }
     }
   }
 
   const trabalhadores = Array.from({ length: concorrencia }, () => trabalhador());
   await Promise.all(trabalhadores);
 
-  return { paginasVarridas, totalPaginas, parcial: parouPorTempo || proximaPagina <= totalPaginas };
+  let parcial = houveFalha || parouPorTempo || proximaPagina <= totalPaginas;
+  if (!parcial && primeira.totalRegistros !== undefined && ids.size !== primeira.totalRegistros) { parcial = true; progresso = null; }
+  if (!parcial && totalPaginas > 1) {
+    if (tempoRestanteMs() < 12000) parcial = true;
+    else {
+      const conferida = await fetchComRetentativa(montarUrl(1));
+      if (!valida(conferida, 1)) parcial = true;
+      else if (assinatura(conferida) !== assinatura(primeira)) { parcial = true; progresso = null; }
+    }
+  }
+  return { paginasVarridas, totalPaginas, parcial, progresso: parcial ? progresso : null };
 }
 
 // ---------- Coleta complementar por UF (corrige o viés do scan nacional) ----------
@@ -265,7 +335,7 @@ async function buscarDetalheContrato(numeroControlePNCP) {
   return dados;
 }
 
-async function coletarContratosComplementarPorUf(registrosExistentes) {
+async function coletarContratosComplementarPorUf(registrosExistentes, anteriores = {}) {
   iniciarFase(LIMITE_MINUTOS_CONTRATOS_UF);
   const conhecidos = new Set(registrosExistentes.map((r) => r.numeroControlePNCP).filter(Boolean));
   const contagemPorUf = contarRegistrosPorUf(registrosExistentes);
@@ -273,25 +343,40 @@ async function coletarContratosComplementarPorUf(registrosExistentes) {
   // vão sendo preenchidos primeiro, em vez de sempre reprocessar os estados já robustos.
   const filaUfs = [...UFS].sort((a, b) => contagemPorUf.get(a) - contagemPorUf.get(b));
   const novos = [];
-  let ufsProcessadas = 0;
+  const ufsOk = [];
+  const progressoPorUf = { ...anteriores };
 
   async function processarUf(uf) {
-    let pagina = 1;
-    while (pagina <= MAX_PAGINAS_POR_UF_CONTRATOS) {
-      if (tempoRestanteMs() < 10000) return;
+    const buscarPagina = (pagina) => {
       const params = new URLSearchParams({
         tipos_documento: "contrato", status: "todos", ufs: uf,
         ordenacao: "-data", tam_pagina: "50", pagina: String(pagina),
       });
-      const dados = await fetchComRetentativa(`https://pncp.gov.br/api/search/?${params}`, 2, 15000, `contratos ${uf}`);
-      if (!dados || !Array.isArray(dados.items) || dados.items.length === 0) return;
+      return fetchComRetentativa(`https://pncp.gov.br/api/search?${params}`, 2, 15000, `contratos ${uf}`);
+    };
+    const assinatura = (dados) => JSON.stringify([dados.total, dados.items.map((r) => r.numero_controle_pncp)]);
+    const primeira = await buscarPagina(1);
+    if (!primeira || !Array.isArray(primeira.items)) return false;
+    let progresso = progressoPorUf[uf];
+    if (!progresso || progresso.primeiraPagina !== assinatura(primeira) || !Number.isSafeInteger(progresso.proximaPagina) || progresso.proximaPagina < 1) {
+      progresso = { primeiraPagina: assinatura(primeira), proximaPagina: 1 };
+    } else progresso = { ...progresso };
+    progressoPorUf[uf] = progresso;
+    let pagina = progresso.proximaPagina;
+    let detalhesOk = true;
+    // O teto divide o trabalho entre UFs; o cursor retoma além dele na próxima execução.
+    for (let varridas = 0; varridas < MAX_PAGINAS_POR_UF_CONTRATOS; varridas++) {
+      if (tempoRestanteMs() < 10000) return false;
+      const dados = pagina === 1 ? primeira : await buscarPagina(pagina);
+      if (!dados || !Array.isArray(dados.items)) return false;
+      if (dados.total !== primeira.total) { delete progressoPorUf[uf]; return false; }
       for (const item of dados.items) {
-        if (tempoRestanteMs() < 8000) return;
+        if (tempoRestanteMs() < 8000) return false;
         const numero = item.numero_controle_pncp;
         if (!numero || conhecidos.has(numero)) continue;
         conhecidos.add(numero); // evita re-tentar o mesmo contrato 2x na mesma execução
         const detalhe = await buscarDetalheContrato(numero);
-        if (!detalhe) continue;
+        if (!detalhe) { detalhesOk = false; continue; }
         const objeto = detalhe.objetoContrato || item.description || item.title || "";
         novos.push({
           objeto,
@@ -307,23 +392,32 @@ async function coletarContratosComplementarPorUf(registrosExistentes) {
           segmentos: segmentosQueBatem(objeto),
         });
       }
+      if (!detalhesOk) return false;
+      if (dados.items.length < 50) {
+        if (tempoRestanteMs() < 10000) return false;
+        const conferida = await buscarPagina(1);
+        if (!conferida || !Array.isArray(conferida.items)) return false;
+        delete progressoPorUf[uf];
+        return assinatura(conferida) === progresso.primeiraPagina;
+      }
       pagina += 1;
+      progresso.proximaPagina = pagina;
     }
+    return false;
   }
 
   async function trabalhador() {
     while (filaUfs.length > 0) {
-      if (tempoRestanteMs() < 10000) return;
+      if (tempoRestanteMs() < 10000) return false;
       const uf = filaUfs.shift();
       if (!uf) return;
-      await processarUf(uf);
-      ufsProcessadas += 1;
+      if (await processarUf(uf)) ufsOk.push(uf);
     }
   }
 
   await Promise.all(Array.from({ length: CONCORRENCIA_UF_CONTRATOS }, () => trabalhador()));
-  console.log(`[contratos-uf] Complementar concluído: ${novos.length} contrato(s) novo(s) em ${ufsProcessadas} UF(s) processada(s) (priorizando as menos cobertas).`);
-  return novos;
+  console.log(`[contratos-uf] Complementar concluído: ${novos.length} contrato(s) novo(s) em ${ufsOk.length} UF(s) processada(s) (priorizando as menos cobertas).`);
+  return { registros: novos, ufsComFalha: UFS.filter((uf) => !ufsOk.includes(uf)), progressoPorUf };
 }
 
 // ---------- Contratos históricos (nacional, acumulados de forma incremental) ----------
@@ -341,8 +435,8 @@ async function coletarContratos(caminhoArquivo) {
   } else {
     inicio = new Date(hoje.getTime() - DIAS_HISTORICO_INICIAL * 24 * 60 * 60 * 1000);
   }
-  const dataInicial = fmtData(inicio);
-  const dataFinal = fmtData(hoje);
+  const dataInicial = existentes?.consultaPendente?.dataInicial || fmtData(inicio);
+  const dataFinal = existentes?.consultaPendente?.dataFinal || fmtData(hoje);
 
   const novos = [];
   const montarUrl = (pagina) =>
@@ -366,22 +460,28 @@ async function coletarContratos(caminhoArquivo) {
         segmentos: segmentosQueBatem(objeto),
       });
     }
-  });
+  }, existentes?.consultaPendente?.paginacao);
 
   // Junta com o que já tinha, deduplicando, e descarta o que passou da retenção.
   const mapa = new Map();
   if (existentes && Array.isArray(existentes.registros)) {
     for (const r of existentes.registros) mapa.set(chaveRegistro(r), r);
   }
-  for (const r of novos) mapa.set(chaveRegistro(r), r);
+  // Só o que veio da fonte nesta execução vai para o upsert (ver sincronizarContratosNoSupabase).
+  const chavesDaExecucao = new Set();
+  for (const r of novos) { mapa.set(chaveRegistro(r), r); chavesDaExecucao.add(chaveRegistro(r)); }
 
   // Passada complementar por UF (ver coletarContratosComplementarPorUf acima) — preenche os
   // estados que o scan nacional deixou de fora, usando o que já temos (existentes + novos
   // desta execução) pra saber quais estados priorizar.
+  let ufsComFalha = [...UFS];
+  let progressoPorUf = existentes?.progressoPorUf || {};
   try {
     const baseParaContagem = Array.from(mapa.values());
-    const complementares = await coletarContratosComplementarPorUf(baseParaContagem);
-    for (const r of complementares) mapa.set(chaveRegistro(r), r);
+    const complementares = await coletarContratosComplementarPorUf(baseParaContagem, progressoPorUf);
+    ufsComFalha = complementares.ufsComFalha;
+    progressoPorUf = complementares.progressoPorUf || {};
+    for (const r of complementares.registros) { mapa.set(chaveRegistro(r), r); chavesDaExecucao.add(chaveRegistro(r)); }
   } catch (e) {
     console.log(`[contratos-uf] Falhou, seguindo só com o scan nacional: ${e && e.message}`);
   }
@@ -422,13 +522,18 @@ async function coletarContratos(caminhoArquivo) {
   return {
     atualizadoEm: new Date().toISOString(),
     dataInicial: dataInicialReal || dataInicial,
-    dataFinal,
+    // Repetir a janela incompleta evita perder páginas antigas no incremental.
+    dataFinal: resultado.parcial ? ((existentes && existentes.dataFinal) || dataInicial) : dataFinal,
     retencaoDias: RETENCAO_DIAS,
     totalRegistros: registros.length,
     paginasVarridas: resultado.paginasVarridas,
     totalPaginasDisponiveis: resultado.totalPaginas,
-    parcial: resultado.parcial,
+    consultaPendente: resultado.parcial ? { dataInicial, dataFinal, paginacao: resultado.progresso } : null,
+    parcial: resultado.parcial || ufsComFalha.length > 0,
+    ufsComFalha,
+    progressoPorUf,
     registros,
+    novosNaExecucao: registros.filter((r) => chavesDaExecucao.has(chaveRegistro(r))),
   };
 }
 
@@ -438,7 +543,7 @@ async function coletarContratos(caminhoArquivo) {
 // nos últimos 30/60 dias", incluindo o que já encerrou nesse meio tempo), este robô
 // FUNDE o resultado de cada execução com o que já tinha coletado antes (por
 // numeroControlePNCP), em vez de sobrescrever o arquivo do zero. Registros somem do
-// arquivo só quando ficam mais velhos que RETENCAO_DIAS_OPORTUNIDADES.
+// arquivo só quando seu encerramento confirmado fica mais velho que RETENCAO_DIAS_OPORTUNIDADES.
 const RETENCAO_DIAS_OPORTUNIDADES = parseInt(process.env.RETENCAO_DIAS_OPORTUNIDADES || "120", 10);
 
 // amparoLegal costuma vir como objeto único ({ nome, descricao }), mas usa nome se tiver
@@ -471,8 +576,14 @@ function ufsPendentesDeAtualizacao(existentes, agora = new Date()) {
   return UFS.filter((uf) => {
     const atualizadoEm = cobertura[uf] && cobertura[uf].atualizadoEm;
     const ultimaColeta = atualizadoEm ? new Date(atualizadoEm).getTime() : NaN;
-    return falhas.has(uf) || !Number.isFinite(ultimaColeta) || ultimaColeta <= limiteAtualizacao;
+    return falhas.has(uf) || !!existentes?.paginasPendentesPorUf?.[uf] || !Number.isFinite(ultimaColeta) || ultimaColeta <= limiteAtualizacao;
   });
+}
+
+function dataEncerramentoIso(valor) {
+  if (typeof valor !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(valor) || !Number.isFinite(Date.parse(valor))) return null;
+  const dia = valor.slice(0, 10);
+  return new Date(`${dia}T00:00:00Z`).toISOString().slice(0, 10) === dia ? dia : null;
 }
 
 async function coletarOportunidadesAbertas(caminhoArquivo) {
@@ -507,6 +618,12 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     proximaChamadaEm = Math.max(agora, proximaChamadaEm) + INTERVALO_MS;
     if (espera > 0) await new Promise((r) => setTimeout(r, espera));
   }
+  // O limite do endpoint é por origem: se cada worker insistisse sozinho após um 429, os
+  // outros continuariam batendo durante a pausa. Um 429 adia a próxima chamada de TODOS.
+  const PAUSA_429_MS = parseInt(process.env.PAUSA_429_MS_OPORTUNIDADES || "5000", 10);
+  function pausarCadenciaPncp(retryAfter, tentativa) {
+    proximaChamadaEm = Math.max(proximaChamadaEm, Date.now() + esperaAposRateLimitMs(retryAfter, tentativa, PAUSA_429_MS));
+  }
   iniciarFase(ORCAMENTO_MINUTOS_OPORTUNIDADES);
   const existentes = await lerJsonExistente(caminhoArquivo);
   const recuperarPendentes = process.env.RECUPERAR_UFS_PENDENTES === "1";
@@ -527,6 +644,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   let ufsComFalha = [];
   let ufsOk = [];
   const coberturaPorUf = { ...((existentes && existentes.coberturaPorUf) || {}) };
+  const paginasPendentesPorUf = { ...((existentes && existentes.paginasPendentesPorUf) || {}) };
 
   const filaUfs = [...ufsAlvo];
 
@@ -535,23 +653,45 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       ufsComFalha.push(uf);
       return;
     }
-    let pagina = 1;
-    let totalPaginas = 1;
+    let progresso = paginasPendentesPorUf[uf];
+    if (!progresso || Date.now() - Date.parse(progresso.iniciadoEm) > 6 * 60 * 60 * 1000 ||
+        !Number.isFinite(Date.parse(progresso.iniciadoEm)) || !/^\d{8}$/.test(progresso.dataFinal) ||
+        !Number.isSafeInteger(progresso.proximaPagina) || progresso.proximaPagina < 1 ||
+        progresso.proximaPagina > Math.max(1, progresso.totalPaginas) + 1 || !Array.isArray(progresso.ids)) progresso = null;
+    const fimConsulta = progresso?.dataFinal || dataFinal;
+    const buscarPagina = (pagina) => fetchComRetentativa(
+      `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${fimConsulta}&pagina=${pagina}&tamanhoPagina=50`,
+      4, 25000, `oportunidades ${uf}`, respeitarCadenciaPncp, pausarCadenciaPncp);
+    const assinatura = (dado) => JSON.stringify([dado.totalPaginas, dado.totalRegistros, dado.data.map((r) => r.numeroControlePNCP)]);
+    const paginaValida = (dado, numero) => dado && Array.isArray(dado.data) &&
+      Number.isSafeInteger(dado.totalPaginas) && dado.totalPaginas >= 0 &&
+      (dado.numeroPagina === undefined || dado.numeroPagina === numero) &&
+      (dado.totalPaginas > 0 || dado.data.length === 0) && dado.data.every((r) => r.numeroControlePNCP);
+    const primeira = await buscarPagina(1);
+    if (paginaValida(primeira, 1) && (!progresso || progresso.primeiraPagina !== assinatura(primeira))) {
+      progresso = { dataFinal: fimConsulta, iniciadoEm: new Date().toISOString(), primeiraPagina: assinatura(primeira),
+        proximaPagina: 1, totalPaginas: primeira.totalPaginas, totalRegistros: primeira.totalRegistros, ids: [] };
+    }
+    let pagina = progresso?.proximaPagina || 1;
+    const totalPaginas = progresso?.totalPaginas || 1;
+    const ids = new Set(progresso?.ids || []);
     let falhouUf = false;
-    let registrosDaUf = 0;
+    if (!paginaValida(primeira, 1)) falhouUf = true;
 
-    while (pagina <= totalPaginas && pagina <= 20) {
+    while (!falhouUf && pagina <= totalPaginas) {
       if (tempoRestanteMs() < 8000) { falhouUf = true; break; }
-      const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/proposta?uf=${uf}&dataFinal=${dataFinal}&pagina=${pagina}&tamanhoPagina=50`;
       // Para oportunidades, uma resposta perdida significa um boletim incompleto. Usa mais
       // tentativas que as coletas de enriquecimento, com o backoff já centralizado acima.
-      const dados = await fetchComRetentativa(url, 4, 25000, `oportunidades ${uf}`, respeitarCadenciaPncp);
-      if (!dados) { falhouUf = true; break; }
-      const itens = dados.data || [];
-      totalPaginas = dados.totalPaginas || 1;
+      const dados = pagina === 1 ? primeira : await buscarPagina(pagina);
+      if (!paginaValida(dados, pagina)) { falhouUf = true; break; }
+      const itens = dados.data;
+      if (dados.totalPaginas !== progresso.totalPaginas || dados.totalRegistros !== progresso.totalRegistros ||
+          itens.some((r) => ids.has(r.numeroControlePNCP)) || new Set(itens.map((r) => r.numeroControlePNCP)).size !== itens.length) {
+        progresso = null; falhouUf = true; break;
+      }
 
       for (const item of itens) {
-        registrosDaUf += 1;
+        ids.add(item.numeroControlePNCP);
         todas.push({
           objeto: item.objetoCompra || item.objetoContrato || "",
           orgao: (item.orgaoEntidade && item.orgaoEntidade.razaoSocial) || "Órgão não informado",
@@ -574,10 +714,28 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
           processo: item.processo || null,
           codigoUnidade: (item.unidadeOrgao && item.unidadeOrgao.codigoUnidade) || null,
           esferaId: (item.orgaoEntidade && item.orgaoEntidade.esferaId) || null,
+          // Portal da disputa (selo "Portal: X" e link "Acessar local da disputa" nos cartões).
+          usuarioNome: item.usuarioNome || null,
+          linkSistemaOrigem: item.linkSistemaOrigem || null,
         });
       }
       pagina += 1;
+      progresso = { ...progresso, proximaPagina: pagina, ids: [...ids] };
     }
+    if (pagina <= totalPaginas) falhouUf = true;
+    if (!falhouUf && progresso.totalRegistros !== undefined && ids.size !== progresso.totalRegistros) {
+      progresso = null; falhouUf = true;
+    }
+    if (!falhouUf && totalPaginas > 1) {
+      if (tempoRestanteMs() < 8000) falhouUf = true;
+      else {
+        const conferida = await buscarPagina(1);
+        if (!paginaValida(conferida, 1)) falhouUf = true;
+        else if (assinatura(conferida) !== progresso.primeiraPagina) { progresso = null; falhouUf = true; }
+      }
+    }
+    if (falhouUf && progresso) paginasPendentesPorUf[uf] = progresso;
+    else delete paginasPendentesPorUf[uf];
     if (falhouUf) {
       ufsComFalha.push(uf);
       if (ufsOk.length === 0) {
@@ -591,7 +749,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
       ufsOk.push(uf);
       coberturaPorUf[uf] = {
         atualizadoEm: new Date().toISOString(),
-        registrosColetados: registrosDaUf,
+        registrosColetados: ids.size,
       };
     }
   }
@@ -642,12 +800,11 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
   }
   for (const r of todas) mapa.set(chave(r), r);
 
-  const limiteRetencao = new Date(hoje.getTime() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000);
+  const limiteRetencaoIso = new Date(hoje.getTime() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const registros = Array.from(mapa.values()).filter((r) => {
-    const refBruta = r.publicacao || r.encerramento;
-    if (!refBruta) return true;
-    const d = new Date(refBruta);
-    return isNaN(d) || d >= limiteRetencao;
+    // Publicação antiga não significa oportunidade encerrada; a coluna do banco usa o mesmo dia civil.
+    const encerramento = dataEncerramentoIso(r.encerramento);
+    return !encerramento || encerramento >= limiteRetencaoIso;
   });
 
   console.log(
@@ -673,6 +830,7 @@ async function coletarOportunidadesAbertas(caminhoArquivo) {
     ufsOk: UFS.filter((uf) => !ufsComFalhaFinais.includes(uf)),
     ufsOkNaExecucao: [...new Set(ufsOk)],
     coberturaPorUf,
+    paginasPendentesPorUf,
     saudeFonte: fonteIndisponivel ? "indisponivel" : (ufsComFalha.length ? "parcial" : "ok"),
     registros,
   };
@@ -785,6 +943,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
   // essa fila primeiro garante que o robô sempre termina de enriquecer o que já achou antes
   // de gastar tempo procurando atas novas.
   let filaPendente = (existentes && Array.isArray(existentes.filaPendente)) ? existentes.filaPendente : [];
+  const progressoAtas = { ...((existentes && existentes.progressoAtas) || {}) };
 
   const cacheOrgaoUf = new Map();
 
@@ -813,7 +972,8 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
       // resultados por órgão comprador — sem UASG não dá pra consultar marca do produto ali.
       uasg = (compra.unidadeOrgao && compra.unidadeOrgao.codigoUnidade) || "";
     }
-    const resultado = { ufOrgao, municipioOrgao, uasg };
+    const compraValida = !!compra && (!compra.numeroControlePNCP || compra.numeroControlePNCP === numeroControlePNCPCompra);
+    const resultado = { ufOrgao, municipioOrgao, uasg, compraValida, versaoCompra: hashProgressoAtas(compra) };
     cacheOrgaoUf.set(chaveCompra, resultado);
     return resultado;
   }
@@ -824,18 +984,61 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 
     // UF do órgão e lista de itens são independentes entre si — buscar em paralelo em vez de
     // em sequência economiza uma ida-e-volta inteira por ata.
-    const [{ ufOrgao, municipioOrgao, uasg }, itensResp] = await Promise.all([
+    const buscarItens = (pagina) => fetchComRetentativa(
+      `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens?pagina=${pagina}&tamanhoPagina=50`,
+      3, 15000, `itens ata ${referenciaAta.numeroControlePNCPAta}`);
+    const [{ ufOrgao, municipioOrgao, uasg, compraValida, versaoCompra }, itensResp] = await Promise.all([
       buscarUfOrgao(referenciaAta.numeroControlePNCPCompra),
-      fetchComRetentativa(
-        `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens?pagina=1&tamanhoPagina=50`,
-        3, 15000, `itens ata ${referenciaAta.numeroControlePNCPAta}`
-      ),
+      buscarItens(1),
     ]);
-    const listaItens = Array.isArray(itensResp) ? itensResp : (itensResp && itensResp.data) || [];
-
-    // Limita a no máx. 30 itens por ata pra não estourar o orçamento numa única contratação
-    // com centenas de itens (ex: atas de material de expediente com muitos itens).
-    const itensParaBuscar = listaItens.slice(0, 30).filter((item) => item.numeroItem || item.numero);
+    const lista = (resposta) => Array.isArray(resposta) ? resposta : resposta?.data;
+    if (!compraValida || !Array.isArray(lista(itensResp))) return null;
+    const chaveAta = referenciaAta.numeroControlePNCPAta;
+    const primeiraPagina = hashProgressoAtas(itensResp);
+    let progresso = progressoAtas[chaveAta];
+    if (!progresso || progresso.compra !== referenciaAta.numeroControlePNCPCompra || progresso.versaoCompra !== versaoCompra ||
+        progresso.primeiraPagina !== primeiraPagina || !Array.isArray(progresso.itens) ||
+        progresso.totalPaginas !== itensResp.totalPaginas || progresso.totalRegistros !== itensResp.totalRegistros ||
+        !progresso.resultados || typeof progresso.resultados !== "object" ||
+        !Number.isSafeInteger(progresso.proximaPagina) || progresso.proximaPagina < 1) {
+      progresso = { compra: referenciaAta.numeroControlePNCPCompra, versaoCompra, primeiraPagina, iniciadoEm: new Date().toISOString(),
+        totalPaginas: itensResp.totalPaginas, totalRegistros: itensResp.totalRegistros,
+        proximaPagina: 1, itens: [], resultados: {}, itensCompletos: false };
+    } else progresso = { ...progresso, itens: [...progresso.itens], resultados: { ...progresso.resultados } };
+    progressoAtas[chaveAta] = progresso;
+    const numeros = new Set(progresso.itens.map((item) => Number(item.numeroItem || item.numero)));
+    while (!progresso.itensCompletos) {
+      if (tempoRestanteMs() < 10000) return null;
+      const pagina = progresso.proximaPagina;
+      const resposta = pagina === 1 ? itensResp : await buscarItens(pagina);
+      const itens = lista(resposta);
+      if (!Array.isArray(itens) || itens.length > 50 || (itens.length === 0 && resposta.totalRegistros) ||
+          (resposta.totalRegistros !== undefined && (!Number.isSafeInteger(resposta.totalRegistros) || resposta.totalRegistros < 0)) ||
+          (resposta.totalPaginas !== undefined && (!Number.isSafeInteger(resposta.totalPaginas) || resposta.totalPaginas < 0 ||
+            (resposta.totalPaginas === 0 && itens.length > 0) || (pagina < resposta.totalPaginas && itens.length === 0))) ||
+          (resposta.numeroPagina !== undefined && resposta.numeroPagina !== pagina)) return null;
+      if (resposta.totalPaginas !== progresso.totalPaginas || resposta.totalRegistros !== progresso.totalRegistros) {
+        delete progressoAtas[chaveAta]; return null;
+      }
+      for (const item of itens) {
+        const numero = Number(item.numeroItem || item.numero);
+        if (!Number.isSafeInteger(numero) || numero <= 0 || numeros.has(numero) ||
+            (item.numeroControlePNCPCompra && item.numeroControlePNCPCompra !== progresso.compra)) {
+          delete progressoAtas[chaveAta]; return null;
+        }
+        numeros.add(numero);
+      }
+      const itensCompletos = resposta.totalPaginas !== undefined
+        ? pagina >= resposta.totalPaginas : itens.length < 50;
+      if (progresso.totalRegistros !== undefined && (numeros.size > progresso.totalRegistros ||
+          (itensCompletos && numeros.size !== progresso.totalRegistros))) {
+        delete progressoAtas[chaveAta]; return null;
+      }
+      progresso.itens.push(...itens);
+      progresso.proximaPagina += 1;
+      progresso.itensCompletos = itensCompletos;
+    }
+    const itensParaBuscar = progresso.itens;
 
     // Busca o "resultados" (vencedores) de cada item EM PARALELO, em lotes de até
     // CONCORRENCIA_ATAS requisições simultâneas — antes era 1 chamada de cada vez,
@@ -845,19 +1048,25 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     // podem pisar no resultado um do outro nem misturar item de uma ata com o de outra —
     // essa função só processa os itens de UMA ata por vez (o paralelismo é só entre os itens
     // dessa mesma ata; a próxima ata começa depois que essa terminar).
-    const slots = new Array(itensParaBuscar.length).fill(null);
+    const slots = itensParaBuscar.map((item) => progresso.resultados[item.numeroItem || item.numero] || null);
     let cursorItem = 0;
+    let incompleta = false;
     async function trabalhadorItem() {
       while (cursorItem < itensParaBuscar.length) {
-        if (tempoRestanteMs() < 10000) return;
+        if (tempoRestanteMs() < 10000) { incompleta = true; return; }
         const indice = cursorItem++;
         const item = itensParaBuscar[indice];
         const numeroItem = item.numeroItem || item.numero;
+        if (Object.hasOwn(progresso.resultados, numeroItem)) continue;
         const resultados = await fetchComRetentativa(
           `https://pncp.gov.br/api/pncp/v1/orgaos/${partes.cnpj}/compras/${partes.ano}/${partes.sequencial}/itens/${numeroItem}/resultados`,
           3, 15000, `resultados ata ${referenciaAta.numeroControlePNCPAta} item ${numeroItem}`
         );
-        const listaResultados = Array.isArray(resultados) ? resultados : (resultados && resultados.data) || [];
+        const listaResultados = Array.isArray(resultados) ? resultados : resultados && resultados.data;
+        if (!Array.isArray(listaResultados) || resultados.totalPaginas > 1 ||
+          (listaResultados.length === 0 && resultados.totalRegistros) || listaResultados.some((r) =>
+          (r.numeroItem !== undefined && Number(r.numeroItem) !== Number(numeroItem)) ||
+          (r.numeroControlePNCPCompra && r.numeroControlePNCPCompra !== progresso.compra))) { incompleta = true; continue; }
         const situacao = item.situacaoCompraItemNome || null;
         const codigoCatalogo = item.catalogoCodigoItem || null;
         // Só tenta buscar marca quando há vencedor de fato (sem CNPJ vencedor não tem o que
@@ -870,7 +1079,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
         // mesmo assim — é exatamente o sinal de "baixa concorrência" (aba Inteligência de
         // Mercado > Baixa Concorrência). Itens ainda "Em andamento"/"Divulgada no PNCP" sem
         // resultado continuam sendo pulados (não há nada definitivo pra mostrar ainda).
-        if (listaResultados.length === 0 && !situacaoSemVencedor(situacao)) continue;
+        if (listaResultados.length === 0 && !situacaoSemVencedor(situacao)) { progresso.resultados[numeroItem] = null; continue; }
         slots[indice] = {
           numeroItem,
           descricao: item.descricao || item.descricaoItem || "",
@@ -885,13 +1094,19 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
             marca: (marcasPorFornecedor.get(normalizarDocumentoFornecedor(r.niFornecedor || r.cnpjFornecedor || r.cnpj)) || {}).marca || null,
           })),
         };
+        progresso.resultados[numeroItem] = slots[indice];
       }
     }
     await Promise.all(
       Array.from({ length: Math.min(CONCORRENCIA_ATAS, itensParaBuscar.length) }, () => trabalhadorItem())
     );
+    if (incompleta) return null;
+    if (tempoRestanteMs() < 10000) return null;
+    const conferida = await buscarItens(1);
+    if (!Array.isArray(lista(conferida))) return null;
+    if (hashProgressoAtas(conferida) !== primeiraPagina) { delete progressoAtas[chaveAta]; return null; }
     const itensComVencedor = slots.filter(Boolean);
-
+    delete progressoAtas[chaveAta];
     return { ufOrgao, municipioOrgao, uasg, itens: itensComVencedor, situacaoColetada: true };
   }
 
@@ -907,6 +1122,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     }
   }
   filaPendente = novaFilaPendente;
+  const chavesPendentes = new Set(filaPendente.map((a) => a.numeroControlePNCPAta));
 
   // 1b) Reconserta atas já coletadas ANTES da correção do endpoint de UF (ver comentário em
   // enriquecerAta acima) — essas ficaram com ufOrgao/municipioOrgao em branco pra sempre,
@@ -936,8 +1152,10 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
   // se o orçamento de tempo acabar no meio do backfill, a próxima execução continua dali.
   const JANELA_DIAS = 90;
   let janelasPendentes = (existentes && Array.isArray(existentes.janelasPendentes) && existentes.janelasPendentes.length > 0)
-    ? existentes.janelasPendentes
+    ? existentes.janelasPendentes.map((janela) => ({ ...janela }))
     : gerarJanelas(dataInicial, dataFinal, JANELA_DIAS);
+  const dataFinalConsulta = existentes?.janelasPendentes?.length
+    ? (existentes.dataFinalConsulta || existentes.dataFinal || fmtData(hoje)) : fmtData(hoje);
 
   let paginasVarridas = 0;
   let atasNovas = 0;
@@ -947,24 +1165,47 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
   while (janelasPendentes.length > 0) {
     if (tempoRestanteMs() < 15000) break;
     const janela = janelasPendentes[0];
-    let pagina = 1;
-    let totalPaginas = 1;
+    const buscarPagina = (pagina) => fetchComRetentativa(
+      `https://pncp.gov.br/api/consulta/v1/atas?dataInicial=${janela.inicio}&dataFinal=${janela.fim}&pagina=${pagina}&tamanhoPagina=500`,
+      2, 20000, "atas");
+    const valida = (dado, numero) => dado && Array.isArray(dado.data) && Number.isSafeInteger(dado.totalPaginas) && dado.totalPaginas >= 0 &&
+      (dado.totalRegistros === undefined || (Number.isSafeInteger(dado.totalRegistros) && dado.totalRegistros >= 0)) &&
+      (dado.totalPaginas > 0 || (dado.data.length === 0 && !dado.totalRegistros)) && (dado.data.length > 0 || !dado.totalRegistros) &&
+      dado.data.every((a) => typeof a?.numeroControlePNCPAta === "string" && a.numeroControlePNCPAta.trim()) &&
+      new Set(dado.data.map((a) => a.numeroControlePNCPAta)).size === dado.data.length &&
+      (dado.numeroPagina === undefined || dado.numeroPagina === numero);
+    const assinatura = (dado) => JSON.stringify([dado.totalPaginas, dado.totalRegistros, dado.data.map((a) => a.numeroControlePNCPAta)]);
+    const primeira = await buscarPagina(1);
+    if (!valida(primeira, 1)) break;
+    if (janela.primeiraPagina !== assinatura(primeira) || !Array.isArray(janela.ids) ||
+        (janela.proximaPagina > 1 && janela.ids.length < primeira.data.length) ||
+        !Number.isSafeInteger(janela.proximaPagina) || janela.proximaPagina < 1 || janela.proximaPagina > Math.max(1, primeira.totalPaginas) + 1) {
+      janela.proximaPagina = 1; janela.ids = [];
+    }
+    janela.primeiraPagina = assinatura(primeira);
+    const ids = new Set(janela.ids);
+    let pagina = janela.proximaPagina || 1;
+    const totalPaginas = primeira.totalPaginas || 1;
     let janelaOk = true;
+    let fonteAlterada = false;
 
     while (pagina <= totalPaginas) {
       if (tempoRestanteMs() < 12000) { janelaOk = false; break; }
-      const url = `https://pncp.gov.br/api/consulta/v1/atas?dataInicial=${janela.inicio}&dataFinal=${janela.fim}&pagina=${pagina}&tamanhoPagina=500`;
-      const dados = await fetchComRetentativa(url, 2, 20000, "atas");
-      if (!dados) { janelaOk = false; break; }
-      const itens = dados.data || [];
-      totalPaginas = dados.totalPaginas || 1;
+      const dados = pagina === 1 ? primeira : await buscarPagina(pagina);
+      if (!valida(dados, pagina)) { janelaOk = false; break; }
+      if (dados.totalPaginas !== primeira.totalPaginas || dados.totalRegistros !== primeira.totalRegistros) {
+        fonteAlterada = true; janelaOk = false; break;
+      }
+      const itens = dados.data;
+      if (itens.some((a) => ids.has(a.numeroControlePNCPAta))) { fonteAlterada = true; janelaOk = false; break; }
+      for (const item of itens) ids.add(item.numeroControlePNCPAta);
       paginasVarridas += 1;
 
       for (const item of itens) {
         const objeto = item.objetoContratacao || "";
         const segs = segmentosQueBatem(objeto); // só rótulo informativo agora, não filtra mais
         const chave = item.numeroControlePNCPAta;
-        if (!chave || atasMapa.has(chave)) continue;
+        if (!chave || atasMapa.has(chave) || chavesPendentes.has(chave)) continue;
 
         const referenciaAta = {
           numeroControlePNCPAta: chave,
@@ -983,6 +1224,7 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 
         if (tempoRestanteMs() < 12000) {
           filaPendente.push(referenciaAta);
+          chavesPendentes.add(chave);
           atasEnfileiradas += 1;
           continue;
         }
@@ -992,16 +1234,29 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
           atasNovas += 1;
         } else {
           filaPendente.push(referenciaAta);
+          chavesPendentes.add(chave);
           atasEnfileiradas += 1;
         }
       }
       pagina += 1;
+      janela.proximaPagina = pagina;
+      janela.ids = Array.from(ids);
     }
 
+    if (janelaOk && primeira.totalRegistros !== undefined && ids.size !== primeira.totalRegistros) { fonteAlterada = true; janelaOk = false; }
+    if (janelaOk && totalPaginas > 1) {
+      if (tempoRestanteMs() < 12000) janelaOk = false;
+      else {
+        const conferida = await buscarPagina(1);
+        if (!valida(conferida, 1)) janelaOk = false;
+        else if (assinatura(conferida) !== janela.primeiraPagina) { fonteAlterada = true; janelaOk = false; }
+      }
+    }
     if (janelaOk) {
       janelasPendentes.shift();
       janelasProcessadasNestaExecucao += 1;
     } else {
+      if (fonteAlterada) { janela.proximaPagina = 1; janela.ids = []; }
       break; // orçamento de tempo ou falha de rede — retoma essa mesma janela na próxima execução
     }
   }
@@ -1041,10 +1296,12 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
     atualizadoEm: new Date().toISOString(),
     segmentosMonitorados: SEGMENTOS,
     dataInicial,
-    dataFinal: fmtData(hoje),
+    dataFinal: janelasPendentes.length ? (existentes?.dataFinal || dataInicial) : dataFinalConsulta,
+    dataFinalConsulta: janelasPendentes.length ? dataFinalConsulta : null,
     retencaoDias: RETENCAO_DIAS,
     janelasPendentes,
     filaPendente,
+    progressoAtas,
     parcial: filaPendente.length > 0 || janelasPendentes.length > 0,
     totalAtas: atas.length,
     atas,
@@ -1072,25 +1329,44 @@ async function coletarMercadoSegmentos(caminhoArquivo) {
 //      retenção.
 const { upsertEmLotes, baixarTodasAsLinhas, removerMaisAntigosQue, salvarBlob, buscarBlob } = require("./supabase_dados");
 
+function hashProgressoAtas(progresso) {
+  // JSONB pode reordenar chaves, mas a ordem de itens/resultados continua significativa.
+  const texto = JSON.stringify(progresso, (_chave, valor) => valor && typeof valor === "object" && !Array.isArray(valor)
+    ? Object.fromEntries(Object.keys(valor).sort().map((chave) => [chave, valor[chave]])) : valor);
+  return require("node:crypto").createHash("sha256").update(texto).digest("hex");
+}
+
 async function hidratarContratosDoSupabase(caminhoArquivo, caminhoMeta) {
   const meta = await lerJsonExistente(caminhoMeta);
   if (!meta) {
     console.log("[supabase] Sem metadado anterior de contratos — tratando como 1ª execução.");
     return;
   }
-  try {
-    const linhas = await baixarTodasAsLinhas("contratos", "dado");
-    const registros = linhas.map((l) => l.dado);
-    const fs = await import("node:fs/promises");
-    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
-    console.log(`[supabase] Hidratado ${registros.length} contrato(s) do Supabase pra continuar o incremental.`);
-  } catch (e) {
-    console.log(`[supabase] Falha ao baixar contratos existentes (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
+  const linhas = await baixarTodasAsLinhas("contratos", "dado");
+  const registros = linhas.map((l) => l.dado);
+  const pendente = await buscarBlob("dados_robo", "contratos_coleta_pendente");
+  if (pendente && pendente.atualizadoEm === meta.atualizadoEm) {
+    if (!Array.isArray(pendente.ids) || pendente.hash !== hashProgressoAtas(pendente.ids)) {
+      throw new Error("Integridade dos IDs de contratos não confirmada; preserve o blob contratos_coleta_pendente para diagnóstico.");
+    }
+    if (meta.consultaPendente?.paginacao) meta.consultaPendente.paginacao.ids = pendente.ids;
   }
+  const fs = await import("node:fs/promises");
+  await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
+  console.log(`[supabase] Hidratado ${registros.length} contrato(s) do Supabase pra continuar o incremental.`);
 }
 
+// Antes reenviava a base inteira (165 mil linhas, ~330 lotes) a cada execução, e os
+// contratos inéditos ficavam no FIM do array (a Map preserva a ordem de inserção:
+// hidratados primeiro). Qualquer falha num lote anterior — na produção engolida por um
+// try/catch — impedia justamente as linhas novas de entrar (provável causa de nenhuma
+// linha nova desde 30/10).
+// O hidratado já está no banco: basta gravar o que a fonte devolveu agora. atualizado_em
+// vai no payload porque o default now() só vale no INSERT; no merge-duplicates a coluna
+// ficava parada e o painel mostrava a data do último contrato inédito, não da coleta.
 async function sincronizarContratosNoSupabase(contratos) {
-  const linhas = contratos.registros
+  const atualizadoEm = new Date().toISOString();
+  const linhas = contratos.novosNaExecucao
     .filter((r) => r.numeroControlePNCP)
     .map((r) => ({
       numero_controle_pncp: r.numeroControlePNCP,
@@ -1099,15 +1375,43 @@ async function sincronizarContratosNoSupabase(contratos) {
       cnpj_fornecedor: r.cnpjFornecedor || null,
       data_assinatura: r.dataAssinatura || null,
       dado: r,
+      atualizado_em: atualizadoEm,
     }));
-  try {
-    const enviadas = await upsertEmLotes("contratos", linhas, "numero_controle_pncp");
-    console.log(`[supabase] ${enviadas} contrato(s) sincronizado(s) na tabela "contratos".`);
-    const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    await removerMaisAntigosQue("contratos", "data_assinatura", limiteRetencaoIso);
-  } catch (e) {
-    console.log(`[supabase] Falha ao sincronizar contratos (${e && e.message}) — dados continuam só no arquivo local desta execução.`);
+  const enviadas = await upsertEmLotes("contratos", linhas, "numero_controle_pncp");
+  console.log(`[supabase] ${enviadas} contrato(s) sincronizado(s) na tabela "contratos".`);
+  const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  await removerMaisAntigosQue("contratos", "data_assinatura", limiteRetencaoIso);
+}
+
+// Resumo da "Visão geral do mercado" do painel, gravado em dados_robo/dashboard_mercado.
+// As RPCs dashboard_* e o count exact sobre contratos rodam como o usuário, sob RLS, e
+// estouravam o statement timeout em produção (57014). O robô já tem a base inteira em
+// memória (hidratada + nova, já podada pela retenção), então agregar aqui custa nada.
+// Mesmas regras das funções em supabase/painel_objetos_sem_sql.sql: UF/segmento vazio não
+// conta, empate desempata pelo nome, top 10. Só registros com numeroControlePNCP (a PK).
+function resumoDashboardMercado(registros, agora = new Date()) {
+  const porUf = new Map();
+  const porSegmento = new Map();
+  let total = 0;
+  for (const r of registros) {
+    if (!r || !r.numeroControlePNCP) continue;
+    total++;
+    if (r.uf) porUf.set(r.uf, (porUf.get(r.uf) || 0) + 1);
+    for (const s of Array.isArray(r.segmentos) ? r.segmentos : []) {
+      if (s) porSegmento.set(s, (porSegmento.get(s) || 0) + 1);
+    }
   }
+  const top = (mapa, rotulo) => [...mapa]
+    .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .slice(0, 10)
+    .map(([valor, n]) => ({ [rotulo]: valor, total: n }));
+  return {
+    total,
+    estados_distintos: porUf.size,
+    estados_top: top(porUf, "uf"),
+    segmentos_top: top(porSegmento, "segmento"),
+    atualizado_em: agora.toISOString(),
+  };
 }
 
 async function hidratarMercadoDoSupabase(caminhoArquivo, caminhoMeta) {
@@ -1116,15 +1420,23 @@ async function hidratarMercadoDoSupabase(caminhoArquivo, caminhoMeta) {
     console.log("[supabase] Sem metadado anterior de mercado/atas — tratando como 1ª execução.");
     return;
   }
-  try {
-    const linhas = await baixarTodasAsLinhas("mercado_atas", "dado");
-    const atas = linhas.map((l) => l.dado);
-    const fs = await import("node:fs/promises");
-    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, atas }), "utf8");
-    console.log(`[supabase] Hidratada(s) ${atas.length} ata(s) do Supabase pra continuar o incremental.`);
-  } catch (e) {
-    console.log(`[supabase] Falha ao baixar atas existentes (${e && e.message}) — seguindo sem hidratar.`);
+  const linhas = await baixarTodasAsLinhas("mercado_atas", "dado");
+  const atas = linhas.map((l) => l.dado);
+  const pendente = await buscarBlob("dados_robo", "mercado_coleta_pendente");
+  if (pendente && pendente.atualizadoEm === meta.atualizadoEm && (!pendente.progressoAtas || pendente.hash !== hashProgressoAtas(pendente.progressoAtas))) {
+    throw new Error("Integridade do progresso de atas não confirmada; preserve o blob mercado_coleta_pendente para diagnóstico.");
   }
+  const progressoAtas = pendente && pendente.atualizadoEm === meta.atualizadoEm ? pendente.progressoAtas : {};
+  if (pendente && pendente.atualizadoEm === meta.atualizadoEm && pendente.idsJanelas !== undefined) {
+    if (!Array.isArray(pendente.idsJanelas) || pendente.idsJanelas.length !== (meta.janelasPendentes || []).length ||
+        !pendente.idsJanelas.every(Array.isArray) || pendente.hashIdsJanelas !== hashProgressoAtas(pendente.idsJanelas)) {
+      throw new Error("Integridade dos IDs de atas não confirmada; preserve o blob mercado_coleta_pendente para diagnóstico.");
+    }
+    meta.janelasPendentes = (meta.janelasPendentes || []).map((janela, i) => ({ ...janela, ids: pendente.idsJanelas[i] }));
+  }
+  const fs = await import("node:fs/promises");
+  await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, atas, progressoAtas }), "utf8");
+  console.log(`[supabase] Hidratada(s) ${atas.length} ata(s) do Supabase pra continuar o incremental.`);
 }
 
 async function sincronizarMercadoNoSupabase(mercado) {
@@ -1143,12 +1455,9 @@ async function sincronizarMercadoNoSupabase(mercado) {
       enriquecida: !!a.enriquecida,
       dado: a,
     }));
-  try {
-    const enviadas = await upsertEmLotes("mercado_atas", linhas, "numero_controle_pncp_ata");
-    console.log(`[supabase] ${enviadas} ata(s) sincronizada(s) na tabela "mercado_atas".`);
-  } catch (e) {
-    console.log(`[supabase] Falha ao sincronizar atas (${e && e.message}) — dados continuam só no arquivo local desta execução.`);
-  }
+  const enviadas = await upsertEmLotes("mercado_atas", linhas, "numero_controle_pncp_ata");
+  console.log(`[supabase] ${enviadas} ata(s) sincronizada(s) na tabela "mercado_atas".`);
+
 }
 
 // Mesma chave de deduplicação que coletarOportunidadesAbertas() já usa em memória
@@ -1165,20 +1474,16 @@ function chaveOportunidade(r) {
 // o job e a execução seguinte reprocessaria as mesmas UFs contra uma fonte sensível a
 // excesso de requisições.
 async function hidratarOportunidadesDoSupabase(caminhoArquivo) {
-  try {
-    const meta = await buscarBlob("dados_robo", "oportunidades_meta");
-    if (!meta) {
-      console.log("[supabase] Sem metadado anterior de oportunidades — tratando como 1ª execução.");
-      return;
-    }
-    const linhas = await baixarTodasAsLinhas("oportunidades_abertas", "dado");
-    const registros = linhas.map((l) => l.dado);
-    const fs = await import("node:fs/promises");
-    await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
-    console.log(`[supabase] Hidratada(s) ${registros.length} oportunidade(s) do Supabase pra continuar o incremental.`);
-  } catch (e) {
-    console.log(`[supabase] Falha ao ler o estado anterior das oportunidades (${e && e.message}) — seguindo sem hidratar (pode reprocessar mais do que o normal desta vez).`);
+  const meta = await buscarBlob("dados_robo", "oportunidades_meta");
+  if (!meta) {
+    console.log("[supabase] Sem metadado anterior de oportunidades — tratando como 1ª execução.");
+    return;
   }
+  const linhas = await baixarTodasAsLinhas("oportunidades_abertas", "dado");
+  const registros = linhas.map((l) => l.dado);
+  const fs = await import("node:fs/promises");
+  await fs.writeFile(caminhoArquivo, JSON.stringify({ ...meta, registros }), "utf8");
+  console.log(`[supabase] Hidratada(s) ${registros.length} oportunidade(s) do Supabase pra continuar o incremental.`);
 }
 
 async function sincronizarOportunidadesNoSupabase(oportunidades) {
@@ -1188,27 +1493,28 @@ async function sincronizarOportunidadesNoSupabase(oportunidades) {
     objeto: r.objeto || "",
     uf: r.uf || null,
     publicacao: r.publicacao ? String(r.publicacao).slice(0, 10) : null,
-    encerramento: r.encerramento ? String(r.encerramento).slice(0, 10) : null,
+    encerramento: dataEncerramentoIso(r.encerramento),
     dado: r,
   }));
-  // Propositalmente SEM try/catch aqui (diferente das outras sincronizarXNoSupabase deste
-  // arquivo): quem chama precisa saber se a sincronização falhou, porque o metadado de
+  // Quem chama precisa saber se a sincronização falhou, porque o metadado de
   // cobertura (coberturaPorUf) só pode ser gravado depois que estas linhas realmente
   // chegaram no banco — ver comentário em main() logo antes da chamada.
   const enviadas = await upsertEmLotes("oportunidades_abertas", linhas, "chave");
   console.log(`[supabase] ${enviadas} oportunidade(s) sincronizada(s) na tabela "oportunidades_abertas".`);
-  // Poda pela mesma retenção que já era aplicada em memória. Só considera "publicacao"
-  // (quase sempre presente nos dados do PNCP) — um registro sem publicacao mas com
-  // encerramento antigo pode sobreviver aqui; mesma limitação que "contratos" já aceita
-  // (removerMaisAntigosQue só compara 1 coluna). Não é regressão: o arquivo antigo também
-  // não tinha uma segunda passada dedicada só pra esse caso raro.
+  // Só remove encerramentos comprovadamente antigos; SQL lt preserva os null desconhecidos.
   const limiteRetencaoIso = new Date(Date.now() - RETENCAO_DIAS_OPORTUNIDADES * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  await removerMaisAntigosQue("oportunidades_abertas", "publicacao", limiteRetencaoIso);
+  await removerMaisAntigosQue("oportunidades_abertas", "encerramento", limiteRetencaoIso);
 }
 
 async function main() {
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
+
+  async function gravarJson(caminho, dado) {
+    // Falha de disco não pode truncar o checkpoint anterior.
+    await fs.writeFile(`${caminho}.tmp`, JSON.stringify(dado), "utf8");
+    await fs.rename(`${caminho}.tmp`, caminho);
+  }
 
   const dirDados = path.join(process.cwd(), "data");
   await fs.mkdir(dirDados, { recursive: true });
@@ -1217,60 +1523,42 @@ async function main() {
   const recuperarPendentes = process.env.RECUPERAR_UFS_PENDENTES === "1";
   console.log(`Iniciando coleta incremental${somenteOportunidades ? " (somente oportunidades)" : ""}. Retenção: ${RETENCAO_DIAS} dias.`);
 
+  const pendencias = [];
   if (!somenteOportunidades) {
     const caminhoContratos = path.join(dirDados, "contratos_recentes.json");
     const caminhoContratosMeta = path.join(dirDados, "contratos_meta.json");
     await hidratarContratosDoSupabase(caminhoContratos, caminhoContratosMeta);
     iniciarFase(LIMITE_MINUTOS_CONTRATOS);
     const contratos = await coletarContratos(caminhoContratos);
-    await fs.writeFile(caminhoContratos, JSON.stringify(contratos), "utf8");
-    const { registros: _registrosContratos, ...contratosMeta } = contratos;
-    await fs.writeFile(caminhoContratosMeta, JSON.stringify(contratosMeta), "utf8");
-    console.log("Gravado data/contratos_meta.json (metadado leve, vai pro git)");
+    if (contratos.parcial) pendencias.push("contratos: páginas pendentes");
     await sincronizarContratosNoSupabase(contratos);
+    // Painel cai nas RPCs antigas se o resumo faltar; falha aqui não deve derrubar a coleta.
+    try {
+      await salvarBlob("dados_robo", "dashboard_mercado", resumoDashboardMercado(contratos.registros));
+    } catch (e) {
+      console.warn(`[supabase] Resumo dashboard_mercado não gravado: ${e && e.message}`);
+    }
+    const ids = contratos.consultaPendente?.paginacao?.ids || [];
+    await salvarBlob("dados_robo", "contratos_coleta_pendente", { atualizadoEm: contratos.atualizadoEm, ids, hash: hashProgressoAtas(ids) });
+    await gravarJson(caminhoContratos, contratos);
+    const { registros: _registrosContratos, novosNaExecucao: _novosContratos, ...contratosMeta } = contratos;
+    if (contratosMeta.consultaPendente?.paginacao) {
+      const { ids: _ids, ...paginacao } = contratosMeta.consultaPendente.paginacao;
+      contratosMeta.consultaPendente = { ...contratosMeta.consultaPendente, paginacao };
+    }
+    await gravarJson(caminhoContratosMeta, contratosMeta);
+    console.log("Gravado data/contratos_meta.json (metadado leve, vai pro git)");
   }
 
   const caminhoOportunidades = path.join(dirDados, "oportunidades_abertas.json");
   await hidratarOportunidadesDoSupabase(caminhoOportunidades);
   const oportunidades = await coletarOportunidadesAbertas(caminhoOportunidades);
-  // O arquivo local continua sendo escrito (gitignored, ver .gitignore) porque
-  // scripts/preparar_dossies_editais.js roda depois, no mesmo job, e lê esse
-  // caminho — mesmo padrão que contratos_recentes.json/mercado_segmentos.json já
-  // usam. O que muda é que ele NUNCA mais é comitado (ver Achado #2 do plano).
-  await fs.writeFile(caminhoOportunidades, JSON.stringify(oportunidades), "utf8");
   const { registros: _registrosOportunidades, ...oportunidadesMeta } = oportunidades;
-  // "semPendencias" (ver coletarOportunidadesAbertas) significa que a recuperação de
-  // 3h não tinha UF nenhuma pra atualizar — reenviar as ~17 mil linhas pro Supabase
-  // nesse caso seria puro desperdício de escrita, 8x/dia, sem mudança nenhuma.
-  //
-  // A sincronização roda ANTES de salvar o metadado (coberturaPorUf) de propósito: se
-  // salvássemos o metadado primeiro e a sincronização falhasse depois, o metadado já
-  // marcaria as UFs desta execução como cobertas hoje, e ufsPendentesDeAtualizacao (que só
-  // olha o metadado) pularia essas UFs pelo resto do dia nas recuperações horárias
-  // seguintes — perdendo pra sempre os editais daquela janela (o PNCP só devolve
-  // "ainda aberto agora"). Só gravamos o metadado depois de confirmar que as linhas
-  // realmente chegaram no Supabase.
-  let sincronizacaoOportunidadesOk = true;
   if (!oportunidades.semPendencias) {
-    try {
-      await sincronizarOportunidadesNoSupabase(oportunidades);
-    } catch (e) {
-      sincronizacaoOportunidadesOk = false;
-      console.log(`[supabase] Falha ao sincronizar oportunidades (${e && e.message}) — dados continuam só no arquivo local desta execução; o metadado de cobertura NÃO será atualizado, pra essas UFs continuarem pendentes na próxima recuperação.`);
-    }
-  } else {
-    console.log("[supabase] Sem UFs pendentes nesta recuperação — sincronização com o Supabase pulada.");
-  }
-  if (sincronizacaoOportunidadesOk) {
-    try {
-      await salvarBlob("dados_robo", "oportunidades_meta", oportunidadesMeta);
-      console.log('[supabase] Metadado de oportunidades gravado em dados_robo/"oportunidades_meta" (não vai pro git)');
-    } catch (e) {
-      // Falha transitória ao gravar só o metadado não pode abortar o resto do pipeline
-      // (ex.: coletarMercadoSegmentos logo abaixo) — mesmo padrão log-e-segue das outras
-      // chamadas ao Supabase neste arquivo. A próxima execução tenta gravar de novo.
-      console.log(`[supabase] Falha ao gravar o metadado de oportunidades (${e && e.message}) — seguindo sem atualizar; a próxima execução tenta de novo.`);
-    }
+    // Checkpoint só confirma cobertura depois de todas as linhas persistidas.
+    await sincronizarOportunidadesNoSupabase(oportunidades);
+    await salvarBlob("dados_robo", "oportunidades_meta", oportunidadesMeta);
+    await gravarJson(caminhoOportunidades, oportunidades);
   }
 
   // Uma indisponibilidade do PNCP não deve abortar o pipeline inteiro. A função de coleta
@@ -1289,7 +1577,9 @@ async function main() {
     );
   }
 
+  if (oportunidades.ufsComFalha.length) pendencias.push(`cobertura de oportunidades: ${oportunidades.ufsComFalha.join(", ")}`);
   if (somenteOportunidades) {
+    if (pendencias.length) throw new Error(pendencias.join("; "));
     console.log("Recuperação de oportunidades finalizada com sucesso.");
     return;
   }
@@ -1300,21 +1590,33 @@ async function main() {
 
   iniciarFase(LIMITE_MINUTOS_MERCADO);
   const mercado = await coletarMercadoSegmentos(caminhoMercado);
-  await fs.writeFile(caminhoMercado, JSON.stringify(mercado), "utf8");
+  if (mercado.parcial) pendencias.push("mercado: janelas/atas pendentes");
+  await sincronizarMercadoNoSupabase(mercado);
+  // Itens/resultados e IDs dos scans crescem com a coleta; ficam no banco, fora do git.
+  const progressoAtas = mercado.progressoAtas || {};
+  const idsJanelas = (mercado.janelasPendentes || []).map((janela) => janela.ids || []);
+  await salvarBlob("dados_robo", "mercado_coleta_pendente", { atualizadoEm: mercado.atualizadoEm, progressoAtas, hash: hashProgressoAtas(progressoAtas),
+    idsJanelas, hashIdsJanelas: hashProgressoAtas(idsJanelas) });
+  await gravarJson(caminhoMercado, mercado);
   // "empresas" não é mais nem calculado aqui (ver coletarMercadoSegmentos): o painel já
   // recalcula esse ranking sozinho a partir das atas filtradas (calcularEmpresasMercado em
   // painel.html) — calcular nunca era gravado (nem no git, nem no Supabase) e só desperdiçava
   // CPU do robô a cada execução (era 6,3 MB dos 9,6 MB do arquivo antigo, quando ainda ia pro
   // disco à toa).
-  const { atas: _atasMercado, ...mercadoMeta } = mercado;
-  await fs.writeFile(caminhoMercadoMeta, JSON.stringify(mercadoMeta), "utf8");
+  const { atas: _atasMercado, progressoAtas: _progressoAtas, ...mercadoMeta } = mercado;
+  mercadoMeta.janelasPendentes = (mercado.janelasPendentes || []).map(({ ids: _ids, ...janela }) => janela);
+  await gravarJson(caminhoMercadoMeta, mercadoMeta);
   console.log("Gravado data/mercado_meta.json (metadado leve, vai pro git)");
-  await sincronizarMercadoNoSupabase(mercado);
 
+  if (pendencias.length) throw new Error(pendencias.join("; "));
   console.log("Coleta finalizada com sucesso.");
 }
 
-main().catch((e) => {
-  console.error("Erro fatal no robô de coleta:", e);
-  process.exit(1);
-});
+module.exports = { fetchComRetentativa, resumoDashboardMercado };
+
+if (require.main === module) {
+  main().catch((e) => {
+    console.error("Erro fatal no robô de coleta:", e);
+    process.exit(1);
+  });
+}

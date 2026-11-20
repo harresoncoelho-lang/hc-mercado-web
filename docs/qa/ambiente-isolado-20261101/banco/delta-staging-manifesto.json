@@ -1,0 +1,24 @@
+{
+  "estado": "preparado, não executado por esta frente",
+  "projeto": "luguscapasskcsficckf",
+  "organizacao": "vhmjospwgiryrnrndkpd",
+  "postgres": "17.11",
+  "originalSha256": "1619e78b9155ba9443b6080fa7d082f3c335d8e8b07015d5d894462149df4c94",
+  "catalogoPrekitSha256": "5c607e56e58e7aa7b67d16baee150f26ff05e2b599809645777a12f6af51b9ad",
+  "fingerprintOriginal": "4550d262d2f09edec1efd68b4c699f67",
+  "fingerprintStaging": "8abc338413ff0c60770d3aea1c3413d1",
+  "cabecalhoVariante": "-- VARIANTE EXPLÍCITA PARA STAGING, nunca produção. Revisão independente antes da execução.\n-- Alvo: luguscapasskcsficckf / vhmjospwgiryrnrndkpd (Free); confirmar conexão fora do SQL.\n-- Original SHA-256: 1619e78b9155ba9443b6080fa7d082f3c335d8e8b07015d5d894462149df4c94.\n-- Única diferença executável: fingerprint 4550d262d2f09edec1efd68b4c699f67 -> 8abc338413ff0c60770d3aea1c3413d1.\n-- Fonte do novo fingerprint: catálogo real pós-bootstrap, SHA-256 5c607e56e58e7aa7b67d16baee150f26ff05e2b599809645777a12f6af51b9ad.\n-- Payload, validações, ACLs e gates do original permanecem idênticos. Não reaplicar após COMMIT.\n",
+  "cabecalhoRollback": "-- ENSAIO TRANSACIONAL STAGING: executa o delta e seus gates, mas encerra com ROLLBACK.\n-- Depois comprova o fingerprint pré-kit e os dados vazios em uma transação readonly nova.\n-- Qualquer erro: interromper; ROLLBACK explícito e diagnóstico, sem repetir automaticamente.\n",
+  "arquivos": {
+    "03-delta-operacional-staging.sql": "97f75e28b60169fc20e0805756403e0d058c6fbd4ccdd5347148a9c6685ecf37",
+    "04-ensaiar-delta-com-rollback-staging.sql": "8c0d0a10f7c6509d95ed15ea60600a6339993f009332cc505d308db7d1ccbbde",
+    "05-verificar-prekit-somente-leitura.sql": "c7b55e2a625938207bc595feec3b0c9e4b91c269aee84ff00914bb179588523a",
+    "06-verificar-posdelta-somente-leitura.sql": "0563e79f9854207b36dfdc9fb77ddd592aa2f84ddd47ee5d96f60d775698165c"
+  },
+  "limites": [
+    "Variante de ambiente explícita, não execução byte a byte do original.",
+    "Rollback do delta não equivale a restauração de backup.",
+    "Gates e privilégios SQL não comprovam login/JWT ou isolamento entre CNPJs com dados.",
+    "Bucket novo privado vazio deve ser criado via Storage UI antes do ensaio; limites são observados, não fixados pela migração."
+  ]
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>LicitaPlena — leitura</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <h1>Conferir contexto</h1>
+  <p>Protótipo somente leitura. Sem conexão com o SaaS, propostas ou lances.</p>
+  <fieldset><legend>Contexto esperado — informe para comparar</legend>
+    <label for="cnpj">CNPJ do fornecedor</label><input id="cnpj" autocomplete="off" maxlength="18" inputmode="numeric">
+    <label for="uasg">UASG</label><input id="uasg" autocomplete="off" maxlength="6" inputmode="numeric">
+    <label for="number">Número do pregão</label><input id="number" autocomplete="off" maxlength="5" inputmode="numeric">
+    <label for="year">Ano</label><input id="year" autocomplete="off" maxlength="4" inputmode="numeric">
+    <label for="purchaseId">Identificador compra da URL</label><input id="purchaseId" autocomplete="off" maxlength="17" inputmode="numeric">
+  </fieldset>
+  <button id="read" type="button">Ler contexto da aba atual</button>
+  <button id="adopt" type="button" hidden>Usar tentativa de leitura do LicitaPlena</button>
+  <p id="result" role="status" aria-live="polite">Nenhuma leitura realizada.</p>
+  <p>Conferência pontual, não monitoramento. Trocar de página ou contexto exige nova leitura. Nenhuma autorização de escrita é criada.</p>
+  <section aria-labelledby="gravarTitulo">
+    <h2 id="gravarTitulo">Gravar pregão no LicitaPlena</h2>
+    <p>Na página pública "Acompanhar Contratação" do Compras.gov (ou na ata do ComprasNet, depois do captcha), grava o que a página mostra: participantes, marcas, valores e chat. Precisa do LicitaPlena aberto e logado em outra aba.</p>
+    <button id="gravarLer" type="button">Ler esta página e gravar</button>
+    <p id="gravarStatus" role="status" aria-live="polite">Nada gravado ainda.</p>
+    <p>Grava só o que você abriu na página. Não clica, não navega, não envia propostas nem lances e não resolve captcha.</p>
+  </section>
+  <section aria-labelledby="preencherTitulo">
+    <h2 id="preencherTitulo">Preencher proposta</h2>
+    <p>Na página "Cadastrar propostas" do Compras.gov (logado, termo e declarações aceitos por você), preenche quantidade, valor, marca e modelo dos itens da página com o lote do LicitaPlena ou uma planilha CSV.</p>
+    <button id="preencherBuscar" type="button">Buscar lote no LicitaPlena</button>
+    <label for="preencherCsv">ou planilha CSV (padrão do LicitaPlena)</label><input id="preencherCsv" type="file" accept=".csv,text/csv">
+    <button id="preencherAgora" type="button">Preencher esta página</button>
+    <p id="preencherStatus" role="status" aria-live="polite">Nada preenchido ainda.</p>
+    <p>Não clica Salvar, não aceita termo nem declarações, não resolve captcha e não troca de página. Você confere e salva cada item.</p>
+  </section>
+  <section aria-labelledby="acompanharTitulo">
+    <h2 id="acompanharTitulo">Acompanhar chat</h2>
+    <p>Na aba do pregão que você já abriu, avisa (notificação, ícone e som opcional) quando o pregoeiro escrever. Só funciona com a aba aberta e o computador ligado. Se a página recarregar, volta a acompanhar sozinha (o Chrome pede uma vez a permissão do portal).</p>
+    <label for="acompanharCnpj">CNPJ da sua empresa (para destacar quando for citada)</label><input id="acompanharCnpj" autocomplete="off" maxlength="18" inputmode="numeric">
+    <label for="acompanharNome">Nome da empresa (opcional)</label><input id="acompanharNome" autocomplete="off" maxlength="120">
+    <label><input id="acompanharSom" type="checkbox" checked> Tocar som no aviso</label>
+    <label><input id="acompanharGravar" type="checkbox"> Também gravar no LicitaPlena (só página pública)</label>
+    <button id="acompanharIniciar" type="button">Acompanhar este pregão</button>
+    <button id="acompanharParar" type="button">Parar de acompanhar</button>
+    <p id="acompanharStatus" role="status" aria-live="polite">Não está acompanhando.</p>
+    <p>Não faz requisições próprias, não recarrega nem navega, não resolve captcha. Se o portal deslogar, a aba sair da página ou não der para voltar depois de recarregar, avisa "parei de acompanhar".</p>
+  </section>
+  <section id="diagnostico" aria-labelledby="diagnosticoTitulo" hidden>
+    <h2 id="diagnosticoTitulo">Página não reconhecida</h2>
+    <button id="diagnosticoEnviar" type="button">Enviar diagnóstico</button>
+    <p id="diagnosticoStatus" role="status" aria-live="polite"></p>
+  </section>
+  <script type="module" src="popup.mjs"></script>
+  <script type="module" src="gravar.mjs"></script>
+  <script type="module" src="preencher.mjs"></script>
+  <script type="module" src="acompanhar.mjs"></script>
+</body></html>

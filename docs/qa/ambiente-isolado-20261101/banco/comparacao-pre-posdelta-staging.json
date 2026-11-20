@@ -1,0 +1,2079 @@
+{
+  "aprovado": true,
+  "checks": 626,
+  "sqlExecutadoPorEsteComparador": false,
+  "insumos": {
+    "catalogo-prekit-staging.json": "5c607e56e58e7aa7b67d16baee150f26ff05e2b599809645777a12f6af51b9ad",
+    "catalogo-posdelta-staging.json": "7d81af6a57cd1b7a6f57ab33f6f25c984443c472edeb0a4e8ed7c3ae869b0cf7",
+    "posdelta-privilegios-reais.json": "baa5519cc6c0337551634597c339774045e48d9d4a101af2add3fb2a66cfb9fb",
+    "preflight-antes-delta.json": "3b85d426a24724da7f06b2ae1ecdbb956879bbc6529c09585e0d5f3356fed538",
+    "preflight-apos-rejeicao-original.json": "555e38289de359da76a2244955617d27343d4aabeae4189d55a976d1b26194f9",
+    "delta-original-rejeitado.json": "6e8f85e2af20d8a78ae05c8f3a74764187716b575783b2bedca5998dbc0dec2d",
+    "delta-ensaio-rollback.json": "48ed6ca537b07e6dd9daa82e833b90e9374fec1f8450cb6d511e88fdf68bc03a",
+    "delta-aplicacao.json": "0d5493f03cd0fd2ed65b4a5e730b7b13bd034a87b6387d64ffa8392effae62e4",
+    "delta-staging-manifesto.json": "11d7832b4e6919ac0e0f48e91b7a93f0d10c3dfba0bdd4dbb56463b3207459f9"
+  },
+  "antesMd5": "8abc338413ff0c60770d3aea1c3413d1",
+  "depoisMd5": "830899ecee2a58d23beec619b4963fed",
+  "objetosAnterioresPreservados": 479,
+  "preservados": [
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.instance_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.aud."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.role."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.encrypted_password."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email_confirmed_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.invited_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.confirmation_token."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.confirmation_sent_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.recovery_token."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.recovery_sent_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email_change_token_new."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email_change."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email_change_sent_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.last_sign_in_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.raw_app_meta_data."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.raw_user_meta_data."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.is_super_admin."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.created_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.updated_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.phone."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.phone_confirmed_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.phone_change."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.phone_change_token."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.phone_change_sent_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.confirmed_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email_change_token_current."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.email_change_confirm_status."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.banned_until."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.reauthentication_token."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.reauthentication_sent_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.is_sso_user."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.deleted_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "auth.users.is_anonymous."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.email."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.nome."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.role."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.permissoes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.admins.criado_por."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.nome."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.empresa."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.cnpj."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.telefone."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.email."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.status."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.plano."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.observacoes_admin."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aprovado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aprovado_por."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.segmento."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.cargo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.porte_empresa."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aceite_termos."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.aceite_termos_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.atividades."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.estados_interesse."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.como_conheceu."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.quantidade_funcionarios."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.licitacoes_por_mes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.faturamento_anual."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.como_pretende_usar."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.clientes.boletim_filtro."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.empresa_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.categoria."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.titulo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.vencimento."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.responsavel."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.observacoes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.concluido_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_agenda.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.processo_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.tipo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.titulo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.referencia_numero."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.arquivo_caminho."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.arquivo_nome."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_anexos_processo.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.processo_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.numero."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.assinado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.vigencia_inicio."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.vigencia_fim."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.valor."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.situacao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.observacoes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_contratos.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.empresa_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.email."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.nome."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.token."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.expira_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.aceito_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.revogado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.criado_por."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_convites_empresa.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.empresa_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.tipo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.titulo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.emissao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.vencimento."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.orgao_emissor."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.responsavel."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.observacoes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.arquivo_caminho."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.arquivo_nome."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.criado_por."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_documentos.atualizado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.processo_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.numero."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.emitido_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.valor."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.saldo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.entrega_prevista."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.entregue_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.recebido_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.pago_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.status."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.observacoes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empenhos.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.razao_social."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.cnpj."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.responsavel."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.ativo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_empresas.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.processo_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.identificador."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.tipo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.descricao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.situacao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.quantidade."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_proposta."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_homologado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.motivo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.fonte_oficial."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.atualizado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.marca."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.modelo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_unitario_proposta."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_itens_resultado.valor_unitario_homologado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_limites_cnpj.usuario_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_limites_cnpj.limite."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_limites_cnpj.atualizado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.usuario_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.papel."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_membros.empresa_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.processo_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.ocorrido_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.categoria."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.descricao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.fonte_oficial."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_ocorrencias.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.nome."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.owner_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_organizacoes.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.processo_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.categoria."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.titulo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.vencimento."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.responsavel."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.concluido_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.observacoes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_prazos_processo.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.empresa_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.numero."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.objeto."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.orgao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.modalidade."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.url_origem."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.status."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.decisao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.responsavel."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.valor_estimado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.custo_direto."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.frete."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.tributos_percentual."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.garantia_percentual."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.margem_percentual."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.preco_minimo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.preco_proposta."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.documentos_exigidos."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.data_publicacao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.data_sessao."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.data_resultado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.resultado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.motivo_perda."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.observacoes."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.criado_por."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.criado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.atualizado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.origem_externa_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.sistema."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.uasg."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.situacao_resultado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.valor_homologado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.fonte_resultado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.checklist_fonte."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.checklist_editado_manualmente."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_processos.checklist_gerado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.documento_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.emissao_anterior."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.vencimento_anterior."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.emissao_nova."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.vencimento_novo."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.registrado_por."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_renovacoes_documento.registrado_em."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.organizacao_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.nome."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "public.operacao_tipos_documento.personalizado."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.name."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.owner."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.created_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.updated_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.public."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.avif_autodetection."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.file_size_limit."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.allowed_mime_types."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.owner_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.type."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.versioning_status."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.lifecycle_configuration."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.buckets.lifecycle_configuration_generation."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.bucket_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.name."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.owner."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.created_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.updated_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.last_accessed_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.metadata."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.path_tokens."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.version."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.owner_id."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.user_metadata."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.archived_at."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.is_delete_marker."
+    },
+    {
+      "secao": "colunas",
+      "objeto": "storage.objects.is_versioned."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.confirmation_token_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.email_change_token_current_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.email_change_token_new_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.idx_users_created_at_desc."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.idx_users_email."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.idx_users_last_sign_in_at_desc."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.idx_users_name."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.reauthentication_token_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.recovery_token_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.users_email_partial_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.users_instance_id_email_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.users_instance_id_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.users_is_anonymous_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.users_phone_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "auth.users.users_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.admins.admins_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.clientes.clientes_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_agenda.operacao_agenda_organizacao_vencimento_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_agenda.operacao_agenda_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_contratos.operacao_contratos_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_id_numero_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_token_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_documentos.operacao_documentos_empresa_vencimento_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_documentos.operacao_documentos_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_id_numero_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_status_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empresas.operacao_empresas_id_org_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empresas.operacao_empresas_organizacao_id_cnpj_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_empresas.operacao_empresas_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_id_tipo_identificador_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_membros.operacao_membros_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_processo_data_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_owner_id_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_vencimento_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_empresa_status_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_id_org_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_organizacao_sessao_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_origem_externa_unica_idx."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_processos.operacao_processos_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_organizacao_id_nome_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.buckets.bname."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.buckets.buckets_pkey."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.idx_objects_bucket_id_name."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.idx_objects_bucket_id_name_lower."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.idx_objects_current_version."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.idx_objects_delete_markers."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.idx_objects_null_version."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.name_prefix_search."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.objects_bucket_id_name_version_key."
+    },
+    {
+      "secao": "indices",
+      "objeto": "storage.objects.objects_pkey."
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "auth..uid.auth.uid()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..aceitar_convite_empresa_operacao.aceitar_convite_empresa_operacao(uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..acesso_arquivo_operacao.acesso_arquivo_operacao(text)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..configurar_limite_cnpjs_cliente.configurar_limite_cnpjs_cliente(uuid,integer)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..consultar_limite_cnpjs_cliente.consultar_limite_cnpjs_cliente(uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..criar_cliente_no_cadastro.criar_cliente_no_cadastro()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..criar_convite_empresa_operacao.criar_convite_empresa_operacao(uuid,text,text)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..eh_owner_admin_operacao.eh_owner_admin_operacao(uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..limite_cnpjs_operacao.limite_cnpjs_operacao()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..listar_acessos_empresa_operacao.listar_acessos_empresa_operacao()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..listar_convites_empresa_operacao.listar_convites_empresa_operacao()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..listar_empresas_convite_operacao.listar_empresas_convite_operacao()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..meu_acesso_operacao.meu_acesso_operacao()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..pode_acessar_empresa_operacao.pode_acessar_empresa_operacao(uuid,uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..pode_acessar_processo_operacao.pode_acessar_processo_operacao(uuid,uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..proteger_status_cliente_operacao.proteger_status_cliente_operacao()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..revogar_acesso_empresa_operacao.revogar_acesso_empresa_operacao(uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..revogar_convite_empresa_operacao.revogar_convite_empresa_operacao(uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..tem_vinculo_operacao.tem_vinculo_operacao(uuid)"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "public..verificar_limite_cnpjs_operacao.verificar_limite_cnpjs_operacao()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "storage..enforce_bucket_lifecycle_service_role.storage.enforce_bucket_lifecycle_service_role()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "storage..enforce_bucket_name_length.storage.enforce_bucket_name_length()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "storage..protect_bucket_control_columns.storage.protect_bucket_control_columns()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "storage..protect_delete.storage.protect_delete()"
+    },
+    {
+      "secao": "funcoes",
+      "objeto": "storage..update_updated_at_column.storage.update_updated_at_column()"
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "auth..users."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..admins."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..clientes."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_agenda."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_anexos_processo."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_contratos."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_convites_empresa."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_documentos."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_empenhos."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_empresas."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_itens_resultado."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_limites_cnpj."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_membros."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_ocorrencias."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_organizacoes."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_prazos_processo."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_processos."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_renovacoes_documento."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "public..operacao_tipos_documento."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "storage..buckets."
+    },
+    {
+      "secao": "relacoes",
+      "objeto": "storage..objects."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "auth.users.on_auth_user_created."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "public.clientes.proteger_status_cliente_operacao."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "public.operacao_empresas.operacao_empresas_limite_cnpjs."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "storage.buckets.enforce_bucket_name_length_trigger."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "storage.buckets.protect_bucket_control_insert."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "storage.buckets.protect_bucket_control_update."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "storage.buckets.protect_bucket_control_update_role."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "storage.buckets.protect_buckets_delete."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "storage.objects.protect_objects_delete."
+    },
+    {
+      "secao": "triggers",
+      "objeto": "storage.objects.update_objects_updated_at."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "auth.users.users_email_change_confirm_status_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "auth.users.users_phone_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "auth.users.users_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.admins.admins_role_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_boletim_filtro_valido."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.clientes.clientes_status_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_categoria_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_empresa_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_agenda.operacao_agenda_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_processo_id_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_anexos_processo.operacao_anexos_processo_tipo_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_id_numero_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_processo_id_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_situacao_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_contratos.operacao_contratos_valor_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_criado_por_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_empresa_id_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_convites_empresa.operacao_convites_empresa_token_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_criado_por_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_empresa_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_documentos.operacao_documentos_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_processo_id_numero_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_saldo_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_status_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empenhos.operacao_empenhos_valor_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_organizacao_id_cnpj_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_empresas.operacao_empresas_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_check1."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_id_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_processo_id_tipo_identificador_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_quantidade_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_situacao_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_tipo_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_valor_proposta_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_itens_resultado.operacao_itens_resultado_valor_unitario_proposta_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_limite_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_limites_cnpj.operacao_limites_cnpj_usuario_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_empresa_org_fk."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_papel_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_membros.operacao_membros_usuario_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_categoria_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_ocorrencias.operacao_ocorrencias_processo_id_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_owner_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_owner_id_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_organizacoes.operacao_organizacoes_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_categoria_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_prazos_processo.operacao_prazos_processo_processo_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_criado_por_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_decisao_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_empresa_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_resultado_valido."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_status_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_processos.operacao_processos_valor_homologado_valido."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_documento_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_renovacoes_documento.operacao_renovacoes_documento_registrado_por_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_organizacao_id_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_organizacao_id_nome_key."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "public.operacao_tipos_documento.operacao_tipos_documento_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_lifecycle_configuration_pair_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_lifecycle_configuration_shape_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_lifecycle_configuration_standard_only_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_pkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_versioning_dark_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_versioning_standard_only_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.buckets.buckets_versioning_status_check."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.objects.objects_bucketId_fkey."
+    },
+    {
+      "secao": "constraints",
+      "objeto": "storage.objects.objects_pkey."
+    }
+  ],
+  "acrescimos": {
+    "colunas": [
+      "public.operacao_identificacao_empresa.empresa_id.",
+      "public.operacao_identificacao_empresa.organizacao_id.",
+      "public.operacao_identificacao_empresa.dados_confirmados.",
+      "public.operacao_identificacao_empresa.proveniencia.",
+      "public.operacao_identificacao_empresa.confirmado_por.",
+      "public.operacao_identificacao_empresa.confirmado_em.",
+      "public.operacao_identificacao_empresa.versao.",
+      "public.operacao_identificacao_empresa.invalidado_em.",
+      "public.operacao_kit_documentos.id.",
+      "public.operacao_kit_documentos.organizacao_id.",
+      "public.operacao_kit_documentos.empresa_id.",
+      "public.operacao_kit_documentos.processo_id.",
+      "public.operacao_kit_documentos.tipo.",
+      "public.operacao_kit_documentos.dados.",
+      "public.operacao_kit_documentos.versao.",
+      "public.operacao_kit_documentos.criado_por.",
+      "public.operacao_kit_documentos.criado_em.",
+      "public.operacao_kit_documentos.atualizado_por.",
+      "public.operacao_kit_documentos.atualizado_em.",
+      "public.operacao_kit_documentos.revisao_hash.",
+      "public.operacao_kit_documentos.revisao_previa.",
+      "public.operacao_kit_documentos.revisao_versao.",
+      "public.operacao_kit_documentos.revisado_por.",
+      "public.operacao_kit_documentos.revisado_em."
+    ],
+    "indices": [
+      "public.operacao_identificacao_empresa.operacao_identificacao_empresa_pkey.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_escopo_idx.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_pkey.",
+      "public.operacao_processos.operacao_processos_id_empresa_org_idx."
+    ],
+    "funcoes": [
+      "public..arquivo_no_escopo_operacao.arquivo_no_escopo_operacao(text,uuid,uuid)",
+      "public..confirmar_identificacao_empresa.confirmar_identificacao_empresa(uuid,uuid,text,text,jsonb,jsonb)",
+      "public..escrita_arquivo_operacao.escrita_arquivo_operacao(text)",
+      "public..gravar_kit_documento.gravar_kit_documento(uuid,uuid,uuid,uuid,uuid,integer,text,text,jsonb,text,jsonb)",
+      "public..identificacao_empresa_habilitada.identificacao_empresa_habilitada()",
+      "public..invalidar_identificacao_empresa.invalidar_identificacao_empresa()",
+      "public..kit_documento_escopo_imutavel.kit_documento_escopo_imutavel()",
+      "public..pode_escrever_empresa_operacao.pode_escrever_empresa_operacao(uuid,uuid)",
+      "public..pode_escrever_org_operacao.pode_escrever_org_operacao(uuid)",
+      "public..pode_escrever_processo_operacao.pode_escrever_processo_operacao(uuid,uuid)",
+      "public..preservar_escopo_operacao.preservar_escopo_operacao()",
+      "public..validar_arquivo_processo_operacao.validar_arquivo_processo_operacao()"
+    ],
+    "relacoes": [
+      "public..operacao_identificacao_empresa.",
+      "public..operacao_kit_documentos."
+    ],
+    "triggers": [
+      "public.operacao_anexos_processo.validar_arquivo_processo_operacao.",
+      "public.operacao_documentos.identificacao_documento_alterado.",
+      "public.operacao_documentos.preservar_escopo_operacao.",
+      "public.operacao_empresas.identificacao_cadastro_alterado.",
+      "public.operacao_kit_documentos.kit_documento_escopo_imutavel.",
+      "public.operacao_processos.preservar_escopo_operacao.",
+      "storage.objects.identificacao_arquivo_alterado."
+    ],
+    "constraints": [
+      "public.operacao_agenda.operacao_agenda_escopo_fk.",
+      "public.operacao_documentos.operacao_documentos_arquivo_escopo.",
+      "public.operacao_documentos.operacao_documentos_escopo_fk.",
+      "public.operacao_empenhos.operacao_empenhos_escopo_fk.",
+      "public.operacao_identificacao_empresa.operacao_identificacao_empresa_confirmado_por_fkey.",
+      "public.operacao_identificacao_empresa.operacao_identificacao_empresa_dados_confirmados_check.",
+      "public.operacao_identificacao_empresa.operacao_identificacao_empresa_empresa_id_organizacao_id_fkey.",
+      "public.operacao_identificacao_empresa.operacao_identificacao_empresa_pkey.",
+      "public.operacao_identificacao_empresa.operacao_identificacao_empresa_proveniencia_check.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_atualizado_por_fkey.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_check.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_criado_por_fkey.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_dados_check.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_pkey.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_processo_id_empresa_id_organizacao_fkey.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_revisado_por_fkey.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_tipo_check.",
+      "public.operacao_kit_documentos.operacao_kit_documentos_versao_check.",
+      "public.operacao_prazos_processo.operacao_prazos_processo_escopo_fk.",
+      "public.operacao_processos.operacao_processos_escopo_fk."
+    ]
+  },
+  "aclHelpersRemovidas": [
+    {
+      "papel": "PUBLIC",
+      "objeto": "bootstrap_operacao()",
+      "esquema": "public",
+      "concedente": "postgres",
+      "privilegio": "EXECUTE",
+      "grant_option": false
+    },
+    {
+      "papel": "anon",
+      "objeto": "bootstrap_operacao()",
+      "esquema": "public",
+      "concedente": "postgres",
+      "privilegio": "EXECUTE",
+      "grant_option": false
+    },
+    {
+      "papel": "PUBLIC",
+      "objeto": "eh_membro_operacao(uuid)",
+      "esquema": "public",
+      "concedente": "postgres",
+      "privilegio": "EXECUTE",
+      "grant_option": false
+    },
+    {
+      "papel": "anon",
+      "objeto": "eh_membro_operacao(uuid)",
+      "esquema": "public",
+      "concedente": "postgres",
+      "privilegio": "EXECUTE",
+      "grant_option": false
+    }
+  ],
+  "dados": {
+    "tabelasAnterioresVazias": 19,
+    "tabelasDepoisVazias": 21,
+    "usuariosAuth": 0,
+    "objetosStorage": 0,
+    "bucket": {
+      "id": "operacao-documentos",
+      "name": "operacao-documentos",
+      "public": false,
+      "objects": 0,
+      "file_size_limit": null,
+      "allowed_mime_types": null
+    }
+  },
+  "privilegiosVerificados": {
+    "tabelas": 54,
+    "funcoes": 18
+  },
+  "limites": [
+    "Preservação de fixture vazia e metadados do recorte; nenhum dado de produção foi copiado.",
+    "dados_robo e admin_tem_permissao não integram o catálogo original; vazio de dados_robo foi checado nos gates.",
+    "Rollback de DDL não comprova restauração de backup.",
+    "Sem emissão JWT, login, rotas HTTP, upload ou isolamento por CNPJ com linhas reais.",
+    "Editor mostrou a última consulta do ensaio; retorno pós-rollback e sucesso integral estão arquivados."
+  ]
+}

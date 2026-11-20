@@ -1,0 +1,27 @@
+{
+  "metodo": "Texto T1/T2 do bloco de código DOM; T3 do editor da resposta, aberto apenas para leitura. Conferência comprimento + FNV-1a 64 UTF-16 contra strings da UI. SHA-256 local adicional; não é assinatura do provedor.",
+  "incidente_captura": "Um fechamento de objeto foi transcrito como colchete ao arquivar T1 e propagado a T2. Capturas incorretas preservadas em *.txt. Correção conferida contra DOM e fingerprints. JSON do modelo era válido nos três casos.",
+  "resultados": [
+    {
+      "file": "t1-textual-resposta-original.json",
+      "caracteres_ui": 5157,
+      "fnv1a64_utf16_ui": "60922552537115b7",
+      "captura_confere": true,
+      "sha256_utf8_sem_nova_linha_final": "3a0037cc9d61ded7778bd3718b6b9144b80a6c31974d62ce1c31f4d965345fba"
+    },
+    {
+      "file": "t2-escaneado-resposta-original.json",
+      "caracteres_ui": 5123,
+      "fnv1a64_utf16_ui": "8f2a14935be002f3",
+      "captura_confere": true,
+      "sha256_utf8_sem_nova_linha_final": "72bc331014da5ce85a505e3e5cf0c05da2805501155159bbea1248d871183f95"
+    },
+    {
+      "file": "t3-cnpj-divergente-resposta-original.json",
+      "caracteres_ui": 6829,
+      "fnv1a64_utf16_ui": "da66d7b5e3d49b05",
+      "captura_confere": true,
+      "sha256_utf8_sem_nova_linha_final": "3669f0d50d6ac6b0f8266bce9e4353a9679004567428ee5bef83f4d2f933fd7d"
+    }
+  ]
+}

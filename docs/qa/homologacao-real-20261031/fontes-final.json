@@ -1,0 +1,30 @@
+[
+  {
+    "path": "supabase/kit_documentos.sql",
+    "sha256": "7b2ef8ed7676e45acd9708b56d95bb5b6d39ec44ecc54455d796daa2e148131f"
+  },
+  {
+    "path": "supabase/verificar_kit_prepublicacao.sql",
+    "sha256": "2c4023cb0cac4e9b5fa29afee68398a0b4e402663dee9cd9fa580e7ea19178cf"
+  },
+  {
+    "path": "docs/qa/testar-kit-persistencia-local.cjs",
+    "sha256": "681c14d6a076e325bf4624d94deed7a83d4daa26cf3d5b04b60565d0a383c7bf"
+  },
+  {
+    "path": "docs/qa/homologar-kit-real-local.cjs",
+    "sha256": "e08a73d1d73fb45796a38a043819069a9c50fa822903969aeacf8ea06e29dea1"
+  },
+  {
+    "path": "docs/qa/servir-identificacao-local.cjs",
+    "sha256": "b2951f7a07556a4e45b5a38cf7ac06dcfd3ac08449b10cb3653924f0b4f1b8cb"
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/verificar-ui-real.cjs",
+    "sha256": "69c619edf125141977a7c2752e34206130e254872701b25b04250efa618295fb"
+  },
+  {
+    "path": "docs/qa/homologacao-real-20261031/testar-esperas-ui.cjs",
+    "sha256": "30d97d3459ea5f17f9b05535fac28b523debac8caf72b26db1fc2c25bc442365"
+  }
+]

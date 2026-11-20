@@ -1,0 +1,14 @@
+{
+  "alfa-identificacao-texto.pdf": {
+    "sha256": "bc8dfda1beeda1e15e6ee7402550eb1572c6bc220cd799af818ef8d9b202e586",
+    "bytes": 77359
+  },
+  "alfa-identificacao-escaneado.pdf": {
+    "sha256": "3830ae2cad053b7d0c11ba1c93f42ace8590c48822dc3423357dd0fafa7c61fb",
+    "bytes": 251386
+  },
+  "beta-proposta-cnpj-divergente.pdf": {
+    "sha256": "7ea54b29ea7a6f1da49263491138a814fcec789b053f53911aa8a998a9d3c8b5",
+    "bytes": 75919
+  }
+}

@@ -1,0 +1,184 @@
+{
+  "cnpj_alvo": "11222333000181",
+  "processo_alvo": "PE QA-0346/2026",
+  "documentos": [
+    {
+      "arquivo": "documento.pdf",
+      "razao_social": "Alfa Ficticia Homologacao",
+      "cnpj": "11222333000181",
+      "processo": "PE QA-0346/2026",
+      "elegivel_para_cnpj_alvo": true,
+      "motivo": "CNPJ e processo coincidem com os alvos autorizados."
+    }
+  ],
+  "campos_alvo": {
+    "razao_social": {
+      "valor": "Alfa Ficticia Homologacao",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Razão social: Alfa Ficticia Homologacao",
+      "estado": "localizado"
+    },
+    "cnpj": {
+      "valor": "11222333000181",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "CNPJ: 11.222.333/0001-81",
+      "estado": "localizado"
+    },
+    "endereco": {
+      "valor": "Rua Ficticia QA, 123",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Endereço: Rua Ficticia QA, 123",
+      "estado": "localizado"
+    },
+    "bairro": {
+      "valor": "Centro Exemplo",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Bairro: Centro Exemplo",
+      "estado": "localizado"
+    },
+    "municipio": {
+      "valor": "Manaus",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Município/UF: Manaus/AM",
+      "estado": "localizado"
+    },
+    "uf": {
+      "valor": "AM",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Município/UF: Manaus/AM",
+      "estado": "localizado"
+    },
+    "cep": {
+      "valor": null,
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "CEP: não informado",
+      "estado": "ausente"
+    },
+    "email": {
+      "valor": "contato@alfa.example",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "E-mail: contato@alfa.example",
+      "estado": "localizado"
+    },
+    "telefone": {
+      "valor": null,
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Telefone: não informado",
+      "estado": "ausente"
+    },
+    "representante": {
+      "valor": "Pessoa Ficticia QA",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Representante: Pessoa Ficticia QA",
+      "estado": "localizado"
+    },
+    "cargo": {
+      "valor": "Administradora",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Cargo: Administradora",
+      "estado": "localizado"
+    },
+    "cpf_representante": {
+      "valor": null,
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "CPF do representante: não informado",
+      "estado": "ausente"
+    },
+    "data_emissao": {
+      "valor": "2026-10-30",
+      "arquivo": "documento.pdf",
+      "pagina": 1,
+      "trecho": "Data de emissão desta ficha: 30/10/2026",
+      "estado": "localizado"
+    },
+    "processo": {
+      "valor": "PE QA-0346/2026",
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Processo: PE QA-0346/2026",
+      "estado": "localizado"
+    },
+    "orgao": {
+      "valor": "Secretaria Municipal Exemplo - órgão fictício",
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Órgão: Secretaria Municipal Exemplo - órgão fictício",
+      "estado": "localizado"
+    },
+    "validade_proposta_dias": {
+      "valor": "60",
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Validade da proposta: 60 dias",
+      "estado": "localizado"
+    },
+    "entrega": {
+      "valor": "30 dias após o recebimento da ordem de fornecimento",
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Prazo de entrega: 30 dias após o recebimento da ordem de fornecimento",
+      "estado": "localizado"
+    },
+    "pagamento": {
+      "valor": "30 dias após o atesto",
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Pagamento: 30 dias após o atesto",
+      "estado": "localizado"
+    },
+    "banco": {
+      "valor": null,
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Banco, agência e conta: não informados",
+      "estado": "ausente"
+    },
+    "agencia": {
+      "valor": null,
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Banco, agência e conta: não informados",
+      "estado": "ausente"
+    },
+    "conta": {
+      "valor": null,
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Banco, agência e conta: não informados",
+      "estado": "ausente"
+    },
+    "inscricao_estadual": {
+      "valor": null,
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Inscrição estadual: não informada",
+      "estado": "ausente"
+    },
+    "assinatura_presente": {
+      "valor": false,
+      "arquivo": "documento.pdf",
+      "pagina": 2,
+      "trecho": "Assinatura: ausente",
+      "estado": "localizado"
+    }
+  ],
+  "propostas_por_cnpj": [],
+  "anomalias": [],
+  "pendencias_para_revisao_humana": [
+    "Campos essenciais expressamente não informados no documento: CEP, Telefone, CPF do representante, Dados Bancários (Banco, Agência e Conta) e Inscrição Estadual.",
+    "Assinatura indicada como ausente no documento."
+  ],
+  "limitacoes_de_leitura": []
+}

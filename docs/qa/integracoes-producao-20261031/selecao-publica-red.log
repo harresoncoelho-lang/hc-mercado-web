@@ -1,0 +1,63 @@
+✖ build publica somente os cinco dados aprovados e preserva o histórico de origem (62.8431ms)
+✖ build interrompe quando falta dado público obrigatório, sem copiar dados desconhecidos (42.3175ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 262.8388
+
+✖ failing tests:
+
+test at scripts\montar_publico_dados.test.js:38:1
+✖ build publica somente os cinco dados aprovados e preserva o histórico de origem (62.8431ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'capag-municipios.json',
+      'contratos_meta.json',
+      'convenios.json',
+  +   'editais_vistos.json',
+  +   'futuro-privado.json',
+      'mercado_meta.json',
+  +   'privado',
+      'sistema_s_am.json'
+    ]
+  
+      at C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\montar_publico_dados.test.js:41:10
+      at comFixture (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\montar_publico_dados.test.js:29:5)
+      at TestContext.<anonymous> (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\montar_publico_dados.test.js:38:95)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'capag-municipios.json', 'contratos_meta.json', 'convenios.json', 'editais_vistos.json', 'futuro-privado.json', 'mercado_meta.json', 'privado', 'sistema_s_am.json' ],
+    expected: [ 'capag-municipios.json', 'contratos_meta.json', 'convenios.json', 'mercado_meta.json', 'sistema_s_am.json' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\montar_publico_dados.test.js:52:1
+✖ build interrompe quando falta dado público obrigatório, sem copiar dados desconhecidos (42.3175ms)
+  AssertionError [ERR_ASSERTION]: Missing expected exception.
+      at C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\montar_publico_dados.test.js:54:10
+      at comFixture (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\montar_publico_dados.test.js:29:5)
+      at TestContext.<anonymous> (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\montar_publico_dados.test.js:52:102)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: { code: 'ENOENT' },
+    operator: 'throws',
+    diff: 'simple'
+  }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,17 +8,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds-tokens.css">
+<!-- Tema: mesma chave do painel (licitaplena_tema); claro é o padrão. -->
+<script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
 <style>
   :root {
-    --azul: #2e8dff; --laranja: #f2891a;
-    --fundo: #0a121c; --cartao: #141f2e; --borda: #223144;
-    --texto: #eef3f8; --texto-fraco: #90a2b8;
+    /* Design System (ds-tokens.css): as variáveis legadas apontam para os tokens, como nas páginas já migradas. */
+    --azul: var(--action-text); --laranja: var(--attention-text);
+    --fundo: var(--surface-page); --cartao: var(--surface-default); --borda: var(--border-default);
+    --texto: var(--text-primary); --texto-fraco: var(--text-secondary);
   }
   * { box-sizing: border-box; }
   body {
     font-family: "Inter", Arial, Helvetica, sans-serif;
-    background: radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%), var(--fundo);
-    background-attachment: fixed;
+    background: var(--fundo);
     color: var(--texto);
     margin: 0;
   }
@@ -26,7 +29,8 @@
     display: flex; align-items: center; gap: 12px; padding: 18px 24px;
     border-bottom: 1px solid var(--borda); max-width: 760px; margin: 0 auto;
   }
-  header img { width: 32px; height: 32px; }
+  .placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+  .placa img { width: 24px; height: 24px; display: block; }
   header span { font-weight: 700; font-size: 16px; }
   header a.voltar { margin-left: auto; color: var(--texto-fraco); font-size: 13px; text-decoration: none; }
   header a.voltar:hover { color: var(--azul); }
@@ -34,11 +38,11 @@
   h1 { font-size: 26px; margin: 0 0 6px; }
   p.atualizado { color: var(--texto-fraco); font-size: 13px; margin: 0 0 32px; }
   h2 { font-size: 17px; color: var(--azul); margin: 32px 0 10px; }
-  p, li { font-size: 14.5px; line-height: 1.7; color: #d7e0ec; }
+  p, li { font-size: 14.5px; line-height: 1.7; color: var(--texto); }
   ul { padding-left: 20px; }
   a { color: var(--azul); }
   table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13.5px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borda); color: #d7e0ec; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borda); color: var(--texto); }
   th { color: var(--texto-fraco); font-weight: 600; }
   footer {
     max-width: 760px; margin: 0 auto; padding: 20px 24px 40px;
@@ -62,14 +66,14 @@
 </head>
 <body>
   <header>
-    <img src="logo-icone-branco.svg" alt="LicitaPlena">
+    <span class="placa"><img src="logo-icone.svg" alt="LicitaPlena"></span>
     <span>LicitaPlena</span>
     <a class="voltar" href="index.html">&larr; Voltar ao site</a>
   </header>
 
   <main>
     <h1>Política de Privacidade</h1>
-    <p class="atualizado">Última atualização: 11 de agosto de 2026</p>
+    <p class="atualizado">Última atualização: 19 de novembro de 2026</p>
 
     <p>Esta Política de Privacidade explica como o LicitaPlena coleta, usa, armazena e protege os dados pessoais dos usuários do site e do painel, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</p>
 
@@ -123,6 +127,44 @@
 
     <h2>9. Alterações desta política</h2>
     <p>Podemos atualizar esta Política de Privacidade periodicamente. A data da última atualização é sempre indicada no topo desta página.</p>
+
+    <h2>10. Portal do cliente</h2>
+    <p>O portal do cliente é a página aberta por um link que uma empresa usuária da LicitaPlena envia ao próprio cliente, para que ele aprove ou recuse os itens de uma proposta sem precisar de cadastro.</p>
+    <ul>
+      <li><strong>O que coletamos:</strong> o nome do contato que a empresa informou ao criar o link; o endereço IP de quem abre o link, guardado só como um código irreversível (não guardamos o IP em si); e as respostas dadas a cada item, com as observações escritas.</li>
+      <li><strong>Para quê:</strong> registrar a decisão do cliente sobre cada item, como prova do que foi aprovado, e proteger o link contra uso abusivo (limite de tentativas).</li>
+      <li><strong>Por quanto tempo:</strong> os registros de acesso e de tentativas recusadas são apagados automaticamente após 180 dias. As respostas aos itens ficam guardadas como histórico da proposta enquanto a empresa mantiver o processo.</li>
+      <li><strong>Seus direitos:</strong> para pedir acesso ou a exclusão dos seus dados, escreva para <a href="mailto:licitaplena.site@gmail.com">licitaplena.site@gmail.com</a>.</li>
+    </ul>
+
+    <h2>11. Dados da empresa e do representante</h2>
+    <p>No Perfil da empresa, a empresa usuária pode informar o CPF do representante legal e dados bancários.</p>
+    <ul>
+      <li><strong>Para quê:</strong> preencher a proposta e as declarações exigidas nas licitações de que a empresa participa.</li>
+      <li><strong>Base legal:</strong> cumprimento de obrigação legal e execução de procedimentos ligados a contrato do qual a empresa é parte (art. 7º, II e V, da LGPD), já que o edital exige esses dados.</li>
+      <li><strong>Quem vê:</strong> só os usuários da própria empresa com papel de gestor ou operador. Usuários com papel de leitura não veem o CPF nem os dados bancários; nas declarações salvas aparece apenas "[CPF do representante]", e o número real só entra no arquivo exportado.</li>
+      <li><strong>Não vai para a IA:</strong> o CPF e os dados bancários não são enviados a serviços de inteligência artificial nem registrados em logs.</li>
+      <li><strong>Por quanto tempo:</strong> enquanto a empresa estiver cadastrada.</li>
+      <li><strong>Como apagar:</strong> limpe o campo no Perfil da empresa. A partir daí o CPF não entra em nenhuma exportação nova. Arquivos já baixados ficam com quem os baixou. Você também pode pedir a exclusão por <a href="mailto:licitaplena.site@gmail.com">licitaplena.site@gmail.com</a>.</li>
+    </ul>
+
+    <h2>12. Dados públicos de licitações e de terceiros</h2>
+    <p>Para mostrar concorrentes, preços anteriores, sanções e oportunidades, o LicitaPlena guarda dados que órgãos públicos já publicaram: Portal Nacional de Contratações Públicas (PNCP), Compras.gov.br e ComprasNet, dados abertos do Governo Federal e cadastros de sanções da CGU (CEIS e CNEP). Esses dados falam de empresas que não são nossas clientes e, às vezes, de pessoas ligadas a elas.</p>
+    <ul>
+      <li><strong>O que guardamos:</strong> órgão, objeto, itens, valores, marcas, posição na disputa, situação da proposta e mensagens públicas da sessão do pregão. Também guardamos CNPJ e razão social do fornecedor, e as sanções aplicadas a pessoas jurídicas.</li>
+      <li><strong>O que não guardamos:</strong> CPF. Fornecedor pessoa física aparece só como "Pessoa física", sem nome nem documento. Quando a razão social de um MEI traz o CPF do titular, o número é retirado antes de gravar, e o banco de dados recusa qualquer nome que ainda contenha um CPF. Sanções de pessoas físicas não são gravadas.</li>
+      <li><strong>Base legal:</strong> tratamento de dados que o próprio poder público tornou acessíveis, para a finalidade e o interesse público que justificaram a publicação: transparência e controle das compras públicas e competição entre fornecedores (art. 7º, §§ 3º e 4º, da LGPD). Para o uso pelas empresas clientes, também o legítimo interesse (art. 7º, IX), sempre respeitando os direitos do titular.</li>
+      <li><strong>Para quê:</strong> ajudar a empresa cliente a preparar propostas, avaliar preços, conhecer a concorrência e conferir sanções. Não vendemos esses dados e não os usamos para marketing dirigido a pessoas.</li>
+      <li><strong>Por quanto tempo:</strong>
+        <ul>
+          <li>Cache das consultas feitas na plataforma (licitação anterior e análise por CNPJ): até 30 dias. Depois disso é apagado automaticamente. Os dados públicos das compras continuam disponíveis para novas consultas.</li>
+          <li>Participações por fornecedor: no máximo cerca de 3 anos, e um limite de linhas por CNPJ.</li>
+          <li>Sanções: enquanto constarem da lista da CGU. Depois que saem, ficam 5 anos como histórico e então são apagadas.</li>
+          <li>Pregões gravados pela extensão (participantes, lances e mensagens públicas da sessão): mantidos. São o registro de um ato público que não fica disponível de novo sem captcha, e servem de prova para recurso e de histórico de preço. Cada gravação fica marcada como "lida por usuário, não verificada" até que leituras independentes confirmem, e pode ser corrigida ou apagada a pedido.</li>
+        </ul>
+      </li>
+      <li><strong>Seus direitos, inclusive como titular de MEI:</strong> se algum dado sobre você ou sobre sua empresa estiver errado, desatualizado ou expuser algo pessoal, escreva para <a href="mailto:licitaplena.site@gmail.com">licitaplena.site@gmail.com</a>. Podemos corrigir, anonimizar ou excluir o registro, e apagar tudo o que veio de uma mesma gravação. A informação continua pública na fonte oficial, que é quem pode alterá-la lá.</li>
+    </ul>
   </main>
 
   <footer>

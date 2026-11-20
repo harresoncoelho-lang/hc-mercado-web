@@ -1,0 +1,8 @@
+md5_definicao
+acl
+usuarios
+itens
+64c94369bded0ca5721959406a8d5434
+{postgres=X/postgres,service_role=X/postgres}
+2
+251

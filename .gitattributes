@@ -3,3 +3,7 @@
 # converts LF -> CRLF, which then differs from the harness's LF-generated
 # files even though the content is identical).
 * text=auto eol=lf
+
+# Fonte preservada por hash (ENSAIO-PNCP-manifesto.json): bytes exatos, sem normalizar fim de linha.
+supabase/importacao_item_pncp.sql -text
+scripts/fixtures/sancoes_cgu/*.csv -text

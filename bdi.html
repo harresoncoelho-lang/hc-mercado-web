@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de BDI — LicitaPlena</title>
+<link rel="icon" type="image/png" href="favicon.png?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds-tokens.css"><link rel="stylesheet" href="menu-lateral.css">
+<!-- Tema: mesma chave do painel; claro é o padrão, só quem escolheu "escuro" fica no escuro. -->
+<script>(function(){var t=null;try{t=localStorage.getItem("licitaplena_tema");}catch(e){}if(t!=="escuro")document.documentElement.classList.add("tema-claro");document.documentElement.dataset.theme=t==="escuro"?"dark":"light";})();</script>
+<style>
+*{box-sizing:border-box}
+[data-theme="dark"]{color-scheme:dark}[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--surface-page);color:var(--text-primary);font:var(--text-body);font-family:var(--font-sans)}
+button,input,select{font-family:var(--font-sans)}
+:is(button,a,input,select,[tabindex]):focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+header{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 24px;background:var(--surface-default);border-bottom:1px solid var(--border-default)}
+.topo-marca-linha{display:flex;align-items:center;gap:8px;min-width:0}
+header .marca{display:flex;align-items:center;gap:8px;color:var(--text-primary);text-decoration:none;font:600 16px/24px var(--font-sans)}
+.marca-placa{display:inline-grid;place-content:center;width:32px;height:32px;border-radius:var(--radius-control);background:#f6f8fc;border:1px solid #e3e8f0;flex:none}
+.marca-placa img{width:24px;height:24px;display:block}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 16px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:500 14px/16px var(--font-sans);cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--surface-sunken)}
+.btn.primario{background:var(--action-strong);border-color:transparent;color:var(--action-on)}
+.btn.primario:hover{background:var(--action-strong-hover)}
+.tema-icone{width:40px;padding:0;font-size:16px}
+main{max-width:1280px;margin:auto;padding:24px 24px 56px}
+.topo h1{font:var(--text-title);margin:0 0 4px}
+.topo p,.nota,.vazio{color:var(--text-secondary);line-height:1.5;margin:0}
+.card{background:var(--surface-default);border:1px solid var(--border-default);border-radius:var(--radius-card);padding:16px;margin:16px 0}
+label{display:block;font:var(--text-label);color:var(--text-primary);margin:0 0 6px}
+select,input{width:100%;min-height:40px;padding:8px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--surface-default);color:var(--text-primary);font:var(--text-body)}
+.tabela-wrap{border:1px solid var(--border-default);border-radius:var(--radius-card);overflow:auto}
+.tabela{width:100%;border-collapse:collapse}
+.tabela th{background:var(--surface-sunken);color:var(--text-secondary);font:var(--text-label);text-align:left;padding:10px 12px;border-bottom:1px solid var(--border-default);white-space:nowrap}
+.tabela td{padding:10px 12px;line-height:20px;border-bottom:1px solid var(--border-default);vertical-align:top}
+.tabela tbody tr:last-child td{border-bottom:0}
+.tabela tbody tr:hover{background:var(--surface-sunken)}
+.tabela td small{display:block;color:var(--text-secondary);font-size:12px;line-height:18px;margin-top:2px}
+.tabela td.item{max-width:460px}
+input::placeholder{color:var(--text-secondary);opacity:1}
+.aviso{display:none;margin:12px 0;border:1px solid;border-radius:var(--radius-card);padding:12px 16px}
+.aviso.erro{display:block;color:var(--error-text);border-color:var(--error-border);background:var(--error-bg)}
+.form-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:start}
+.form-grade .largo{grid-column:span 2}
+.card h2{font:var(--text-section);margin:0 0 12px}
+.dica{color:var(--text-secondary);font-size:12px;line-height:16px;margin:4px 0 0}
+input[aria-invalid="true"]{border-color:var(--error-text)}
+#resultado[hidden]{display:none}
+#bdi-final{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.bdi-valor{font:700 40px/48px var(--font-sans)}
+#bdi-final small{flex-basis:100%;color:var(--text-secondary)}
+.chip{display:inline-block;padding:2px 10px;border:1px solid;border-radius:var(--radius-control);font:var(--text-label);white-space:nowrap}
+.chip.verde{color:var(--success-text);background:var(--success-bg);border-color:var(--success-border)}
+.chip.amarelo{color:var(--attention-text);background:var(--attention-bg);border-color:var(--attention-border)}
+.chip.vermelho{color:var(--error-text);background:var(--error-bg);border-color:var(--error-border)}
+.aviso-linha{margin:8px 0 0;padding:10px 12px;border:1px solid;border-radius:var(--radius-control);line-height:20px}
+.aviso-linha.erro{color:var(--error-text);background:var(--error-bg);border-color:var(--error-border)}
+.aviso-linha.atencao{color:var(--attention-text);background:var(--attention-bg);border-color:var(--attention-border)}
+.aviso-linha.info{color:var(--info-text);background:var(--info-bg);border-color:var(--info-border)}
+.acoes-saida{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}
+@media(max-width:900px){.form-grade{grid-template-columns:repeat(2,1fr)}.form-grade .largo{grid-column:1/-1}}
+@media(max-width:640px){
+  header{padding:8px 12px}main{padding:16px}
+  .form-grade{grid-template-columns:1fr 1fr}.bdi-valor{font-size:32px;line-height:40px}
+  .tabela-wrap{border:0;overflow:visible}.tabela thead{display:none}
+  .tabela,.tabela tbody,.tabela tr,.tabela td{display:block;width:100%}
+  .tabela tr{border:1px solid var(--border-default);border-radius:var(--radius-card);margin-bottom:12px;background:var(--surface-default)}
+  .tabela td{border-bottom:1px solid var(--border-default)}
+  .tabela td[data-rotulo]::before{content:attr(data-rotulo);display:block;font:var(--text-label);color:var(--text-secondary);margin-bottom:2px}
+}
+</style>
+</head>
+<body>
+<header><div class="topo-marca-linha"><button id="nav-gaveta-btn" type="button" aria-controls="menu-principal" aria-expanded="false">Menu</button><a class="marca" href="painel.html" title="Voltar ao painel principal"><span class="marca-placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a></div><div class="acoes"><button class="btn tema-icone" id="btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">☾</button></div></header>
+<div class="shell">
+<!-- Menu lateral: mesma estrutura e itens do menu do painel.html (duplicação intencional entre páginas). Comportamento em menu-lateral.js. -->
+<nav id="menu-principal" aria-label="Menu principal">
+  <button id="nav-colapsar-btn" type="button" title="Recolher menu" aria-controls="menu-principal">
+    <span class="nav-ico" aria-hidden="true">&#171;</span><span class="nav-label">Recolher</span>
+  </button>
+  <a href="/sistema" title="Hoje"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-house"></use></svg></span><span class="nav-label">Hoje</span></a>
+  <a href="painel.html#boletim" title="Boletim"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-clipboard-text"></use></svg></span><span class="nav-label">Boletim</span></a>
+  <a href="painel.html#oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-magnifying-glass"></use></svg></span><span class="nav-label">Encontrar Licitações</span></a>
+  <a href="painel.html#diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Inteligência de Mercado</span></a>
+  <a href="prospeccao.html" title="Prospecção"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Prospecção</span></a>
+  <a href="painel.html#empresa" title="Analisar concorrente"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Analisar concorrente</span></a>
+  <a href="painel.html#transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-handshake"></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></a>
+  <a href="painel.html#precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Pesquisa de Preços</span></a>
+  <a href="bdi.html" class="ativo" aria-current="page" title="Calculadora de BDI"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Calculadora de BDI</span></a>
+  <a href="sinapi.html" title="Preços SINAPI"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Preços SINAPI</span></a>
+  <a href="painel.html#kanban" title="Funil"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folders"></use></svg></span><span class="nav-label">Funil</span></a>
+  <a href="processos.html" title="Processos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folder-open"></use></svg></span><span class="nav-label">Processos</span></a>
+  <a href="operacao.html" title="Minhas empresas e documentos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-files"></use></svg></span><span class="nav-label">Minhas empresas e documentos</span></a>
+  <a href="painel.html#juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-scales"></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></a>
+  <a href="painel.html#status" title="Status"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-circle"></use></svg></span><span class="nav-label">Status</span></a>
+</nav>
+<div class="nav-gaveta-fundo" id="nav-gaveta-fundo" hidden></div>
+<main>
+  <div class="topo"><h1>Calculadora de BDI</h1><p>Para obras e serviços de engenharia. Informe cada componente e compare com as faixas de referência do TCU (Acórdão 2622/2013). Tudo é calculado no seu navegador, nada é enviado.</p></div>
+  <div id="aviso" class="aviso" role="alert"></div>
+  <section class="card" aria-labelledby="t-entrada">
+    <h2 id="t-entrada">Dados do cálculo</h2>
+    <div class="form-grade">
+      <div class="largo"><label for="f-tipo">Tipo de obra</label><select id="f-tipo"></select></div>
+      <div class="largo"><label for="f-regime">Regime tributário da empresa</label><select id="f-regime"><option value="presumido">Lucro Presumido (cumulativo)</option><option value="real">Lucro Real (não cumulativo)</option><option value="simples">Simples Nacional</option></select><p class="dica">Preenche PIS, COFINS e CPRB com valores de partida. Você pode alterar.</p></div>
+      <div><label for="f-ac">Administração central (AC) %</label><input id="f-ac" inputmode="decimal" value="4,00"></div>
+      <div><label for="f-s">Seguro (S) %</label><input id="f-s" inputmode="decimal" value="0,80"></div>
+      <div><label for="f-g">Garantia (G) %</label><input id="f-g" inputmode="decimal" value="0"></div>
+      <div><label for="f-r">Risco (R) %</label><input id="f-r" inputmode="decimal" value="1,27"></div>
+      <div><label for="f-df">Despesas financeiras (DF) %</label><input id="f-df" inputmode="decimal" value="1,23"></div>
+      <div><label for="f-l">Lucro (L) %</label><input id="f-l" inputmode="decimal" value="7,40"></div>
+      <div><label for="f-issAliquota">ISS, alíquota do município %</label><input id="f-issAliquota" inputmode="decimal" value="5,00"><p class="dica">Entre 2% e 5%.</p></div>
+      <div><label for="f-issBase">Base de cálculo do ISS (% do preço)</label><input id="f-issBase" inputmode="decimal" value="100"><p class="dica">Se a lei municipal reduz a base, informe aqui.</p></div>
+      <div><label for="f-pis">PIS %</label><input id="f-pis" inputmode="decimal"></div>
+      <div><label for="f-cofins">COFINS %</label><input id="f-cofins" inputmode="decimal"></div>
+      <div><label for="f-cprb">CPRB (desoneração) %</label><input id="f-cprb" inputmode="decimal"></div>
+    </div>
+  </section>
+  <section id="resultado" class="card" aria-labelledby="t-res" aria-live="polite" hidden>
+    <h2 id="t-res">Resultado</h2>
+    <div id="bdi-final"></div>
+    <div class="tabela-wrap" style="margin-top:16px"><table class="tabela"><thead><tr><th>Componente</th><th>Adotado</th><th>Faixa do TCU (1º quartil / médio / 3º quartil)</th><th>Situação</th></tr></thead><tbody id="tabela-corpo"></tbody></table></div>
+    <div id="avisos"></div>
+    <div class="acoes-saida"><button class="btn primario" id="btn-copiar" type="button">Copiar para a proposta</button><button class="btn" id="btn-xlsx" type="button">Baixar planilha (.xlsx)</button><span id="copiado" class="dica" role="status"></span></div>
+  </section>
+  <p class="nota" style="font-size:12px">Fórmula: BDI = [((1+AC+S+R+G) × (1+DF) × (1+L)) / (1−I)] − 1, com I = ISS + PIS + COFINS (+ CPRB). Fonte das faixas: <span id="fonte"></span> As faixas são referência de análise, não limite legal: fora delas o órgão pede justificativa. Cores: verde dentro da faixa; amarelo até 0,50 ponto percentual fora; vermelho além.</p>
+</main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="bdi-calculadora.js"></script>
+<script src="menu-lateral.js"></script>
+</body>
+</html>

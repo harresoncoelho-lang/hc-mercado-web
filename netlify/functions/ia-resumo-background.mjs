@@ -1,4 +1,3 @@
-/* global process */
 import { getStore } from "@netlify/blobs";
 import "openai";
 import "js-tiktoken/lite";

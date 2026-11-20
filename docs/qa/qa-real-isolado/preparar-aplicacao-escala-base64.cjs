@@ -1,0 +1,11 @@
+const fs=require('fs'),path=require('path'),crypto=require('crypto');const dir=__dirname,hash=(v,a='sha256')=>crypto.createHash(a).update(v).digest('hex');
+const old=JSON.parse(fs.readFileSync(path.join(dir,'ATO-ESCALA-manifesto.json'))),original=fs.readFileSync(path.join(dir,'ATO-ESCALA-01-APLICAR.sql'),'utf8'),r=JSON.parse(fs.readFileSync(path.join(dir,'ATO-ESCALA-02-resultado-real.json')));
+if(hash(original)!==old.arquivos.find(x=>x.arquivo==='ATO-ESCALA-01-APLICAR.sql').sha256)throw Error('Original divergente');
+if(r.status!=='QA_ESCALA_DIAGNOSTICO_ROLLBACK_OK'||!r.corpoCoincide||!r.metadataCoincide||r.baselineRestauradaMd5!==old.baselineMd5||r.corpoReal!==old.candidatoBodyMd5)throw Error('Diagnóstico divergente');
+const literal=original.match(/execute \$candidata\$([\s\S]*?)\$candidata\$/)[1],bytes=Buffer.from(literal,'utf8');if(hash(bytes,'md5')!==r.candidatoPayloadMd5)throw Error('Payload difere do ensaiado');
+let sql=original.replace('-- ATO01:', '-- ATO03 BASE64:').replace('declare p pg_proc; meta jsonb;','declare p pg_proc; meta jsonb; bytes bytea;');
+sql=sql.replace('execute $candidata$'+literal+'$candidata$;',`bytes:=decode('${bytes.toString('base64')}','base64');
+ if octet_length(bytes)<>${bytes.length} or md5(bytes)<>'${r.candidatoPayloadMd5}' then raise exception 'Transporte candidato divergente';end if;
+ execute convert_from(bytes,'UTF8');`);
+sql=sql.replace("if md5(p.prosrc)<>",`if md5(pg_get_functiondef(p.oid))<>'${r.definicaoCandidataMd5}' or md5(p.prosrc)<>`);
+fs.writeFileSync(path.join(dir,'ATO-ESCALA-03-APLICAR-BASE64.sql'),sql);const m={executado:false,destino:old.destino,arquivo:'ATO-ESCALA-03-APLICAR-BASE64.sql',sha256:hash(sql),originalSha256:hash(original),diagnosticoSha256:hash(fs.readFileSync(path.join(dir,'ATO-ESCALA-02-resultado-real.json'))),payloadMd5:r.candidatoPayloadMd5,payloadBytes:bytes.length,baselineMd5:old.baselineMd5,candidatoBodyMd5:old.candidatoBodyMd5,candidatoDefMd5:r.definicaoCandidataMd5};fs.writeFileSync(path.join(dir,'ATO-ESCALA-03-manifesto.json'),JSON.stringify(m,null,2)+'\n');console.log(JSON.stringify(m));

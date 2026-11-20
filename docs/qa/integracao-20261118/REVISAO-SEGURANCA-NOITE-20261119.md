@@ -1,0 +1,59 @@
+# Revisão de segurança — noite de 19/11/2026 (diff 53beaaa..a09090e)
+
+Branch `retomada/app-comercial-20261117`, base HEAD a09090e. Nada foi commitado. Produção não foi tocada.
+Os SQL ainda **não foram aplicados** no Supabase: precisam rodar à mão no SQL Editor, na ordem do
+`ROTEIRO-BANCO.md`. Todos são idempotentes.
+
+## Achados e correções
+
+| # | Achado (resumo) | Correção | Teste |
+|---|---|---|---|
+| A1 (alta) | O pregão gravado podia ser envenenado: bastava estar logado, e o `coalesce(excluded, t)` deixava a leitura nova sobrescrever a anterior. | `pregao-gravado.js` exige cadastro aprovado (`exigirUsuarioAprovado`) no GET e no POST. Cada leitura fica em `pregoes_gravados_leituras`, uma por `gravado_por`, com `grupo` = organização do usuário (ou o próprio usuário). O valor consolidado de cada campo é recalculado a partir das leituras: vence o valor lido pelo maior número de grupos distintos; no empate, a leitura mais antiga. Uma leitura isolada posterior nunca troca um valor não nulo; a troca exige 2 ou mais organizações concordando; campo vazio é preenchido pela primeira leitura. `leituras_concordantes` e `origem='usuario'` ficam em pregões, itens, propostas e mensagens; o GET devolve `verificado` (2 ou mais grupos). Mensagens: dedupe por md5, nenhuma mensagem é apagada, e os leitores de cada mensagem ficam em `pregoes_gravados_mensagens_leitores`. `expurgar_pregoes_gravados_por(uuid)` (só service_role) remove tudo o que um usuário contribuiu e recalcula o resto. Na `analise-cnpj-ui.js`, o selo "lido por usuário, não verificado (N leituras concordando)" aparece abaixo de 2 leituras. | `testar_pregoes_gravados.sql`: outra organização não sobrescreve; duas contas da mesma organização não contam como duas; duas organizações concordando trocam o valor; campo vazio é preenchido; dedupe de mensagens; o expurgo remove só o que é do usuário; CPF é recusado. Mutação: com regra "última leitura vence", o teste falha ("Leitura isolada sobrescreveu valor/marca"). JS: `pregao-gravado.test.js` (403 para conta não aprovada), `analise-cnpj-ui.test.js` (selo). |
+| A2 (alta) | Razão social de MEI e chat do pregoeiro gravavam CPF. | Regra única em `netlify/functions/_cpf.js` (`/\b\d{3}[.\s]?\d{3}[.\s]?\d{3}[-\s/]?\d{2}\b/g`), usada por `L.fornecedor`, `coletar_sancoes_cgu.js`, `coletar_prospeccao.js`, `_analise_cnpj.js` e `pregao-gravado.js`. No banco, cada tabela recebe primeiro um UPDATE de limpeza idempotente e depois um CHECK nomeado com `\y[0-9]{3}[. ]?[0-9]{3}[. ]?[0-9]{3}[- /]?[0-9]{2}\y`, em: `sancoes_empresas.razao_social`, `prospeccao_itens.fornecedor_nome`, `historico_participacoes.fornecedor_nome`, `historico_cnpj_consultas.nome`, `pregoes_gravados_propostas.nome`, `pregoes_gravados_mensagens.texto/motivo` e no `dados` das leituras. | O `testar_*.sql` de cada tabela prova a limpeza (a segunda rodada não muda nada), recusa 4 formatos de CPF e aceita CNPJ formatado. `licitacao-anterior.test.js` cobre os formatos com espaço e com "/". |
+| M1 | Os endpoints novos só exigiam login. | `_auth.js` ganhou `exigirClienteAprovado` / `exigirUsuarioAprovado`, que lê `clientes.status` com o token do próprio usuário (sem chave de serviço, falha fechado: 403 ou 503). Usado em `licitacao-anterior.js`, `analise-cnpj.js`, `prospeccao.js`, `sancoes-cnpj.js` e `pregao-gravado.js`. | Testes dos 5 endpoints: conta pendente ou suspensa recebe 403 antes de qualquer leitura; falha na conferência dá 503. |
+| M2 | `link_origem` vindo de fonte externa ia direto para o `href`. | `linkOficial()` aceita só https, sem usuário ou senha na URL, nos hosts pncp.gov.br, dadosabertos.compras.gov.br, contratos.comprasnet.gov.br, cnetmobile.estaleiro.serpro.gov.br e (www.)comprasnet.gov.br. Os três primeiros são a lista do `prospeccao-ui.js`; os outros são os do Compras.gov que a própria tela usa. Aplicado no robô (`compraDaBusca`, que cai para `linkCompraGov`) e na tela (`link_origem` e `link_pncp`). | `licitacao-anterior.test.js` e `licitacao-anterior-ui.test.js`: recusam http, `javascript:`, `data:`, host parecido e URL com usuário. |
+| M3 | Qualquer usuário autenticado podia ler os caches de consulta, e o `gravado_por` dos pregões ficava exposto. | `revoke` em `historico_consultas` e `historico_cnpj_consultas` (as políticas também saíram; nenhuma tela lê essas tabelas direto, conferido por grep). Nos `pregoes_gravados*`, o grant passou a ser por coluna, sem `gravado_por`/`atualizado_por`; as tabelas de leituras e de leitores não têm grant nenhum. | `sonda/probe.cjs`: auth=null nas duas tabelas de cache. `testar_pregoes_gravados.sql`: `authenticated` não lê `gravado_por` nem as tabelas novas. |
+| M4 | A fila de análise por CNPJ não tinha teto, e uma falha repetida travava a fila. | Fila: no máximo 200 linhas `parcial` no total e 10 pedidos novos por solicitante em 24 h (coluna `solicitante` = organização ou usuário), com resposta 429. O robô marca `falhou` na 3ª falha no mesmo mês (`tentativas`, `mes_falhas`, `MAX_FALHAS_ANALISE_CNPJ`). `historico_participacoes_podar()` guarda no máximo 5000 linhas por CNPJ e nada com mais de 37 meses; o robô loga o tamanho por CNPJ. | `analise-cnpj.test.js`, `scripts/analise_cnpj.test.js`, `testar_analise_cnpj.sql`. |
+| M5 | Faltava política de privacidade e prazo de guarda para dados de terceiros. | `politica-privacidade.html` §12 "Dados públicos de licitações e de terceiros": LGPD art. 7º, §§3º–4º, finalidade, prazos e canal licitaplena.site@gmail.com para correção ou exclusão, inclusive por titular de MEI. No banco: `historico_limpar_cache(30)` (piso de 8 dias), chamado pelo robô da esteira; `sancoes_empresas_expurgar()` apaga sanções fora da lista há mais de 5 anos. Os pregões gravados são mantidos porque são registro público da sessão, usado para recurso e para histórico de preço (justificado na política). | `testar_historico_licitacoes.sql`, `testar_sancoes_empresas.sql`. |
+| B1 | A máscara de CPF não pegava espaço nem "/". | Mesma regex de `_cpf.js` em `pregao-gravado.js` e `extensao-leitura/pregao-leitor.mjs`. | `pregao-leitor.test.mjs`; `cpf.cjs` → `CPF ***.***.***-** … outro ***.***.***-**`. |
+| B2 | `painel.html` usava `/D/g` e `/d/g` (sem a barra invertida). | Trocados por `/\D/g` (limpar o CNPJ do botão) e `/\d/g` (contar as letras do nome buscado). | `scripts/revisao_seguranca_20261119.test.js`. |
+| B3 | Downloads sem teto de tamanho nem timeout. | `corpoComTeto` confere Content-Length e corta a leitura no teto. `inflarComTeto` descompacta com `maxOutputLength` e confere tamanho e CRC contra o cabeçalho do ZIP, então cabeçalho mentiroso falha. Sanções: ZIP 100 MB, CSV 400 MB. Propostas: 10 min, ZIP 500 MB, CSV 5000 MB em stream. | `coletar_sancoes_cgu.test.js`, `historico_licitacoes.test.js`. |
+| B4 | Linha inválida no arquivo de sanções virava `fora_da_lista`. | Com qualquer linha inválida, o robô grava o que leu, não marca sumiço naquele dia e termina com erro. | `coletar_sancoes_cgu.test.js`. |
+| B5 | Faltava cota nas ações de busca e na leitura do pregão. | Cotas próprias: `licitacao-anterior-orgaos` 300/dia, `analise-cnpj-buscar` 100/dia, `pregao-gravado-leitura` 2000/dia. O GET do pregão aceita `?item=N`, devolve no máximo 2000 linhas por tabela e traz `truncado`. | Testes dos endpoints (429 acima da cota; teto do GET). |
+| B6 | Ata do ComprasNet aceita em http. | Mantido só para `comprasnet.gov.br`, porque o próprio site é http; cnetmobile em http é recusado. A leitura vinda de http fica com `sem_https`, e o GET expõe `fonte_sem_https`. O risco está documentado no `extensao-leitura/README.md` e no `docs/pregao-gravado.md`. | `testar_pregoes_gravados.sql` (fonte http marcada). |
+| B7 | Workflows novos com ações por tag. | `sancoes-cgu.yml` e `prospeccao.yml` usam `actions/checkout@34e1148…` (v4.3.1) e `actions/setup-node@49933ea…` (v4.4.0), SHAs conferidos com `git ls-remote`. | `scripts/revisao_seguranca_20261119.test.js`. |
+| B8 | Arquivo vazio não versionado na raiz chamado `console.log(JSON.stringify({totalRegistros`. | Conferido que tinha 0 bytes; apagado. | Mesmo teste (nenhum arquivo `console.log(` na raiz). |
+| B9 | `testar_portal_cliente.sql` falhava de vez em quando com "Leitura vazou dado". | Causa: o regex de vazamento varria o JSON inteiro, inclusive `expira_em` (timestamp com microssegundos). Um horário como `…:08.881234` casa com `8\.88`. Era falso positivo do teste, não falha de isolamento: a saída de `portal_ler` é determinística (`order by` explícito) e o único dado variável é o relógio. Prova em PGlite: o regex antigo casa em 0,39% dos `expira_em` aleatórios, e o novo em 0%. O teste agora tira `expira_em` da varredura (e confere à parte que fica entre 29 e 31 dias), usa `\y` nos valores e faz o mesmo no teste do `11.00`. | `testar-dezembro.cjs` rodado 18 vezes seguidas, todas OK; `revisao_seguranca_20261119.test.js`. |
+| Menu | Faltava o link de Prospecção no menu. | `<a href="prospeccao.html" title="Prospecção">` logo depois de "Inteligência de Mercado" em `painel.html`, `sistema.html`, `operacao.html` e `processos.html`. O menu não vem do `menu-lateral.js`, que só cuida do comportamento. | `revisao_seguranca_20261119.test.js` (ordem nas 5 páginas). |
+
+## Provas (19/11, local)
+
+- `node docs/qa/integracao-20261118/testar-dezembro.cjs`: **ENSAIO DEZEMBRO OK**, rodado 2 vezes depois das correções (e mais 16 vezes durante a investigação do B9). Cada execução tem 2 rodadas com os 14 `testar_*.sql`, e o 02 dá 81/81 ok.
+- `npm test`: 1731 testes, 1721 passam, 4 pulados e 6 falham. As 6 falhas são as conhecidas: Miniflare 5, app-comercial-layout, app-comercial-movel, ponte_leitura_sql, vinculo_compra_baseline e migração PGlite efêmera.
+- `npm run lint`: 0 erros, 80 avisos (de complexidade), saída 0.
+- `scratchpad/cpf.cjs`:
+  - `sancoes: ['FULANA DE TAL']`
+  - `prospeccao: FULANA DE TAL`
+  - `historico: FULANA DE TAL`
+  - `pregao msg: CPF ***.***.***-** …`
+- `scratchpad/sonda/probe.cjs`:
+  - o banco recusa CPF nos 5 casos;
+  - `historico_consultas` e `historico_cnpj_consultas` ficam sem grant e sem política;
+  - nos `pregoes_gravados*` não há grant de tabela inteira (só por coluna);
+  - as escritas por `authenticated` continuam recusadas.
+
+## O que sobrou e riscos conhecidos
+
+- **SQL ainda não aplicado no Supabase.** É preciso rodar `historico_licitacoes.sql`, `sancoes_empresas.sql`, `pregoes_gravados.sql`, `prospeccao.sql` e `analise_cnpj.sql`. O CHECK de `historico_participacoes` passa a recusar nome com CPF; o código novo já limpa antes de gravar, então funções e robôs precisam subir junto com o SQL.
+- **Pregões antigos.** Cada linha antiga vira uma leitura só, atribuída a quem gravou primeiro. A contribuição de um segundo gravador antigo não pode ser expurgada separadamente. A limpeza de CPF não recalcula o md5 das mensagens antigas, então uma releitura pode criar uma cópia mascarada.
+- **Duas contas aprovadas** em organizações diferentes ainda conseguem trocar um valor. É aceito pelo desenho, porque a aprovação é manual.
+- **"Fonte sem HTTPS"** sai só na API; nenhuma tela mostra ainda. A Licitação anterior não lê pregões gravados hoje (conferido), então lá não há selo a pôr.
+- **Links já gravados** em `historico_compras` não foram limpos no banco; só a tela os bloqueia. Links de plataformas parceiras (BLL, portais municipais) agora caem para o link do Compras.gov ou somem.
+- **Node 20.15 ou mais novo.** `inflarComTeto` usa `zlib.crc32`; o Actions instala o 20.x mais recente.
+- **`publico/` não foi regenerado.** É a cópia de build, fora do git: rode `npm run build:cloudflare` antes de publicar no Cloudflare.
+
+## Veredito
+
+Todos os itens (A1, A2, M1–M5, B1–B9 e o menu) foram corrigidos e têm teste ou prova local. **Aprovado para
+seguir na branch de trabalho.** Não publicar antes de aplicar os SQL num clone e conferir com o
+`02-verificar.sql`, nem antes da publicação conjunta, como previsto.

@@ -1,0 +1,66 @@
+/* Menu lateral do CRM em sistema.html, operacao.html e processos.html: mesma estrutura e aparência do menu do
+   painel.html (painel-design.css, seção "4. Menu lateral"). Tudo preso a #menu-principal e #nav-gaveta-btn para
+   não brigar com os estilos próprios de cada página (button, .btn, a). Cores só por tokens (ds-tokens.css). */
+.shell { display: flex; align-items: stretch; width: 100%; min-height: calc(100vh - var(--altura-header, 0px)); }
+.shell > main { flex: 1; min-width: 0; }
+.icone-ph { width: 1em; height: 1em; fill: currentColor; flex-shrink: 0; vertical-align: -0.125em; display: inline-block; }
+
+#menu-principal {
+  display: flex; flex-direction: column; align-items: stretch; gap: 2px; flex-shrink: 0;
+  width: 232px; padding: 12px 8px; box-sizing: border-box;
+  background: var(--surface-default); border-right: 1px solid var(--border-default);
+  position: sticky; top: var(--altura-header, 0px); align-self: flex-start;
+  height: calc(100vh - var(--altura-header, 0px)); overflow-y: auto;
+}
+#menu-principal button, #menu-principal a {
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;
+  min-height: 36px; height: auto; padding: 6px 8px; width: 100%; max-width: none; box-sizing: border-box; margin: 0;
+  border: 0; border-radius: var(--radius-control); background: none; box-shadow: none;
+  color: var(--text-primary); font: 400 14px/20px var(--font-sans); text-align: left; text-decoration: none;
+  white-space: normal; cursor: pointer;
+}
+#menu-principal button:hover, #menu-principal a:hover { background: var(--surface-sunken); color: var(--text-primary); }
+#menu-principal .nav-ico {
+  width: 24px; height: 24px; flex: none; border-radius: var(--radius-control); background: none;
+  color: var(--text-secondary); font-size: 16px; display: inline-flex; align-items: center; justify-content: center;
+}
+#menu-principal a.ativo { background: var(--action-tint); color: var(--text-primary); font-weight: 600; box-shadow: inset 3px 0 0 var(--action-strong); }
+#menu-principal a.ativo .nav-ico { color: var(--action-text); }
+#menu-principal :focus-visible, #nav-gaveta-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+#nav-colapsar-btn {
+  color: var(--text-secondary); font-size: 12px; border-bottom: 1px solid var(--border-default);
+  border-radius: var(--radius-control) var(--radius-control) 0 0; margin-bottom: 6px;
+}
+#nav-gaveta-btn { display: none; }
+@media (min-width: 769px) {
+  #menu-principal.colapsada { width: 60px; padding: 12px 6px; }
+  #menu-principal.colapsada button, #menu-principal.colapsada a { justify-content: center; padding: 6px 0; }
+  #menu-principal.colapsada .nav-label { display: none; }
+  #menu-principal.colapsada #nav-colapsar-btn .nav-ico { transform: scaleX(-1); }
+}
+
+/* Celular/tablet: o menu vira gaveta aberta pelo botão "Menu" do topo, como no painel. */
+@media (max-width: 768px) {
+  #nav-gaveta-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    min-height: 44px; min-width: 44px; padding: 0 12px; margin: 0;
+    border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    background: var(--surface-default); color: var(--text-primary); font: 500 14px/16px var(--font-sans); cursor: pointer;
+  }
+  /* operacao/processos: com o botão Menu a mais, o topo quebra linha em vez de empurrar a página para o lado. */
+  header:has(> #nav-gaveta-btn) { flex-wrap: wrap; }
+  .shell { display: block; min-height: 0; }
+  #menu-principal {
+    position: fixed; top: 0; left: 0; bottom: 0; height: auto; z-index: 300;
+    width: min(280px, 86vw); padding: 16px 8px; overflow-x: hidden; overflow-y: auto;
+    border-radius: 0 var(--radius-modal) var(--radius-modal) 0; box-shadow: var(--shadow-overlay);
+    transform: translateX(-105%); visibility: hidden; transition: transform 0.18s ease, visibility 0s linear 0.18s;
+  }
+  /* Ao abrir, fica visível na hora (sem transição de visibility) para o foco poder entrar na gaveta. */
+  #menu-principal.gaveta-aberta { transform: none; visibility: visible; transition: transform 0.18s ease; }
+  #menu-principal button, #menu-principal a { flex-shrink: 0; padding: 8px; min-height: 44px; }
+  #nav-colapsar-btn { display: none !important; }
+  .nav-gaveta-fundo { position: fixed; inset: 0; z-index: 290; background: var(--scrim, rgba(0, 0, 0, 0.45)); }
+}
+@media (prefers-reduced-motion: reduce) { #menu-principal { transition: none; } }
+[hidden].nav-gaveta-fundo { display: none; }

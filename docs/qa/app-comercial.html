@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LicitaPlena · Documentos e propostas</title>
+<link rel="stylesheet" href="/ds-tokens.css">
+<link rel="stylesheet" href="/kit-documentos.css">
+<link rel="stylesheet" href="/operacao-identificacao.css">
+<link rel="stylesheet" href="/app-comercial.css">
+</head>
+<body>
+<header class="app-topo">
+  <div class="app-marca">LicitaPlena <span class="app-badge" role="note" title="Ambiente de homologação: dados fictícios">Homologação · dados fictícios</span></div>
+  <div class="app-controles">
+    <label class="app-empresa" id="empresa-bloco" hidden>Empresa ativa
+      <select id="empresa-ativa"></select>
+    </label>
+    <label class="app-empresa" id="processo-bloco" hidden>Processo
+      <select id="processo-ativo"></select>
+    </label>
+    <button id="tema" type="button" aria-label="Alternar tema claro ou escuro">Tema</button>
+    <button id="sair" type="button" hidden>Sair</button>
+    <button id="tentar" type="button" hidden>Tentar de novo</button>
+  </div>
+</header>
+<main class="app-principal">
+  <section id="login" class="app-cartao" aria-labelledby="login-titulo">
+    <h1 id="login-titulo" class="app-titulo">Entrar</h1>
+    <form id="app-login" method="post" action="">
+      <label>E-mail <input name="email" type="email" required autocomplete="username"></label>
+      <label>Senha <input name="password" type="password" required autocomplete="current-password"></label>
+      <button id="login-entrar" class="app-primario" type="submit">Entrar</button>
+    </form>
+  </section>
+  <section id="hoje" hidden aria-labelledby="hoje-titulo">
+    <h1 id="hoje-titulo" class="app-titulo" tabindex="-1">Hoje</h1>
+    <p id="hoje-estado" class="app-apoio" role="status" aria-live="polite"></p>
+    <div id="hoje-lista" class="hoje-lista"></div>
+    <section id="novo-processo-bloco" class="app-cartao novo-processo" aria-labelledby="novo-processo-titulo" hidden>
+      <h2 id="novo-processo-titulo" class="app-titulo" tabindex="-1">Novo processo</h2>
+      <p id="novo-processo-empresa" class="app-apoio"></p>
+      <form id="form-novo-processo" novalidate>
+        <label>Objeto <textarea name="objeto" maxlength="500" required></textarea></label>
+        <label>Número do processo <input name="numero" maxlength="60" autocomplete="off"></label>
+        <label>Órgão <input name="orgao" maxlength="200" autocomplete="off"></label>
+        <label>Modalidade <input name="modalidade" maxlength="60" autocomplete="off"></label>
+        <p id="novo-processo-erro" class="app-aviso" role="alert"></p>
+        <div class="novo-processo-acoes">
+          <button id="novo-processo-salvar" class="app-primario" type="submit">Cadastrar processo</button>
+          <button id="novo-processo-cancelar" type="button">Cancelar</button>
+        </div>
+      </form>
+    </section>
+    <p class="app-apoio hoje-indisponivel">Extensão de navegador e lances não estão disponíveis nesta versão.</p>
+  </section>
+  <section id="area" hidden aria-labelledby="area-titulo">
+    <button id="voltar-hoje" type="button">Voltar para Hoje</button>
+    <h1 id="area-titulo" class="app-titulo" tabindex="-1">Documentos e propostas</h1>
+    <p id="contexto-atual" class="app-apoio"></p>
+    <div id="identificacao" tabindex="-1"></div>
+    <section id="itens-processo" class="app-cartao itens-processo" aria-label="Itens do processo" hidden></section>
+    <div id="kit"></div>
+  </section>
+  <p id="app-aviso" class="app-aviso" role="status" aria-live="polite"></p>
+</main>
+<script src="/kit-documentos-ui.js"></script>
+<script src="/empresa-identificacao-ui.js"></script>
+<script src="/operacao-identificacao.js"></script>
+<script src="/itens-processo-ui.js"></script>
+<script src="/app-comercial-core.js"></script>
+<script src="/app-comercial-controlador.js"></script>
+<script src="/app-comercial.js"></script>
+</body>
+</html>

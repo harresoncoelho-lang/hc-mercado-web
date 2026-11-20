@@ -1,0 +1,126 @@
+
+> hc-mercado-web-functions@1.0.0 lint
+> eslint . && biome check netlify/functions scripts eslint.config.js --diagnostic-level=error
+
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\__tests__\kit-documentos.test.js
+  11:62  warning  Async arrow function has a complexity of 35. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_adaptador_cloudflare.js
+  55:1  warning  Function 'resultadoParaResponse' has a complexity of 21. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_defesa_contexto.js
+   40:1  warning  Function 'prepararContexto' has a complexity of 55. Maximum allowed is 20     complexity
+  156:1  warning  Function 'diagnosticarAnalise' has a complexity of 56. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_defesa_handler.js
+  65:1  warning  Async function 'executarDefesa' has a complexity of 61. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_defesa_pontos.js
+  137:26  warning  Arrow function has a complexity of 30. Maximum allowed is 20                complexity
+  159:1   warning  Function 'validarPontos' has a complexity of 33. Maximum allowed is 20      complexity
+  187:1   warning  Function 'fundamentoApoiado' has a complexity of 34. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_edital_operacional.js
+   46:1   warning  Function 'completarDossieDaFonte' has a complexity of 23. Maximum allowed is 20         complexity
+  216:45  warning  Arrow function has a complexity of 24. Maximum allowed is 20                            complexity
+  271:1   warning  Function 'extrairRequisitosOperacionais' has a complexity of 25. Maximum allowed is 20  complexity
+  313:1   warning  Function 'selecionarAcoesChecklist' has a complexity of 27. Maximum allowed is 20       complexity
+  448:1   warning  Function 'complementarRequisitos' has a complexity of 23. Maximum allowed is 20         complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_empresa_identificacao.js
+  10:1  warning  Function 'validarConfirmacao' has a complexity of 33. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_pdf_cobertura.js
+  33:1  warning  Async function 'paginaCurtaPendente' has a complexity of 45. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_pdf_ocr_local.js
+  12:10  warning  Async function 'ocrPDF' has a complexity of 23. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_documental.js
+  7:1  warning  Function 'conferirFatosDocumentais' has a complexity of 34. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_evidencias.js
+  31:1  warning  Function 'conferirEvidenciasDoResumo' has a complexity of 25. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_gateway.js
+   67:1  warning  Async function 'solicitarResumo' has a complexity of 34. Maximum allowed is 20  complexity
+  111:1  warning  Async function 'executarResumo' has a complexity of 49. Maximum allowed is 20   complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_progressivo.js
+  124:1  warning  Async function 'executarEtapa' has a complexity of 47. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\admin-excluir-cliente.js
+  35:33  warning  Async arrow function has a complexity of 33. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\decisao-oportunidade.js
+  3:31  warning  Async arrow function has a complexity of 28. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\empresa-identificacao.js
+  8:28  warning  Async arrow function has a complexity of 28. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\enviar-resumo-edital.js
+   28:1   warning  Function 'mensagemErroZepto' has a complexity of 25. Maximum allowed is 20  complexity
+  174:33  warning  Async arrow function has a complexity of 32. Maximum allowed is 20          complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\gerar-checklist.js
+   79:1   warning  Function 'conteudoDocumento' has a complexity of 26. Maximum allowed is 20  complexity
+  131:33  warning  Async arrow function has a complexity of 23. Maximum allowed is 20          complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\kit-documentos.js
+  43:28  warning  Async arrow function has a complexity of 36. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\lib\ia-edital.js
+   103:1   warning  Async function 'buscarFichaCanonica' has a complexity of 29. Maximum allowed is 20         complexity
+   165:1   warning  Async function 'buscarTextoEdital' has a complexity of 59. Maximum allowed is 20           complexity
+   323:5   warning  Async function 'baixarDocumento' has a complexity of 32. Maximum allowed is 20             complexity
+   534:1   warning  Async function 'chamarGroq' has a complexity of 60. Maximum allowed is 20                  complexity
+   698:1   warning  Function 'converterEtapaOperacional' has a complexity of 50. Maximum allowed is 20         complexity
+   889:1   warning  Function 'aplicarCamposOperacionaisDoTexto' has a complexity of 31. Maximum allowed is 20  complexity
+  1058:1   warning  Async function 'sintetizarLoteCatalogo' has a complexity of 28. Maximum allowed is 20      complexity
+  1136:1   warning  Function 'montarEstruturaBasica' has a complexity of 24. Maximum allowed is 20             complexity
+  1212:33  warning  Async arrow function has a complexity of 169. Maximum allowed is 20                        complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\pncp-detalhe.js
+  40:33  warning  Async arrow function has a complexity of 36. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\pncp-itens.js
+  24:33  warning  Async arrow function has a complexity of 31. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\atualizar_dados.js
+   118:1  warning  Async function 'fetchComRetentativa' has a complexity of 22. Maximum allowed is 20          complexity
+   197:1  warning  Async function 'buscarPaginasEmLote' has a complexity of 28. Maximum allowed is 20          complexity
+   329:3  warning  Async function 'processarUf' has a complexity of 43. Maximum allowed is 20                  complexity
+   404:1  warning  Async function 'coletarContratos' has a complexity of 31. Maximum allowed is 20             complexity
+   566:1  warning  Async function 'coletarOportunidadesAbertas' has a complexity of 31. Maximum allowed is 20  complexity
+   622:3  warning  Async function 'processarUf' has a complexity of 69. Maximum allowed is 20                  complexity
+   878:1  warning  Async function 'coletarMercadoSegmentos' has a complexity of 83. Maximum allowed is 20      complexity
+   949:3  warning  Async function 'enriquecerAta' has a complexity of 52. Maximum allowed is 20                complexity
+  1022:5  warning  Async function 'trabalhadorItem' has a complexity of 21. Maximum allowed is 20              complexity
+  1436:1  warning  Async function 'main' has a complexity of 24. Maximum allowed is 20                         complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\coletar_comprasgov_resultados.js
+  155:1  warning  Function 'normalizarResultado' has a complexity of 42. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\coletar_convenios.js
+  89:1  warning  Async function 'coletarConvenios' has a complexity of 42. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\coletar_empresas.js
+  88:1  warning  Async function 'consolidarEmpresas' has a complexity of 38. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\enriquecer_contato_sicaf.js
+  80:1  warning  Async function 'main' has a complexity of 21. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\extrair_anexo_local.js
+  21:1  warning  Async function 'extrairAnexoLocal' has a complexity of 28. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\gerar_dossies_gemini.js
+  152:1  warning  Async function 'chamarGemini' has a complexity of 23. Maximum allowed is 20  complexity
+  211:1  warning  Async function 'chamarCompat' has a complexity of 23. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\recuperar_contratos_atas_local.js
+  186:1  warning  Async function 'prepararConsulta' has a complexity of 25. Maximum allowed is 20  complexity
+
+✖ 58 problems (0 errors, 58 warnings)
+
+Checked 185 files in 125ms. No fixes applied.

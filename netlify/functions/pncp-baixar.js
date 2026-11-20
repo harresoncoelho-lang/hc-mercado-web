@@ -4,6 +4,7 @@
 // lá dentro). Usado pelo botão "📥 Baixar Edital" nos cards do Boletim.
 //
 // Uso: GET /.netlify/functions/pncp-baixar?cnpj=...&ano=...&sequencial=...&documento=...&nome=...
+const { limitarPorIp } = require("./_auth");
 const BASE_URL = "https://pncp.gov.br/pncp-api/v1/orgaos";
 
 // Ver nota em pncp-proxy.js: alguns endpoints do PNCP resetam a conexão sem User-Agent de
@@ -12,6 +13,9 @@ const USER_AGENT_NAVEGADOR =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 exports.handler = async (event) => {
+  // Proxy público: teto diário por IP (teste de ataque 19/11, M5). É link de download, não precisa de CORS.
+  const limite = await limitarPorIp(event, "pncp-baixar");
+  if (!limite.ok) return { statusCode: limite.status, headers: { "Content-Type": "text/plain; charset=utf-8" }, body: limite.erro };
   const q = event.queryStringParameters || {};
   const cnpj = (q.cnpj || "").replace(/\D/g, "");
   const ano = parseInt(q.ano, 10);
@@ -79,7 +83,6 @@ exports.handler = async (event) => {
       headers: {
         "Content-Type": tipo,
         "Content-Disposition": `attachment; filename="${nomeFinal}"`,
-        "Access-Control-Allow-Origin": "*",
       },
       body: buffer.toString("base64"),
       isBase64Encoded: true,

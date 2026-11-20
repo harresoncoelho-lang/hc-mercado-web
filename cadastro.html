@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,163 +8,153 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="ds-tokens.css">
+<link rel="stylesheet" href="senha-olho.css">
+<script>
+  // Tema antes de pintar (sem piscar): mesma chave e mesmo padrão claro do sistema (app-comercial.js).
+  (function () { var t = null; try { t = localStorage.getItem("licitaplena_tema"); if (t === null) { var v = localStorage.getItem("licitaplena.tema"); if (v !== null) { t = v === "dark" ? "escuro" : "claro"; localStorage.setItem("licitaplena_tema", t); localStorage.removeItem("licitaplena.tema"); } } } catch (e) { t = null; } document.documentElement.dataset.theme = t === "escuro" ? "dark" : "light"; })();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
 <script src="supabase-config.js"></script>
-<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+<script src="senha-captcha-ui.js"></script>
 <style>
-  :root {
-    --azul: #2e8dff; --azul-escuro: #0d47a1; --laranja: #f2891a;
-    --fundo: #0a121c; --cartao: #141f2e; --borda: #223144;
-    --texto: #eef3f8; --texto-fraco: #90a2b8; --verde: #34c17c; --vermelho: #e8617a;
-    --raio: 12px;
-  }
+  /* Design System "Direção A, azul original": cores, raios e tipografia vêm de ds-tokens.css. */
   * { box-sizing: border-box; }
   body {
-    font-family: "Inter", Arial, Helvetica, sans-serif;
-    background: radial-gradient(1100px 500px at 15% -10%, rgba(46,141,255,0.14), transparent 60%), var(--fundo);
-    background-attachment: fixed;
-    color: var(--texto);
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
+    margin: 0; min-height: 100vh; padding: 24px;
+    display: flex; align-items: flex-start; justify-content: center;
+    font: var(--text-body); color: var(--text-primary); background: var(--surface-page);
   }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  a { color: var(--action-text); }
   .caixa {
-    width: 100%;
-    max-width: 480px;
-    background: var(--cartao);
-    border: 1px solid var(--borda);
-    border-radius: var(--raio);
-    padding: 32px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    width: 100%; max-width: 520px; padding: 24px;
+    background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card);
   }
-  .logo-topo { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-  .logo-topo img { width: 40px; height: 40px; }
-  .logo-topo span { font-weight: 700; font-size: 18px; }
-  h1 { font-size: 20px; margin: 0 0 6px; }
-  p.sub { color: var(--texto-fraco); font-size: 14px; margin: 0 0 20px; }
+  .topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  .marca { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; line-height: 24px; color: var(--text-primary); text-decoration: none; }
+  /* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (regra do DS). */
+  .placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+  .placa img { width: 24px; height: 24px; display: block; }
+  h1 { font: var(--text-section); margin: 0 0 4px; }
+  p.sub { color: var(--text-secondary); margin: 0 0 16px; }
+  p.sub.destaque { color: var(--text-primary); font-weight: 600; margin-bottom: 4px; }
   h2.secao {
-    font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em;
-    color: var(--azul); margin: 22px 0 12px; padding-top: 14px; border-top: 1px solid var(--borda);
+    font: var(--text-label); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em;
+    margin: 24px 0 12px; padding-top: 16px; border-top: 1px solid var(--border-default);
   }
-  h2.secao:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
-  label { display: block; font-size: 13px; color: var(--texto-fraco); margin-bottom: 6px; }
+  h2.secao:first-of-type { margin-top: 8px; padding-top: 0; border-top: none; }
+  label { display: block; font: var(--text-label); margin-bottom: 4px; }
   input, select {
-    width: 100%; padding: 11px 12px; margin-bottom: 16px;
-    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
-    color: var(--texto); font-size: 14px; font-family: inherit;
+    width: 100%; height: 40px; padding: 0 12px; margin-bottom: 16px;
+    background: var(--surface-default); color: var(--text-primary);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-control);
   }
-  select { appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2390a2b8' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  select { appearance: none; -webkit-appearance: none; padding-right: 32px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237a879b' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
     background-repeat: no-repeat; background-position: right 12px center;
   }
-  input:focus, select:focus { outline: none; border-color: var(--azul); }
-  .campo-senha-wrap { position: relative; }
-  .campo-senha-wrap input { padding-right: 42px; margin-bottom: 0; }
-  .btn-mostrar-senha {
-    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-    background: none; border: none; cursor: pointer;
-    color: var(--texto-fraco); padding: 4px; line-height: 1;
+  .campo-senha-wrap input { margin-bottom: 0; }
+  .btn {
+    height: 40px; padding: 0 16px; border-radius: var(--radius-control); border: 1px solid transparent;
+    font-weight: 500; font-size: 14px; cursor: pointer; white-space: nowrap;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .btn-mostrar-senha:hover { color: var(--texto); }
-  .btn-mostrar-senha svg { display: block; width: 18px; height: 18px; }
-  .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn-sec { background: var(--surface-default); color: var(--text-primary); border-color: var(--border-strong); }
+  .btn-sec:hover { background: var(--surface-sunken); }
+  .btn-ter { background: transparent; color: var(--action-text); height: 32px; padding: 0 8px; font-size: 12px; }
+  .btn-ter:hover { background: var(--action-tint); }
+  .linha-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
   .linha-dupla input, .linha-dupla select { margin-bottom: 0; }
-  .linha-dupla { margin-bottom: 16px; }
   textarea {
-    width: 100%; padding: 11px 12px; margin-bottom: 16px;
-    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
-    color: var(--texto); font-size: 14px; font-family: inherit; resize: vertical;
+    width: 100%; padding: 8px 12px; margin-bottom: 16px; min-height: 96px; resize: vertical;
+    background: var(--surface-default); color: var(--text-primary);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-control);
   }
-  textarea:focus { outline: none; border-color: var(--azul); }
-  p.dica { font-size: 12.5px; color: var(--texto-fraco); margin: -10px 0 14px; }
+  input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--action-strong); flex: none; }
   .abr-nacional {
-    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
-    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
-    margin-bottom: 14px; font-weight: 700; font-size: 13.5px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 16px;
+    background: var(--surface-sunken); border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    font: var(--text-body); font-weight: 600; cursor: pointer;
   }
-  .abr-nacional input { width: auto; margin: 0; }
   .abr-regiao { margin-bottom: 16px; }
-  .abr-regiao-titulo { font-size: 12px; font-weight: 700; color: var(--azul); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 8px; }
-  .abr-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px 10px; }
-  .abr-item { display: flex; align-items: center; gap: 7px; font-size: 13.5px; cursor: pointer; }
-  .abr-item input { width: auto; margin: 0; }
+  .abr-regiao-titulo { font: var(--text-label); color: var(--text-secondary); margin: 0 0 8px; }
+  .abr-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px 12px; }
+  .abr-item { display: flex; align-items: center; gap: 8px; font: var(--text-body); cursor: pointer; margin: 0; }
   .segmento-lista {
-    max-height: 320px; overflow-y: auto; border: 1px solid var(--borda); border-radius: 8px;
-    padding: 10px 12px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;
+    max-height: 320px; overflow-y: auto; border: 1px solid var(--border-default); border-radius: var(--radius-control);
+    padding: 12px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px;
   }
   .campo-honeypot { position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; }
   .campo-clicavel {
-    width: 100%; padding: 11px 12px; margin-bottom: 16px;
-    background: #0d1826; border: 1px solid var(--borda); border-radius: 8px;
-    color: var(--texto); font-size: 14px; font-family: inherit; text-align: left; cursor: pointer;
+    width: 100%; min-height: 40px; padding: 8px 12px; margin-bottom: 16px; text-align: left; cursor: pointer;
+    background: var(--surface-default); color: var(--text-primary);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-control);
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
   }
-  .campo-clicavel:hover { border-color: var(--azul); }
-  .campo-clicavel .texto.placeholder { color: var(--texto-fraco); }
-  .campo-clicavel .seta { color: var(--texto-fraco); flex-shrink: 0; }
+  .campo-clicavel:hover { background: var(--surface-sunken); }
+  .campo-clicavel .texto.placeholder { color: var(--text-secondary); }
+  .campo-clicavel .seta { color: var(--text-secondary); flex-shrink: 0; }
   .modal-cadastro-fundo {
-    display: none; position: fixed; inset: 0; background: rgba(5,10,16,0.72);
-    z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    display: none; position: fixed; inset: 0; background: rgba(11,16,32,0.5);
+    z-index: 200; align-items: center; justify-content: center; padding: 16px;
   }
   .modal-cadastro-fundo.aberto { display: flex; }
+  /* Sobreposição: a única sombra do DS fica aqui. */
   .modal-cadastro {
-    background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio);
-    width: 100%; max-width: 460px; max-height: 86vh; overflow-y: auto; padding: 24px;
+    background: var(--surface-raised); border: 1px solid var(--border-default); border-radius: var(--radius-modal);
+    box-shadow: var(--shadow-overlay); width: 100%; max-width: 460px; max-height: 86vh; overflow-y: auto; padding: 24px;
   }
-  .modal-cadastro-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  .modal-cadastro-topo h3 { margin: 0; font-size: 16px; }
-  .modal-cadastro-topo button { background: none; border: none; color: var(--texto-fraco); font-size: 22px; cursor: pointer; line-height: 1; padding: 4px; }
-  .modal-cadastro-rodape { display: flex; justify-content: flex-end; margin-top: 6px; }
-  .modal-cadastro-rodape button { width: auto; padding: 10px 22px; }
+  .modal-cadastro-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+  .modal-cadastro-topo h3 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+  .modal-cadastro-topo button { background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; line-height: 1; padding: 8px; border-radius: var(--radius-control); }
+  .modal-cadastro-topo button:hover { background: var(--surface-sunken); color: var(--text-primary); }
+  .modal-cadastro-rodape { display: flex; justify-content: flex-end; margin-top: 8px; }
+  .modal-cadastro-rodape button { width: auto; }
   .campo-termos {
-    display: flex; align-items: flex-start; gap: 10px; margin: 4px 0 20px;
-    font-size: 13px; color: var(--texto-fraco); line-height: 1.5;
+    display: flex; align-items: flex-start; gap: 8px; margin: 4px 0 20px;
+    font: var(--text-body); color: var(--text-secondary);
   }
-  .campo-termos input { width: auto; margin: 2px 0 0; flex-shrink: 0; }
-  .campo-termos a { color: var(--azul); text-decoration: none; }
-  .campo-termos a:hover { text-decoration: underline; }
+  .campo-termos input { margin-top: 3px; }
+  .captcha-turnstile { max-width: 100%; }
+  .captcha-aviso { font: var(--text-label); color: var(--text-secondary); margin: 0 0 16px; }
   button.criar {
-    width: 100%; padding: 12px; background: var(--laranja); color: #1a1005;
-    border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer;
+    width: 100%; height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: var(--radius-control);
+    background: var(--action-strong); color: var(--action-on); font-weight: 500; font-size: 14px; cursor: pointer;
   }
-  button.criar:hover { filter: brightness(1.08); }
-  button.criar:disabled { opacity: 0.6; cursor: default; }
-  .aviso { margin-top: 16px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
-  .aviso.erro { background: rgba(232,97,122,0.12); border: 1px solid var(--vermelho); color: #ffb3c1; }
-  .aviso.ok { background: rgba(52,193,124,0.12); border: 1px solid var(--verde); color: #a6f0c6; }
-  .rodape-link { text-align: center; margin-top: 20px; font-size: 13px; color: var(--texto-fraco); }
-  .rodape-link a { color: var(--azul); text-decoration: none; }
-  .rodape-link a:hover { text-decoration: underline; }
-  .rodape-legal { text-align: center; margin-top: 18px; font-size: 12px; color: var(--texto-fraco); }
-  .rodape-legal a { color: var(--texto-fraco); text-decoration: underline; margin: 0 6px; }
+  button.criar:hover { background: var(--action-strong-hover); }
+  button.criar:disabled { background: var(--surface-sunken); color: var(--text-disabled); border-color: var(--border-default); cursor: not-allowed; }
+  /* Aviso: cor + texto + sinal (estado nunca só por cor). */
+  .aviso { margin-top: 16px; padding: 12px 16px; border-radius: var(--radius-card); border: 1px solid; display: none; gap: 8px; }
+  .aviso::before { font-weight: 700; flex: none; }
+  .aviso.erro { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+  .aviso.erro::before { content: "!"; }
+  .aviso.ok { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+  .aviso.ok::before { content: "✓"; }
+  .rodape-link { text-align: center; margin-top: 24px; color: var(--text-secondary); }
+  .rodape-legal { text-align: center; margin-top: 16px; font: var(--text-label); color: var(--text-secondary); }
+  .rodape-legal a { color: var(--text-secondary); margin: 0 6px; }
+  .rodape-legal a:hover { color: var(--action-text); }
 
-  /* Tablet (768px) */
-  @media (max-width: 768px) {
-    body { padding: 16px; align-items: flex-start; }
-  }
-  /* Celular grande (414px) e pequeno (375px): campos e botões ocupam 100% da
-     largura sem gerar overflow horizontal; a dupla de campos vira 1 coluna. */
+  /* Celular grande (414px) e pequeno (375px): campos ocupam 100% sem overflow; a dupla vira 1 coluna. */
   @media (max-width: 480px) {
-    body { padding: 10px; }
-    .caixa { padding: 22px 18px; }
+    body { padding: 12px; }
+    .caixa { padding: 20px 16px; }
     .linha-dupla { grid-template-columns: 1fr; gap: 0; }
     .linha-dupla > div { margin-bottom: 16px; }
-    .modal-cadastro { max-width: 92vw !important; padding: 18px; }
+    .modal-cadastro { padding: 16px; }
   }
-  .rodape-legal a:hover { color: var(--azul); }
 </style>
 </head>
 <body>
-  <div class="caixa">
-    <div class="logo-topo">
-      <img src="logo-icone-branco.svg" alt="LicitaPlena">
-      <span>LicitaPlena</span>
+  <main class="caixa">
+    <div class="topo">
+      <a href="index.html" class="marca"><span class="placa"><img src="logo-icone.svg" alt=""></span>LicitaPlena</a>
+      <button type="button" class="btn btn-ter" id="tema">Tema escuro</button>
     </div>
     <h1>Cadastre-se gratuitamente</h1>
-    <p class="sub" style="color:var(--laranja);font-weight:700;">Experimente todas as ferramentas do LicitaPlena por 5 dias gratuitos.</p>
+    <p class="sub destaque">Experimente todas as ferramentas do LicitaPlena por 5 dias gratuitos.</p>
     <p class="sub">Seu cadastro fica em análise até ser aprovado — quanto mais completo, mais rápido conseguimos avaliar e liberar seu acesso.</p>
 
     <form id="form-cadastro">
@@ -200,7 +190,7 @@
         </div>
         <div>
           <label for="telefone">Telefone / Celular</label>
-          <input type="text" id="telefone" placeholder="(00) 00000-0000">
+          <input type="text" id="telefone" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000">
         </div>
       </div>
 
@@ -211,7 +201,7 @@
       <div class="linha-dupla">
         <div>
           <label for="cnpj">CNPJ</label>
-          <input type="text" id="cnpj" placeholder="00.000.000/0000-00">
+          <input type="text" id="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00">
         </div>
         <div>
           <label for="porte_empresa">Porte da empresa</label>
@@ -229,13 +219,13 @@
       <label for="campo-segmento-display">Atividades de interesse</label>
       <button type="button" id="campo-segmento-display" class="campo-clicavel">
         <span class="texto placeholder">Selecionar segmento e atividades</span>
-        <span class="seta">&#9662;</span>
+        <span class="seta" aria-hidden="true">&#9662;</span>
       </button>
 
       <label for="campo-estados-display">Estados de interesse</label>
       <button type="button" id="campo-estados-display" class="campo-clicavel">
         <span class="texto placeholder">Selecionar estados</span>
-        <span class="seta">&#9662;</span>
+        <span class="seta" aria-hidden="true">&#9662;</span>
       </button>
 
       <h2 class="secao">Perfil de uso</h2>
@@ -301,16 +291,18 @@
       <label for="senha">Crie uma senha</label>
       <div class="campo-senha-wrap" style="margin-bottom:16px;">
         <input type="password" id="senha" required minlength="6" autocomplete="new-password">
-        <button type="button" class="btn-mostrar-senha" data-alvo="senha" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <button type="button" class="btn-mostrar-senha" data-alvo="senha" aria-controls="senha" aria-pressed="false" aria-label="Mostrar senha" title="Mostrar senha">
+          <svg class="olho-aberto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
         </button>
       </div>
 
       <label for="senha_confirmar">Confirmar senha</label>
       <div class="campo-senha-wrap" style="margin-bottom:16px;">
         <input type="password" id="senha_confirmar" required minlength="6" autocomplete="new-password">
-        <button type="button" class="btn-mostrar-senha" data-alvo="senha_confirmar" title="Mostrar/ocultar senha" aria-label="Mostrar ou ocultar senha">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <button type="button" class="btn-mostrar-senha" data-alvo="senha_confirmar" aria-controls="senha_confirmar" aria-pressed="false" aria-label="Mostrar senha" title="Mostrar senha">
+          <svg class="olho-aberto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg class="olho-fechado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
         </button>
       </div>
 
@@ -319,12 +311,13 @@
         <span>Li e concordo com os <a href="termos-de-uso.html" target="_blank">Termos de uso</a> e a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> da LicitaPlena.</span>
       </label>
 
-      <div class="h-captcha" data-sitekey="E358601C-A03C-4316-9F24-B3DC4316992E" style="margin-bottom:16px;"></div>
+      <div class="captcha-turnstile"></div>
+      <p class="captcha-aviso" role="alert" hidden></p>
 
       <button type="submit" class="criar" id="btn-criar">Criar cadastro</button>
     </form>
 
-    <div class="aviso" id="aviso"></div>
+    <div class="aviso" id="aviso" role="status" aria-live="polite"></div>
 
     <div class="rodape-link">
       Já tem conta? <a href="login.html">Acessar conta</a>
@@ -332,13 +325,13 @@
     <div class="rodape-legal">
       <a href="termos-de-uso.html">Termos de uso</a>·<a href="politica-privacidade.html">Privacidade</a>·<a href="politica-cookies.html">Cookies</a>
     </div>
-  </div>
+  </main>
 
   <div class="modal-cadastro-fundo" id="modal-segmento-fundo">
-    <div class="modal-cadastro">
+    <div class="modal-cadastro" role="dialog" aria-modal="true" aria-labelledby="modal-segmento-titulo">
       <div class="modal-cadastro-topo">
-        <h3>Adicione atividades</h3>
-        <button type="button" id="modal-segmento-fechar" title="Fechar">&#10005;</button>
+        <h3 id="modal-segmento-titulo">Adicione atividades</h3>
+        <button type="button" id="modal-segmento-fechar" title="Fechar" aria-label="Fechar">&#10005;</button>
       </div>
       <label>Selecione os segmentos (pode marcar mais de um)</label>
       <div class="segmento-lista" id="modal-segmento-lista"></div>
@@ -351,10 +344,10 @@
   </div>
 
   <div class="modal-cadastro-fundo" id="modal-abrangencia-fundo">
-    <div class="modal-cadastro" style="max-width:520px;">
+    <div class="modal-cadastro" style="max-width:520px;" role="dialog" aria-modal="true" aria-labelledby="modal-abrangencia-titulo">
       <div class="modal-cadastro-topo">
-        <h3>Selecione a abrangência de interesse</h3>
-        <button type="button" id="modal-abrangencia-fechar" title="Fechar">&#10005;</button>
+        <h3 id="modal-abrangencia-titulo">Selecione a abrangência de interesse</h3>
+        <button type="button" id="modal-abrangencia-fechar" title="Fechar" aria-label="Fechar">&#10005;</button>
       </div>
       <label class="abr-nacional">
         <input type="checkbox" id="abr-nacional"> Nacional (todos os estados)
@@ -367,21 +360,30 @@
   </div>
 
 <script>
+  // Alternar tema: grava na mesma chave que o sistema lê.
+  (function () {
+    const b = document.getElementById("tema");
+    const pintar = () => { b.textContent = document.documentElement.dataset.theme === "dark" ? "Tema claro" : "Tema escuro"; };
+    pintar();
+    b.addEventListener("click", () => {
+      const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = t;
+      try { localStorage.setItem("licitaplena_tema", t === "dark" ? "escuro" : "claro"); } catch (e) { /* preferência opcional */ }
+      pintar();
+    });
+  })();
+</script>
+<script>
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Ícone de olho: alterna type="password" <-> type="text" no campo alvo.
-  document.querySelectorAll(".btn-mostrar-senha").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const alvo = document.getElementById(btn.dataset.alvo);
-      alvo.type = alvo.type === "password" ? "text" : "password";
-    });
-  });
+  SenhaCaptchaUi.ligarOlhosDaSenha(document); // ícone de olho da senha
+  const captcha = SenhaCaptchaUi.montarTurnstile(document, window); // Turnstile; sem chave configurada fica desligado
 
   function mostrarAviso(texto, tipo) {
     const el = document.getElementById("aviso");
     el.textContent = texto;
     el.className = "aviso " + tipo;
-    el.style.display = "block";
+    el.style.display = "flex";
   }
 
   const ESTADOS_BR = [
@@ -454,6 +456,10 @@
   });
   document.getElementById("modal-segmento-fechar").addEventListener("click", () => fecharModal("modal-segmento-fundo"));
   document.getElementById("modal-abrangencia-fechar").addEventListener("click", () => fecharModal("modal-abrangencia-fundo"));
+  // Esc fecha o modal aberto (teclado), sem aplicar a seleção — igual ao botão Fechar.
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") ["modal-segmento-fundo", "modal-abrangencia-fundo"].forEach(fecharModal);
+  });
 
   const displaySegmento = document.getElementById("campo-segmento-display");
   const displayEstados = document.getElementById("campo-estados-display");
@@ -559,14 +565,8 @@
       return;
     }
 
-    const captchaToken = typeof hcaptcha !== "undefined" ? hcaptcha.getResponse() : "";
-    if (typeof hcaptcha !== "undefined" && !captchaToken) {
-      mostrarAviso("Confirme que você não é um robô antes de continuar.", "erro");
-      btn.disabled = false;
-      btn.textContent = "Criar cadastro";
-      return;
-    }
-
+    // Token do Turnstile (vazio se desligado); quem exige é o Supabase. Uso único: reseta após a tentativa.
+    const captchaToken = await captcha.obterToken();
     const { error } = await sb.auth.signUp({
       email,
       password: senha,
@@ -579,15 +579,16 @@
         },
       },
     });
+    captcha.resetar();
 
     if (error) {
       mostrarAviso(
         error.message.includes("already registered") || error.message.includes("already been registered")
           ? "Esse e-mail já tem cadastro. Tente entrar na sua conta."
+          : SenhaCaptchaUi.ehErroDeCaptcha(error) ? SenhaCaptchaUi.MSG_CAPTCHA
           : "Não foi possível criar o cadastro: " + error.message,
         "erro"
       );
-      if (typeof hcaptcha !== "undefined") hcaptcha.reset();
       btn.disabled = false;
       btn.textContent = "Criar cadastro";
       return;

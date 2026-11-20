@@ -1,0 +1,138 @@
+{
+  "verificadoEmUtc": "2026-11-01T17:54:48.0338360Z",
+  "deltaSha256": "1619e78b9155ba9443b6080fa7d082f3c335d8e8b07015d5d894462149df4c94",
+  "sintaxeGeradorTeste": "aprovada",
+  "evidenciaTestes": {
+    "checks": 595,
+    "objetosPreservados": 488,
+    "dadosPreservados": 18,
+    "reexecucaoPelaCoordenacao": false
+  },
+  "protegidos": [
+    {
+      "path": "painel.html",
+      "sha256": "c8bba8972a8aa8960e7ee13456566da9852d5a51fe6b53c7b433aae4c6aa489b",
+      "igual": true
+    },
+    {
+      "path": "login.html",
+      "sha256": "de85cff7e2b6c9f775de9d2d9fddb1609eb85f548b9031b2a8170dcf8a686a32",
+      "igual": true
+    },
+    {
+      "path": "cadastro.html",
+      "sha256": "40f9f2092003ea0e13cb480002c854e8883f89a5108c7a225d6a7609345a9002",
+      "igual": true
+    },
+    {
+      "path": "supabase-config.js",
+      "sha256": "4fbf2bf11f3853747c715db55e78c9c023e31b784b45d9c30707dae2b5a0309e",
+      "igual": true
+    },
+    {
+      "path": "scripts/boletim_editais.py",
+      "sha256": "7c99de0ddf60d4aa0e70d307bf2e81830235ec8c00014d4b0db1f849dafb4219",
+      "igual": true
+    },
+    {
+      "path": ".github/workflows/boletim-editais.yml",
+      "sha256": "a5837ba1b19452d5dd9767ffa83906be7cf47731ef2eb304868a31ea68fea3f0",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_auth.js",
+      "sha256": "7f8756c5fe1d6c6177acdc77d398f05e9c1697c4620a98bd0575adb003d47a93",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/enviar-resumo-edital.js",
+      "sha256": "3ac9be4d945a7aae3d5d9868180c8a3ac2a4a475cc7fb307cdcbdaee6058f60e",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/ia-edital.mjs",
+      "sha256": "c8f437a0e4cad1953d27e2e3c8fb50f7eb00c289c548d1c0985ecf086eba88f2",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/ia-resumo-background.mjs",
+      "sha256": "c664b91ed4cd03d28e59346d182ed47830f95c5c46259c9d3822546a81908ede",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/lib/ia-edital.js",
+      "sha256": "c54df5158353d63eb43a82bed100178fbdd47dd45953226c12ce14d5744d58dc",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_resumo_documental.js",
+      "sha256": "995ec16c5bcad115bb01c72564c5ccd6cf29d87ca63c9f1e20acfd5a275ef31a",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_resumo_evidencias.js",
+      "sha256": "5eef04d2cf312076e8f13194b6e4150748d06a5282b6f0af37475bb4980c7dba",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_resumo_gateway.js",
+      "sha256": "8d27691862a6007629e1801eebf34860106b4f70555f8b6f22cb687ef058e814",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_resumo_gateway_contrato.js",
+      "sha256": "d6908c016c4b60ec5c512015e62180c694ff8808d9b3aaccc214b4afa0e542aa",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_resumo_progressivo.js",
+      "sha256": "b8506c2e93ee5fb2241d1ec6a9478b5e470b1b97dbed8c7ab380c2b2fdc009a8",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_defesa_modelos.js",
+      "sha256": "df0e87c569f3eca0ed5ab2fe3b1798a8724b49d6a6fb77871ed3a7bc93f3fab1",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/gerar-checklist.js",
+      "sha256": "302cd974ea8a04cdfd03e391e4f4087b50a9c9ed1ccb2b14c49a2b7d6b151c42",
+      "igual": true
+    },
+    {
+      "path": "netlify/functions/_kit_documentos.js",
+      "sha256": "6ef11fd484adf708d258d825606250959dec71c639784b1ddd9016ce1e57a725",
+      "igual": true
+    },
+    {
+      "path": "scripts/atualizar_dados.js",
+      "sha256": "5ecad3e65dddfdfd4bc614d1c8439b80633bd25f98066baa70166c762c7e782b",
+      "igual": true
+    }
+  ],
+  "fontes": [
+    {
+      "path": "supabase/identificacao_empresa.sql",
+      "sha256Normalizado": "832158202ec9e57baf38d49a9a6761bbccd10fcce3fc77d85f83b0a3defead9e",
+      "igual": true
+    },
+    {
+      "path": "supabase/seguranca_operacao.sql",
+      "sha256Normalizado": "2c15d1b4773d86c2e779433b63491ef07119e95e43fe36af518ed0d4dd43bf4d",
+      "igual": true
+    },
+    {
+      "path": "supabase/kit_documentos.sql",
+      "sha256Normalizado": "7b2ef8ed7676e45acd9708b56d95bb5b6d39ec44ecc54455d796daa2e148131f",
+      "igual": true
+    },
+    {
+      "path": "supabase/verificar_kit_prepublicacao.sql",
+      "sha256Normalizado": "2c4023cb0cac4e9b5fa29afee68398a0b4e402663dee9cd9fa580e7ea19178cf",
+      "igual": true
+    }
+  ],
+  "processosWorkerd": [],
+  "publicacao": false,
+  "escritaRemota": false
+}

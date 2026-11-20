@@ -1,0 +1,124 @@
+[
+  {
+    "name": "E1 A-B-A durante gravação deve descartar resposta",
+    "pass": true,
+    "actual": {
+      "list": 0,
+      "status": "",
+      "disabled": false,
+      "current": "Peça em edição\n\nNova: Declaração (Anexo III)\n\nModelo: Declaração (Anexo III) · edite na aba Modelos e proposta\n\n…\nAinda não salvo\n\nAlterar qualquer dado invalida a revisão desta versão. Salvar incompleto é permitido; revisar e baixar não.\n\nSalvar rascunho\nNovo documento\nSimular falha ao salvar (enquanto marcado)\nSimular versão alterada no servidor (enquanto marcado)",
+      "ctx": "e1|p1",
+      "role": "editor",
+      "transitionMs": 15
+    }
+  },
+  {
+    "name": "E2 sair-reentrar durante gravação deve descartar resposta",
+    "pass": true,
+    "actual": {
+      "list": 0,
+      "status": "",
+      "disabled": false,
+      "current": "Peça em edição\n\nNova: Declaração (Anexo III)\n\nModelo: Declaração (Anexo III) · edite na aba Modelos e proposta\n\n…\nAinda não salvo\n\nAlterar qualquer dado invalida a revisão desta versão. Salvar incompleto é permitido; revisar e baixar não.\n\nSalvar rascunho\nNovo documento\nSimular falha ao salvar (enquanto marcado)\nSimular versão alterada no servidor (enquanto marcado)",
+      "ctx": "e1|p1",
+      "role": "editor",
+      "transitionMs": 36
+    }
+  },
+  {
+    "name": "E3 processo P1-P2-P1 durante gravação deve descartar resposta",
+    "pass": true,
+    "actual": {
+      "list": 0,
+      "status": "",
+      "disabled": false,
+      "current": "Peça em edição\n\nNova: Declaração (Anexo III)\n\nModelo: Declaração (Anexo III) · edite na aba Modelos e proposta\n\n…\nAinda não salvo\n\nAlterar qualquer dado invalida a revisão desta versão. Salvar incompleto é permitido; revisar e baixar não.\n\nSalvar rascunho\nNovo documento\nSimular falha ao salvar (enquanto marcado)\nSimular versão alterada no servidor (enquanto marcado)",
+      "ctx": "e1|p1",
+      "role": "editor",
+      "transitionMs": 15
+    }
+  },
+  {
+    "name": "E4 perder permissão durante gravação deve impedir commit",
+    "pass": true,
+    "actual": {
+      "list": 0,
+      "status": "",
+      "disabled": true,
+      "current": "Peça em edição\n\nNova: Declaração (Anexo III)\n\nModelo: Declaração (Anexo III) · edite na aba Modelos e proposta\n\n…\nAinda não salvo\n\nAlterar qualquer dado invalida a revisão desta versão. Salvar incompleto é permitido; revisar e baixar não.\n\nSalvar rascunho\nNovo documento\nSimular falha ao salvar (enquanto marcado)\nSimular versão alterada no servidor (enquanto marcado)",
+      "ctx": "e1|p1",
+      "role": "leitor",
+      "transitionMs": 6
+    }
+  },
+  {
+    "name": "E5 trocar modelo durante gravação não pode travar Salvar",
+    "pass": true,
+    "actual": {
+      "list": 0,
+      "status": "",
+      "disabled": false,
+      "current": "Peça em edição\n\nNova: Proposta de preços (Anexo II)\n\nModelo: Proposta de preços (Anexo II) · edite na aba Modelos e proposta\n\n…\nAinda não salvo\n\nAlterar qualquer dado invalida a revisão desta versão. Salvar incompleto é permitido; revisar e baixar não.\n\nSalvar rascunho\nNovo documento\nSimular falha ao salvar (enquanto marcado)\nSimular versão alterada no servidor (enquanto marcado)",
+      "ctx": "e1|p1",
+      "role": "editor"
+    }
+  },
+  {
+    "name": "E6 End deve mostrar aba ativa 375px",
+    "pass": true,
+    "actual": {
+      "text": "Peças salvas",
+      "selected": "true",
+      "left": 267.265625,
+      "right": 363.40625,
+      "width": 375,
+      "tablistLeft": 12,
+      "tablistRight": 363,
+      "scrollLeft": 339,
+      "fullyVisible": true
+    }
+  },
+  {
+    "name": "E6 End deve mostrar aba ativa 630px",
+    "pass": true,
+    "actual": {
+      "text": "Peças salvas",
+      "selected": "true",
+      "left": 522.265625,
+      "right": 618.40625,
+      "width": 630,
+      "tablistLeft": 12,
+      "tablistRight": 618,
+      "scrollLeft": 84,
+      "fullyVisible": true
+    }
+  },
+  {
+    "name": "E6 End deve mostrar aba ativa 704px",
+    "pass": true,
+    "actual": {
+      "text": "Peças salvas",
+      "selected": "true",
+      "left": 588.265625,
+      "right": 688.40625,
+      "width": 704,
+      "tablistLeft": 16,
+      "tablistRight": 688,
+      "scrollLeft": 42,
+      "fullyVisible": true
+    }
+  },
+  {
+    "name": "E7 iframe630 End deve mostrar aba ativa",
+    "pass": true,
+    "actual": {
+      "text": "Peças salvas",
+      "selected": "true",
+      "left": 522.265625,
+      "right": 618.40625,
+      "width": 630,
+      "scrollLeft": 84,
+      "fullyVisible": true
+    }
+  }
+]

@@ -21,6 +21,27 @@ function ambiente() {
   return { host, contexto, registros, achar };
 }
 
+test('perfil confirmado é aplicado só por ação e exportação confere perfil atual sem apagar edição', async () => {
+  globalThis.EmpresaIdentificacaoUI = require('../empresa-identificacao-ui');
+  const a = ambiente(); let exportacoes = 0;
+  const empresa = {id:'empresaA',razao_social:'Empresa Canônica',cnpj:'12345678000190'};
+  let perfil = {status:'confirmado',versao:1,dados:{endereco:'Rua Um',representante:'Pessoa Um',cargo:'Administrador'}};
+  a.contexto.identificacaoEmpresa = async () => ({empresa,perfil,documentos:[]});
+  a.contexto.exportar = async () => { exportacoes++; };
+  renderizar(a.host,a.contexto);
+  const texto = a.achar(e => e.id === 'defesa-minuta-texto');
+  texto.value = 'Destinatário e identificação da interessada: [preencher e conferir]\nCorpo editado';
+  await a.achar(e => e.textContent === 'Carregar identificação salva').onclick();
+  assert.doesNotMatch(texto.value,/Empresa Canônica/);
+  await a.achar(e => e.textContent === 'Aplicar identificação confirmada à minuta').onclick();
+  assert.match(texto.value,/Empresa Canônica/); assert.match(texto.value,/Corpo editado/);
+  const revisao = a.achar(e => e.id === 'defesa-minuta-revisada'); revisao.checked=true; revisao.onchange();
+  perfil = {...perfil,versao:2,dados:{...perfil.dados,endereco:'Rua Dois'}};
+  await a.achar(e => e.textContent === 'Exportar minuta .docx').onclick();
+  assert.equal(exportacoes,0); assert.equal(revisao.checked,false); assert.match(texto.value,/Rua Um/);
+  delete globalThis.EmpresaIdentificacaoUI;
+});
+
 test('Central bloqueia OCR não revisado e leitura parcial sem chamada e atualiza cobertura com o mesmo hash', async () => {
   const a = ambiente(); let chamadas = 0;
   a.contexto.analisar = async () => { chamadas++; };

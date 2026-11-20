@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- Sistema CRM do LicitaPlena em produção (/sistema). Mesma marcação de docs/qa/app-comercial.html, sem o selo
+     de homologação; data-modo="producao" faz o app-comercial.js usar Supabase Auth em vez das rotas /qa/*.
+     Sem login próprio: sem sessão Supabase, app-comercial.js manda para /login?voltar=/sistema, e o login.html
+     devolve para cá depois de entrar (mesma sessão Supabase do site). -->
+<html lang="pt-BR" data-theme="light" data-modo="producao">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LicitaPlena · Sistema</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="ds-tokens.css">
+<link rel="stylesheet" href="kit-documentos.css">
+<link rel="stylesheet" href="operacao-identificacao.css">
+<link rel="stylesheet" href="app-comercial.css">
+<link rel="stylesheet" href="agenda-ics.css">
+<link rel="stylesheet" href="menu-lateral.css">
+<link rel="stylesheet" href="checklist-esteira.css">
+<link rel="stylesheet" href="licitacao-anterior.css">
+<link rel="stylesheet" href="mercado-comprasgov.css">
+<link rel="stylesheet" href="robo-lances.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+<header class="app-topo">
+  <div class="app-marca-linha">
+    <button id="nav-gaveta-btn" type="button" aria-controls="menu-principal" aria-expanded="false">Menu</button>
+    <div class="app-marca">LicitaPlena</div>
+  </div>
+  <div class="app-controles">
+    <label class="app-empresa" id="empresa-bloco" hidden>Empresa ativa
+      <select id="empresa-ativa"></select>
+    </label>
+    <label class="app-empresa" id="processo-bloco" hidden>Processo
+      <select id="processo-ativo"></select>
+    </label>
+    <button id="tema" type="button" aria-label="Alternar tema claro ou escuro">Tema</button>
+    <button id="sair" type="button" hidden>Sair</button>
+    <button id="tentar" type="button" hidden>Tentar de novo</button>
+  </div>
+</header>
+<div class="shell">
+<!-- Menu lateral: mesma estrutura e itens do menu do painel.html (duplicação intencional entre páginas). Comportamento em menu-lateral.js. -->
+<nav id="menu-principal" aria-label="Menu principal">
+  <button id="nav-colapsar-btn" type="button" title="Recolher menu" aria-controls="menu-principal">
+    <span class="nav-ico" aria-hidden="true">&#171;</span><span class="nav-label">Recolher</span>
+  </button>
+  <a href="/sistema" class="ativo" aria-current="page" title="Hoje"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-house"></use></svg></span><span class="nav-label">Hoje</span></a>
+  <a href="painel.html#boletim" title="Boletim"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-clipboard-text"></use></svg></span><span class="nav-label">Boletim</span></a>
+  <a href="painel.html#oportunidades" title="Encontrar Licitações"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-magnifying-glass"></use></svg></span><span class="nav-label">Encontrar Licitações</span></a>
+  <a href="painel.html#diagnostico" title="Inteligência de Mercado"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Inteligência de Mercado</span></a>
+  <a href="prospeccao.html" title="Prospecção"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-chart-bar"></use></svg></span><span class="nav-label">Prospecção</span></a>
+  <a href="painel.html#empresa" title="Analisar concorrente"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Analisar concorrente</span></a>
+  <a href="painel.html#transparencia" title="Convênios e Emendas Federais"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-handshake"></use></svg></span><span class="nav-label">Convênios e Emendas Federais</span></a>
+  <a href="painel.html#precos" title="Pesquisa de Preços"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Pesquisa de Preços</span></a>
+  <a href="bdi.html" title="Calculadora de BDI"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-coins"></use></svg></span><span class="nav-label">Calculadora de BDI</span></a>
+  <a href="sinapi.html" title="Preços SINAPI"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-buildings"></use></svg></span><span class="nav-label">Preços SINAPI</span></a>
+  <a href="painel.html#kanban" title="Funil"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folders"></use></svg></span><span class="nav-label">Funil</span></a>
+  <a href="processos.html" title="Processos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-folder-open"></use></svg></span><span class="nav-label">Processos</span></a>
+  <a href="operacao.html" title="Minhas empresas e documentos"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-files"></use></svg></span><span class="nav-label">Minhas empresas e documentos</span></a>
+  <a href="painel.html#juridico" title="Jurídico &amp; Dúvidas"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-scales"></use></svg></span><span class="nav-label">Jurídico &amp; Dúvidas</span></a>
+  <a href="painel.html#status" title="Status"><span class="nav-ico"><svg class="icone-ph" aria-hidden="true"><use href="menu-icones.svg#ph-circle"></use></svg></span><span class="nav-label">Status</span></a>
+</nav>
+<div class="nav-gaveta-fundo" id="nav-gaveta-fundo" hidden></div>
+<main class="app-principal">
+  <section id="hoje" hidden aria-labelledby="hoje-titulo">
+    <h1 id="hoje-titulo" class="app-titulo" tabindex="-1">Hoje</h1>
+    <p id="hoje-estado" class="app-apoio" role="status" aria-live="polite"></p>
+    <div id="hoje-alertas" class="hoje-alertas" hidden></div>
+    <div id="hoje-lista" class="hoje-lista"></div>
+    <section id="sem-empresa" class="app-cartao" aria-labelledby="sem-empresa-titulo" hidden>
+      <h2 id="sem-empresa-titulo" class="app-subtitulo">Cadastre sua empresa</h2>
+      <p class="app-apoio">Para acompanhar processos e preparar propostas, cadastre primeiro a empresa que vai participar das licitações.</p>
+      <a class="app-primario app-botao-link" href="operacao.html">Cadastrar minha empresa</a>
+    </section>
+    <section id="novo-processo-bloco" class="app-cartao novo-processo" aria-labelledby="novo-processo-titulo" hidden>
+      <h2 id="novo-processo-titulo" class="app-titulo" tabindex="-1">Novo processo</h2>
+      <p id="novo-processo-empresa" class="app-apoio"></p>
+      <form id="form-novo-processo" novalidate>
+        <label>Objeto <textarea name="objeto" maxlength="500" required></textarea></label>
+        <label>Número do processo <input name="numero" maxlength="60" autocomplete="off"></label>
+        <label>Órgão <input name="orgao" maxlength="200" autocomplete="off"></label>
+        <label>Modalidade <input name="modalidade" maxlength="60" autocomplete="off"></label>
+        <p id="novo-processo-erro" class="app-aviso" role="alert"></p>
+        <div class="novo-processo-acoes">
+          <button id="novo-processo-salvar" class="app-primario" type="submit">Cadastrar processo</button>
+          <button id="novo-processo-cancelar" type="button">Cancelar</button>
+        </div>
+      </form>
+    </section>
+    <p class="app-apoio hoje-indisponivel">Extensão de navegador e lances não estão disponíveis nesta versão do sistema.</p>
+  </section>
+  <section id="area" hidden aria-labelledby="area-titulo">
+    <button id="voltar-hoje" type="button">Voltar para Hoje</button>
+    <h1 id="area-titulo" class="app-titulo" tabindex="-1">Documentos e propostas</h1>
+    <p id="contexto-atual" class="app-apoio"></p>
+    <div id="contexto-portal" hidden></div>
+    <div id="identificacao" tabindex="-1"></div>
+    <section id="checklist-esteira" class="app-cartao" aria-label="Checklist do edital" hidden></section>
+    <section id="licitacao-anterior" class="app-cartao" aria-label="Licitação anterior" hidden></section>
+    <section id="itens-processo" class="app-cartao itens-processo" aria-label="Itens do processo" hidden></section>
+    <section id="robo-lances" class="app-cartao" aria-labelledby="robo-titulo" hidden></section>
+    <section id="portal-cliente" class="app-cartao portal-cliente" aria-labelledby="portal-titulo" hidden></section>
+    <div id="kit"></div>
+  </section>
+  <p id="app-aviso" class="app-aviso" role="status" aria-live="polite"></p>
+</main>
+</div>
+<script src="kit-documentos-ui.js"></script>
+<script src="empresa-identificacao-ui.js"></script>
+<script src="operacao-identificacao.js"></script>
+<script src="precificacao-item.js"></script>
+<script src="reforma-tributaria.js"></script>
+<script src="curva-abc.js"></script>
+<script src="itens-processo-ui.js"></script>
+<script src="planilha-itens.js"></script>
+<script src="catalogo-produtos.js"></script>
+<script src="catalogo-usar-ui.js"></script>
+<script src="mercado-comprasgov.js"></script>
+<script src="portal-cliente-ui.js"></script>
+<script src="declaracoes-modelos.js"></script>
+<script src="checklist-esteira-ui.js"></script>
+<script src="sancoes-ui.js"></script>
+<script src="licitacao-anterior-ui.js"></script>
+<script src="motor-lances.js"></script>
+<script src="robo-lances.js"></script>
+<script src="robo-lances-ui.js"></script>
+<script src="agenda-ics.js"></script>
+<script src="portal-origem.js"></script>
+<script src="app-comercial-core.js"></script>
+<script src="app-comercial-controlador.js"></script>
+<script src="app-comercial.js"></script>
+<script src="menu-lateral.js"></script>
+</body>
+</html>

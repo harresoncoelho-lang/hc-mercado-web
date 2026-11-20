@@ -16,6 +16,7 @@ async function comFetch(fn, { logado = true, zepto = { ok: true, status: 200, te
   process.env.ZEPTOMAIL_TOKEN = "chave-teste";
   delete process.env.EMAIL_DUVIDAS;
   global.fetch = async (url, opcoes) => {
+    if (logado && String(url).startsWith(SUPABASE + "/rest/v1/clientes?")) return { ok: true, status: 200, json: async () => [{ status: "aprovado" }] };
     if (String(url).startsWith(SUPABASE)) return logado ? { ok: true, status: 200, json: async () => ({ id: "u1", email: "x@y.z" }) } : { ok: false, status: 401, json: async () => ({}) };
     emails.push({ url, corpo: JSON.parse(opcoes.body) });
     return zepto;

@@ -1,0 +1,622 @@
+/* Casca do Design System (Direção A, azul original) sobre o painel legado.
+   Cores, raios, espaçamento e tipografia vêm de ds-tokens.css (o mesmo de login/cadastro/sistema).
+   O tema segue data-theme no <html>, que o painel liga junto com a classe legada "tema-claro".
+   Só vale na tela: impressão, e-mail e DOCX continuam com o estilo próprio (@media print do painel). */
+@media screen {
+  /* ---- 1. Variáveis legadas apontando para os tokens (o CSS antigo inteiro passa a herdar) ---- */
+  :root, html.tema-claro {
+    --azul: var(--action-strong);
+    --azul-escuro: var(--brand-navy);
+    --azul-texto: var(--action-text);
+    /* Laranja legado = "atenção" (Status: "verificar"; coluna "Tenho interesse"). Os usos como
+       destaque de marca são sobrescritos abaixo, um a um. */
+    --laranja: var(--attention-text);
+    --laranja-forte: var(--attention-text);
+    --fundo: var(--surface-page);
+    --cartao: var(--surface-default);
+    --cartao-claro: var(--surface-default);
+    --borda: var(--border-default);
+    --texto: var(--text-primary);
+    --texto-fraco: var(--text-secondary);
+    --verde: var(--success-text);
+    --vermelho: var(--error-text);
+    --raio: var(--radius-card);
+    --raio-pq: var(--radius-control);
+    --sombra: none;
+    --sombra-forte: none;
+    --fundo-fraco: var(--surface-sunken);
+    --fundo-elevado: var(--surface-sunken);
+    --fundo-elevado-hover: var(--surface-sunken);
+    --fundo-hover: var(--surface-sunken);
+    --input-borda: var(--border-strong);
+    --aviso-fundo: var(--attention-bg);
+    --aviso-texto: var(--attention-text);
+    --chip-fundo: var(--info-bg);
+    --chip-texto: var(--info-text);
+    --chip-texto-medio: var(--action-text);
+    --chip-borda: var(--info-border);
+    --vermelho-fundo-hover: var(--error-bg);
+    --scrollbar-hover: var(--border-strong);
+    --overlay-hover: var(--surface-sunken);
+    --overlay-fraco: var(--surface-sunken);
+    --zebra-tint: transparent;
+    --laranja-texto: var(--attention-text);
+    --laranja-forte-texto: var(--attention-text);
+    --verde-texto: var(--success-text);
+    --vermelho-texto: var(--error-text);
+    --aviso-neutro-borda: var(--border-default);
+    --aviso-neutro-texto: var(--text-secondary);
+    --scrim: rgba(11, 16, 32, 0.5);
+  }
+  [data-theme="dark"] { color-scheme: dark; }
+  [data-theme="light"] { color-scheme: light; }
+
+  /* ---- 2. Base ---- */
+  body {
+    background: var(--surface-page); background-attachment: scroll;
+    font: var(--text-body); color: var(--text-primary);
+  }
+  button, input, select, textarea { font-family: var(--font-sans); }
+  :is(button, a, input, textarea, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  ::selection { background: var(--action-tint); color: var(--text-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: var(--radius-control); }
+  a { color: var(--action-text); }
+  h2, .conteudo-mercado h2 {
+    font: var(--text-section); color: var(--text-primary);
+    border: 0; padding: 0; margin: 32px 0 16px; letter-spacing: 0;
+  }
+  h2:first-of-type { margin-top: 0; }
+  h2 .icone-ph, .dash-painel-titulo .icone-ph { color: var(--text-secondary); }
+  .dica-clique, .carregando { color: var(--text-secondary); font: var(--text-body); font-size: 13px; }
+  .rodape { color: var(--text-secondary); border-top: 1px solid var(--border-default); }
+
+  /* ---- 3. Topo ---- */
+  header {
+    background: var(--surface-default); border-bottom: 1px solid var(--border-default);
+    box-shadow: none; padding: 8px 24px; overflow: visible;
+  }
+  header::after { display: none; }
+  .header-marca { gap: 8px; }
+  .header-nome { color: var(--text-primary); font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: 0; }
+  /* Placa clara fixa: o azul-marinho do símbolo continua legível no tema escuro (mesma regra do login). */
+  .header-placa { display: inline-grid; place-content: center; width: 32px; height: 32px; border-radius: var(--radius-control); background: #f6f8fc; border: 1px solid #e3e8f0; flex: none; }
+  .header-placa img { width: 24px; height: 24px; display: block; }
+  .header-acoes { gap: 8px; }
+  .header-badge, .header-badge-plano {
+    height: 24px; padding: 0 8px; border-radius: var(--radius-control); border: 1px solid var(--border-default);
+    background: var(--surface-sunken); color: var(--text-secondary); font: var(--text-label); box-shadow: none;
+  }
+  .header-icone-btn {
+    display: inline-flex; align-items: center; justify-content: center; position: relative;
+    width: 40px; height: 40px; padding: 0; cursor: pointer;
+    border-radius: var(--radius-control); border: 1px solid var(--border-default);
+    background: var(--surface-default); color: var(--text-primary); font: 600 13px/16px var(--font-sans);
+  }
+  .header-icone-btn:hover { background: var(--surface-sunken); }
+  .header-usuario-nome { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font-weight: 500; }
+  .header-sair {
+    height: 40px; padding: 0 12px; border-radius: var(--radius-control); cursor: pointer;
+    border: 1px solid var(--border-strong); background: var(--surface-default); color: var(--text-primary);
+    font: 500 14px/16px var(--font-sans); white-space: nowrap;
+  }
+  .header-sair:hover { background: var(--surface-sunken); }
+  .header-bell-contador {
+    position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px;
+    align-items: center; justify-content: center; border-radius: var(--radius-control);
+    background: var(--error-strong); color: var(--error-on); font: 600 11px/18px var(--font-sans);
+  }
+  #nav-gaveta-btn { display: none; }
+  .header-flutuante {
+    position: fixed; z-index: 500; min-width: 200px; overflow: hidden;
+    background: var(--surface-raised); color: var(--text-primary);
+    border: 1px solid var(--border-default); border-radius: var(--radius-card); box-shadow: var(--shadow-overlay);
+  }
+  #header-bell-dropdown { min-width: 260px; max-width: 300px; }
+  .header-flutuante-titulo { padding: 12px 16px; border-bottom: 1px solid var(--border-default); font-weight: 600; }
+  .header-flutuante-corpo { padding: 12px 16px; color: var(--text-secondary); }
+  .menu-conta-item { color: var(--text-primary); font: 500 14px/22px var(--font-sans); padding: 8px 16px; }
+  .menu-conta-item:hover { background: var(--surface-sunken); }
+  .menu-conta-item + .menu-conta-item { border-top: 1px solid var(--border-default); }
+  #bell-ver-boletim { background: var(--action-strong) !important; color: var(--action-on) !important; border-radius: var(--radius-control) !important; height: 32px; }
+
+  /* Faixa de limite diário: aviso informativo do DS, não bloco azul sólido. */
+  .banner-limite-diario {
+    background: var(--info-bg); border-bottom: 1px solid var(--info-border); border-radius: 0;
+    box-shadow: none; padding: 8px 24px;
+  }
+  .banner-limite-texto { color: var(--info-text); font-size: 14px; }
+  .banner-limite-texto strong { color: var(--text-primary); }
+  .banner-limite-btn {
+    background: var(--action-strong); color: var(--action-on); border-radius: var(--radius-control);
+    height: 32px; padding: 0 12px; font-weight: 500;
+  }
+  .banner-limite-btn:hover { background: var(--action-strong-hover); filter: none; }
+
+  /* ---- 4. Menu lateral (AppShell/SideNav) ---- */
+  nav {
+    background: var(--surface-default); border-right: 1px solid var(--border-default);
+    width: 232px; padding: 12px 8px; gap: 2px;
+  }
+  nav button, nav a {
+    display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;
+    min-height: 36px; height: auto; padding: 6px 8px; width: 100%;
+    border: 0; border-radius: var(--radius-control); background: none;
+    color: var(--text-primary); font: 400 14px/20px var(--font-sans); text-align: left; text-decoration: none;
+    white-space: normal; cursor: pointer; box-shadow: none;
+  }
+  nav button:hover, nav a:hover { background: var(--surface-sunken); color: var(--text-primary); }
+  nav button .nav-ico, nav a .nav-ico {
+    width: 24px; height: 24px; flex: none; border-radius: var(--radius-control);
+    background: none; box-shadow: none; color: var(--text-secondary); font-size: 16px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  nav button.ativo { background: var(--action-tint); color: var(--text-primary); font-weight: 600; box-shadow: inset 3px 0 0 var(--action-strong); }
+  nav button.ativo .nav-ico { background: none; box-shadow: none; color: var(--action-text); }
+  #nav-colapsar-btn {
+    color: var(--text-secondary); font-size: 12px; border-bottom: 1px solid var(--border-default);
+    border-radius: var(--radius-control) var(--radius-control) 0 0; margin-bottom: 6px; padding: 6px 8px;
+  }
+  #nav-colapsar-btn .nav-ico { width: 24px; height: 24px; font-size: 14px; }
+  @media (min-width: 769px) {
+    nav.colapsada { width: 60px; padding: 12px 6px; }
+    nav.colapsada button, nav.colapsada a { justify-content: center; padding: 6px 0; }
+    nav.colapsada a .nav-label { display: none; }
+    main { padding: 24px 32px 64px; }
+  }
+
+  /* Celular/tablet: o menu vira gaveta aberta pelo botão "Menu" do topo. */
+  @media (max-width: 768px) {
+    header { padding: 8px 12px; }
+    #nav-gaveta-btn { display: inline-flex; width: auto; padding: 0 12px; gap: 6px; font: 500 14px/16px var(--font-sans); }
+    .header-topo { gap: 8px; }
+    .header-acoes { gap: 6px; }
+    .header-usuario-nome { display: none; }
+    .shell { display: block; }
+    nav {
+      position: fixed; top: 0; left: 0; bottom: 0; height: auto; z-index: 300;
+      width: min(280px, 86vw); max-width: none; padding: 16px 8px;
+      flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 2px;
+      overflow-x: hidden; overflow-y: auto; border-right: 1px solid var(--border-default); border-bottom: 0;
+      border-radius: 0 var(--radius-modal) var(--radius-modal) 0; box-shadow: var(--shadow-overlay);
+      transform: translateX(-105%); visibility: hidden; transition: transform 0.18s ease, visibility 0s linear 0.18s;
+    }
+    /* Ao abrir, fica visível na hora (sem transição de visibility) para o foco poder entrar na gaveta. */
+    nav.gaveta-aberta { transform: none; visibility: visible; transition: transform 0.18s ease; }
+    nav button, nav a { flex-shrink: 0; width: 100%; padding: 8px; font-size: 14px; white-space: normal; min-height: 44px; }
+    nav button .nav-ico { width: 24px; height: 24px; font-size: 16px; }
+    .nav-gaveta-fundo { position: fixed; inset: 0; z-index: 290; background: var(--scrim); }
+    main { padding: 16px 12px 48px; }
+    /* Grade de 1 coluna sem min-content: o select mais longo não empurra a página para o lado. */
+    .layout-mercado, .historico-compras-layout, .historico-compras-layout.filtros-colapsadas { grid-template-columns: minmax(0, 1fr); }
+    .filtros-lateral, .conteudo-mercado { min-width: 0; }
+    .campo select, .empresa-acompanhamento select { max-width: 100%; min-width: 0; }
+  }
+  @media (max-width: 480px) {
+    #header-ajuda-btn, .header-nome { display: none; }
+    .header-sair { padding: 0 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) { nav { transition: none; } }
+
+  /* ---- 5. Cartões e superfícies (sem degradê, sem sombra; a sombra é só de sobreposição) ---- */
+  .painel-filtros, .filtros-lateral, .cartao, .dash-card, .dash-painel, .dash-grafico-linha, .mural-item,
+  .acc, .boletim-card, .kanban-coluna, .bol-calendario, .secao-conteudo-principal, .marca-dossie,
+  .ficha-empresa, .marcas-ranking, .angulo-card, .hc-acao-explorar, .modal-ia-cartao-topo, .contatos-resumo {
+    background: var(--surface-default); border: 1px solid var(--border-default);
+    border-radius: var(--radius-card); box-shadow: none;
+  }
+  html.tema-claro .secao-conteudo-principal { background: var(--surface-default); border: 1px solid var(--border-default); }
+  .secao-conteudo-principal { padding: 16px; }
+  .secao-conteudo-principal > .painel-filtros, .secao-conteudo-principal .filtros-lateral { border: 0; background: none; padding: 0; }
+  .caixa-interna, html.tema-claro .caixa-interna { background: var(--surface-page); border: 1px solid var(--border-default); border-radius: var(--radius-card); }
+  .caixa-interna:empty { display: none; }
+  .cartao { padding: 16px; }
+  .cartao::before { display: none; }
+  .cartao:hover, .angulo-card:hover, .hc-acao-explorar:hover, .boletim-card:hover { transform: none; box-shadow: none; }
+  .cartao h3, .filtros-lateral-titulo, .painel-filtros-recolhivel-titulo, .ficha-secao h4, .dash-card-label {
+    font: var(--text-label); color: var(--text-secondary); text-transform: none; letter-spacing: 0;
+  }
+  .cartao .valor, .dash-card-num { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .dash-card-num { font: 600 28px/36px var(--font-sans); }
+  .dash-card-ico { color: var(--text-secondary); font-size: 16px; }
+  .dash-painel-titulo { font: 600 16px/24px var(--font-sans); color: var(--text-primary); }
+  .detalhe-drilldown { background: var(--surface-sunken); border: 1px solid var(--border-default); border-left: 3px solid var(--action-strong); border-radius: var(--radius-card); }
+  .detalhe-drilldown dt, .boletim-meta dt, .marca-dossie-grid dt, .ficha-empresa .campo-ficha label, .modal-ia-cartao-topo dt {
+    font: var(--text-label); color: var(--text-secondary); text-transform: none; letter-spacing: 0;
+  }
+  .acc-cab, .acc-cab:hover { background: var(--surface-default); }
+  .acc-cab:hover { background: var(--surface-sunken); }
+  .acc-titulo { font: 600 14px/22px var(--font-sans); }
+  .acc-icone { background: var(--surface-sunken); color: var(--text-secondary); border-radius: var(--radius-control); width: 24px; height: 24px; font-size: 14px; }
+  .angulo-card:hover, .hc-acao-explorar:hover, .dash-atalho:hover { border-color: var(--action-strong); background: var(--surface-default); }
+  .angulo-icone { color: var(--action-text); }
+  .angulo-titulo { font-weight: 600; font-size: 14px; }
+  .dash-atalho { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-control); font-size: 13px; }
+  .dash-atalho-ico { color: var(--text-secondary); }
+  .marca-dossie { border-color: var(--border-default); }
+  .marca-dossie-grid div { background: var(--surface-sunken); border-color: var(--border-default); border-radius: var(--radius-control); }
+  .marca-ranking-linha:hover, .marca-ranking-linha.ativa { background: var(--surface-sunken); }
+  .marca-ranking-linha.ativa { background: var(--action-tint); box-shadow: inset 3px 0 0 var(--action-strong); }
+  .marca-rank { background: var(--surface-sunken); color: var(--text-primary); border-radius: var(--radius-control); }
+  .marcas-ranking-cab { font: var(--text-label); text-transform: none; letter-spacing: 0; background: var(--surface-sunken); }
+  .marcas-fonte::before { background: var(--success-text); box-shadow: none; }
+  .marcas-vazio, .kanban-vazio { border: 1px dashed var(--border-strong); background: var(--surface-sunken); color: var(--text-secondary); border-radius: var(--radius-card); }
+
+  /* ---- 6. Botões (primário, secundário, terciário) ---- */
+  .btn-buscar, .btn-buscar:hover:not(:disabled) {
+    min-height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: var(--radius-control);
+    background: var(--action-strong); color: var(--action-on); font: 500 14px/16px var(--font-sans);
+    box-shadow: none; transform: none; letter-spacing: 0;
+  }
+  .btn-buscar:hover:not(:disabled) { background: var(--action-strong-hover); }
+  .btn-buscar:disabled { background: var(--surface-sunken); color: var(--text-disabled); border-color: var(--border-default); opacity: 1; cursor: not-allowed; }
+  .btn-imprimir, .btn-subaba, .btn-filtro-rapido, .bol-cal-nav, .kanban-card-acoes button, .modal-ia-acoes-rodape button,
+  .boletim-acao-icone, .btn-limpar-select, .filtros-lateral-colapsar-btn, .bol-cal-filtro-ativo button, .btn-ia-edital,
+  main button:not([class]):not([style]), #contatos-resumo-lista button {
+    min-height: 32px; border: 1px solid var(--border-strong); border-radius: var(--radius-control);
+    background: var(--surface-default); color: var(--text-primary); font-family: var(--font-sans); font-weight: 500;
+    box-shadow: none; transform: none; cursor: pointer;
+  }
+  main button:not([class]):not([style]) { padding: 0 12px; font-size: 14px; }
+  .btn-imprimir { min-height: 36px; padding: 0 12px; font-size: 14px; }
+  .btn-imprimir:hover, .btn-subaba:hover, .btn-filtro-rapido:hover, .bol-cal-nav:hover, .kanban-card-acoes button:hover,
+  .modal-ia-acoes-rodape button:hover, .boletim-acao-icone:hover, .filtros-lateral-colapsar-btn:hover,
+  .bol-cal-filtro-ativo button:hover, .btn-ia-edital:hover, main button:not([class]):not([style]):hover, #contatos-resumo-lista button:hover {
+    background: var(--surface-sunken); border-color: var(--border-strong); color: var(--text-primary);
+  }
+  .btn-limpar-select:hover { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+  .btn-ia-edital { color: var(--action-text); font-size: 13px; padding: 0 12px; }
+  .btn-ia-edital:disabled { color: var(--text-disabled); background: var(--surface-sunken); border-color: var(--border-default); opacity: 1; }
+  .btn-filtro-rapido { border-radius: var(--radius-control); font-size: 13px; }
+  /* Seleção marcada: fundo de seleção do DS + borda de ação + peso (não só cor). */
+  .btn-subaba.ativo, .btn-filtro-rapido.ativo, .btn-subaba.ativo:hover, .btn-filtro-rapido.ativo:hover {
+    background: var(--action-tint); color: var(--text-primary); border-color: var(--action-strong); font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--action-strong);
+  }
+  .boletim-acao-icone.favorito-ativo { color: var(--attention-text); border-color: var(--attention-border); background: var(--attention-bg); }
+  .boletim-acao-icone.lido-ativo { color: var(--success-text); border-color: var(--success-border); background: var(--success-bg); }
+  .seletor-ufs-acoes button, .empresa-acompanhamento a, .link-pncp { color: var(--action-text); }
+
+  /* ---- 7. Campos ---- */
+  .campo { gap: 4px; }
+  .campo label, .empresa-acompanhamento label, .dash-filtro-campo label {
+    font: var(--text-label); color: var(--text-primary); text-transform: none; letter-spacing: 0;
+  }
+  .campo .dica-multiplos, .empresa-acompanhamento .empresa-ajuda { font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+  .campo input, .campo select, .seletor-ufs-controle, .select-status-licitacao, .anotacao-licitacao,
+  .kanban-card-mover, .kanban-card-anotacao, .empresa-acompanhamento select, .dash-filtro-campo input,
+  .modal-ia-consideracoes, .contatos-resumo input {
+    min-height: 40px; padding: 8px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-control);
+    background: var(--surface-default); color: var(--text-primary); font: var(--text-body); box-shadow: none;
+  }
+  .seletor-ufs-controle { padding-right: 40px; }
+  .campo input:focus, .campo select:focus, .anotacao-licitacao:focus, .select-status-licitacao:focus,
+  .kanban-card-mover:focus, .kanban-card-anotacao:focus, .empresa-acompanhamento select:focus, .modal-ia-consideracoes:focus {
+    outline: 2px solid var(--focus-ring); outline-offset: 2px; border-color: var(--border-strong); box-shadow: none;
+  }
+  .campo input::placeholder, .modal-ia-consideracoes::placeholder { color: var(--text-secondary); opacity: 1; }
+  .campo input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+  [data-theme="dark"] .campo input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.85); }
+  .seletor-ufs-chip { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); border-radius: var(--radius-control); }
+  .seletor-ufs-menu { background: var(--surface-raised); border-color: var(--border-default); border-radius: var(--radius-card); box-shadow: var(--shadow-overlay); }
+  .seletor-ufs-opcao:hover { background: var(--surface-sunken); }
+  .seletor-ufs-opcao input, .defesa-revisao input { accent-color: var(--action-strong); }
+
+  /* ---- 8. Tabelas (DataTable): rolagem dentro do próprio quadro ---- */
+  table { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-card); box-shadow: none; }
+  th {
+    background: var(--surface-sunken); color: var(--text-secondary); font: var(--text-label);
+    text-transform: none; letter-spacing: 0; padding: 10px 12px; border-bottom: 1px solid var(--border-default);
+  }
+  td { padding: 10px 12px; font-size: 14px; line-height: 22px; border-bottom: 1px solid var(--border-default); }
+  tbody tr:nth-child(even) { background: transparent; }
+  tbody tr:hover, tr.linha-clicavel:hover { background: var(--surface-sunken); }
+  tr.linha-selecionada { background: var(--action-tint); box-shadow: inset 3px 0 0 var(--action-strong); }
+
+  /* ---- 9. Chips de situação: cor + texto + borda (nunca só cor) ---- */
+  .chip, .situacao-ativa, .situacao-outra, .badge-modalidade, .fonte-badge, .acc-contagem, .mural-tag,
+  .kanban-card-prazo, .item-licitacao-tipo, .marca-kpi, .kanban-coluna-contagem {
+    display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 0 8px;
+    border: 1px solid; border-radius: var(--radius-control); box-shadow: none;
+    font: var(--text-label); text-transform: none; letter-spacing: 0; white-space: nowrap; vertical-align: middle;
+  }
+  .chip { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
+  main .chip button, main .chip button:not([class]):not([style]) {
+    min-height: 0; padding: 0; border: 0; background: none; color: var(--info-text); font-size: 12px; line-height: 1;
+  }
+  .situacao-ativa, .mural-tag-novo, .kanban-card-prazo.ok { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+  .situacao-outra, .kanban-card-prazo.perto { background: var(--attention-bg); border-color: var(--attention-border); color: var(--attention-text); }
+  .mural-tag-correcao, .kanban-card-prazo.vencido { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+  .mural-tag-melhoria { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
+  .badge-modalidade, .fonte-badge, .acc-contagem, .item-licitacao-tipo, .marca-kpi, .kanban-coluna-contagem {
+    background: var(--surface-sunken); border-color: var(--border-default); color: var(--text-secondary);
+  }
+  .marca-kpi strong, .marca-numero, .marca-abrir, .boletim-identificacao { color: var(--action-text); }
+
+  /* ---- 10. Avisos (StateFeedback) ---- */
+  .aviso { background: var(--attention-bg); border: 1px solid var(--attention-border); color: var(--attention-text); border-radius: var(--radius-card); padding: 12px 16px; font-size: 14px; }
+  .status-compra-alerta { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error-text); border-radius: var(--radius-card); }
+  .status-compra-ok { background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info-text); border-radius: var(--radius-card); }
+  .aviso-sincronizacao-operacional:not(:empty) {
+    background: var(--info-bg); border-color: var(--info-border); color: var(--info-text);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-overlay);
+  }
+  .aviso-sincronizacao-operacional.erro:not(:empty) { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+  .msg-ia { background: var(--surface-sunken); border-color: var(--border-default); border-radius: var(--radius-card); }
+  .msg-ia.msg-usuario { background: var(--action-tint); border-color: var(--info-border); }
+  .msg-ia.msg-erro { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+
+  /* ---- 11. Boletim (OpportunityCard) ---- */
+  .boletim-card { border-left: 3px solid var(--success-border); }
+  .boletim-card.lido { border-left-color: var(--border-default); opacity: 1; }
+  .boletim-card.lido .boletim-objeto { color: var(--text-secondary); }
+  .boletim-card.favorito { border-left-color: var(--attention-border); }
+  .boletim-topo { background: var(--surface-sunken); border-bottom: 1px solid var(--border-default); }
+  .boletim-numero, .boletim-card.lido .boletim-numero {
+    border-radius: var(--radius-control); background: var(--surface-default); color: var(--text-primary);
+    border: 1px solid var(--border-strong); font-variant-numeric: tabular-nums;
+  }
+  .boletim-objeto { font: var(--text-body-lg); }
+  .boletim-valor-linha strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .boletim-gerenciar, .item-licitacao, .arquivo-linha { background: var(--surface-sunken); border-color: var(--border-default); border-radius: var(--radius-control); }
+  .arquivo-linha:hover { border-color: var(--action-strong); }
+  .item-licitacao-numero { color: var(--action-text); }
+  .bol-cal-dia { border-radius: var(--radius-control); color: var(--text-secondary); }
+  .bol-cal-dia.tem-dados { background: var(--info-bg); border-color: var(--info-border); color: var(--text-primary); }
+  .bol-cal-dia[data-dia]:hover { background: var(--surface-sunken); color: var(--text-primary); }
+  .bol-cal-dia.hoje { border-color: var(--text-primary); }
+  .bol-cal-dia.selecionado, .bol-cal-dia.selecionado:hover { background: var(--action-strong); border-color: var(--action-strong); color: var(--action-on); }
+  .bol-cal-dia-badge { background: var(--action-strong); color: var(--action-on); border-radius: var(--radius-control); }
+  .bol-cal-titulo { font-weight: 600; }
+  .bol-cal-dia-semana { font: var(--text-label); text-transform: none; color: var(--text-secondary); }
+
+  /* ---- 12. Kanban ---- */
+  /* A cor da etapa (escolhida pelo usuário) só aparece nesta faixa fina; texto segue os tokens. */
+  .kanban-coluna { border-top: 4px solid var(--cor-coluna, var(--action-strong)); }
+  .kanban-coluna-topo { border-bottom: 1px solid var(--border-default); }
+  .kanban-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8); margin-bottom: var(--space-12); }
+  .etapas-dialogo {
+    width: min(760px, calc(100vw - 24px)); max-height: calc(100vh - 48px); box-sizing: border-box; padding: var(--space-24);
+    border: 1px solid var(--border-default); border-radius: var(--radius-modal); background: var(--surface-raised);
+    color: var(--text-primary); box-shadow: var(--shadow-overlay);
+  }
+  .etapas-dialogo::backdrop { background: var(--scrim); }
+  .etapas-dialogo-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
+  .etapas-dialogo h3 { margin: 0; font: var(--text-section); }
+  .etapas-ajuda { margin: var(--space-8) 0 var(--space-16); font: var(--text-body); color: var(--text-secondary); }
+  .etapas-lista { list-style: none; margin: var(--space-8) 0 var(--space-16); padding: 0; display: grid; gap: var(--space-8); }
+  .etapa-linha {
+    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) 48px 172px; align-items: end; gap: var(--space-12);
+    padding: var(--space-12); border: 1px solid var(--border-default); border-radius: var(--radius-card); background: var(--surface-default);
+  }
+  .etapa-campo { display: grid; gap: var(--space-4); min-width: 0; font: var(--text-label); color: var(--text-primary); }
+  .etapa-campo input[type="text"], .etapa-campo select {
+    width: 100%; box-sizing: border-box; min-height: 40px; padding: 8px 12px; border: 1px solid var(--border-strong);
+    border-radius: var(--radius-control); background: var(--surface-default); color: var(--text-primary); font: var(--text-body);
+  }
+  .etapa-campo input[aria-invalid="true"] { border-color: var(--error-border); }
+  .etapa-campo select:disabled { background: var(--surface-sunken); color: var(--text-secondary); border-color: var(--border-default); }
+  .etapa-campo input[type="color"] {
+    width: 48px; height: 40px; padding: 2px; box-sizing: border-box; border: 1px solid var(--border-strong);
+    border-radius: var(--radius-control); background: var(--surface-default); cursor: pointer;
+  }
+  .etapa-acoes { display: flex; align-items: center; gap: var(--space-4); }
+  .etapa-acoes .btn-imprimir { min-width: 40px; min-height: 40px; padding: 0 10px; }
+  .etapa-acoes .btn-imprimir:disabled { color: var(--text-disabled); background: var(--surface-sunken); border-color: var(--border-default); cursor: not-allowed; }
+  .etapa-acoes .etapa-excluir { color: var(--error-text); }
+  .etapa-protegida { padding: 0 var(--space-8); font: var(--text-label); color: var(--text-secondary); white-space: nowrap; }
+  @media (max-width: 600px) {
+    .etapas-dialogo { padding: var(--space-16); }
+    .etapa-linha { grid-template-columns: auto 1fr; }
+    .etapa-linha .etapa-nome, .etapa-linha .etapa-conta { grid-column: 1 / -1; }
+    .etapa-acoes { justify-content: flex-end; }
+  }
+  .kanban-coluna.arraste-sobre { background: var(--action-tint); }
+  .kanban-coluna-titulo { font-weight: 600; }
+  .kanban-card { background: var(--surface-default); border: 1px solid var(--border-default); border-radius: var(--radius-control); }
+  .kanban-card:hover { border-color: var(--border-strong); box-shadow: none; }
+  .kanban-card-objeto { font-weight: 600; }
+
+  /* ---- 13. Gráficos simples: cor sólida, sem brilho ---- */
+  .mini-grafico-barra, .dash-barra { background: var(--brand-blue); box-shadow: none; }
+  .barra-preenchida { background: var(--brand-blue); color: #fff; }
+  .barra-item.selecionado { outline: 2px solid var(--action-strong); background: var(--action-tint); }
+  .dash-donut-centro { background: var(--surface-default); }
+
+  /* ---- 14. Modais (Modal/Drawer) ---- */
+  .modal-ia-fundo { background: var(--scrim); }
+  .modal-ia { background: var(--surface-raised); border-color: var(--border-default); border-radius: var(--radius-modal); box-shadow: var(--shadow-overlay); }
+  .modal-ia-acoes-rodape { border-color: var(--border-default); }
+  /* Resumo do Edital: gaveta na estrutura do ConLicitação, claro/escuro pelos tokens (estilos em painel.html). */
+  #modal-ia-fundo .modal-ia { border-radius: 0; }
+  .defesa-botao-destaque { box-shadow: none; }
+
+  /* ---- 15. Fluxo e informação (melhorias de 18/11/2026) ---- */
+  /* hidden sempre vence: vários blocos abaixo têm display próprio e aparecem/somem por atributo. */
+  main [hidden] { display: none !important; }
+
+  /* Menu: link que abre outra página (Minhas empresas e documentos). */
+  nav a.nav-externo .nav-externo-ico { width: 14px; height: 14px; flex: none; margin-left: auto; color: var(--text-secondary); }
+  @media (min-width: 769px) { nav.colapsada a.nav-externo .nav-externo-ico { display: none; } }
+
+  /* Erro no campo (no lugar de alert) e convites neutros. */
+  .erro-campo { margin: 4px 0 0; color: var(--error-text); font-size: 13px; line-height: 18px; }
+  .campo input[aria-invalid="true"] { border-color: var(--error-border); }
+  .empresa-acompanhamento .empresa-convite, .convite-neutro {
+    width: 100%; margin: 0; padding: 8px 12px; border: 1px solid var(--info-border); border-radius: var(--radius-control);
+    background: var(--info-bg); color: var(--info-text); font-size: 13px; line-height: 20px;
+  }
+  .kanban-vazio.convite-neutro { padding: 16px; text-align: left; }
+  .empresa-convite a, .convite-neutro a { color: var(--action-text); font-weight: 600; }
+  .estado-vazio { padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-card); background: var(--surface-sunken); color: var(--text-secondary); font-size: 14px; line-height: 22px; }
+  .estado-vazio p { margin: 0 0 8px; }
+  .estado-vazio p:last-child { margin-bottom: 0; }
+  .estado-vazio .estado-vazio-titulo { color: var(--text-primary); font: 600 16px/24px var(--font-sans); }
+
+  /* Dashboard: "O que vence esta semana?" é a primeira coisa da tela. */
+  .dash-vence-semana { padding: 16px; margin-bottom: 20px; border-left: 3px solid var(--action-strong); }
+  .dash-semana-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .dash-semana-lista li { display: grid; grid-template-columns: 132px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border-default); }
+  .dash-semana-lista li:first-child { border-top: 0; padding-top: 0; }
+  .dash-semana-texto { min-width: 0; display: grid; gap: 2px; }
+  .dash-semana-texto strong { font-weight: 600; font-size: 14px; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-semana-texto small { color: var(--text-secondary); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-cards.dash-cards-conta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 600px) {
+    .dash-semana-lista li { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+    .dash-semana-lista li .boletim-prazo { justify-self: start; }
+    .dash-semana-texto strong { white-space: normal; }
+    .dash-semana-lista li .btn-filtro-rapido { justify-self: start; }
+  }
+  @media (max-width: 480px) { .dash-cards.dash-cards-conta { grid-template-columns: minmax(0, 1fr); } }
+
+  /* Boletim sem filtro: um passo só. */
+  .bol-acoes-topo { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; margin-bottom: 12px; }
+  .bol-config-intro { flex: 1 1 100%; }
+  .bol-config-intro h3 { margin: 0 0 4px; font: 600 18px/26px var(--font-sans); color: var(--text-primary); }
+  .bol-config-intro p { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 22px; }
+  /* Imprimir e Baixar planilha só quando há o que imprimir ou baixar. */
+  #boletim:not(:has(#bol-resultado .boletim-card)) :is(.btn-imprimir-generico, .btn-baixar-planilha),
+  #oportunidades:not(:has(#op-resultado .boletim-card)) :is(.btn-imprimir-generico, .btn-baixar-planilha) { display: none; }
+  .dg-topo-botoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+  /* Cartão enxuto: prazo primeiro, por texto e cor. */
+  .boletim-prazo {
+    display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 0 8px; margin-right: auto;
+    border: 1px solid; border-radius: var(--radius-control); font: var(--text-label); white-space: nowrap;
+  }
+  .boletim-prazo.prazo-ok { background: var(--success-bg); border-color: var(--success-border); color: var(--success-text); }
+  .boletim-prazo.prazo-perto { background: var(--attention-bg); border-color: var(--attention-border); color: var(--attention-text); font-weight: 600; }
+  .boletim-prazo.prazo-vencido { background: var(--error-bg); border-color: var(--error-border); color: var(--error-text); }
+  .boletim-prazo.prazo-sem { background: var(--surface-sunken); border-color: var(--border-default); color: var(--text-secondary); }
+  .boletim-topo .boletim-prazo { margin-left: 4px; }
+  .boletim-acoes-principais, .boletim-acoes-secundarias { display: flex; gap: 8px; flex-wrap: wrap; }
+  .boletim-acoes-secundarias { margin-top: 4px; }
+  .boletim-gerenciar label { display: grid; gap: 4px; font: var(--text-label); color: var(--text-primary); }
+  .boletim-gerenciar:not(:has(> label:not([hidden]))) { display: none; }
+  .boletim-detalhes { margin-top: 12px; border-top: 1px solid var(--border-default); padding-top: 8px; }
+  .boletim-detalhes > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; color: var(--action-text); font-weight: 600; font-size: 13px; }
+  .boletim-detalhes[open] > summary { margin-bottom: 10px; }
+
+  /* Encontrar Licitações e Analisar concorrente: ação secundária abaixo dos filtros. */
+  .op-receber-boletim { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0 0; min-width: 0; }
+  .op-receber-boletim .btn-imprimir { white-space: normal; text-align: left; max-width: 100%; height: auto; min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
+  .op-receber-boletim .dica-clique { flex: 1 1 240px; }
+
+  /* Encontrar Licitações: onde buscar (região/raio), filtros salvos e "Monte minha busca com IA". */
+  .op-ferramentas { display: grid; gap: 12px; margin: 12px 0 0; min-width: 0; }
+  .op-linha { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 12px; min-width: 0; }
+  .op-linha .campo { flex: 0 1 160px; min-width: 120px; }
+  .op-linha .campo-largo { flex: 1 1 240px; }
+  .op-linha-dica { flex: 1 1 100%; margin: 0; }
+  .op-linha .btn-imprimir, .op-linha .btn-buscar { height: auto; min-height: 36px; white-space: normal; }
+  .op-salvos-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; flex: 1 1 100%; padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 8px; }
+  .op-salvos-form[hidden] { display: none; }
+  .op-salvos-form label { font: var(--text-label); color: var(--text-primary); }
+  .op-salvos-form input { flex: 1 1 220px; min-width: 0; }
+  .op-ia > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; gap: 6px; color: var(--action-text); font-weight: 600; font-size: 13px; }
+  .op-ia[open] > summary { margin-bottom: 10px; }
+  .op-ia-grupo { border: 1px solid var(--border-default); border-radius: 8px; margin: 10px 0 0; padding: 8px 12px; min-width: 0; }
+  .op-ia-grupo legend { font: var(--text-label); color: var(--text-secondary); padding: 0 6px; }
+  .op-ia-grupo div { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  .op-ia-opcao { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); }
+  #op-ia-usar { margin-top: 12px; }
+  @media (max-width: 600px) { .op-linha .campo { flex: 1 1 100%; } }
+
+  /* Convênios: o Raio-X é outro assunto, em bloco próprio. */
+  .bloco-separado { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-default); }
+  .bloco-separado-titulo { margin: 0 0 4px; font: var(--text-section); color: var(--text-primary); }
+
+  /* Pesquisa de Preços em passos numerados; o passo alcançado ganha número cheio e peso (não só cor). */
+  .pp-passos { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 16px; padding: 0; }
+  .pp-passo { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 13px; }
+  .pp-passo span {
+    display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+    border: 1px solid var(--border-strong); border-radius: 999px; font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .pp-passo[data-passo="1"],
+  #precos:has(#pp-categorias table) .pp-passo[data-passo="2"],
+  #precos:has(#pp-itens table) .pp-passo[data-passo="3"],
+  #precos:has(#pp-resultado .pp-mediana) .pp-passo[data-passo="4"] { color: var(--text-primary); font-weight: 600; }
+  .pp-passo[data-passo="1"] span,
+  #precos:has(#pp-categorias table) .pp-passo[data-passo="2"] span,
+  #precos:has(#pp-itens table) .pp-passo[data-passo="3"] span,
+  #precos:has(#pp-resultado .pp-mediana) .pp-passo[data-passo="4"] span { background: var(--action-strong); border-color: var(--action-strong); color: var(--action-on); }
+  .pp-passo-titulo { margin: 16px 0 4px; font: 600 14px/22px var(--font-sans); color: var(--text-primary); }
+  .pp-mediana {
+    display: grid; gap: 4px; margin: 0 0 12px; padding: 16px; border: 1px solid var(--info-border);
+    border-left: 3px solid var(--action-strong); border-radius: var(--radius-card); background: var(--info-bg);
+  }
+  .pp-mediana-rotulo { font: var(--text-label); color: var(--text-secondary); }
+  .pp-mediana-valor { font: 600 32px/40px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .pp-mediana-ajuda { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+  #status-cartoes .cartao .valor { white-space: normal; overflow: visible; text-overflow: clip; }
+
+  /* ---- 16. Acabamento de Status, Funil, calendário e Minha conta (E6, aguarda aprovação) ---- */
+  /* Status: grade de cartões do mesmo tamanho (antes o último esticava na linha toda) e a cor da
+     situação numa faixa fina no topo, igual às colunas do Funil. */
+  #status-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-16); margin-bottom: 0; }
+  #status-cartoes .cartao { border-top-width: 4px; min-width: 0; }
+  #status-cartoes .cartao h3 { display: flex; align-items: center; gap: var(--space-8); margin-bottom: var(--space-8); color: var(--text-primary); font-weight: 600; }
+  #status-cartoes .cartao h3 .icone-ph { flex-shrink: 0; width: 16px; height: 16px; color: var(--text-secondary); }
+  #status-cartoes .cartao .valor { font: 600 14px/20px var(--font-sans); }
+
+  /* Funil: ações do cartão com ícone e texto na mesma linha; o sino (só ícone) fica estreito. */
+  .kanban-card-acoes { flex-wrap: wrap; gap: var(--space-4); }
+  .kanban-card-acoes button {
+    flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-4);
+    min-height: 32px; padding: 4px 8px; white-space: nowrap; border-radius: var(--radius-control);
+    border-color: var(--border-default); background: var(--surface-default); color: var(--text-primary); font: 600 12px/16px var(--font-sans);
+  }
+  .kanban-card-acoes button:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--surface-sunken); }
+  .kanban-card-acoes .btn-criar-lembrete { flex: 0 0 32px; padding: 4px; }
+  .kanban-card-acoes .icone-ph { width: 14px; height: 14px; flex-shrink: 0; }
+  .kanban-btn-sistema, .kanban-btn-sistema:hover {
+    border-radius: var(--radius-control); background: var(--action-tint); border-color: var(--info-border); color: var(--action-text);
+  }
+  .kanban-card-mover, .kanban-card-anotacao { border-radius: var(--radius-control); background: var(--surface-default); border-color: var(--border-strong); }
+  .kanban-card-remover { min-width: 24px; min-height: 24px; border-radius: var(--radius-control); }
+  .kanban-card-remover:hover { background: var(--error-bg); color: var(--error-text); }
+  .kanban-vazio { border-color: var(--border-strong); border-radius: var(--radius-control); background: var(--surface-sunken); color: var(--text-secondary); }
+  .kanban-quadro { scroll-snap-type: x proximity; }
+  .kanban-coluna { scroll-snap-align: start; }
+  @media (max-width: 600px) { .kanban-coluna { flex: 0 0 calc(100% - 40px); } }
+
+  /* Calendário do Boletim: células baixas (antes eram quadradas e o mês ocupava ~700px na tela
+     larga); o número de oportunidades fica dentro da célula, sem vazar a borda. */
+  .bol-cal-grade { gap: var(--space-4); }
+  .bol-cal-dia { aspect-ratio: auto; height: 48px; font: 400 13px/20px var(--font-sans); }
+  .bol-cal-dia.tem-dados { font-weight: 600; }
+  .bol-cal-dia-badge { top: 3px; right: 3px; min-width: 16px; height: 16px; font: 600 10px/16px var(--font-sans); }
+  .bol-cal-nav { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--surface-default); border-color: var(--border-strong); border-radius: var(--radius-control); color: var(--text-primary); }
+  .bol-cal-nav:hover { background: var(--surface-sunken); border-color: var(--border-strong); color: var(--text-primary); }
+  .bol-cal-dia:focus-visible, .bol-cal-nav:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .bol-cal-legenda { font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+  .bol-cal-filtro-ativo button { border-color: var(--border-strong); border-radius: var(--radius-control); color: var(--text-primary); }
+  @media (max-width: 560px) {
+    .bol-cal-dia { height: 40px; font-size: 12px; }
+    .bol-cal-dia-badge { top: 1px; right: 1px; min-width: 14px; height: 14px; font-size: 9px; line-height: 14px; }
+  }
+
+  /* Minha conta: título e botão de fechar no padrão dos outros modais. */
+  #modal-conta-fundo .modal-ia { width: calc(100% - 32px); box-sizing: border-box; overflow-y: auto; }
+  #modal-conta-titulo { display: flex; align-items: center; gap: var(--space-8); font: 600 18px/26px var(--font-sans) !important; color: var(--text-primary); }
+  #modal-conta-fechar {
+    display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0;
+    border-radius: var(--radius-control) !important; color: var(--text-secondary) !important; font-size: 18px !important;
+  }
+  #modal-conta-fechar:hover { background: var(--surface-sunken) !important; color: var(--text-primary) !important; }
+  #modal-conta-fechar:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+}
+
+.contatos-resumo { border: 1px solid var(--borda); border-radius: var(--radius-card, 8px); padding: 12px; }
+#modal-enviar-resumo-fundo .modal-ia { overflow-y: auto; }
+#modal-enviar-resumo-fundo .modal-ia-topo { flex-shrink: 0; }
+.contatos-resumo label { display: grid; gap: 6px; }
+.contatos-resumo input { width: 100%; padding: 10px; font: inherit; border: 1px solid var(--input-borda); background: var(--fundo-fraco); color: var(--texto); border-radius: 6px; }
+.contatos-resumo small { display: block; color: var(--texto-fraco); margin-top: 6px; }
+#contatos-resumo-lista { display: grid; gap: 6px; margin-top: 8px; max-height: 180px; overflow: auto; font-size: 13px; }
+#contatos-resumo-lista > div { display: flex; gap: 8px; }
+#contatos-resumo-lista button { background: var(--fundo-fraco); color: var(--texto); border: 1px solid var(--input-borda); padding: 8px; border-radius: 6px; cursor: pointer; }
+#contatos-resumo-lista button:first-child { flex: 1; text-align: left; overflow-wrap: anywhere; min-width: 0; }
+.limites-sistema p { margin: 0 0 8px; font-size: 14px; line-height: 22px; color: var(--text-primary); }
+.limites-sistema p:last-child { margin-bottom: 0; color: var(--text-secondary); }

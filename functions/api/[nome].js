@@ -1,3 +1,5 @@
+import * as importacaoPncp from "../../netlify/functions/importar-item-pncp.js";
+import * as vinculoCompraPortal from "../../netlify/functions/vinculo-compra-portal.js";
 // Rota única do Cloudflare Pages Functions: /api/<nome> -> handler Netlify de mesmo nome.
 //
 // Por quê: o site saiu do Netlify (conta suspensa) para o Cloudflare Pages gratuito, e o front-end
@@ -29,7 +31,56 @@ import * as m13 from "../../netlify/functions/pncp-proxy.js";
 import * as m14 from "../../netlify/functions/sancoes.js";
 import * as m15 from "../../netlify/functions/enviar-duvida.js";
 
+import * as m16 from "../../netlify/functions/empresa-identificacao.js";
+import * as m17 from "../../netlify/functions/decisao-oportunidade.js";
+import * as m18 from "../../netlify/functions/kit-documentos.js";
+// Sistema CRM (/sistema): cadastro de processo e catálogo de empresas/processos do usuário.
+import * as m19 from "../../netlify/functions/criar-processo.js";
+import * as m20 from "../../netlify/functions/contextos-operacao.js";
+// Busca pública da landing (sem login; só colunas públicas, até 6 linhas, cache curto).
+import * as m21 from "../../netlify/functions/busca-publica.js";
+// Portal do cliente: página pública (sem login, desligada sem PORTAL_CLIENTE_LIGADO=1) e gestão dos links (logado).
+import * as m22 from "../../netlify/functions/portal-cliente.js";
+import * as m23 from "../../netlify/functions/portal-cliente-links.js";
+// Licitação anterior avulsa (Inteligência de Mercado): logado, cota diária, até 36 chamadas a fontes públicas.
+import * as m24 from "../../netlify/functions/licitacao-anterior.js";
+// Sanções CEIS/CNEP de um CNPJ (logado; lê a tabela sancoes_empresas com a sessão do usuário, cache curto).
+import * as m25 from "../../netlify/functions/sancoes-cnpj.js";
+// Pregão gravado pela extensão (dado público lido na aba do usuário): logado; POST grava, GET lê.
+import * as pregaoGravado from "../../netlify/functions/pregao-gravado.js";
+// Lote de proposta para a extensão preencher o cadastro (só leitura, logado e aprovado).
+import * as propostaLote from "../../netlify/functions/proposta-lote.js";
+// Diagnóstico da extensão (só estrutura da página do portal, sem valores nem CPF): logado, 20/dia.
+import * as extensaoDiagnostico from "../../netlify/functions/extensao-diagnostico.js";
+// Prospecção (Inteligência de Mercado): logado, lê prospeccao_itens com a sessão do usuário (1 subrequisição).
+import * as m26 from "../../netlify/functions/prospeccao.js";
+// Análise por CNPJ (Analisar concorrente): logado, cota diária, ~27 subrequisições; o pesado fica na fila do robô.
+import * as analiseCnpj from "../../netlify/functions/analise-cnpj.js";
+// Monte minha busca com IA (Encontrar Licitações): logado, 10 usos/dia, 1 chamada à IA; nada é gravado.
+import * as monteBuscaIa from "../../netlify/functions/monte-busca-ia.js";
+// Conferência CBS/IBS com a calculadora oficial da Receita (logado; 2 subrequisições, falha fechada).
+import * as conferirCbsIbs from "../../netlify/functions/conferir-cbs-ibs.js";
+
 const ROTAS = {
+  "vinculo-compra-portal": vinculoCompraPortal,
+  "importar-item-pncp": importacaoPncp,
+  "kit-documentos": m18,
+  "criar-processo": m19,
+  "contextos-operacao": m20,
+  "busca-publica": m21,
+  "portal-cliente": m22,
+  "portal-cliente-links": m23,
+  "licitacao-anterior": m24,
+  "sancoes-cnpj": m25,
+  "pregao-gravado": pregaoGravado,
+  "proposta-lote": propostaLote,
+  "extensao-diagnostico": extensaoDiagnostico,
+  prospeccao: m26,
+  "analise-cnpj": analiseCnpj,
+  "monte-busca-ia": monteBuscaIa,
+  "conferir-cbs-ibs": conferirCbsIbs,
+  "decisao-oportunidade": m17,
+  "empresa-identificacao": m16,
   "admin-excluir-cliente": m0,
   "comprasgov-marca": m1,
   "comprasgov-marcas-produto": m2,
@@ -67,7 +118,7 @@ function copiarEnvParaProcess(env) {
 
 const json404 = () => new Response(JSON.stringify({ erro: "Função não encontrada." }), {
   status: 404,
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", "X-Content-Type-Options": "nosniff" },
 });
 
 export async function onRequest(context) {

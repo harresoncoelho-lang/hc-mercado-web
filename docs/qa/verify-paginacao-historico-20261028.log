@@ -1,0 +1,1058 @@
+
+> hc-mercado-web-functions@1.0.0 verify
+> npm test && npm run lint
+
+
+> hc-mercado-web-functions@1.0.0 test
+> node --test
+
+auth: validação indisponível HTTP 429
+auth: validação indisponível HTTP 500
+auth: validação indisponível HTTP 503
+✔ IA bloqueia cota indisponível, configuração ausente ou contagem inválida sem revelar erro privado (59.3469ms)
+✔ IA mantém limite 40 e prazo de consulta; indisponibilidade de outras funções preserva comportamento (3.4299ms)
+✔ origemPermitida retorna a própria origem quando está na allowlist (0.5192ms)
+✔ origemPermitida cai para a primeira origem permitida quando a origem não está na allowlist (0.2242ms)
+✔ origemPermitida cai para a primeira origem permitida quando não há header de origin (10.0124ms)
+✔ auth diferencia sessão inválida de indisponibilidade sem liberar acesso (2.7512ms)
+adaptador-cloudflare: falha no handler Error
+✔ converte Request em event com cabeçalhos minúsculos, corpo e query string (69.6042ms)
+✔ GET não leva corpo e query vazia vira objeto vazio (1.049ms)
+✔ resultado base64 vira bytes binários e preserva status e cabeçalhos (3.6581ms)
+✔ 204 de preflight não tem corpo e mantém os cabeçalhos CORS (1.4907ms)
+✔ multiValueHeaders gera um cabeçalho por valor (2.2513ms)
+✔ Cache-Control padrão só entra quando o handler não define o seu (0.8571ms)
+✔ executarHandler entrega o event ao handler e devolve o corpo JSON (4.8312ms)
+✔ handler que lança exceção vira 500 JSON sem vazar detalhes (3.2401ms)
+✔ exclusão recusa ambiente sem chave administrativa (3.5018ms)
+✔ prévia bloqueia conta com vínculo operacional sem chamar exclusão (4.5536ms)
+✔ exclusão exige confirmação exata do e-mail (1.192ms)
+✔ exclusão de cadastro sem vínculos remove a conta de login (1.6762ms)
+✔ condensação dispensa referências legais e cláusulas, preservando prazo e condição operacional (3.6517ms)
+✔ abreviações jurídicas e ano de referência não obrigam transcrição nem dispensam prazo operacional (3.2827ms)
+✔ evidência de validação permanece no job privado e não aparece no progresso público (2984.7114ms)
+✔ síntese rejeita perda de alternativas, exceções e números operacionais (0.7122ms)
+✔ orçamento conserva cada ID exatamente uma vez sem ultrapassar 7200 tokens (10978.8933ms)
+✔ campos não aceitam destinos estranhos nem números inventados (0.7332ms)
+✔ resumo válido preenche destino oficial ausente sem aproveitar caminho inventado pelo modelo (11.5962ms)
+✔ resposta ausente ou ID desconhecido preserva requisito oficial sem aproveitar conteúdo inventado (15.8059ms)
+✔ falha de aplicabilidade preserva apenas o item estrangeiro e mantém síntese válida do outro (5.8587ms)
+✔ revisão CAS reabre validação uma única vez e preserva resultados, cotas e falhas HTTP (4.1956ms)
+✔ migração de validação não libera reserva de job ainda ativo (1.0424ms)
+✔ cota precede custo e é persistida uma vez por usuário e job (2.0404ms)
+✔ cota negada não chama IA; três falhas encerram sem multiplicar lotes (1.4843ms)
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-provedores: groq falhou, tentando o próximo provedor
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-provedores: groq falhou, tentando o próximo provedor
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: geração truncada pelo limite de tokens
+ia-provedores: groq falhou, tentando o próximo provedor
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+✔ pergunta após cache local recupera fonte canônica sem aceitar PDF ou ficha do navegador (84.4353ms)
+✔ aviso de leitura parcial é acrescentado pela aplicação mesmo sem a IA repeti-lo (13.3509ms)
+✔ pagamento mantém regras por fonte mesmo diante da resposta real que trocou TR e minuta (90.346ms)
+✔ citação inventada e texto livre da IA não viram resposta documental (23.2203ms)
+✔ saída vazia ou truncada nunca é exibida como resposta bem sucedida (36.1686ms)
+✔ transporte da Groq marca conteúdo vazio como falha, mesmo quando há raciocínio (1.019ms)
+✔ retornos reais do novo protocolo atravessam o handler com fonte e aviso verificados (126.2264ms)
+✔ fonte alterada desde o resumo exige atualização sem consumir cota (4.5591ms)
+✔ sem fonte canônica não chama IA nem consome cota para responder só com metadados (4.411ms)
+✔ identificador inválido e pergunta vazia são recusados antes de consultar IA ou cota (6.1094ms)
+✔ marcaUtil preserva marca declarada e descarta placeholders (1.6059ms)
+✔ selecionarPdms remove duplicados e prioriza descrições que começam pelo produto (2.7684ms)
+✔ normalizarResultado expõe somente marca declarada pela fonte (1.1855ms)
+ZeptoMail recusou o envio: 400 O serviço de e-mail recusou o envio. Verifique a Send API key e o remetente verificado no Agent do ZeptoMail.
+Falha ao enviar resumo por e-mail: timeout
+Falha ao enviar resumo por e-mail: A confirmação do cliente ainda não está disponível. Desmarque a solicitação para enviar apenas o resumo.
+✔ GET apenas informa disponibilidade; consultar não grava decisão; confirmar exige revisão (64.9097ms)
+✔ link desconhecido/expirado e conflito têm respostas distintas (6.8807ms)
+✔ envio 200 registra enviado sem alterar o resumo (41.0534ms)
+✔ envio 400 registra falhou sem alterar o resumo (6.6079ms)
+✔ envio timeout registra incerto sem alterar o resumo (3.1163ms)
+✔ envio antigo não depende da infraestrutura de decisões; flag desligada recusa opt-in sem transmitir (3.9011ms)
+✔ token opaco com 256 bits e hash estável; recusa entradas malformadas (3.8932ms)
+✔ botões apontam à confirmação, com token no fragmento e sem marcar decisão via GET (0.7768ms)
+✔ sem extensão o HTML do e-mail permanece idêntico à versão anterior (17.8353ms)
+✔ schema torna obrigatórias as duas cláusulas pedidas e associa fontes temáticas a cada âncora (14.6966ms)
+✔ omitir âncora ou usar só comparação não produz aprovação parcial silenciosa (1.3167ms)
+✔ itens em lista, repetição e origens parentais preservam o escopo sem ler lei, data ou valor como cláusula (2.2912ms)
+✔ request final sem cláusulas explícitas não emite objeto estrito vazio de âncoras (142.618ms)
+✔ cláusula explicitamente solicitada fora do contexto bloqueia antes da cota e da IA (11.9762ms)
+✔ âncoras delimitam o escopo: schema e servidor rejeitam pontos extras sem reparar o payload (12.5612ms)
+✔ base04 liga normas novas a documentos, cronograma, organização do objeto e critérios comprovados (3432.7871ms)
+✔ normas novas falham fechadas sem regime, em regime especial e nos ritos não comprovados (6.9116ms)
+✔ entregas parceladas e referências genéricas não provam lotes, marca ou exequibilidade (5.8387ms)
+✔ servidor recusa norma fora do ponto e não inventa percentual ou ilegalidade na marca (18.871ms)
+✔ IN67 exige âmbito afirmativo comprovado na mesma fonte do intervalo, não apenas citação federal (12.1506ms)
+✔ fase invertida mantém exceção e novas referências não decidem prova de matriz ou filial (6.6546ms)
+✔ recorte de exequibilidade não generaliza percentuais de engenharia e recebimento de compras não migra para obras (4.5653ms)
+✔ proveniência é oficial, curadoria íntegra e revisão profissional permanece pendente (36.7907ms)
+✔ fixtures reais Belém e Santana conservam âncoras e cabem no corpo final sem enviar auditoria à IA (8111.9265ms)
+ℹ {"pedido":"pedido-defesa-local.json","tokens":4799,"bytes":8500,"normas":["lei14133-art70-III","lei14133-art67"],"fontes":2,"parcial":true}
+ℹ {"pedido":"pedido-defesa-resposta-orgao-simulada-local.json","tokens":5348,"bytes":10827,"normas":["lei14133-art69","lei14133-art70-III","lei14133-art67"],"fontes":3,"parcial":true}
+ℹ {"pedido":"pedido-central-ocr-habilitacao-condicional.json","tokens":7174,"bytes":18393,"normas":["lei14133-art63-II-III","lei14133-art164","lei14133-art62"],"fontes":7,"parcial":true}
+ℹ {"pedido":"pedido-central-ocr-entrega-parcelada.json","tokens":7176,"bytes":18200,"normas":["lei14133-art164","lei14133-art92-V-VII"],"fontes":11,"parcial":true}
+✔ fragmentos extremos Unicode, combining, emoji e ASCII são recusados antes da codificação e da cota (143.9308ms)
+✔ guarda cobre também a fonte e não corta nem modifica evidências para caber (5.3065ms)
+✔ português extenso, acentos combinados, emojis, URLs longas e e-mail usam contagem exata (2857.2637ms)
+✔ agregado de fragmentos Unicode curtos dentro de 48KB conserva orçamento exato e bloqueia antes da cota (1605.0282ms)
+✔ contexto recusado não instancia codificador; aceitos contam exatamente e reutilizam a instância (5293.2203ms)
+✔ oito sessões simultâneas mantêm fontes, declarações e credenciais injetadas isoladas (3236.7071ms)
+✔ dois pedidos da mesma sessão não cruzam declarações ou contexto em respostas fora de ordem (96.1062ms)
+✔ concorrência na borda da cota usa contador atômico simulado por usuário e não chama IA após o limite (382.6759ms)
+✔ falhas simultâneas de sessão, fonte e cota permanecem fechadas sem contaminar requisição válida (109.8317ms)
+✔ contexto ancorado gera apenas cláusulas solicitadas, preserva catálogo e todas as duplicatas (24.3698ms)
+✔ referência inexistente não constrói fallback de página nem perde catálogo de unicidade (3.6161ms)
+✔ caput condicional permanece como origem do filho solicitado, sem fonte avulsa alheia (3.046ms)
+✔ consulta sem âncoras mantém recuperação das demais cláusulas (4.3943ms)
+✔ contexto não anexa cabeçalho do TR à última cláusula do Edital e preserva escopo (17.3818ms)
+✔ mesmo texto e número em escopos diferentes não são deduplicados nem herdam caput alheio (2.7103ms)
+✔ contexto real 28 conserva cláusula 3.6 recuperada e sua origem documental (6.422ms)
+✔ contexto usa o mesmo enquadramento para wrappers Python e Fonte sem alterar hash (2.7887ms)
+✔ caso público28 atravessa contexto real e contrato estrito com as duas multas, sem lance ou aditivo (2558.245ms)
+✔ TR explícito usa somente o TR; não aceita a fonte homônima do Edital (17.3042ms)
+✔ sem documento, documento ausente, duplicata no mesmo escopo e dois escopos pedidos abstêm (2.4267ms)
+✔ orçamento não transforma duplicata canônica omitida em referência única (0.7708ms)
+✔ preparação real preserva escopo e o schema transportado restringe a fonte correta (2799.5091ms)
+✔ handler bloqueia ambiguidades, escopo ausente e referência dupla antes de cota ou IA (8.0333ms)
+✔ referência privada exige dono e pertinência documental; nunca entrega texto do modelo (1936.6303ms)
+✔ subitem/subitens viram âncoras sem confundir normas, datas e valores (7.6368ms)
+✔ recolhimento de multa exige assunto, evento, prazo e marco e conserva as duas âncoras (13.3523ms)
+✔ sugestão pública28 cobre exatamente as duas cláusulas de multa, sem lance ou aditivo homônimos (72.9918ms)
+✔ fundamento geral não decide mérito e exige regime comprovado e licitação (2.1082ms)
+✔ marco ausente em uma âncora bloqueia422 antes da cota e da IA (2582.383ms)
+✔ handler usa envelope Python, objetivo genérico da UI e duas âncoras estritas sem IA real (232.6122ms)
+✔ orçamento ancorado mede uma vez só os IDs permitidos e conserva catálogo canônico e cobertura honesta (3012.6724ms)
+✔ R1/M1 de fase posterior permanecem e âncoras acima do orçamento não são podadas (193.3094ms)
+✔ recuperação real inclui minuta de entregas antes do orçamento e exclui recursos/sanções do catálogo de entregas (310.9192ms)
+✔ prazo de recurso que menciona recebimento não é prazo de entrega e é recusado no servidor (69.3552ms)
+✔ regra financeira adjacente real não vira requisição só por citar empenho e entrega (180.6284ms)
+✔ prazo financeiro com entrega como marco não é prazo operativo de entrega (1.0927ms)
+✔ comando integrado de entrega com preços fixos e condição de pagamento conserva texto integral (1.8542ms)
+✔ pagamento permanece elegível e entrega não substitui prazo de pagamento (0.7071ms)
+✔ documentos condicionais continuam literais em esclarecimento e impugnação; tema fora do escopo falha fechado (1.025ms)
+✔ evento explícito da pergunta prevalece sobre execução genérica no objetivo, sem apagar questão mista (0.483ms)
+✔ filtro de adjacência de entrega não apaga condição financeira integrada a assinatura (0.3725ms)
+✔ pergunta financeira não transforma marco de preços em comando de requisição (0.5366ms)
+✔ verbo de pagamento próximo ao nome entrega não é comando de entregar (0.7318ms)
+✔ produtos entregues como objeto do pagamento não são ordem de entregar (0.5561ms)
+✔ transporte de defesa é fechado em fatos, fundamentos e pontos vinculados (20.2254ms)
+✔ exceção literal permanece inteira e o servidor não inventa comprovante nem reformula exclusividade (2.5828ms)
+✔ ID válido com tipo sem antecedente literal é recusado (7.4807ms)
+✔ fonte apropriada ao tipo mas fora do assunto solicitado não recebe classificação automática (1.3994ms)
+✔ antecedente condicional de pagamento não comprova exceção documental de matriz ou filial (2.9125ms)
+✔ cronograma selecionado precisa tratar do evento solicitado e fase precisa ser procedimental (1.9821ms)
+✔ tipo desconhecido, ponto extra, fonte inexistente ou não citada não são reparados (1.9963ms)
+✔ objeto antigo com trecho, ID falso, duplicação e fundamento desconhecido permanecem recusados (1.4608ms)
+✔ fase preserva o julgamento no texto literal e não cria ordem ou condição pela prosa da IA (0.6925ms)
+✔ cronograma exige evento e unidade e preserva prazo contratual sem equiparar prazos ou parcelamento (1.7659ms)
+✔ resposta declarada exige R1 e fonte canônica integrais mais pontos temáticos e comparativos (95.5641ms)
+✔ schema e validador compartilham as associações permitidas entre tipo e fonte (1.9284ms)
+✔ ID de item subordinado recupera sempre caput com vencedoras e condições da fonte canônica (21.7073ms)
+✔ caput repetido usa somente o ancestral precedente mais próximo no mesmo caminho (4.4351ms)
+✔ caput de página anterior conserva referência própria na evidência, na minuta e no pedido (2.3595ms)
+✔ declaração do usuário não sustenta sozinha ponto documental ou fase canônica (0.3301ms)
+✔ fundamento temático sem ponto aplicável é recusado em vez de conferir mérito artificial (0.8085ms)
+✔ dispensa documental pode ter condições longas no mesmo trecho integral sem perder aplicabilidade (0.8618ms)
+✔ schema expõe dependência da norma de fase no próprio ponto e servidor rejeita norma deslocada (2.4875ms)
+✔ captura real não permite norma de fase em ponto documental nem aceita transporte antigo (8.9357ms)
+✔ impugnação permanece em abstenção sem pedido de mérito automático (0.8691ms)
+✔ transporte usa chaves estáveis e preserva integralmente os ramos e a obrigatoriedade da âncora (25.5122ms)
+✔ JSON inválido, chave decimal, âncora ausente, extra e pontos fora do escopo não são reparados (2.3087ms)
+✔ sem âncoras não muda payload, schema nem validação; fase posterior conserva resposta obrigatória (1.3631ms)
+✔ duas âncoras e fase posterior traduzem sem mudar associações e rejeitam omissão ou troca de fontes (158.3402ms)
+✔ handler transporta âncora de pagamento e continua bloqueando geração histórica malformada sem retry (2839.1305ms)
+✔ defesa ignora fonte do navegador e devolve evidências canônicas (2911.8035ms)
+✔ schema mantém limites, IDs selecionados e duas evidências nas fases posteriores (253.3554ms)
+✔ defesa bloqueia guard gratuito, ausência de usuário e robô sem chamada (0.9644ms)
+✔ defesa bloqueia hash divergente e cota indisponível antes da IA (27.99ms)
+✔ diagnóstico interno distingue rejeições sem expor conteúdo e mantém retorno público (4.2598ms)
+✔ prosa livre, referências normativas e conclusões não entram no transporte fechado (1.9618ms)
+✔ avisos fixos ficam no servidor e não são enviados à IA como prosa reutilizável (2.8469ms)
+✔ captura histórica de prosa não é reparada ou adaptada silenciosamente (2.2925ms)
+✔ dispensa não recebe rito art164 como fundamento universal (1.5264ms)
+✔ resposta extensa é declarada, explicitamente parcial e limitada ao fato integral selecionado (60.0406ms)
+✔ resposta vazia ou inválida do provedor não aciona segunda chamada (140.0052ms)
+✔ contexto sem tipo verificável ou orçamento grande bloqueia antes da cota e IA (77.0738ms)
+✔ orçamento procura tipo no contexto completo sem exigir antecedente na primeira fonte (70.784ms)
+✔ normas temáticas de mérito são recuperadas sem universalizar dispensa documental (2.6545ms)
+✔ fase da habilitação respeita modalidade e documentos genéricos não ativam dispensa documental (9.0063ms)
+✔ pregão com dispensa de vistoria preserva modalidade (2.7857ms)
+✔ central recusa recortar condição do caput ou inferir regime de citação comparativa (9.2237ms)
+✔ fonte canônica sem síntese aprovada exige cobertura explicitamente completa (44.2839ms)
+✔ leitura parcial ou OCR não revisado bloqueiam antes de cota mesmo com síntese aparentemente aprovada (1.2993ms)
+✔ fonte nativa completa e OCR histórico revisado conservam elegibilidade documental sem certificar transcrição (6.2514ms)
+✔ fonte real Belém preserva cláusulas inteiras, resposta declarada, orçamento e IDs contíguos (125.3014ms)
+✔ dossiê documental preserva condições da contratação, pagamento, reposição e alertas (38.3348ms)
+✔ pagamento da dispensa preserva liquidação e condições específicas sem adotar prazo de outro edital (2.3919ms)
+✔ justificativas não repetem doutrina, mas conservam decisão e condições; garantia do produto não vira caução (1.8989ms)
+✔ dispensa real Belém reconhece cláusulas compactas, referências e condicionais (105.0684ms)
+✔ datas e valores não viram cláusulas; referências compactas sem página funcionam (1.9245ms)
+✔ TR real Belém conserva entrega cinco dias, marco do pedido e local indicado (129.2118ms)
+✔ entrega de proposta e amostra não se torna prazo contratual (1.5498ms)
+✔ novo anexo ou título contratual encerra cláusula sem perder continuação entre páginas (13.9588ms)
+✔ leitura prioriza edital e termo de referência mesmo após anexos com tipo genérico (200.3709ms)
+✔ releitura pontual só alcança cache antigo sem checklist cujo edital foi ignorado (0.9851ms)
+✔ narrativa contratual corrige página pela cláusula única e recupera condições reais (5.9261ms)
+✔ faixa de minuta termina no próximo anexo/documento e referência ambígua não autoriza fato (2.1501ms)
+✔ PE406 separa esclarecimentos e entrega contratual de análise e entrega de fichas (24.9718ms)
+✔ DE81 preserva marco da entrega e condições dos subitens sem inventar esclarecimentos (1.3524ms)
+✔ continuações de habilitação preservam regularização, alcance do CRC e percentual do TR (7.0854ms)
+✔ registro legado conserva IDs por origem e não transfere IDs removidos ou ambíguos (2.3241ms)
+✔ preserva exigências dos dois documentos além do corte antigo e das listas limitadas (2.7392ms)
+✔ mantém cláusula financeira completa e referência de documento e página (1.8718ms)
+✔ complementação restaura listas integrais sem depender da síntese curta da IA (22.7823ms)
+✔ preserva envio em três horas e assinatura eletrônica fora da seção de habilitação (0.5258ms)
+✔ horário de abertura não é substituído pelo limite de envio das propostas (2.0352ms)
+✔ preparação lê seis anexos sem alterar o limite interativo nem esconder anexos além do teto (1481.2904ms)
+✔ leitura agrega edital e TR e sinaliza página com imagem em documento parcialmente legível (2.5846ms)
+✔ referências isoladas não cobrem credenciamento portal nem horário de Brasília (1.743ms)
+✔ sigla documental legítima continua aceita como síntese curta (0.791ms)
+✔ resposta Sim não substitui certidão de falência referenciada (1.0439ms)
+✔ IDs inline seguem conteúdo documento página condições e equivalentes sem alterar fonte (3.2295ms)
+✔ CRC não desaparece quando síntese atribui chave e senha ao ID do cadastro (1.9818ms)
+✔ PNCP fora do ar ou lento é indisponível; lista vazia ou 404 é edital sem documento (6.3938ms)
+✔ extrator ampliado mantém cobertura parcial de anexo composto (0.8283ms)
+✔ extrator recebe extensão pelo MIME quando URL e título não a informam (0.5744ms)
+✔ leitura ampliada baixa os volumes antes de extrair e não duplica o texto (1.0367ms)
+✔ download ampliado cancela fluxo antes de exceder orçamento dos anexos (0.769ms)
+✔ documento ilegível permanece manual sem IA (10.6884ms)
+✔ arquivo acima do limite de extração permanece anexável (1.1174ms)
+✔ rota permanece fechada sem habilitação local (25.5774ms)
+✔ consultar exige gate RLS e não lê documento de outra empresa (63.8412ms)
+✔ PDF nativo fictício fornece sugestões com página e trecho (723.5618ms)
+✔ confirmação exige revisão e preserva cadastro canônico (13.9041ms)
+✔ arquivo privado aceita apenas PDF limitado e caminho exato (1.4189ms)
+✔ três campos em páginas distintas reutilizam até dois documentos (1.7035ms)
+ZeptoMail recusou a dúvida: 500 O serviço de e-mail recusou o envio. Verifique a Send API key e o remetente verificado no Agent do ZeptoMail.
+✔ sem sessão válida recusa com 401 e não envia e-mail (6.7583ms)
+✔ só aceita POST e responde preflight (0.4338ms)
+✔ valida nome, e-mail e mensagem (1.2716ms)
+✔ honeypot preenchido responde sucesso sem enviar (0.6391ms)
+✔ envia ao destino padrão, com reply_to do cliente, limitando tamanho e removendo quebras do nome (0.9823ms)
+✔ EMAIL_DUVIDAS define o destino; sem token de e-mail devolve 503 (39.8983ms)
+✔ falha do provedor de e-mail vira 502 (7.5948ms)
+✔ explica domínio não verificado sem expor a resposta do provedor (5.6101ms)
+✔ identifica token inválido do ZeptoMail (0.5416ms)
+✔ identifica domínio não verificado quando o código vem no erro principal (7.1488ms)
+✔ aceita chave copiada junto com o prefixo do cabeçalho (1.3388ms)
+✔ identifica mensagem textual de credencial recusada (3.5748ms)
+✔ inclui o atalho no e-mail somente para link oficial do PNCP (1.1662ms)
+✔ mantém uma faixa institucional azul compatível no cabeçalho (0.4931ms)
+✔ organiza o e-mail por seções quando recebe o resumo estruturado (4.5146ms)
+✔ formata datas ISO em dia/mês/ano sem deslocar o fuso (1.0729ms)
+✔ normaliza destinatários separados por vírgula ou ponto e vírgula sem repetir (76.6372ms)
+✔ e-mail preserva credenciamento proposta referências e leitura parcial (2.8707ms)
+✔ gera um DOCX real com a estrutura operacional do checklist (96.3341ms)
+✔ checklist rejeita ficha PNCP, listas vazias e placeholders (0.7338ms)
+✔ DOCX preserva requisitos extensos, referências, anexos e cobertura parcial (13.378ms)
+✔ transporte de requisitos pede só IDs exatos conhecidos, sem enum vazio (6.3407ms)
+✔ servidor exige cada ID uma vez e deriva texto e categoria exclusivamente da fonte (4.8832ms)
+✔ híbrido preserva cláusula5.6 com espaços múltiplos e condições sem recópia pela IA (1972.4596ms)
+✔ schema de IDs reduz orçamento do corpo completo e mantém limites existentes (1913.5721ms)
+✔ transporte usa índices inteiros globais e conserva schemas canônicos (8.1916ms)
+✔ transporte não aceita alias real, strings, floats, limites inválidos ou extras (8.1095ms)
+✔ chamada transporta JSON numérico estrito com orçamento do corpo real e retorna estrutura canônica (3772.8588ms)
+✔ resposta de transporte não recupera wrappers JSON nem campo canônico enviado pelo modelo (98.8226ms)
+✔ guarda final rejeita pagamento classificado como modalidade, número ou valor, mesmo com referência real (21.5243ms)
+✔ guarda final conserva modalidades e identificadores atômicos comprovados e ficha sem referência (5.0925ms)
+ia-edital: provedor respondeu HTTP 404
+ia-edital: provedor respondeu HTTP 400
+ia-edital: erro do contrato estruturado {"status":400,"codigo":"nao_identificado","limites":{},"medidas":[],"contexto":false,"mensagem":"unsupported [redigido]","parsing":"erro_schema_provedor"}
+ia-edital: resposta com ferramentas rejeitada
+✔ etapa restringe requisitos aos IDs e categorias explícitas, inclusive bloco sem marcadores (214.7991ms)
+✔ ia-edital usa GPT-OSS 20B como modelo padrão suportado (10.9931ms)
+✔ ia-edital troca automaticamente um modelo aposentado pelo modelo suportado (27.7061ms)
+✔ consulta o cache antes de consumir a cota de IA (6.3081ms)
+✔ síntese longa usa o modelo direto sem probe de ferramentas (2081.4656ms)
+✔ não envia fonte se o provedor rejeitar a desativação de ferramentas (2028.7024ms)
+✔ rejeita resposta do sistema longo que informe ferramentas executadas (1769.094ms)
+✔ diagnóstico de 413 conserva somente código permitido e limites numéricos (5.4338ms)
+✔ diagnóstico 413 redige segredos e conserva somente mensagem técnica limitada e campos numéricos (2.9904ms)
+✔ não deixa um rótulo operacional engolir o texto seguinte do portal (2.6938ms)
+✔ metadados de resposta sem JSON não incluem conteúdo nem identificadores (2.6616ms)
+✔ remove combinações artificiais de certidões antes de exibir o dossiê (3.0652ms)
+✔ consulta operacional preserva o texto de documentos estruturados (1.7841ms)
+✔ síntese rejeita entrada acima do orçamento antes de chamar provedor (3309.6612ms)
+✔ campos canônicos rejeitam sigla como UASG e estimativa zero sem evidência (8.5285ms)
+✔ duração da disputa e empate ME/EPP não preenchem intervalo ou margem (3.3701ms)
+✔ intervalo monetário e margem expressamente definidos mantêm evidência (3.7009ms)
+✔ margem e intervalo conservam condições após medida sem absorver cláusula seguinte (3.853ms)
+✔ contrato operacional rejeita IDs-only vazios e IDs de outra categoria (11.8558ms)
+✔ token budget conta schema estrito além das mensagens (2549.1588ms)
+✔ minuta usa schema narrativo contado e não aceita campo escalar fora do contrato (1632.8971ms)
+✔ DOCX sem paginação conserva fato por documento e cláusula única (2.8701ms)
+✔ 400 de schema preserva evidência privada sem vazar saída ou segredo nos logs (698.0692ms)
+✔ saída dinâmica aproveita folga e mantém request completo mais saída abaixo de 7200 (1432.5734ms)
+✔ instruções de síntese priorizam contrato e transcrição de condições antes da fonte (3.0995ms)
+✔ conversão local também rejeita propriedades fora do JSON Schema estrito (2.668ms)
+✔ ID da categoria correta não autoriza trocar cláusula por ato do pregoeiro (6.7642ms)
+✔ conversão híbrida recebe só fonte delimitada e conserva texto documental legítimo (722.225ms)
+ia-provedores: groq falhou, tentando o próximo provedor
+ia-provedores: gemini resposta não utilizável
+ia-provedores: groq falhou, tentando o próximo provedor
+ia-provedores: gemini HTTP 503
+ia-provedores: openrouter HTTP 429
+ia-provedores: gemini interrompido (AbortError)
+ia-provedores: openrouter resposta não utilizável
+ia-provedores: groq falhou, tentando o próximo provedor
+ia-provedores: gemini HTTP 429
+ia-provedores: gemini HTTP 429
+ia-provedores: gemini HTTP 503
+ia-provedores: groq falhou, tentando o próximo provedor
+ia-provedores: gemini interrompido (AbortError)
+ia-provedores: openrouter interrompido (AbortError)
+✔ Groq com espaços e compatível truncado não contam como sucesso (4.8193ms)
+✔ Groq 429 cai para o Gemini, que responde (4.9483ms)
+✔ pula provedores sem chave e segue modelo a modelo até o sucesso (1.2549ms)
+✔ timeout, resposta vazia e 401 passam ao Cloudflare, o último da cadeia (1.1009ms)
+✔ todos falham: devolve o erro da Groq; sem Groq, mensagem genérica (1.1933ms)
+✔ não inicia novo provedor depois do orçamento total de tempo (0.6536ms)
+✔ haProvedorConfigurado e Cloudflare exigem as variáveis certas (0.3563ms)
+✔ Groq e Gemini lentos (timeout) ainda deixam tempo para OpenRouter e Cloudflare (0.8438ms)
+✔ sessão ausente e ambiente fechado não geram documentos (3.7807ms)
+✔ consulta, preparação e exportação revalidam dados; hash obsoleto falha (169.1079ms)
+✔ papel, aprovação, empresa e referências cruzadas falham fechadas (16.5691ms)
+✔ gate, identificação ausente/invalidada e PDF substituído bloqueiam exportação (8.7658ms)
+✔ perfil incompleto vira pendência; cliente não substitui cadastro ou preços (7.537ms)
+✔ PDF válido tem hash rechecado a cada exportação e referências de outra empresa bloqueiam (16.7277ms)
+✔ minuta revisada exporta DOCX com XML escapado, sem chamada de geração (107.202ms)
+✔ exportação recusa peça não revisada, tipo desconhecido e texto excessivo (17.4544ms)
+✔ exportação recusa caracteres inválidos no XML (5.9696ms)
+✔ página curta só com texto ou vazia não indica conteúdo ausente (2.608ms)
+✔ cabeçalho e rodapé gráficos não confundem página curta legível (1.1605ms)
+✔ imagem de cláusula ou tabela no corpo mantém o alerta (0.437ms)
+✔ página escaneada inteira mantém o alerta (0.2287ms)
+✔ transformações aninhadas e eixo invertido não escondem imagem do corpo (0.2891ms)
+✔ falha de inspeção ou operação de imagem desconhecida mantém o alerta (0.4108ms)
+✔ imagem inteiramente branca não sinaliza conteúdo ausente; texto claro continua protegido (0.3721ms)
+✔ cláusula em contornos vetoriais mantém alerta; linha e fundo retangular não (0.7078ms)
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: a280
+Warning: decodeScan - unexpected MCU data, next marker is: 8a00
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 1400
+Warning: decodeScan - unexpected MCU data, next marker is: 28a0
+✔ PDF escaneado aciona OCR confiável nas sete páginas e declara proveniência sem certificar (3374.2227ms)
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: a280
+Warning: decodeScan - unexpected MCU data, next marker is: 8a00
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 1400
+Warning: decodeScan - unexpected MCU data, next marker is: 28a0
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: a280
+Warning: decodeScan - unexpected MCU data, next marker is: 8a00
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 1400
+Warning: decodeScan - unexpected MCU data, next marker is: 28a0
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: a280
+Warning: decodeScan - unexpected MCU data, next marker is: 8a00
+Warning: decodeScan - unexpected MCU data, next marker is: 5140
+Warning: decodeScan - unexpected MCU data, next marker is: 1400
+Warning: decodeScan - unexpected MCU data, next marker is: 28a0
+✔ OCR ausente, erro ou página omitida mantém cobertura parcial e não inventa recuperação (5304.4736ms)
+Warning: TT: undefined function: 21
+✔ PDF nativo conserva texto e não aciona OCR sem páginas pendentes (1769.2713ms)
+✔ página mista com texto longo e imagem central aciona OCR sem apagar texto nativo (17.9674ms)
+✔ adaptador recusa configuração, páginas e tamanho inseguros; executável ausente não inventa OCR (55.5872ms)
+﹣ timeout real mantém página pendente e limpa tarefa local (0.2981ms) # SKIP
+✔ dispensa nativa de Belém mantém conteúdo sem invocar OCR desnecessário (32.8986ms)
+✔ seleção conserva documento e página mesmo quando prioriza o fim da fonte (17.6703ms)
+✔ recusa trocar fonte de trecho existente e não exibe narrativa adicional da IA (0.8386ms)
+✔ ausência de informação é delimitada e resposta inválida não é sucesso (0.4039ms)
+✔ aviso de seleção e de leitura parcial não depende do modelo (1.1559ms)
+✔ documento sem paginação nem cláusulas continua verificável, sem página inventada (2.8134ms)
+✔ pncp-itens percorre páginas e não limita a primeira lista (10.1042ms)
+✔ pncp-detalhe normaliza os campos completos retornados pelo PNCP (1.2797ms)
+✔ escopo literal distingue Edital e TR dentro do mesmo PDF com página preservada (26.2893ms)
+✔ documento explícito ausente não é substituído por cláusula única de outro documento (3.2616ms)
+✔ duplicata no mesmo escopo e página diferente permanece ambígua (1.8377ms)
+✔ referência não aceita prefixo numérico nem faixa de itens como cláusula (0.8466ms)
+✔ número deslocado só é recuperado com sequência adjacente comprovada e texto literal (0.818ms)
+✔ menção incidental ao TR não muda escopo e ausência de número continua sem prova (0.9449ms)
+✔ wrappers Python e Fonte conservam arquivo/página e títulos de rodapé canônicos reais (74.7519ms)
+✔ escopo atravessa somente páginas adjacentes do mesmo arquivo (1.1412ms)
+✔ rodapé não relabela conteúdo antes de ANEXO/heading conflitante na mesma página (0.7214ms)
+✔ assinatura incompleta não permite inferir retroativamente escopo do corpo (0.607ms)
+✔ heading de corpo do mesmo escopo também impede backfill do trecho anterior (5.7672ms)
+✔ segunda assinatura canônica de rodapé sem linha de identidade visual é reconhecida (0.8021ms)
+✔ salto ou repetição de página nativa também interrompe continuidade de escopo (0.4409ms)
+✔ ficha mostra unidade, plataforma, links e informação complementar do PNCP (6.6933ms)
+✔ benefício ME/EPP, margem e conteúdo nacional dos itens viram detalhes e pontos de atenção (2.1736ms)
+✔ leitura da IA tem prioridade sobre o resumo do PNCP no mesmo campo (0.6285ms)
+✔ itens sem benefício informam a ausência e critério único preenche o geral (0.4602ms)
+✔ orçamento sigiloso aparece como Sigiloso no lugar de valor zero e gera alerta (0.5505ms)
+✔ item sigiloso não mostra valor unitário e valor público continua formatado (30.1415ms)
+✔ pregão presencial entra nos pontos de atenção com a justificativa (5.1259ms)
+✔ referência sem sufixo técnico PNCP encontra aviso e mantém rejeição de ambiguidade (20.4581ms)
+✔ saída Belém recupera condições operacionais omitidas pela síntese, sem aprovação de IA (56.1759ms)
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+✔ HTTP resumo devolve fonte verificada com hash, sem aprovar síntese nem alterar fluxo do robô (121.6402ms)
+✔ corrige eventos distintos e preserva regras de pagamento por fonte e condições de certidão (23.5997ms)
+✔ corte da síntese compatível não se confunde com extração completa, inclusive em dossiê antigo (42.0102ms)
+✔ fonte integral no Gemini não herda corte da cadeia compatível e análise documental é idempotente (8.5669ms)
+✔ interface separa extração parcial de envio integral à síntese (0.9145ms)
+✔ CRM-TO: remove certificado e falência sem fonte, preservando exigência técnica real (23.9469ms)
+✔ preserva exigências explicitamente presentes, inclusive acentos e quebras de linha (2.2073ms)
+✔ sem texto oficial não apaga listas e não declara conferência (0.2464ms)
+✔ aviso do DOU legível não torna o edital integral (1.6517ms)
+✔ aviso que acompanha edital completo não é rebaixado (0.5648ms)
+✔ ausência em cache não apaga identificação oficial no modelo comum (5.1995ms)
+✔ modelo geral atende DE81 sem transplantar exigências estaduais de PE406 (4.4704ms)
+✔ valor monetário é legível sem alterar zero, valores brasileiros ou condições textuais (38.7483ms)
+✔ número oficial substitui controle PNCP sem sobrescrever número extraído nem deduzir ano (1.221ms)
+✔ cabeçalho DOCX usa número oficial e mantém controle PNCP quando for a única identificação (47.3707ms)
+✔ exportações preservam exigências que alteram preparo da proposta e execução (20.9592ms)
+✔ gateway reserva uma cota antes do despacho e polling não gera custo novo (2388.3019ms)
+✔ cota negada impede despacho e usuário estranho não executa o job (62.5969ms)
+✔ worker usa fonte reservada e CAS impede execução duplicada; cache final não cobra (76.519ms)
+✔ schema incompleto, JSON malformado e resposta interrompida nunca viram resumo concluído (236.8808ms)
+✔ apenas falha transitória tem uma repetição; erro permanente encerra imediatamente (2474.4487ms)
+✔ fonte acima do contexto é rejeitada antes de cota ou despacho (443.8361ms)
+✔ worker sem bearer não lê corpo nem acessa provedor (1122.2952ms)
+✔ reserva cobre duas tentativas de seis minutos e expira após treze minutos (44.7542ms)
+✔ retomada explícita cobra nova cota somente para dono de job interrompido (185.9583ms)
+✔ worker que perde CAS na conclusão não publica cache canônico (82.0843ms)
+✔ cota recusada expirada não bloqueia outro usuário autorizado (88.8426ms)
+✔ resposta incompleta guarda limite e uso privadamente sem publicar resumo ou cache (110.6129ms)
+✔ orçamento de saída acomoda raciocínio sem mudar modelo ou alvo de concisão (0.5493ms)
+✔ âncoras recuperam datas operacionais de editais diferentes sem incluir legislação histórica (0.8236ms)
+✔ cache sem revisão usa fase curta uma vez e preserva campos e custo da geração (64.7451ms)
+✔ revisão inválida ou sem data preserva rascunho e não publica resumo incompleto (121.4421ms)
+✔ job do robô leva a chave no disparo, grava o dossiê no Supabase sem validade por idade e falha não bloqueia o cliente (251.2127ms)
+✔ caminho final real recupera obrigações omitidas nas nove etapas sem trocar recursos por entrega (562.3619ms)
+✔ releitura da guarda final não duplica pendência documental de prazo vazio (11.1498ms)
+✔ guarda não inventa folha ou seção de parcelamento sem evidência na fonte (1.531ms)
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+✔ preserva licença exigida em maiúsculas e a síntese referenciada sem repetir sua fonte (32.7177ms)
+✔ documentos curtos em maiúsculas também são requisitos, não cabeçalhos (3.5297ms)
+✔ referências inexistentes ou de página não dispensam requisitos da fonte (1.0387ms)
+✔ citação de ID não apaga prazo ou percentual que a síntese omitiu (1.0737ms)
+✔ contexto inclui catálogo e campos de pagamento, entrega, multas e impugnação além do início (2.4351ms)
+✔ ID correto não transforma requisito condicional em obrigação universal (1.7348ms)
+✔ mantém exceções e alternativas qualitativas quando a síntese não as demonstra (1.9203ms)
+✔ contexto de resumo inclui a fonte integral quando cabe, sem trocar o texto por últimas ocorrências (17.0215ms)
+✔ fonte maior que o orçamento sinaliza seleção e conserva seções completas (4.3875ms)
+✔ modo desconhecido retorna 400 sem consultar fonte ou consumir IA (357.496ms)
+✔ resumo consulta PNCP e rejeita documento falso quando a fonte oficial está ausente (18.6514ms)
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+dossies_editais: gravação recusada HTTP 503 08928517000157-1-000116/2026: indisponível
+✔ clique local preserva fila e persiste leitura nativa canônica com hash, sem IA/cota (2635.3849ms)
+✔ sem flag local mantém fila; sem autenticação não lê nem persiste fonte (8.056ms)
+✔ fonte OCR parcial persistida aparece para conferência sem satisfazer guarda da Central (257.8199ms)
+✔ falha ao persistir fica explícita sem anunciar cache ou consumir IA (322.9712ms)
+✔ PNCP inválido não aciona fonte, fila ou persistência local (7.4611ms)
+✔ Dispensa eletrônica: recupera omissões da síntese na fonte e exibe todos os temas operacionais (102.9448ms)
+✔ Pregão eletrônico: recupera omissões da síntese na fonte e exibe todos os temas operacionais (12.4109ms)
+✔ Concorrência: recupera omissões da síntese na fonte e exibe todos os temas operacionais (4.532ms)
+✔ complementação não apaga fatos existentes nem importa sanções de outro tema (1.2462ms)
+✔ requisito filho mantém caput condicional somente do mesmo documento (2.0596ms)
+✔ nova dispensa conserva complementos após persistência e leitura simuladas sem rede (67.5608ms)
+✔ prazo do interessado não incorpora resposta do órgão e pagamento conserva remissão (227.4174ms)
+✔ menção interna a declaração não duplica toda habilitação jurídica como declaração (10.2949ms)
+✔ etapas limitam JSON UTF-8 completo preservando páginas e IDs globais do catálogo (149.7215ms)
+✔ DOCX com caracteres multibyte conserva conteúdo sob orçamento do JSON (40.0165ms)
+✔ blocos conservam todas as páginas completas e sua referência documental (14.8555ms)
+✔ DOCX extenso sem páginas é dividido sem perder parágrafos nem conteúdo (2.8728ms)
+✔ anexo sem quebras de linha e PDF paginado podem coexistir sem corte de página (2.6416ms)
+✔ progresso retoma resultados e não chama provedor durante cooldown (13.6681ms)
+✔ duas abas concorrentes executam a etapa uma vez (25.3968ms)
+✔ três falhas param retries automáticos e retomada explícita respeita Retry-After (17.5344ms)
+✔ conciliação conserva divergências e não preenche ausências com suposição (2.6217ms)
+✔ cota individual esgotada não incrementa falhas nem bloqueia outro usuário (58.227ms)
+✔ conclusão atrasada não sobrescreve nova reserva vencedora (1.2343ms)
+✔ sanitização final conserva exigência do quinto bloco além dos limites antigos (1.8176ms)
+✔ robô não conta fonte preparada nem ficha sem documento como dossiê gerado (4.7349ms)
+✔ robô conta HTTP202 como pendente, sem anunciar dossiê gerado (0.5392ms)
+✔ 413 subdivide só a etapa recusada e preserva ordem, páginas e resultados anteriores (2.8874ms)
+✔ retomada de 413 antigo reduz antes de chamar provedor e página única encerra sem retry idêntico (1.0802ms)
+✔ subdivisão DOCX preserva texto integral e para em tamanho mínimo (0.522ms)
+✔ evidência de formato inválido fica só no job limitado e some após sucesso (8.6934ms)
+✔ vinte etapas e retry consomem uma cota por usuário no job (2.7172ms)
+✔ quota negada não bloqueia outro usuário nem o robô (0.8409ms)
+✔ orçamento inclui instruções ficha catálogo e acentos sem perder páginas (4901.8837ms)
+✔ retomada após length divide páginas antes da IA e preserva resultados salvos (2.5075ms)
+✔ página única densa divide parágrafos íntegros e conserva ID ativo e texto (2.4489ms)
+✔ resposta real01 não atribui ficha PNCP a página que não contém número modalidade ou valor (22.0771ms)
+✔ resposta real03 rejeita sanção com página existente mas cláusula noutra página (5.466ms)
+✔ resposta real03 sem Se necessária conserva cláusula original após complementação (18.7812ms)
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+ia-edital: armazenamento não inicializado ambiente_blobs_ausente
+✔ adaptador preserva preflight 204 sem corpo e cabeçalhos CORS (1377.9789ms)
+✔ sem dossiê pronto, o endpoint enfileira o pedido e devolve a ficha oficial sem chamar IA nem baixar documento (57.1748ms)
+✔ dossiê do Gemini com prazo em conferência é entregue ao cliente sem marca de prazos revisados (38.1902ms)
+✔ preserva síntese recebida antes da complementação e mantém evidências canônicas (20.6516ms)
+✔ reabertura preserva síntese sem expansão ou cópias recursivas (4.0069ms)
+✔ síntese preservada também filtra exigência sem fonte e valor sem evidência (2.5425ms)
+✔ dossiê antigo separa transcrição identificável sem cortar condições nem inventar síntese (2.1227ms)
+✔ sem fonte não cria apresentação supostamente verificada (0.2865ms)
+✔ apresentação não reexibe pagamento antecipado de 90 dias corrigido pela fonte (1.0907ms)
+✔ dispensa real de Belém conserva marco e prazo documental na apresentação (70.44ms)
+✔ pregão real 28/2026: 322 entradas voltam às três observações originais sem cortar evidências (244.0934ms)
+✔ questionamentos reais do pregão 28 recebem apenas cláusulas rastreáveis (384.4844ms)
+✔ cláusulas homônimas são vinculadas ao documento explícito, sem escolher por tema (1.3475ms)
+✔ referência única fornece documento, página e texto sem interpretação adicional (0.601ms)
+✔ convite mantém script válido e o acesso restrito vinculado à empresa (13.4057ms)
+✔ status do cliente não pode ser autoaprovado após revogação (0.3371ms)
+✔ status e cartões do mesmo edital ficam separados por empresa no navegador (12.3618ms)
+✔ o banco reconstitui dois acompanhamentos independentes e ignora processos arquivados (11.7372ms)
+✔ recuperação inclui UF antiga, falha explícita e cobertura desconhecida (5.7036ms)
+✔ recuperação dispensa UFs coletadas nas últimas 6 horas (0.4464ms)
+✔ recuperação mantém UF antiga não concluída como pendente (7.1207ms)
+✔ chaveOportunidade usa numeroControlePNCP quando existe, senão objeto+orgao+uf (1.8526ms)
+✔ prazo PNCP permanece ativo durante leitura do corpo e é limpo após falha (4.2951ms)
+✔ falha na persistência de Contratos rejeita e preserva checkpoint/base local (6.9376ms)
+✔ falha na persistência de Mercado rejeita e preserva checkpoint/base local (12.802ms)
+✔ falha na persistência de Oportunidades rejeita e preserva checkpoint/base local (1.7725ms)
+✔ metadado remoto com falha rejeita execução e mantém base local anterior (52.7512ms)
+✔ sucesso confirma linhas antes dos checkpoints e arquivos locais (4.8092ms)
+✔ página nacional perdida mantém coleta parcial (2.316ms)
+✔ scan nacional retoma páginas e invalida cursor de uma fonte alterada (2.7939ms)
+✔ sincronizarContratosNoSupabase propaga falha após lote parcial (1.8158ms)
+✔ sincronizarMercadoNoSupabase propaga falha após lote parcial (1.4749ms)
+✔ oportunidades coleta além de 20 páginas antes de confirmar a UF (15.5311ms)
+✔ oportunidades retoma após orçamento sem perder páginas (9.2341ms)
+✔ oportunidades invalida cursor quando fonte muda (5.9262ms)
+✔ oportunidades não confirma UF se a fonte mudar durante a paginação (2.3805ms)
+✔ retenção preserva edital antigo aberto, encerrado recente e data desconhecida do cache e PNCP (2.3884ms)
+✔ persistência poda pela data de encerramento e preserva encerramento desconhecido como null (1.6823ms)
+✔ contratos parciais preservam cursor e contratos anteriores (2.2233ms)
+✔ cobertura parcial não termina com sucesso verde após persistir dados úteis (3.2888ms)
+✔ falha de hidratação de Contratos não permite coleta sem base íntegra (2.1275ms)
+✔ falha de hidratação de Mercado não permite coleta sem base íntegra (1.6118ms)
+✔ falha de hidratação de Oportunidades não permite coleta sem base íntegra (4.5456ms)
+✔ contratos complementares sem orçamento deixam todas UFs pendentes (2.0179ms)
+✔ contratos complementares retomam além da sexta página (3.5765ms)
+✔ falha ao escrever metadado local preserva checkpoint anterior (1.7935ms)
+✔ ata incompleta permanece pendente: falha-itens (3.9493ms)
+✔ ata incompleta permanece pendente: falha-resultados (2.1987ms)
+✔ ata incompleta permanece pendente: tempo (2.1669ms)
+✔ ata incompleta permanece pendente: mais-paginas (1.7347ms)
+✔ ata só confirma enriquecimento após consultar todos os resultados (2.1678ms)
+✔ ata com mais de 30 itens consulta todos os vencedores (3.0691ms)
+✔ ata pagina todos os itens e retoma resultados sem repetir os já persistidos (8.8996ms)
+✔ ata invalida progresso se os itens mudarem (6.9761ms)
+✔ ata rejeita resultado associado a outra compra (2.9792ms)
+✔ ata rejeita compra associado a outra compra (2.174ms)
+✔ janelas de atas retomam página pendente sem duplicar referências (10.7329ms)
+✔ atas retomam no dia seguinte revalidando a consulta (9.1257ms)
+✔ progresso das atas fica no blob remoto antes do checkpoint, fora do metadado versionado (2.9476ms)
+✔ IDs de scans ficam no blob remoto antes do checkpoint, fora dos metadados versionados (2.3233ms)
+✔ falha no blob de IDs do scan nacional preserva checkpoint e base anteriores (2.0739ms)
+✔ hidratação de Contratos valida IDs do scan confirmado (2.2999ms)
+✔ hidratação de Contratos valida IDs do scan outro-checkpoint (1.4463ms)
+✔ hidratação de Contratos valida IDs do scan corrompido (1.6306ms)
+✔ hidratação de Contratos valida IDs do scan legado (1.2778ms)
+✔ hidratação de Mercado valida IDs do scan confirmado (1.5024ms)
+✔ hidratação de Mercado valida IDs do scan outro-checkpoint (1.6309ms)
+✔ hidratação de Mercado valida IDs do scan corrompido (1.2405ms)
+✔ hidratação de Mercado valida IDs do scan legado (1.487ms)
+✔ falha no blob de progresso das atas preserva checkpoint anterior (2.9508ms)
+✔ hidratação recupera progresso de atas confirmado (7.8382ms)
+✔ hidratação ignora progresso de atas de outro checkpoint (2.0082ms)
+✔ hidratação rejeita progresso de atas corrompido antes de sobrescrever a base (1.7388ms)
+✔ hidratação aceita metadado legado sem blob de progresso (1.5539ms)
+✔ integridade do progresso tolera ordenação de chaves do JSONB preservando ordem dos itens (1.4668ms)
+✔ falha na reconferência de itens preserva os resultados para retomada (5.6885ms)
+✔ scan nacional recusa vazio contraditório sem avançar cobertura (1.6221ms)
+✔ scan nacional não conclui páginas com registro repetido (1.8754ms)
+✔ scan nacional não conclui páginas com registro truncado (5.1525ms)
+✔ scan nacional não conclui páginas com registro sem-id (1.2663ms)
+✔ scan nacional não conclui páginas com registro repetido-na-retomada (1.4194ms)
+✔ scan nacional retoma lacuna concorrente sem contar novamente páginas posteriores (2.6196ms)
+✔ scan nacional reinicia cursor legado que não preservou IDs (2.7947ms)
+✔ janela de atas reinicia cursor legado que não preservou IDs (42.0179ms)
+✔ ata retoma páginas com totais válidos antes de confirmar enriquecimento (5.4895ms)
+✔ ata não confirma itens com total truncado (2.7435ms)
+✔ ata não confirma itens com total total-registros-alterado (2.5223ms)
+✔ ata não confirma itens com total total-paginas-alterado (3.5467ms)
+✔ ata não confirma itens com total total-alterado-na-retomada (4.4928ms)
+✔ janela de atas não conclui páginas com registro repetido (4.9691ms)
+✔ janela de atas não conclui páginas com registro truncado (10.8692ms)
+✔ janela de atas não conclui páginas com registro sem-id (1.9602ms)
+✔ janela de atas não conclui páginas com registro repetido-na-retomada (6.656ms)
+✔ mercado mantém pendência para vazio contraditório em /itens? (2.0858ms)
+✔ mercado mantém pendência para vazio contraditório em /resultados (4.7549ms)
+✔ mercado mantém pendência para vazio contraditório em /atas? (2.9072ms)
+✔ cursor de oportunidades vencido reinicia a consulta com preservação do histórico (3.9327ms)
+✔ calendário abre dia sem dados e permite limpar o filtro (23.8643ms)
+✔ calendário filtra dias com dados, desmarca e navega entre meses (2.8783ms)
+✔ datas sem horário mantêm o dia de publicação no fuso de Manaus (3.7344ms)
+✔ todos os dias reais são botões acessíveis, incluindo dias sem dados (1.809ms)
+✔ o calendário não posiciona edital sem data de publicação pela data de abertura (4.1395ms)
+✔ CAPAG corresponde ao ente municipal e UF, sem emprestar nota a federal ou Câmara (16.5514ms)
+✔ CAPAG sem nota ou sem base informa ausência e nunca converte N.D. em aprovação (2.3208ms)
+✔ snapshot CAPAG real conserva data e indicadores oficiais de Jutaí (80.0699ms)
+✔ CAPAG real de Sant'Ana aceita apóstrofo convencional sem perder a identidade do ente (55.3438ms)
+✔ CAPAG cobre 26 UFs e todas as notas em pregão e dispensa, sem depender do edital de Jutaí (673.0421ms)
+✔ CAPAG recusa entes independentes e homônimos sem confirmação inequívoca (1.2034ms)
+✔ build local inclui o módulo CAPAG e o painel usa a mesma integração em qualquer modalidade (10.7733ms)
+✔ CAPAG aparece com PNCP pendente em novos pregões e dispensas, inclusive resumo em cache (98.2112ms)
+✔ consulta CAPAG atrasada não altera outro edital e indisponibilidade tem motivo visível (7.0304ms)
+✔ módulos do resumo têm versão por conteúdo para evitar JS antigo no navegador (16.9887ms)
+✔ ficha sem leitura não exporta nem chama endpoint DOCX (8.4778ms)
+✔ checklist conserva categorias e referências sem truncar requisitos (6.5886ms)
+✔ cobertura desconhecida ou análise degradada não promete leitura integral (5.4628ms)
+✔ exportação anterior não habilita nem altera o checklist do novo modal pendente (7.2431ms)
+✔ erro de exportação no modal atual restaura o botão e comunica a falha (3.4885ms)
+✔ normaliza resultado somente com campos explícitos e não inventa marca (2.0949ms)
+✔ avança datas em UTC sem alterar o dia por fuso local (3.4502ms)
+✔ persiste, busca nome acentuado e e-mail, isola contas e remove (5.2481ms)
+✔ deduplica sem apagar nome e não atribui nome de uma pessoa a vários destinatários (0.7034ms)
+✔ armazenamento indisponível ou adulterado não interrompe o envio (0.4441ms)
+✔ minuta referencia provas e pedidos sem inventar fundamento jurídico ou destinatário (5.5739ms)
+✔ impugnação fica editável com fundamento jurídico pendente, sem acusação automática (0.4809ms)
+✔ rascunhos privados têm chave distinta por usuário, empresa e edital e recusam contexto ausente (0.4767ms)
+✔ minuta rejeita provas nulas, malformadas e conteúdo vazio (9.1643ms)
+✔ abrir edital A, fechar e abrir B preserva um único host e uma Central antes da análise crítica (14.2133ms)
+✔ identificação é preenchida localmente apenas nos marcadores previstos, sem inferir dados faltantes (2.5647ms)
+✔ perfil confirmado é aplicado só por ação e exportação confere perfil atual sem apagar edição (39.4449ms)
+✔ Central bloqueia OCR não revisado e leitura parcial sem chamada e atualiza cobertura com o mesmo hash (14.902ms)
+✔ ações de defesa têm identidade visual, instrução de bloqueio e editor associado (1.4213ms)
+✔ análise inteligente usa pergunta e objetivo, mostra fundamentação e exige revisão (6.0985ms)
+✔ resposta do órgão exige texto e é enviada como informação declarada pelo usuário (1.2268ms)
+✔ aviso diferencia seleção parcial do contexto, declarações parciais e cobertura não especificada (2.0789ms)
+✔ falha, fonte divergente e resposta incompleta não substituem texto por falsa análise (1.9345ms)
+✔ resposta atrasada de outra empresa não ocupa o editor atual (1.7885ms)
+✔ editor exige revisão, invalida revisão ao editar e não mistura rascunho de outra empresa (1.1252ms)
+✔ mudança da fonte preserva texto não salvo e bloqueia exportação até nova minuta (0.8656ms)
+✔ sugestão antiga sem provas abre a investigação sem criar peça (0.5795ms)
+✔ evidência sem trecho permite abrir a Central, mas não fabrica minuta (0.3967ms)
+✔ Dispensa: abre sem gerar documento, analisa mediante clique e exporta só após revisão (2.0377ms)
+✔ Pregão: abre sem gerar documento, analisa mediante clique e exporta só após revisão (3.9026ms)
+✔ Concorrência: abre sem gerar documento, analisa mediante clique e exporta só após revisão (1.6742ms)
+✔ sugestões das duas listas de IA ficam visíveis sem inventar provas nem liberar minutas (0.7079ms)
+✔ nova análise da mesma fonte atualiza questionamentos sem perder a minuta em edição (0.5899ms)
+✔ provas nulas e malformadas não quebram interface nem habilitam preparação (2.3524ms)
+✔ listas de questionamentos malformadas não quebram o resumo (7.8392ms)
+✔ dialog interno abre sem IA, preenche o ponto e Escape devolve foco ao botão (1.2011ms)
+✔ sem fonte, conta ou OCR revisado pode abrir, mas análise continua bloqueada (0.8761ms)
+✔ atualização preserva formulário e janela; fechar contexto salva rascunho privado (0.9973ms)
+✔ fechar durante análise não permite trocar de ponto sob uma resposta pendente (0.7033ms)
+✔ sugestões usam vínculo canônico exato e preservam evidências estruturadas sem adivinhar trechos (1.1339ms)
+✔ referência parcialmente localizada mantém motivo visível mesmo com evidência válida (0.4444ms)
+✔ descrição do card distingue trecho vinculado de sugestão sem prova sem apagar limites (0.3514ms)
+✔ minuta vazia alterada não pede substituição; minuta preenchida preserva confirmação cancelável (0.7067ms)
+✔ questionamento restaurado igual abre sem confirmação, mas substituição diferente pode ser cancelada (0.7736ms)
+✔ dados da empresa ficam recolhidos e carregam cadastro canônico sem aplicar na minuta automaticamente (22.5069ms)
+✔ confirmação manual exige revisão e não envia documentos ou dados para IA (1.3564ms)
+✔ troca de contexto e resposta de outra empresa não preenchem dados nem editor (1.3023ms)
+✔ extração manual conserva anexo e formulário editável e mostra limite sem gerar documento (0.7963ms)
+✔ upload recusa tamanho e conteúdo inválido antes de enviar arquivo (1.1774ms)
+✔ dois uploads selecionam o novo documento e conservam os campos em edição (1.3208ms)
+✔ recarregar e aplicar preservam o documento selecionado se ele ainda existe (0.6588ms)
+✔ sugestão é explícita e editar o valor remove sua proveniência (7.5322ms)
+✔ três campos em três páginas do mesmo contrato conservam todas as provas ao confirmar (2.0118ms)
+✔ identificação confirmada é aplicada localmente e órgão não vira empresa ou autoridade inventada (3.006ms)
+✔ aplicar novo perfil troca somente bloco de identificação e conserva edição do corpo (0.7065ms)
+✔ perfil inválido e dados ausentes não viram identificação confirmada (0.5619ms)
+✔ ponte local lê texto sem serviços externos (975.3316ms)
+✔ ponte local preserva diagnóstico de formato ilegível (845.0212ms)
+﹣ ponte reúne volumes RAR3 RAR5 e nomes antigos sem repetir o grupo (1.1201ms) # SKIP
+﹣ RAR com volume faltante não parece completo (0.5053ms) # SKIP
+﹣ RAR rejeita parte corrompida, primeiro ausente e nomes ambíguos (0.1726ms) # SKIP
+✔ RAR não confunde part1 com part01 (6.1334ms)
+✔ navegador vazio recupera filtro salvo na conta (7.3135ms)
+✔ preferência remota prevalece sobre cache antigo e não lê outra conta (4.6926ms)
+✔ salvar confirma persistência remota antes de trocar filtro local (11.0866ms)
+✔ falha de banco não aparenta sucesso nem apaga filtro anterior (4.0402ms)
+✔ frescor considera coleta efetiva e ignora tentativa recente (49.7731ms)
+✔ base sem data ou com uma UF antiga pede recuperação; consulta recente e cooldown evitam repetição (5.7638ms)
+✔ consulta parcial e erro preservam edição anterior sem marcar coleta como atual (51.4304ms)
+✔ reentrada durante carregamento não dispara segunda coleta (8.5063ms)
+✔ frescor distingue coleta sem data de coleta atual (6.128ms)
+✔ edição ao vivo do dia 11 sobrevive à base antiga sem consultar PNCP (7.035ms)
+✔ coleta mais nova atualiza registro duplicado de edição ao vivo antiga (13.8809ms)
+✔ salvoEm legado não faz edição antiga prevalecer sobre coleta corrigida (35.4752ms)
+✔ merge remove registros antigos encerrados e mantém recentes da edição (5.7329ms)
+✔ precedência considera a coleta de cada UF e preserva IDs ausentes (8.0521ms)
+✔ cache inteiramente expirado não aparece nem na primeira pintura com coleta vazia (7.3758ms)
+✔ coleta corrige encerramento antes do filtro de recência sem ressuscitar cache (8.8879ms)
+✔ projeção posterior remove PNCP ausente da edição antiga e preserva Sistema S (8.3541ms)
+[dossiês] openrouter/a:free: resposta inválida; tentando próximo modelo configurado.
+[dossiês] gemini/gemini-3.8-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 429 {}
+[dossiês] gemini/a: HTTP 429 {}
+[dossiês] gemini/a: HTTP 404 {}
+[dossiês] gemini/a: HTTP 503 {}
+[dossiês] gemini/b: HTTP 503 {}
+[dossiês] gemini/a: HTTP 503 {}
+[dossiês] IA sobrecarregada; nova tentativa em 60 s.
+[dossiês] IA sobrecarregada; nova tentativa em 60 s.
+[dossiês] IA sobrecarregada; nova tentativa em 60 s.
+[dossiês] IA sobrecarregada; nova tentativa em 60 s.
+[dossiês] IA sobrecarregada; nova tentativa em 60 s.
+[dossiês] gemini/gemini-3.8-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.8-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 429 {}
+[dossiês] mistral/mistral-medium-latest: HTTP 429 {}
+[dossiês] mistral/mistral-small-latest: HTTP 429 {}
+[dossiês] openrouter/or-a:free: HTTP 404 {}
+[dossiês] gemini/gemini-3.8-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 429 {}
+[dossiês] mistral/mistral-medium-latest: HTTP 429 {}
+[dossiês] mistral/mistral-small-latest: HTTP 429 {}
+[dossiês] openrouter/or-a:free: HTTP 429 {}
+[dossiês] openrouter/or-b:free: HTTP 429 {}
+[dossiês] gemini/gemini-3.8-flash: HTTP 503 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 503 {}
+[dossiês] mistral/mistral-medium-latest: sem resposta (TimeoutError: timeout)
+[dossiês] mistral/mistral-small-latest: sem resposta (TimeoutError: timeout)
+[dossiês] openrouter/or-a:free: HTTP 502 {}
+[dossiês] openrouter/or-b:free: HTTP 502 {}
+[dossiês] gemini/gemini-3.8-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 429 {}
+[dossiês] mistral/mistral-medium-latest: HTTP 503 {}
+[dossiês] mistral/mistral-small-latest: HTTP 503 {}
+[dossiês] gemini/gemini-3.8-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 429 {}
+[dossiês] mistral/mistral-medium-latest: HTTP 429 {}
+[dossiês] gemini/gemini-3.8-flash: HTTP 429 {}
+[dossiês] gemini/gemini-3.7-flash: HTTP 429 {}
+[dossiês] mistral/mistral-medium-latest: HTTP 429 {}
+[dossiês] mistral/mistral-small-latest: HTTP 429 {}
+[dossiês] openrouter/or-a:free: HTTP 429 {}
+[dossiês] openrouter/or-b:free: HTTP 429 {}
+✔ resposta vazia do modelo gratuito não impede o próximo modelo já configurado (6.3977ms)
+✔ ajuste ao schema descarta chaves extras, preenche ausentes e passa na validação do contrato (3.4997ms)
+✔ schema enviado ao Gemini não leva marcações exclusivas da OpenAI (1.1894ms)
+✔ cota esgotada interrompe sem consumir tentativa (4.8392ms)
+✔ cota esgotada em um modelo passa ao próximo, que tem cota própria (1.6955ms)
+✔ modelo indisponível passa ao próximo e schema recusado repete só com JSON (11.4412ms)
+✔ resposta cortada por limite de saída é falha, não dossiê (1.984ms)
+✔ data da fonte ausente no resumo vira pendência em vez de derrubar o dossiê (14.4345ms)
+✔ seleção põe cliques antes do boletim e pula pronto, repetido e esgotado (29.5786ms)
+✔ seleção respeita o teto restante do dia (1.2054ms)
+✔ edital novo dos filtros não fica atrás de novas tentativas antigas (0.4831ms)
+✔ preparação inclui edital do filtro sem clique nem envio e preserva prioridades e teto (0.473ms)
+✔ prazos só contam como revisados quando todas as datas da fonte estão no resumo (2.0055ms)
+✔ dossiê só sai da fila quando é da versão atual e leu todos os documentos (0.3523ms)
+✔ modelo sobrecarregado passa ao próximo e, se todos estiverem, para sem gastar tentativa (5.8211ms)
+✔ sobrecarga espera e repete o mesmo edital; cota esgotada encerra sem esperar (2.481ms)
+✔ sobrecarga não espera além do tempo da rodada (0.7744ms)
+✔ Gemini sem cota em todos os modelos: Mistral responde e fica registrado no dossiê (4.7877ms)
+✔ Gemini e Mistral esgotados: OpenRouter responde (5.115ms)
+✔ todos com 429: cota esgotada, que não gasta a tentativa do edital (6.2659ms)
+✔ todos com 5xx ou timeout: sobrecarga, que ativa a espera (4.4046ms)
+✔ cota esgotada num provedor e sobrecarga em outro contam como sobrecarga (vale esperar) (3.8271ms)
+✔ provedor sem chave é ignorado, e OpenRouter sem lista de modelos também (1.6001ms)
+✔ modelo esgotado não é chamado de novo no edital seguinte da mesma rodada (4.5452ms)
+✔ response_format recusado: repete uma vez sem ele e não volta a pedir na rodada (2.0664ms)
+✔ outro 4xx é falha do edital e a cadeia não segue adiante (0.9777ms)
+✔ saída em bloco ```json é aceita e o edital grande é cortado para caber no contexto (1.1609ms)
+✔ Cloudflare Workers AI só entra na cadeia com ID da conta e token, como último provedor (3.546ms)
+✔ rodada de oito minutos não inicia outro edital com só 39 segundos (0.763ms)
+✔ reserva inclui margem e adapta-se a um edital lento sem impedir o primeiro (0.2846ms)
+✔ Kanban distingue interesse, participação, vitória sem itens e derrota (5.9066ms)
+✔ usa o cliente Supabase autenticado do painel, não variável de outro escopo (6.4663ms)
+✔ a empresa solicitada prevalece sobre a preferência salva no navegador (3.6947ms)
+✔ cria dossiê pré-preenchido sem confundir prazo da proposta com sessão (4.8255ms)
+✔ atualiza só os campos operacionais e conserva dados manuais (3.0655ms)
+✔ fonte oficial registrada no dossiê não é substituída pelo Kanban (2.4714ms)
+✔ decimal exato rejeita formatos e precisão inválidos; arredonda cada item (11.3685ms)
+✔ declaração mantém texto literal e recusa variáveis desconhecidas/XML inválido (2.9834ms)
+✔ proposta usa somente item persistido, condições obrigatórias e hash estável (2.5083ms)
+✔ quantidade apresentada em pt-BR conserva valor e total exato (63.9325ms)
+✔ DOCX reutilizado contém texto literal escapado e título (839.917ms)
+✔ DOCX da declaração preserva linhas vazias e não altera minuta legada (14.6351ms)
+✔ geração descarta respostas antigas mesmo no ciclo A → B → A e após fechar (57.0476ms)
+✔ qualquer alteração invalida hash e revisão e impede exportação sem nova prévia (3.6295ms)
+✔ painel administrativo mantém scripts inline válidos (3.8574ms)
+✔ migração reconhece o owner pelo e-mail real e protege o limite no banco (0.6195ms)
+✔ cliente no limite não consegue abrir um quarto cadastro pela interface (9.934ms)
+✔ proprietário ilimitado continua podendo cadastrar empresa (2.9076ms)
+✔ o publico inclui as páginas, os assets referenciados e o _headers, sem arquivos de ferramenta (2.5779ms)
+✔ todo src/href local das páginas existe no publico (28.4986ms)
+✔ _headers traz o CSP do netlify.toml e desanexa o Cache-Control em /data/* (4.7172ms)
+✔ preço unitário por item multiplica pela quantidade e preserva reais (8.7956ms)
+✔ não inventa vitória nem valor sem itens ou resultado explícito (1.5209ms)
+✔ vitória parcial soma somente itens ganhos com valor homologado (0.3641ms)
+✔ valor ausente em item ganho permanece desconhecido (0.3927ms)
+✔ itens pendentes não viram derrota ou homologação total (2.5328ms)
+✔ itens não disputados não viram participação sem vitória (0.2072ms)
+✔ dossiê distingue resultado manual de itens ganhos e conserva ocorrências (8.6466ms)
+✔ excluir item de teste recalcula vitória sem apagar outros processos (6.135ms)
+✔ item perdido não recebe valor homologado à empresa (7.6098ms)
+✔ item ganho salva marca e modelo informados pelo licitante (10.7176ms)
+✔ anexo mantém o formulário após o await e registra o arquivo privado (40.157ms)
+✔ resultado manual guarda valor sem confundir estágio com vitória (10.7031ms)
+✔ falha ao registrar metadados remove o arquivo recém-enviado (11.0682ms)
+✔ checklist usa somente requisitos de habilitação e declarações de fonte lida (3.2646ms)
+✔ checklist converte documentos estruturados sem perder o texto oficial (0.5669ms)
+✔ identifica apenas controle PNCP válido no processo (1.4263ms)
+✔ relatório usa prévia interna e impressão para salvar PDF, sem popup (3.6378ms)
+✔ prévia recebe todos os registros do processo sem abrir outra guia (3.1955ms)
+✔ carteira não mostra nem dispara o checklist do resumo (1.3586ms)
+✔ itens oficiais ficam recolhidos e carregam página somente ao abrir (4.6221ms)
+✔ relatório resume a oportunidade e mostra somente itens ganhos (52.5653ms)
+✔ relatório sem ganhos não sugere vitória e escapa dados (0.5726ms)
+✔ vitória geral sem itens detalhados fica explicitamente pendente (0.4143ms)
+✔ primeira busca mostra loading, busca ao vivo e guarda o resultado (40.068ms)
+✔ reabrir com o mesmo filtro dentro da janela mostra o salvo sem consultar o PNCP (52.5758ms)
+✔ fora da janela mostra o salvo na hora e atualiza em segundo plano só se houver novidade (37.0536ms)
+✔ PNCP parcial ou fora do ar não substitui a lista salva (47.1998ms)
+✔ filtro diferente mostra loading e resposta atrasada da busca anterior é descartada (12.9599ms)
+✔ consulta paginada busca só a página pedida e devolve continuidade (5.4265ms)
+✔ página final curta encerra a navegação (2.9858ms)
+✔ coleta falha publica somente checkpoints confirmados por caminho exato (1654.0402ms)
+✔ falha de upsert sem metadado novo não avança checkpoint (1355.6607ms)
+✔ sucesso preserva staging anterior e exclusão da base privada (956.0637ms)
+✔ coleta não iniciada não publica dados (575.7877ms)
+✔ workflow publica após falha da coleta e mantém o job vermelho (2.1239ms)
+✔ versão do dossiê é a mesma VERSAO_RESUMO da Function (2.6017ms)
+✔ prioriza dossiês inéditos antes de qualquer reprocessamento (1.2927ms)
+✔ não repete parcial recente e reprocessa parcial vencido (0.3636ms)
+✔ seleção ignora pronto atual e mantém a ordem de prioridade (5.5796ms)
+✔ rodízio: começa em ponto aleatório da fila mais antiga-primeiro, sem furar prioridade (2.1216ms)
+✔ inéditos publicados nas últimas 48h vêm primeiro, do mais novo ao mais antigo (0.52ms)
+[recuperação local] AL: 2 registros, 2 páginas conferidas.
+✔ falha de rede preserva páginas e retoma somente as faltantes (896.5564ms)
+[recuperação local] AL: 21 registros, 21 páginas conferidas.
+✔ percorre mais de vinte páginas antes de confirmar a UF (384.4702ms)
+✔ mudança na paginação ou duplicata impede falsa conclusão (25.3025ms)
+✔ mudança da primeira página durante coleta impede conclusão (35.2302ms)
+[recuperação local] AL: 2 registros, 2 páginas conferidas.
+✔ ordem das propriedades JSON não altera identidade da primeira página (60.4149ms)
+✔ resposta inválida não avança checkpoint e interrompe rajada (267.3546ms)
+[recuperação local] AL: 0 registros, 1 páginas conferidas.
+✔ diretório existente não pode misturar consultas diferentes (67.0702ms)
+✔ checkpoint corrompido é erro explícito, não recuperação vazia (71.5732ms)
+✔ fonte com zero páginas e contagem positiva permanece pendente (86.8847ms)
+[recuperação local] AL: 0 registros, 1 páginas conferidas.
+✔ trava identifica processo e bloqueia segunda execução sem apagar checkpoint (86.0063ms)
+✔ recupera contratos e atas vigentes com mais de trinta itens, sem repetir compra (1333.8907ms)
+✔ pagina itens até término real e mantém resultado de cada item (1515.5376ms)
+✔ falha preserva páginas e retomada busca apenas falta mais conferência (46.2219ms)
+✔ duplicação e mudança de primeira página impedem conclusão (109.1058ms)
+✔ resultado cruzado não conclui compra nem ata (93.2422ms)
+✔ orçamento e trava impedem rajada/execução concorrente, preservando retomada (121.9056ms)
+✔ cache adulterado, fonte/consulta diferente e seleção inválida falham fechadas (117.7652ms)
+✔ resposta vazia contraditória e itens repetidos não viram cobertura integral (160.7909ms)
+✔ vazio contraditório em itens ou resultados mantém ata pendente (167.6765ms)
+✔ retomada concluída verifica arquivos brutos e pacote consolidado antes de afirmar sucesso (159.1429ms)
+✔ caminho com helper real preserva motivo de orçamento sem chamada extra (75.8686ms)
+✔ catálogo aceita crescimento observado após reconferir fronteiras sem sobrescrever o primeiro bruto (110.6134ms)
+✔ crescimento na conferência final fica pendente e retoma pela extensão idêntica da última página parcial (344.4171ms)
+✔ crescimento além da página parcial preserva trecho pendente sem fixar um buraco no catálogo (241.904ms)
+✔ catálogo interrompe queda, reordenação ou campo alterado ao revalidar crescimento (266.4943ms)
+✔ catálogo retoma checkpoint legado sem refazer páginas intermediárias nem apagar brutos (402.7412ms)
+✔ orçamento histórico mínimo cinco avança após duas âncoras e crescimento com nova reconferência (287.9353ms)
+✔ catálogo rejeita metadados e quantidade que não correspondem ao teto de 500 (177.2606ms)
+✔ histórico certifica catálogo paginado e detalha somente fila original sem alterar origem (133.7754ms)
+✔ histórico retoma após orçamento sem repetir unidades concluídas e valida a origem em toda retomada (192.9145ms)
+✔ detalhes sob demanda selecionam IDs do catálogo e reutilizam certificados sem redescobrir (142.0723ms)
+✔ descoberta recusa identidade cruzada e vazio contraditório, mas aceita vazio comprovado (168.6109ms)
+✔ catálogo antigo revalida fronteiras sem renovar namespace nem perder páginas (148.3215ms)
+✔ encadeamento recusa compra parcial vencida sem renovar snapshot nem chamar a fonte (146.4517ms)
+✔ catálogo vencido durante validação local revalida a fonte sem descartar páginas (157.3298ms)
+✔ compra histórica pendente retoma resultados por item sem repetir os já preservados (125.6886ms)
+✔ descoberta paginada rejeita duplicação entre páginas e alteração na reconferência (173.1704ms)
+✔ cadência de sete segundos persiste na fronteira entre rodadas imediatas (36.1662ms)
+✔ orçamento de uma chamada é rejeitado com instrução acionável antes da coleta (1.5037ms)
+✔ orçamento mínimo de duas chamadas conclui resultados em retomadas sucessivas (148.099ms)
+✔ cobertura sem contagem de caracteres não declara envio integral à IA (6.6441ms)
+✔ enriquecimento PNCP não sobrescreve prazo documental e destaca divergência entre eventos (4.4804ms)
+✔ ficha básica usa número e ano publicados na compra, preservando zeros sem deduzir ano do PNCP (189.0937ms)
+✔ título identifica explicitamente controle PNCP quando número do edital não existe (6.8168ms)
+✔ resumo exibe aviso OCR completo, idioma, páginas e falhas sem certificação (6.463ms)
+✔ todas as seções principais abrem completas, inclusive outras informações (16.0499ms)
+✔ síntese original fica no principal e expansões documentais ficam sob demanda sem truncamento (9.4453ms)
+✔ duzentos itens só aparecem na consulta recolhida e CAPAG fica fora do órgão (34.9505ms)
+✔ a apresentação preserva cobertura canônica parcial, e o painel não cria conteúdo recolhido antes de abrir (57.8407ms)
+Resumo: nova tentativa necessária Tente novamente
+Resumo: nova tentativa necessária Sessão expirada. Faça login novamente para retomar a análise.
+Resumo: nova tentativa necessária Sessão inválida
+Resumo: nova tentativa necessária Validação indisponível
+Resumo: nova tentativa necessária Não foi possível validar sua sessão agora. Tente novamente em instantes.
+✔ trocar edital limpa imediatamente a central anterior (8.116ms)
+✔ resumo pendente bloqueia ações, mostra progresso e consulta novamente até resultado final (4.0325ms)
+✔ fechar o resumo cancela a consulta agendada sem cancelar o trabalho persistido (4.9385ms)
+✔ resposta antiga fora de ordem não altera outro edital nem seu estado de carregamento (2.8946ms)
+✔ 502 exige tentativa explícita e não entra em loop de consultas (3.9365ms)
+✔ cache local rejeita resultados em processamento e degradados (2.4453ms)
+✔ cada etapa consulta a sessão atual e usa o token renovado sem capturar o anterior (3.2075ms)
+✔ sessão ausente e401 interrompem consultas automáticas e mostram erro (3.4181ms)
+✔ 401 renova uma única vez com token novo e preserva corpo da etapa (6.9062ms)
+✔ 503 não renova credencial e erro getSession não envia Bearer vazio (4.45ms)
+✔ fechar modal durante renovação impede repetir a requisição antiga (2.8679ms)
+✔ SENAC/AM mantém abertura sem fabricar data de publicação (1.6495ms)
+✔ SESC/AM preserva publicação e abertura como campos distintos (0.7709ms)
+✔ cache legado do boletim remove datas falsas do SENAC antes da primeira pintura (3.6457ms)
+✔ falha no segundo lote não apaga base; repetição faz upsert idempotente (11.3238ms)
+✔ REST usa prazo finito também para upsert (4.7982ms)
+✔ central operacional mantém o script inline sintaticamente válido (3.5497ms)
+✔ salvar documento conclui após currentTarget do evento ficar nulo (8.8015ms)
+✔ falha ao atualizar a lista não transforma documento gravado em falha de salvamento (2.6262ms)
+✔ formulário sem arquivo não envia objeto File vazio ao Storage (2.1388ms)
+✔ salvar compromisso não depende de currentTarget após a gravação (5.6169ms)
+✔ agenda mantém compromissos vencidos visíveis (35.9731ms)
+✔ painel mantém todos os scripts inline sintaticamente válidos (20.2449ms)
+✔ boletim sincroniza o Kanban com um dossiê operacional (3.8246ms)
+✔ resumo dos filtros não depende de helper declarado em script posterior (18.9615ms)
+✔ status usa a atualização real das tabelas que migraram para o Supabase (4.5551ms)
+✔ diagnóstico limita a amostra rica de contratos para evitar resposta pesada (4.7421ms)
+✔ dashboard espera a sessão antes de consultar as bases privadas (4.1448ms)
+✔ exportações do edital usam DOCX real e a marca visual oficial (4.0932ms)
+✔ texto preparado para e-mail preserva requisitos e cobertura da leitura (13.3177ms)
+✔ resumo local expira após 24 horas e mantém a cópia recente (4.8354ms)
+✔ cache parcial não esconde resumo corrigido no servidor (5.7688ms)
+✔ cache completo exige revisão canônica exata das referências e preserva dossiê pronto sem regenerar IA (4.8203ms)
+✔ boletim abre pela coleta do robô e só consulta PNCP por atualização explícita (3.418ms)
+✔ login não dispara restaurações de ferramentas que ainda estão fechadas (13.9764ms)
+✔ consultarOportunidadesSupabase mapeia cada linha pro seu dado jsonb, sem vazar colunas indexadas (4.5791ms)
+✔ paginação avança pelo tamanho real da página, não por um tamanho fixo assumido (5.1993ms)
+✔ consultarOportunidadesSupabase devolve null e não quebra em erro do Supabase (4.0202ms)
+✔ resumo apresenta as seções sem faixa técnica e preserva o diagnóstico interno (7.3278ms)
+✔ falha técnica não vaza no resumo, mas sessão expirada orienta novo login (11.9594ms)
+✔ dossiê de processos mantém o script inline sintaticamente válido (7.7493ms)
+✔ dossiê compartilha o tema e a empresa ativa com o painel (1.4937ms)
+✔ carregamento percorre todas as páginas de itens e lotes (12.0699ms)
+✔ processo, prazo e empenho terminam de salvar após o evento perder currentTarget (13.1041ms)
+ℹ tests 782
+ℹ suites 0
+ℹ pass 778
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 4
+ℹ todo 0
+ℹ duration_ms 21529.254
+
+> hc-mercado-web-functions@1.0.0 lint
+> eslint . && biome check netlify/functions scripts eslint.config.js --diagnostic-level=error
+
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_adaptador_cloudflare.js
+  55:1  warning  Function 'resultadoParaResponse' has a complexity of 21. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_defesa_contexto.js
+   40:1  warning  Function 'prepararContexto' has a complexity of 55. Maximum allowed is 20     complexity
+  156:1  warning  Function 'diagnosticarAnalise' has a complexity of 56. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_defesa_handler.js
+  65:1  warning  Async function 'executarDefesa' has a complexity of 61. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_defesa_pontos.js
+  137:26  warning  Arrow function has a complexity of 30. Maximum allowed is 20                complexity
+  159:1   warning  Function 'validarPontos' has a complexity of 33. Maximum allowed is 20      complexity
+  187:1   warning  Function 'fundamentoApoiado' has a complexity of 34. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_edital_operacional.js
+   46:1   warning  Function 'completarDossieDaFonte' has a complexity of 23. Maximum allowed is 20         complexity
+  216:45  warning  Arrow function has a complexity of 24. Maximum allowed is 20                            complexity
+  271:1   warning  Function 'extrairRequisitosOperacionais' has a complexity of 25. Maximum allowed is 20  complexity
+  313:1   warning  Function 'selecionarAcoesChecklist' has a complexity of 27. Maximum allowed is 20       complexity
+  448:1   warning  Function 'complementarRequisitos' has a complexity of 23. Maximum allowed is 20         complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_empresa_identificacao.js
+  10:1  warning  Function 'validarConfirmacao' has a complexity of 33. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_pdf_cobertura.js
+  33:1  warning  Async function 'paginaCurtaPendente' has a complexity of 45. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_pdf_ocr_local.js
+  12:10  warning  Async function 'ocrPDF' has a complexity of 23. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_documental.js
+  7:1  warning  Function 'conferirFatosDocumentais' has a complexity of 34. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_evidencias.js
+  31:1  warning  Function 'conferirEvidenciasDoResumo' has a complexity of 25. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_gateway.js
+   67:1  warning  Async function 'solicitarResumo' has a complexity of 34. Maximum allowed is 20  complexity
+  111:1  warning  Async function 'executarResumo' has a complexity of 49. Maximum allowed is 20   complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\_resumo_progressivo.js
+  124:1  warning  Async function 'executarEtapa' has a complexity of 47. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\admin-excluir-cliente.js
+  35:33  warning  Async arrow function has a complexity of 33. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\decisao-oportunidade.js
+  3:31  warning  Async arrow function has a complexity of 28. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\empresa-identificacao.js
+  8:28  warning  Async arrow function has a complexity of 28. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\enviar-resumo-edital.js
+   28:1   warning  Function 'mensagemErroZepto' has a complexity of 25. Maximum allowed is 20  complexity
+  174:33  warning  Async arrow function has a complexity of 32. Maximum allowed is 20          complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\gerar-checklist.js
+   79:1   warning  Function 'conteudoDocumento' has a complexity of 26. Maximum allowed is 20  complexity
+  131:33  warning  Async arrow function has a complexity of 23. Maximum allowed is 20          complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\lib\ia-edital.js
+   103:1   warning  Async function 'buscarFichaCanonica' has a complexity of 29. Maximum allowed is 20         complexity
+   165:1   warning  Async function 'buscarTextoEdital' has a complexity of 59. Maximum allowed is 20           complexity
+   323:5   warning  Async function 'baixarDocumento' has a complexity of 32. Maximum allowed is 20             complexity
+   534:1   warning  Async function 'chamarGroq' has a complexity of 60. Maximum allowed is 20                  complexity
+   698:1   warning  Function 'converterEtapaOperacional' has a complexity of 50. Maximum allowed is 20         complexity
+   889:1   warning  Function 'aplicarCamposOperacionaisDoTexto' has a complexity of 31. Maximum allowed is 20  complexity
+  1058:1   warning  Async function 'sintetizarLoteCatalogo' has a complexity of 28. Maximum allowed is 20      complexity
+  1136:1   warning  Function 'montarEstruturaBasica' has a complexity of 24. Maximum allowed is 20             complexity
+  1212:33  warning  Async arrow function has a complexity of 169. Maximum allowed is 20                        complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\pncp-detalhe.js
+  40:33  warning  Async arrow function has a complexity of 36. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\netlify\functions\pncp-itens.js
+  24:33  warning  Async arrow function has a complexity of 31. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\atualizar_dados.js
+   118:1  warning  Async function 'fetchComRetentativa' has a complexity of 22. Maximum allowed is 20          complexity
+   197:1  warning  Async function 'buscarPaginasEmLote' has a complexity of 28. Maximum allowed is 20          complexity
+   329:3  warning  Async function 'processarUf' has a complexity of 43. Maximum allowed is 20                  complexity
+   404:1  warning  Async function 'coletarContratos' has a complexity of 31. Maximum allowed is 20             complexity
+   566:1  warning  Async function 'coletarOportunidadesAbertas' has a complexity of 31. Maximum allowed is 20  complexity
+   622:3  warning  Async function 'processarUf' has a complexity of 69. Maximum allowed is 20                  complexity
+   878:1  warning  Async function 'coletarMercadoSegmentos' has a complexity of 83. Maximum allowed is 20      complexity
+   949:3  warning  Async function 'enriquecerAta' has a complexity of 52. Maximum allowed is 20                complexity
+  1022:5  warning  Async function 'trabalhadorItem' has a complexity of 21. Maximum allowed is 20              complexity
+  1436:1  warning  Async function 'main' has a complexity of 24. Maximum allowed is 20                         complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\coletar_comprasgov_resultados.js
+  155:1  warning  Function 'normalizarResultado' has a complexity of 42. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\coletar_convenios.js
+  89:1  warning  Async function 'coletarConvenios' has a complexity of 42. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\coletar_empresas.js
+  88:1  warning  Async function 'consolidarEmpresas' has a complexity of 38. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\enriquecer_contato_sicaf.js
+  80:1  warning  Async function 'main' has a complexity of 21. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\extrair_anexo_local.js
+  21:1  warning  Async function 'extrairAnexoLocal' has a complexity of 28. Maximum allowed is 20  complexity
+
+C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\scripts\gerar_dossies_gemini.js
+  152:1  warning  Async function 'chamarGemini' has a complexity of 23. Maximum allowed is 20  complexity
+  211:1  warning  Async function 'chamarCompat' has a complexity of 23. Maximum allowed is 20  complexity
+
+✖ 55 problems (0 errors, 55 warnings)
+
+Checked 182 files in 147ms. No fixes applied.

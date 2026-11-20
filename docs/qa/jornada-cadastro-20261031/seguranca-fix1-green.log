@@ -1,0 +1,2 @@
+Lacuna reproduzida somente na fixture: readiness=true com RLS do kit desligada; outsider lê 2 peças. 57 verificações originais aprovadas.
+SQL real PGlite: 184 verificações aprovadas (57 originais); migração aplicada duas vezes, lacuna anterior reproduzida e gate somente leitura aprovado com 62 desconfigurações rejeitadas e revertidas somente na fixture.

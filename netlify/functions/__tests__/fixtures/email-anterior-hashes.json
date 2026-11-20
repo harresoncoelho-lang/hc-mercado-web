@@ -1,0 +1,75 @@
+[
+  {
+    "args": [
+      "Resumo\nTeste",
+      ""
+    ],
+    "sha256": "96a106834eb65d0982a93b0018846dafcf54d27bbf3ce70d54ee18cbf9f4d1e8"
+  },
+  {
+    "args": [
+      "Resumo",
+      "https://pncp.gov.br/app/editais/11222333000181/2026/1",
+      {
+        "fonteLida": true,
+        "coberturaLeitura": {
+          "parcial": true,
+          "documentosLidos": [
+            "AC788000_000052_2026.pdf",
+            "TR788000_000092_2026.pdf"
+          ]
+        },
+        "identificacao": {
+          "numero": "Dispensa 81/2026",
+          "objeto": "Materiais de informática",
+          "modalidade": "Dispensa eletrônica",
+          "portalRealizacao": "Compras.gov.br — Sistema de Dispensa Eletrônica"
+        },
+        "orgao": {
+          "nome": "Comando da Marinha"
+        },
+        "documentosCredenciamento": [
+          "Manter cadastro SICAF atualizado na abertura. [Aviso, habilitação]"
+        ],
+        "requisitosProposta": [
+          "Proposta com preço, custos e marca quando aplicável; validade mínima de 60 dias. [Aviso, proposta]"
+        ],
+        "documentosHabilitacao": [
+          {
+            "categoria": "Econômico-financeira",
+            "texto": "Balanço e DRE do último exercício; LG, LC e SG superiores a 1. Se algum índice for igual ou inferior a 1, patrimônio líquido mínimo de 10%. [TR, habilitação]"
+          },
+          {
+            "categoria": "Fiscal, social e trabalhista",
+            "texto": "CNPJ/CPF, regularidade RFB/PGFN, FGTS, CNDT e inscrição e regularidade estadual/distrital aplicáveis. [TR, habilitação]"
+          }
+        ],
+        "prazos": {
+          "prazoDocumentoComplementar": "3 dias para documentos complementares ou não disponíveis no SICAF.",
+          "prazoDocumentoOriginal": "Originais somente se houver dúvida sobre a integridade do documento digital."
+        },
+        "entregaExecucao": {
+          "prazo": "30 dias após nota de empenho OU ordem de compra, em remessa única.",
+          "local": "Rua Bernardo Ramos, s/n, Centro, Manaus — STI/CLTI.",
+          "condicoes": "Garantia dos produtos por 12 meses ou prazo maior do fabricante."
+        },
+        "garantias": {
+          "contrato": "Não é exigida garantia contratual. [TR, item 4.32]"
+        },
+        "condicoesPagamento": "Pagamento em 10 dias úteis após a liquidação.",
+        "itens": {
+          "totalItens": 2,
+          "descricaoGeral": "Materiais de informática"
+        }
+      },
+      {
+        "numeroControlePNCP": "00394502000144-1-011397/2026",
+        "numero": "Dispensa 81/2026",
+        "objeto": "Materiais de informática",
+        "orgao": "Comando da Marinha",
+        "modalidade": "Dispensa eletrônica"
+      }
+    ],
+    "sha256": "88f24352b110f9921d68b4fc3eeae4936fff3fdf45f70447045aea06d3915712"
+  }
+]

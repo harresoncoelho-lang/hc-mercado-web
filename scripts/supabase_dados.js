@@ -23,6 +23,7 @@ function chaveServico() {
 async function restFetch(caminho, opcoes = {}) {
   const resp = await fetch(`${SUPABASE_URL}/rest/v1/${caminho}`, {
     ...opcoes,
+    signal: opcoes.signal ? globalThis.AbortSignal.any([opcoes.signal, globalThis.AbortSignal.timeout(30000)]) : globalThis.AbortSignal.timeout(30000),
     headers: {
       apikey: chaveServico(),
       Authorization: `Bearer ${chaveServico()}`,

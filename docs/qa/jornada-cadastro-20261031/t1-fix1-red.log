@@ -1,0 +1,30 @@
+OK atalho invalida revisão pronta e reconsulta conserva proposta: clique
+FALHOU atalho invalida revisão pronta e reconsulta conserva proposta: meio: Expected values to be strictly equal:
+
+false !== true
+
+FALHOU atalho invalida revisão pronta e reconsulta conserva proposta: menu: Expected values to be strictly equal:
+
+false !== true
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'atalho invalida revisão pronta e reconsulta conserva proposta: meio: Expected values to be strictly equal:\n' +
++     '\n' +
++     'false !== true\n',
++   'atalho invalida revisão pronta e reconsulta conserva proposta: menu: Expected values to be strictly equal:\n' +
++     '\n' +
++     'false !== true\n'
++ ]
+- []
+
+    at verificar (C:\Users\harre\AppData\Local\LicitaPlena\design-modulo-um\docs\qa\jornada-cadastro-20261031\t1-navegador.cjs:150:73) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}

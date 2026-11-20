@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 MAX_BYTES = 64 * 1024 * 1024
 MAX_ENTRADAS = 200
 MAX_TEXTO = 600000
+RESERVA_TEXTO_SEGUNDOS = 15
 OFFICE = {'.doc', '.docx', '.rtf', '.odt', '.xls', '.xlsx', '.ods', '.ppt', '.pptx', '.odp'}
 IMAGENS = {'.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp', '.webp'}
 
@@ -85,18 +86,26 @@ class Leitor:
             raise ValueError('não foi possível contar páginas')
         total = int(match[1])
         imagens = self.comando(['pdfimages', '-list', str(caminho)]).decode('utf-8', 'replace')
-        paginas_imagem = set()
+        paginas_por_objeto = {}
         for linha in imagens.splitlines():
             campos = linha.split()
             if len(campos) > 4 and campos[0].isdigit() and campos[3].isdigit() and campos[4].isdigit():
                 if int(campos[3]) >= 300 and int(campos[4]) >= 300:
-                    paginas_imagem.add(int(campos[0]))
+                    objeto = tuple(campos[10:12]) if len(campos) > 11 else ('pagina', campos[0])
+                    paginas_por_objeto.setdefault(objeto, set()).add(int(campos[0]))
+        # A mesma imagem repetida em várias páginas é logotipo/cabeçalho: com OCR em toda página
+        # (56 páginas de um edital real em 18/11/2026) o prazo de 90 s acabava e o resto do
+        # edital e dos anexos não era lido. Página sem texto continua indo ao OCR pelo tamanho.
+        paginas_imagem = set().union(*(p for p in paginas_por_objeto.values() if len(p) <= 2))
         with tempfile.TemporaryDirectory(prefix='anexo-pdf-') as pasta:
             # Tempo, bytes e texto limitam a leitura; não cortar editais pela contagem de páginas.
             for pagina in range(1, total + 1):
                 self.paginas += 1
                 texto = self.comando(['pdftotext', '-f', str(pagina), '-l', str(pagina), '-layout', str(caminho), '-']).decode('utf-8', 'replace')
-                if len(texto.strip()) < 80 or pagina in paginas_imagem:
+                if (len(texto.strip()) < 80 or pagina in paginas_imagem) and self.prazo - time.monotonic() < RESERVA_TEXTO_SEGUNDOS:
+                    # Reserva o fim do prazo ao texto nativo das páginas seguintes, que é rápido.
+                    self.pendencias.append(f'{nome}, página {pagina}: OCR não concluído (limite de tempo)')
+                elif len(texto.strip()) < 80 or pagina in paginas_imagem:
                     try:
                         imagem = Path(pasta) / 'pagina'
                         self.comando(['pdftoppm', '-f', str(pagina), '-l', str(pagina), '-singlefile', '-scale-to', '2500', '-png', str(caminho), str(imagem)])

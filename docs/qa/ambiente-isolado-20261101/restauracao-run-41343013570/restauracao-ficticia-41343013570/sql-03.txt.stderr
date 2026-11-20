@@ -1,0 +1,3 @@
+NOTICE:  role "pg_monitor" has already been granted membership in role "pg_read_all_settings" by role "supabase_admin"
+NOTICE:  role "pg_monitor" has already been granted membership in role "pg_read_all_stats" by role "supabase_admin"
+NOTICE:  role "pg_monitor" has already been granted membership in role "pg_stat_scan_tables" by role "supabase_admin"

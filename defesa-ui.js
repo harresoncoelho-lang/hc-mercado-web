@@ -27,6 +27,8 @@
     const el = (tag, texto) => { const e = doc.createElement(tag); if (texto) e.textContent = texto; return e; };
     const secao = el("details"); secao.className = "secao-ia defesa-central"; secao.open = true;
     const sumario = el("summary", "Possíveis questionamentos"); sumario.className = "secao-ia-titulo"; secao.append(sumario);
+    // Cabeçalho igual às demais seções do resumo (ícone do sprite Phosphor + seta), texto fixo.
+    sumario.innerHTML = "<span class='resumo-icone'><svg class='icone-ph' aria-hidden='true'><use href='#ph-warning'></use></svg></span><span>Possíveis questionamentos</span><span class='resumo-seta'><svg class='icone-ph' aria-hidden='true'><use href='#ph-caret-up'></use></svg></span>";
     secao.append(el("p", "Escolha um ponto para abrir a Central de Defesa. Uma sugestão não comprova irregularidade. A análise só começa quando você solicitar."));
     const dialogo = el("dialog"); dialogo.id = "defesa-dialogo"; dialogo.className = "defesa-dialogo";
     dialogo.setAttribute("aria-labelledby", "defesa-dialogo-titulo");
@@ -54,16 +56,36 @@
     const acoesEditor = el("div"); acoesEditor.className = "defesa-acoes"; acoesEditor.append(salvar, baixar);
     editor.append(rotulo, texto, revisao, ajuda, acoesEditor);
     const origem = el("p", "Rascunho documental: estrutura para preenchimento; não é uma análise jurídica por IA."); editor.prepend ? editor.prepend(origem) : editor.append(origem);
-    let tipo = "esclarecimento", hashMinuta = hash, desatualizado = false, alterado = false, origemMinuta = "documental";
+    let tipo = "esclarecimento", hashMinuta = hash, desatualizado = false, alterado = false, origemMinuta = "documental", identificacaoReferencia;
     let chave;
     try { chave = raiz.DefesaLicitante.chaveRascunho(usuarioId, empresaId, edital.numeroControlePNCP); }
     catch (e) { avisos.textContent = e.message; }
     const atualizar = () => { baixar.disabled = desatualizado || !confirmar.checked || !texto.value.trim() || !chave; };
-    const estado = { identidade, hash, versaoPontos, fechar: () => { salvarRascunhoAoSair(); fecharDialogo(); }, rascunho: () => ({ tipo, texto: texto.value, hashFonte: hashMinuta, origem: origemMinuta, questionamento: pergunta.value, objetivo: objetivo.value, fase: fase.value, respostaOrgao: respostaOrgao.value, manifestacaoAnterior: manifestacaoAnterior.value, aberto: dialogo.open }), desatualizar() {
+    const estado = { identidade, hash, versaoPontos, fechar: () => { salvarRascunhoAoSair(); fecharDialogo(); }, rascunho: () => ({ tipo, texto: texto.value, hashFonte: hashMinuta, origem: origemMinuta, identificacaoReferencia, questionamento: pergunta.value, objetivo: objetivo.value, fase: fase.value, respostaOrgao: respostaOrgao.value, manifestacaoAnterior: manifestacaoAnterior.value, aberto: dialogo.open }), desatualizar() {
       desatualizado = true; confirmar.checked = false; confirmar.disabled = true; atualizar();
       avisos.textContent = "A fonte mudou. O texto foi preservado; prepare uma nova minuta com as evidências atuais antes de exportar.";
     } };
     host._defesa = estado;
+    let identificacao;
+    const orgaoCanonico = typeof estrutura.orgao?.nome === 'string' ? estrutura.orgao.nome : typeof edital.orgao === 'string' ? edital.orgao : '';
+    if (typeof contexto.identificacaoEmpresa === 'function' && raiz.EmpresaIdentificacaoUI) {
+      const dadosEmpresa = el('div'); dialogo.append(dadosEmpresa);
+      identificacao = raiz.EmpresaIdentificacaoUI.renderizar(dadosEmpresa, {
+        empresaId, solicitar: contexto.identificacaoEmpresa, ativo: () => host._defesa === estado,
+        atualizado: dados => {
+          if (identificacaoReferencia && raiz.DefesaLicitante.assinaturaIdentificacao(dados) !== identificacaoReferencia) {
+            confirmar.checked = false; atualizar();
+            avisos.textContent = 'A identificação salva mudou. Confira os dados e aplique novamente antes de exportar.';
+          }
+        },
+        aplicar: dados => {
+          if (!raiz.DefesaLicitante.possuiIdentificacaoLocal(texto.value)) { avisos.textContent = 'Prepare uma minuta antes de aplicar a identificação. Seu texto foi preservado.'; return; }
+          texto.value = raiz.DefesaLicitante.preencherIdentificacao(texto.value, {...dados,orgao:orgaoCanonico});
+          identificacaoReferencia = raiz.DefesaLicitante.assinaturaIdentificacao(dados);
+          confirmar.checked = false; alterado = true; atualizar();
+        },
+      });
+    }
     const formulario = el("div"); formulario.className = "defesa-ponto";
     formulario.append(el("h4", "Seu questionamento"), el("p", "Descreva o ponto do edital e o resultado pretendido. Não inclua dados pessoais ou informações sigilosas da empresa."));
     const fase = el("select"); fase.id = "defesa-fase";
@@ -180,7 +202,12 @@
           if (!analise.pendencias.length) resultadoIA.append(el("p", "Nenhuma pendência indicada pela análise. Isso não dispensa revisão humana."));
           tipo = acao; hashMinuta = hash; origemMinuta = "ia"; desatualizado = false; alterado = true;
           origem.textContent = "Minuta assistida por IA, vinculada aos fatos e fundamentos exibidos. Exige revisão humana antes de utilizar.";
-          confirmar.disabled = false; confirmar.checked = false; texto.value = preencherIdentidadeLocal(analise.minutaTexto, resposta.empresaLocal); editor.hidden = false; atualizar();
+          confirmar.disabled = false; confirmar.checked = false;
+          if (resposta.identificacaoLocal) {
+            texto.value = raiz.DefesaLicitante.preencherIdentificacao(analise.minutaTexto, {...resposta.identificacaoLocal,orgao:orgaoCanonico});
+            identificacaoReferencia = raiz.DefesaLicitante.assinaturaIdentificacao(resposta.identificacaoLocal);
+          } else { texto.value = preencherIdentidadeLocal(analise.minutaTexto, resposta.empresaLocal); identificacaoReferencia = undefined; }
+          editor.hidden = false; atualizar();
           if (resposta.empresaLocal) origem.textContent += " A identificação foi preenchida neste navegador com a empresa selecionada. Confira razão social e CNPJ; esses dados não foram enviados à IA.";
           avisos.textContent = "Análise recebida. Confira provas, aplicabilidade, prazo, canal e minuta antes de exportar."; texto.focus();
           try {
@@ -223,7 +250,10 @@
     if (pontos.length) secao.append(el("p", "Abra um ponto para conferir seu contexto. Sugestões sem trecho identificado precisam de verificação documental; não são evidências."));
     if (!pontos.length) secao.append(el("p", "Nenhum ponto com evidência estruturada foi identificado nesta análise. Isso não confirma ausência de problemas."));
     for (const ponto of pontos) {
-      const card = el("article"); card.className = "defesa-ponto"; card.append(el("p", "Ponto a verificar"), el("h4", ponto.titulo || "Ponto a conferir"), el("p", ponto.descricao || (raiz.DefesaLicitante.temEvidencias(ponto) ? "Confira os trechos documentais vinculados antes de analisar." : "Sugestão ainda sem evidência documental confirmada.")));
+      // "[Presença Irregular] título..." vira selo + título, como na referência; sem selo, "Ponto a verificar".
+      const marcador = /^\[([^\]]{2,40})\]\s*/.exec(ponto.titulo || "");
+      const selo = el("span", marcador ? marcador[1] : "Ponto a verificar"); selo.className = "defesa-selo";
+      const card = el("article"); card.className = "defesa-ponto"; card.append(selo, el("h4", (marcador ? ponto.titulo.slice(marcador[0].length) : ponto.titulo) || "Ponto a conferir"), el("p", ponto.descricao || (raiz.DefesaLicitante.temEvidencias(ponto) ? "Confira os trechos documentais vinculados antes de analisar." : "Sugestão ainda sem evidência documental confirmada.")));
       if (typeof ponto.motivo === "string" && ponto.motivo.trim()) card.append(el("p", ponto.motivo));
       const provas = el("details"); provas.append(el("summary", "Trecho do edital"));
       for (const e of Array.isArray(ponto.evidencias) ? ponto.evidencias : []) {
@@ -251,21 +281,30 @@
     salvar.onclick = () => {
       try {
         if (!chave) throw new Error("Selecione uma conta e empresa.");
-        storage.setItem(chave, JSON.stringify({ tipo, texto: texto.value, hashFonte: hashMinuta, origem: origemMinuta, salvoEm: new Date().toISOString() }));
+        storage.setItem(chave, JSON.stringify({ tipo, texto: texto.value, hashFonte: hashMinuta, origem: origemMinuta, identificacaoReferencia, salvoEm: new Date().toISOString() }));
         alterado = false; avisos.textContent = "Rascunho salvo neste navegador para esta conta e empresa.";
       } catch { avisos.textContent = "Não foi possível salvar. Copie o texto antes de fechar a página."; }
     };
     baixar.onclick = async () => {
       if (baixar.disabled) return;
       baixar.disabled = true;
-      try { await exportar({ tipo, texto: texto.value, revisado: confirmar.checked }); avisos.textContent = "Minuta exportada. Nenhum documento foi enviado ou protocolado."; }
+      try {
+        if (identificacaoReferencia) {
+          if (!identificacao) throw new Error('Reabra a Central para conferir a identificação da empresa.');
+          const atual = await identificacao.consultar();
+          if (!atual || host._defesa !== estado || raiz.DefesaLicitante.assinaturaIdentificacao(atual) !== identificacaoReferencia) {
+            confirmar.checked = false; throw new Error('A identificação mudou. Confira e aplique os dados atuais antes de exportar.');
+          }
+        }
+        await exportar({ tipo, texto: texto.value, revisado: confirmar.checked }); avisos.textContent = "Minuta exportada. Nenhum documento foi enviado ou protocolado.";
+      }
       catch (e) { avisos.textContent = e.message || "Não foi possível exportar. Seu texto foi preservado."; }
       finally { atualizar(); }
     };
     try {
       const salvo = rascunhoEmMemoria?.texto ? rascunhoEmMemoria : chave && JSON.parse(storage.getItem(chave) || "null");
       if (salvo && typeof salvo.texto === "string" && salvo.texto.length <= 50000 && ["esclarecimento", "impugnacao"].includes(salvo.tipo)) {
-        texto.value = salvo.texto; tipo = salvo.tipo; hashMinuta = salvo.hashFonte; editor.hidden = false;
+        identificacaoReferencia = typeof salvo.identificacaoReferencia === "string" ? salvo.identificacaoReferencia : undefined; texto.value = salvo.texto; tipo = salvo.tipo; hashMinuta = salvo.hashFonte; editor.hidden = false;
         for (const [campo, valor, limite] of [[pergunta, salvo.questionamento, 3000], [objetivo, salvo.objetivo, 3000], [respostaOrgao, salvo.respostaOrgao, 12000], [manifestacaoAnterior, salvo.manifestacaoAnterior, 6000]]) if (typeof valor === "string") campo.value = valor.slice(0, limite);
         if (["questionamento", "resposta_orgao", "manifestacao"].includes(salvo.fase)) { fase.value = salvo.fase; fase.onchange(); }
         origemMinuta = salvo.origem === "ia" ? "ia" : "documental";

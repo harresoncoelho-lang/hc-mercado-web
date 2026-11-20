@@ -1,0 +1,267 @@
+{
+  "aprovado": true,
+  "etapa": "proposta UI",
+  "authFresh": true,
+  "resultados": [
+    "UI cadastro B real: URL prevalece sobre preferencia A; confirmacao, recarga e 375/1280 px",
+    "UI kit real: atalho/retorno preservam rascunho; salvar/recarregar/A-B-A/reabrir exigem revisao; DOCX integral isolado",
+    "UI duas abas: versao 2 real, 409 preserva rascunho e reabertura explicita recupera vencedor",
+    "UI proposta real: itens, DOCX 7,04, cadastro invalida revisao, edicao salva versao 2 e reabre pagamento 45 dias"
+  ],
+  "documentos": [
+    "67ff7627-8bb8-4f1b-967c-54a969ba5713",
+    "51aea8d6-b325-40b7-9a13-fe685b52a84c"
+  ],
+  "erros": [],
+  "externas": [],
+  "requisicoes": [
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "salvar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713",
+      "versaoEsperada": 0
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "abrir",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713"
+    },
+    {
+      "acao": "preparar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "confirmarRevisao",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "exportar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "dd6618b7-ad77-4227-b6b9-bc55e61be1ad",
+      "processoId": "19c47414-75ce-4cd3-88a6-1c39017497da"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "dd6618b7-ad77-4227-b6b9-bc55e61be1ad",
+      "processoId": "19c47414-75ce-4cd3-88a6-1c39017497da"
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "abrir",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713"
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "abrir",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713"
+    },
+    {
+      "acao": "salvar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "salvar",
+      "status": 409,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "abrir",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "67ff7627-8bb8-4f1b-967c-54a969ba5713"
+    },
+    {
+      "acao": "salvar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c",
+      "versaoEsperada": 0
+    },
+    {
+      "acao": "preparar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "confirmarRevisao",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "exportar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "salvar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c",
+      "versaoEsperada": 1
+    },
+    {
+      "acao": "consultar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "listar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe"
+    },
+    {
+      "acao": "abrir",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c"
+    },
+    {
+      "acao": "preparar",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c",
+      "versaoEsperada": 2
+    },
+    {
+      "acao": "confirmarRevisao",
+      "status": 200,
+      "empresaId": "95ec34ac-3fde-413e-b6c5-e5af7d3b5991",
+      "processoId": "a7c29433-8e0a-4bf2-acc0-b66fa42b37fe",
+      "documentoId": "51aea8d6-b325-40b7-9a13-fe685b52a84c",
+      "versaoEsperada": 2
+    }
+  ],
+  "erro": null
+}

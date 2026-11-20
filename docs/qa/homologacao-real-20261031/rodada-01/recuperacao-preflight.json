@@ -1,0 +1,250 @@
+{
+  "inicio": "2026-10-31T02:24:18.370Z",
+  "fim": "2026-10-31T02:26:18.370Z",
+  "usuarios": [
+    {
+      "id": "07515d8b-45de-49fa-b010-228c0e920741",
+      "criadoEm": "2026-10-31T02:24:26.798548+00:00",
+      "fixture": true
+    },
+    {
+      "id": "1a26cff5-d68c-4aaa-a51b-b901332d7c30",
+      "criadoEm": "2026-10-31T02:24:25.922768+00:00",
+      "fixture": true
+    },
+    {
+      "id": "d876466d-da4b-4ee4-a58e-5ef15c05c580",
+      "criadoEm": "2026-10-31T02:24:27.195571+00:00",
+      "fixture": true
+    },
+    {
+      "id": "fd64a9bd-de90-44b4-b7b0-a7312814911a",
+      "criadoEm": "2026-10-31T02:24:26.396026+00:00",
+      "fixture": true
+    }
+  ],
+  "organizacoes": [
+    {
+      "id": "3f68c61d-b074-44c7-99d4-2278f5c45a78",
+      "ownerId": "1a26cff5-d68c-4aaa-a51b-b901332d7c30",
+      "criadoEm": "2026-10-31T02:24:27.629172+00:00",
+      "fixture": true
+    },
+    {
+      "id": "6f6d3875-ca25-4459-8513-01d005a470db",
+      "ownerId": "fd64a9bd-de90-44b4-b7b0-a7312814911a",
+      "criadoEm": "2026-10-31T02:24:27.629172+00:00",
+      "fixture": true
+    }
+  ],
+  "empresas": [
+    "c667183d-e321-4544-a427-dbb2a6e60010",
+    "da8fa417-4fad-4113-b5b3-92f645134644",
+    "fa57716f-fc7c-4593-ba5f-4cb4f9329a70"
+  ],
+  "pecas": [
+    {
+      "id": "1d71d759-19d2-4535-b96f-ae7fda9ff70a",
+      "organizacaoId": "3f68c61d-b074-44c7-99d4-2278f5c45a78",
+      "criadoPor": "1a26cff5-d68c-4aaa-a51b-b901332d7c30",
+      "criadoEm": "2026-10-31T02:24:28.847828+00:00"
+    },
+    {
+      "id": "604a6254-63ce-48dd-bcc8-bbb2a501fd81",
+      "organizacaoId": "3f68c61d-b074-44c7-99d4-2278f5c45a78",
+      "criadoPor": "07515d8b-45de-49fa-b010-228c0e920741",
+      "criadoEm": "2026-10-31T02:24:28.625049+00:00"
+    },
+    {
+      "id": "6575845a-27e2-4776-b362-6f0d27ca213c",
+      "organizacaoId": "3f68c61d-b074-44c7-99d4-2278f5c45a78",
+      "criadoPor": "07515d8b-45de-49fa-b010-228c0e920741",
+      "criadoEm": "2026-10-31T02:24:31.091817+00:00"
+    },
+    {
+      "id": "aff92739-4505-4670-9506-e431f651d164",
+      "organizacaoId": "3f68c61d-b074-44c7-99d4-2278f5c45a78",
+      "criadoPor": "1a26cff5-d68c-4aaa-a51b-b901332d7c30",
+      "criadoEm": "2026-10-31T02:24:36.083151+00:00"
+    }
+  ],
+  "objetos": [
+    {
+      "id": "a58c6b90-5655-4c7a-b72a-d7aa1beb54e5",
+      "bucket": "operacao-documentos",
+      "caminho": "3f68c61d-b074-44c7-99d4-2278f5c45a78/c667183d-e321-4544-a427-dbb2a6e60010/97cd9b3d-e9f1-45ef-8528-fb92634f8dce-cartao-kit-qa.pdf",
+      "criadoEm": "2026-10-31T02:24:32.196987+00:00",
+      "documentoId": "064990e6-3d09-4807-a590-fab2831e9ba7",
+      "empresaId": "c667183d-e321-4544-a427-dbb2a6e60010",
+      "organizacaoId": "3f68c61d-b074-44c7-99d4-2278f5c45a78"
+    }
+  ],
+  "atual": [
+    {
+      "tabela": "auth.users",
+      "linhas": 13,
+      "hash": "b5fcc93a4d5cc94aae72fa5ee0d60f37"
+    },
+    {
+      "tabela": "public.admins",
+      "linhas": 1,
+      "hash": "02fcb4bb32113db833a1c0c10fb290ed"
+    },
+    {
+      "tabela": "public.clientes",
+      "linhas": 13,
+      "hash": "8c1035b287d0e0d7b2acf13156c88d1f"
+    },
+    {
+      "tabela": "public.comprasgov_resultados",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.contratos",
+      "linhas": 1,
+      "hash": "4c95731b2468228928130a26cc6e7d93"
+    },
+    {
+      "tabela": "public.dados_robo",
+      "linhas": 4,
+      "hash": "ad8b62f63181bb407c3900f16a37d89f"
+    },
+    {
+      "tabela": "public.dossies_editais",
+      "linhas": 6,
+      "hash": "6e80a68c85400680e356933c1d42c27d"
+    },
+    {
+      "tabela": "public.fila_dossies",
+      "linhas": 2,
+      "hash": "c4b8a5d1000a6c405a4ea9eddffb5bc0"
+    },
+    {
+      "tabela": "public.lembretes",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.logs_boletim",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.mercado_atas",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.operacao_agenda",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.operacao_anexos_processo",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.operacao_contratos",
+      "linhas": 2,
+      "hash": "df927c7726f8b211cd3b3e9787291f21"
+    },
+    {
+      "tabela": "public.operacao_convites_empresa",
+      "linhas": 2,
+      "hash": "7c1f4e0f541bedf84cf67c590fc6ab36"
+    },
+    {
+      "tabela": "public.operacao_documentos",
+      "linhas": 5,
+      "hash": "20489f9fd2ef21cec0e10f2e5db10e34"
+    },
+    {
+      "tabela": "public.operacao_empenhos",
+      "linhas": 2,
+      "hash": "6ba738a1884476592c4ae02fab30a0d3"
+    },
+    {
+      "tabela": "public.operacao_empresas",
+      "linhas": 7,
+      "hash": "b143ee9816955240c220b5efe61f04f6"
+    },
+    {
+      "tabela": "public.operacao_identificacao_empresa",
+      "linhas": 3,
+      "hash": "63619f96478c0a8f1b7b4044e87eda22"
+    },
+    {
+      "tabela": "public.operacao_itens_resultado",
+      "linhas": 6,
+      "hash": "d264eae3a4ab9816f3e9dcedf4ee4ced"
+    },
+    {
+      "tabela": "public.operacao_kit_documentos",
+      "linhas": 4,
+      "hash": "98df3be52b6a07a8230c34d31d8a3b06"
+    },
+    {
+      "tabela": "public.operacao_limites_cnpj",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.operacao_membros",
+      "linhas": 9,
+      "hash": "75e252cc2d7d27f79d39af644e0ffa5d"
+    },
+    {
+      "tabela": "public.operacao_ocorrencias",
+      "linhas": 2,
+      "hash": "9ab3bc19fb7e962589d3ba02147755d2"
+    },
+    {
+      "tabela": "public.operacao_organizacoes",
+      "linhas": 5,
+      "hash": "2c14605105a484d392dbbf4b153523bd"
+    },
+    {
+      "tabela": "public.operacao_prazos_processo",
+      "linhas": 2,
+      "hash": "b1f7e376c9fa25cdca5838358fbc43d5"
+    },
+    {
+      "tabela": "public.operacao_processos",
+      "linhas": 5,
+      "hash": "66134c4be27c38a2f2442b333f9add71"
+    },
+    {
+      "tabela": "public.operacao_renovacoes_documento",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.operacao_tipos_documento",
+      "linhas": 0,
+      "hash": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "tabela": "public.oportunidades_abertas",
+      "linhas": 5,
+      "hash": "a99fa086c9bde5f4603e3d7fd0a23f69"
+    },
+    {
+      "tabela": "public.uso_diario",
+      "linhas": 1,
+      "hash": "71b1cfd1b704eca814dcbc5772cdc2aa"
+    },
+    {
+      "tabela": "storage.buckets",
+      "linhas": 1,
+      "hash": "2226280c11c2ee04fb8cb0186479232e"
+    },
+    {
+      "tabela": "storage.objects",
+      "linhas": 6,
+      "hash": "fba770f98250d287ff95b8a84107a758"
+    }
+  ],
+  "baselineSemFixturesIgual": true
+}

@@ -1,0 +1,18 @@
+{
+  "bucket": {
+    "id": "operacao-documentos",
+    "name": "operacao-documentos",
+    "public": false,
+    "objects": 0,
+    "file_size_limit": null,
+    "allowed_mime_types": null
+  },
+  "read_only": "on",
+  "resultado": "PREKIT_STAGING_CONFIRMADO",
+  "catalogo_md5": "8abc338413ff0c60770d3aea1c3413d1",
+  "observado_em": "2026-11-01T18:48:11.583921+00:00",
+  "usuarios_auth": 0,
+  "server_version": "PostgreSQL 17.11 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+  "objetos_storage": 0,
+  "tabelas_publicas_vazias": 19
+}

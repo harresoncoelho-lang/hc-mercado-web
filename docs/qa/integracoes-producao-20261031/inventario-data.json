@@ -1,0 +1,32 @@
+[
+  {
+    "arquivo": "capag-municipios.json",
+    "bytes": 2026840,
+    "atributos": "Archive"
+  },
+  {
+    "arquivo": "contratos_meta.json",
+    "bytes": 201,
+    "atributos": "Archive"
+  },
+  {
+    "arquivo": "convenios.json",
+    "bytes": 945107,
+    "atributos": "Archive"
+  },
+  {
+    "arquivo": "editais_vistos.json",
+    "bytes": 13450,
+    "atributos": "Archive"
+  },
+  {
+    "arquivo": "mercado_meta.json",
+    "bytes": 375,
+    "atributos": "Archive"
+  },
+  {
+    "arquivo": "sistema_s_am.json",
+    "bytes": 29243,
+    "atributos": "Archive"
+  }
+]

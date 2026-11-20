@@ -1,0 +1,21 @@
+{
+  "destino": "luguscapasskcsficckf",
+  "executado": false,
+  "baselineMd5": "64c94369bded0ca5721959406a8d5434",
+  "candidatoBodyMd5": "a1c37914704cdb3dce5fb6dc056e9896",
+  "fonte": {
+    "arquivo": "supabase/kit_documentos_escala_proposta.sql",
+    "sha256": "f5a8da7bcfaca55e9a331b7c6b051ae778394467e12aa049af899399bba43d0a"
+  },
+  "arquivos": [
+    {
+      "arquivo": "ATO-ESCALA-00-CAPTURAR.sql",
+      "sha256": "56a3b4950bf54211fa73eb36e5935fd6db855a8aaeedbe0f6445c680845e2e56"
+    },
+    {
+      "arquivo": "ATO-ESCALA-01-APLICAR.sql",
+      "sha256": "5bedd93dd0ac40a8e05f4351fdd4d509eb4075e42e5c6aeab99a6725687859c0"
+    }
+  ],
+  "reversao": "Gerada em ATO00 a partir de pg_get_functiondef exato; salvar JSON e extrair rollbackSql antes ATO01."
+}

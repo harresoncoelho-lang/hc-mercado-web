@@ -1,0 +1,2 @@
+Lacuna reproduzida somente na fixture: readiness=true com RLS do kit desligada; outsider lê 2 peças. 57 verificações originais aprovadas.
+SQL real PGlite: 195 verificações aprovadas (184 anteriores, incluindo 57 originais, e 11 de defaults permissivos); gate somente leitura aprovado com 62 desconfigurações rejeitadas e revertidas. ACLs extras removidas na criação e reaplicação; donos, dados, defaults, papéis e objetos de controle preservados somente na fixture.

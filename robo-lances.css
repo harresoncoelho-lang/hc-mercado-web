@@ -1,0 +1,36 @@
+/* Robô de lances (robo-lances-ui.js), cartão do processo em sistema.html. Tokens do ds-tokens.css; reaproveita
+   itens-campo/itens-apoio/itens-acoes/tabela-rolagem de app-comercial.css para ficar igual a Itens do processo. */
+#robo-lances:empty { display: none; }
+#robo-lances { display: grid; gap: var(--space-12); min-width: 0; max-width: 720px; margin-top: var(--space-16); } /* mesma largura de Itens do processo */
+.robo-tempo > summary { cursor: pointer; font: var(--text-body); font-weight: 600; color: var(--action-text); min-height: 44px; display: flex; align-items: center; }
+.robo-tempo .tabela-rolagem { max-height: 420px; overflow: auto; }
+#robo-lances h2, #robo-lances h3, #robo-lances h4, #robo-lances p { margin: 0; }
+#robo-lances h4 { font: var(--text-body-lg); font-weight: 600; overflow-wrap: anywhere; }
+.robo-faixa { padding: var(--space-8) var(--space-12); border-radius: var(--radius-control); border: 1px solid var(--attention-border); background: var(--attention-bg); color: var(--attention-text); font: var(--text-body); }
+.robo-processo { border: 1px solid var(--border-default); border-radius: var(--radius-card); padding: var(--space-12) var(--space-16); display: grid; gap: var(--space-8); min-width: 0; }
+.robo-processo legend { font: var(--text-label); font-weight: 600; color: var(--text-primary); padding: 0 var(--space-4); }
+.robo-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-12); }
+.robo-grade input, .robo-grade select { width: 100%; min-width: 0; box-sizing: border-box; }
+.robo-itens { display: grid; gap: var(--space-12); }
+.robo-item { border: 1px solid var(--border-default); border-radius: var(--radius-card); padding: var(--space-12) var(--space-16); display: grid; gap: var(--space-8); min-width: 0; background: var(--surface-default); }
+.robo-item[data-ligado="sim"] { border-color: var(--success-border); box-shadow: inset 3px 0 0 var(--success-text); }
+.robo-valores { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-24); margin: 0; }
+.robo-valores dt { font: var(--text-label); color: var(--text-secondary); }
+.robo-valores dd { margin: 0; font: var(--text-body-lg); font-weight: 600; }
+.robo-junto { display: grid; grid-template-columns: 1fr 72px; gap: var(--space-4); }
+.robo-ligar { display: inline-flex; align-items: center; gap: var(--space-8); font: var(--text-body); font-weight: 600; min-height: 44px; }
+.robo-ligar input { width: 20px; height: 20px; }
+[data-robo-estado][data-situacao="erro"] { color: var(--error-text); }
+[data-robo-estado][data-situacao="ok"] { color: var(--success-text); }
+.robo-resultado, .robo-registro { display: grid; gap: var(--space-8); min-width: 0; }
+.robo-resumo, .robo-registro-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-4); font: var(--text-body); overflow-wrap: anywhere; }
+.robo-resumo li { padding: var(--space-8) var(--space-12); border-radius: var(--radius-control); border: 1px solid var(--border-default); }
+.robo-resumo li[data-situacao="ok"] { border-color: var(--success-border); background: var(--success-bg); }
+.robo-resumo li[data-situacao="atencao"] { border-color: var(--attention-border); background: var(--attention-bg); }
+.robo-resumo li[data-situacao="erro"] { border-color: var(--error-border, var(--error-text)); background: var(--error-bg); }
+.robo-registro-lista { max-height: 320px; overflow: auto; }
+.robo-registro-lista li { border-top: 1px dashed var(--border-default); padding-top: var(--space-4); }
+.robo-quando { font: var(--text-label); color: var(--text-secondary); }
+#robo-lances tr[data-tipo="sugestao"] td { font-weight: 600; color: var(--action-text); }
+#robo-lances tr[data-tipo="bloqueado"] td, #robo-lances tr[data-tipo="recusado"] td { color: var(--attention-text); }
+#robo-lances tr[data-tipo="concorrente"] td { color: var(--text-secondary); }

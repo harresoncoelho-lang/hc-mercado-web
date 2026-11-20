@@ -1,0 +1,10 @@
+{
+  "projeto": "luguscapasskcsficckf",
+  "bucket": "operacao-documentos",
+  "public": false,
+  "files": 0,
+  "fileSizeLimit": "Unset (50 MB)",
+  "allowedMimeTypes": "Any",
+  "observadoEmUtc": "2026-11-01T18:43:07.399Z",
+  "origem": "UI Supabase; configuração reaberta e cancelada sem alterações"
+}

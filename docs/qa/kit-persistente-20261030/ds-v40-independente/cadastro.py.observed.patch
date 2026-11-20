@@ -1,0 +1,22 @@
+--- cadastro.v39.py	2026-10-30 21:15:22.875430016 -0300
++++ cadastro.py	2026-10-30 21:15:33.909469827 -0300
+@@ -110,7 +110,7 @@
+ function sessMsg(){ return 'Sessão encerrada ou expirada. Entre novamente; a revisão anterior não foi mantida.' }
+ 
+ /* contexto: troca de empresa ou processo limpa aprovações, prévia e pendências em voo */
+-function switchCtx(){ S.appr={}; S.gen={}; S.genHTML=''; S.token++; S.pend=false; S.genErr=''; S.sug={}; S.err={}; S.dl=''; S.pk={}; S.genM={}; S.pkConf={}; S.genDoc={}; S.pkReviewing=null; S.epoch++; $('#revChk').checked=false }
++function switchCtx(){ if(PK) pdKill(); S.appr={}; S.gen={}; S.genHTML=''; S.token++; S.pend=false; S.genErr=''; S.sug={}; S.err={}; S.dl=''; S.pk={}; S.genM={}; S.pkConf={}; S.genDoc={}; S.pkReviewing=null; S.epoch++; $('#revChk').checked=false }
+ /* qualquer mudança de dados, modelo, preço, condição ou documento invalida a revisão */
+ function invalidate(){ S.token++; S.pend=false; S.gen={}; S.genDoc={}; S.genHTML=''; S.genErr=''; S.dl=''; var r=$('#revChk'); if(r) r.checked=false }
+ 
+@@ -288,8 +288,8 @@
+   if(PK && t.hasAttribute && t.hasAttribute('data-pk-sel')){ return pkSelect(t) }
+   if(t.id==='coSel'){ S.cid=t.value; switchCtx(); renderAll(); clearGuard(); DS.announce(cur()?'Empresa ativa: '+cur().razao:'Sem empresa ativa'); return }
+   if(t.id==='pSel'){ S.pid=t.value; switchCtx(); renderAll(); clearGuard(); DS.announce('Processo ativo: '+proc().num); return }
+-  if(t.id==='roleSel'){ S.role=t.value; renderAll(); clearGuard(); return }
+-  if(t.name==='mod'){ S.mod=t.value; invalidate(); renderMod(); renderPrev(); var rr=document.querySelector('input[name=mod][value="'+S.mod+'"]'); if(rr) rr.focus(); return }
++  if(t.id==='roleSel'){ S.role=t.value; if(PK) pdKill(); renderAll(); clearGuard(); return }
++  if(t.name==='mod'){ S.mod=t.value; if(PK) pdKill(); invalidate(); renderMod(); renderPrev(); var rr=document.querySelector('input[name=mod][value="'+S.mod+'"]'); if(rr) rr.focus(); return }
+   if(t.id==='revChk'){ renderPrev(); return }
+   if(t.id==='failChk'){ S.failNext=t.checked; DS.announce(t.checked?'A próxima geração vai falhar (simulado)':'Simulação de falha desligada'); return }
+   var pz=t.getAttribute&&t.getAttribute('data-price');

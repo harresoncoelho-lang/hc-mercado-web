@@ -11,6 +11,22 @@
 
 const js = require("@eslint/js");
 
+// Globals extras de Node >= 18 que os blocos .mjs/.cjs abaixo usam (testes, handlers ESM, QA).
+const nodeGlobals = {
+  process: "readonly", console: "readonly", Buffer: "readonly", URL: "readonly",
+  URLSearchParams: "readonly", AbortController: "readonly", TextEncoder: "readonly",
+  TextDecoder: "readonly", Response: "readonly", Request: "readonly", Headers: "readonly",
+  ReadableStream: "readonly", atob: "readonly", btoa: "readonly", crypto: "readonly",
+  performance: "readonly", structuredClone: "readonly", queueMicrotask: "readonly",
+  setTimeout: "readonly", clearTimeout: "readonly", setInterval: "readonly",
+  clearInterval: "readonly", setImmediate: "readonly", fetch: "readonly",
+};
+// Contexto de página (Playwright page.evaluate / extensão de navegador).
+const browserGlobals = {
+  window: "readonly", document: "readonly", location: "readonly",
+  getComputedStyle: "readonly", chrome: "readonly",
+};
+
 module.exports = [
   {
     ignores: [
@@ -30,6 +46,15 @@ module.exports = [
     ],
   },
   js.configs.recommended,
+  {
+    // Ambiente de teste local (Supabase CLI + site + E2E): scripts Node CommonJS, fora do deploy.
+    files: ["ambiente-teste/**/*.cjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: { ...nodeGlobals, require: "readonly", module: "writable", __dirname: "readonly", AbortSignal: "readonly" },
+    },
+  },
   {
     // O próprio arquivo de config também é lido pelo ESLint (roda em Node, CommonJS) —
     // sem isso, "eslint ." reclamava de require/module indefinidos nele mesmo.
@@ -65,6 +90,7 @@ module.exports = [
         TextEncoder: "readonly",
         TextDecoder: "readonly",
         // Usados pelo adaptador do Cloudflare Pages (netlify/functions/_adaptador_cloudflare.js).
+        ReadableStream: "readonly",
         Response: "readonly",
         Headers: "readonly",
         Request: "readonly",
@@ -119,6 +145,50 @@ module.exports = [
         process: "readonly",
         console: "readonly",
         __dirname: "readonly",
+      },
+    },
+  },
+  {
+    // Módulos ESM (.mjs): handlers, motores, testes e QA rodam em Node, sem o bloco de
+    // netlify/scripts acima (que é só *.js / CommonJS).
+    files: ["**/*.mjs"],
+    languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: nodeGlobals },
+    rules: {
+      "no-unused-vars": ["error", { args: "none", varsIgnorePattern: "^_", caughtErrors: "none" }],
+    },
+  },
+  {
+    // Extensão de leitura: roda no navegador (popup/service worker) e nos testes em Node.
+    // catch {} vazio é fail-open de propósito (fechar porta já fechada), como em netlify/.
+    files: ["extensao-leitura/**/*.mjs"],
+    languageOptions: { globals: { ...nodeGlobals, ...browserGlobals } },
+    rules: { "no-empty": ["error", { allowEmptyCatch: true }] },
+  },
+  {
+    // Cliente do kit: o catch vazio é limpeza best-effort de porta/cancelamento.
+    files: ["kit-documentos-ui.js"],
+    languageOptions: { globals: { setTimeout: "readonly", clearTimeout: "readonly" } },
+    rules: { "no-empty": ["error", { allowEmptyCatch: true }] },
+  },
+  {
+    // QA com Playwright (CommonJS): o código dentro de page.evaluate / addScriptTag roda
+    // na página e enxerga estas globais, que não existem no Node.
+    files: [
+      "scripts/anexos_evidencias_ui.cjs",
+      "scripts/kit_proposta_ui_escala.cjs",
+      "scripts/medir_kit_proposta.cjs",
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "commonjs",
+      globals: {
+        ...nodeGlobals,
+        ...browserGlobals,
+        require: "readonly", module: "writable", __dirname: "readonly",
+        // Definidas pela própria página de teste.
+        state: "writable", deps: "writable", ui: "writable", calls: "writable",
+        mode: "writable", hash: "writable", release: "writable",
+        criarAcompanhamentoOperacional: "readonly", LicitaKitDocumentos: "readonly",
       },
     },
   },

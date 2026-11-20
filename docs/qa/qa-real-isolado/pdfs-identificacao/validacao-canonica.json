@@ -1,0 +1,94 @@
+[
+  {
+    "arquivo": "docs/qa/qa-real-isolado/pdfs-identificacao/identificacao-qa-ui-a-ficticia.pdf",
+    "sha256": "e36e4886b84f6bafd61cd5cbf41b9b4921b03c5c333d5520724e5a396ad022fa",
+    "extracao": {
+      "modo": "sugestoes",
+      "sugestoes": {
+        "razaoSocial": "QA UI A FICTÍCIA",
+        "endereco": "Rua Ficticia A, 100 - Cidade Exemplo",
+        "representante": "Pessoa Ficticia A",
+        "cargo": "Representante de Teste"
+      },
+      "evidencias": [
+        {
+          "campo": "razaoSocial",
+          "pagina": 1,
+          "trecho": "NOME EMPRESARIAL: QA UI A FICTÍCIA",
+          "valor": "QA UI A FICTÍCIA"
+        },
+        {
+          "campo": "endereco",
+          "pagina": 1,
+          "trecho": "ENDERECO: Rua Ficticia A, 100 - Cidade Exemplo",
+          "valor": "Rua Ficticia A, 100 - Cidade Exemplo"
+        },
+        {
+          "campo": "representante",
+          "pagina": 1,
+          "trecho": "REPRESENTANTE LEGAL: Pessoa Ficticia A",
+          "valor": "Pessoa Ficticia A"
+        },
+        {
+          "campo": "cargo",
+          "pagina": 1,
+          "trecho": "CARGO: Representante de Teste",
+          "valor": "Representante de Teste"
+        }
+      ],
+      "avisos": [
+        "Sugestões de leitura, sem validação jurídica. Confira todos os campos antes de confirmar."
+      ]
+    },
+    "cnpjTextualConferido": "11.222.333/0001-81",
+    "cnpjExtraidoAutomaticamente": false,
+    "paginas": 1,
+    "visual": "PNG110dpi inspecionada, sem cortes ou sobreposicoes"
+  },
+  {
+    "arquivo": "docs/qa/qa-real-isolado/pdfs-identificacao/identificacao-qa-ui-b-ficticia.pdf",
+    "sha256": "c0505565fac27108ba24ab033b738bd17b76f7ce625cf761509ad4c8fb4326eb",
+    "extracao": {
+      "modo": "sugestoes",
+      "sugestoes": {
+        "razaoSocial": "QA UI B FICTÍCIA",
+        "endereco": "Rua Ficticia B, 100 - Cidade Exemplo",
+        "representante": "Pessoa Ficticia B",
+        "cargo": "Representante de Teste"
+      },
+      "evidencias": [
+        {
+          "campo": "razaoSocial",
+          "pagina": 1,
+          "trecho": "NOME EMPRESARIAL: QA UI B FICTÍCIA",
+          "valor": "QA UI B FICTÍCIA"
+        },
+        {
+          "campo": "endereco",
+          "pagina": 1,
+          "trecho": "ENDERECO: Rua Ficticia B, 100 - Cidade Exemplo",
+          "valor": "Rua Ficticia B, 100 - Cidade Exemplo"
+        },
+        {
+          "campo": "representante",
+          "pagina": 1,
+          "trecho": "REPRESENTANTE LEGAL: Pessoa Ficticia B",
+          "valor": "Pessoa Ficticia B"
+        },
+        {
+          "campo": "cargo",
+          "pagina": 1,
+          "trecho": "CARGO: Representante de Teste",
+          "valor": "Representante de Teste"
+        }
+      ],
+      "avisos": [
+        "Sugestões de leitura, sem validação jurídica. Confira todos os campos antes de confirmar."
+      ]
+    },
+    "cnpjTextualConferido": "12.345.678/0001-95",
+    "cnpjExtraidoAutomaticamente": false,
+    "paginas": 1,
+    "visual": "PNG110dpi inspecionada, sem cortes ou sobreposicoes"
+  }
+]

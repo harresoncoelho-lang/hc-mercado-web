@@ -1,0 +1,97 @@
+<!doctype html>
+<!-- Portal do cliente (público, sem login): aberto por /cliente#t=<token>. O token fica só no hash (não vai
+     para o servidor estático nem para o Referer). CSP própria em _headers e netlify.toml (bloco /cliente*):
+     por isso nenhum <script> inline e nenhum style= aqui. Contrato: netlify/functions/portal-cliente.js. -->
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>LicitaPlena · Aprovação de itens</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="ds-tokens.css">
+<link rel="stylesheet" href="cliente.css">
+<script src="cliente.js" defer></script>
+</head>
+<body>
+<header class="cl-topo">
+  <span class="cl-marca"><span class="placa"><img src="logo-icone.svg" alt="" width="24" height="24"></span>LicitaPlena</span>
+  <span class="cl-empresa" id="empresa" aria-live="polite"></span>
+</header>
+
+<main class="cl-principal" id="principal">
+  <p class="cl-carregando" id="carregando" role="status">Carregando os itens…</p>
+
+  <section class="cl-aviso cl-aviso-erro" id="erro" role="alert" hidden>
+    <p id="erro-texto"></p>
+    <button type="button" id="erro-tentar" hidden>Tentar de novo</button>
+  </section>
+
+  <div id="conteudo" hidden>
+    <h1 class="cl-titulo">Confira e aprove os itens da proposta</h1>
+    <p class="cl-apoio">Para cada item, escolha <strong>Aprovar</strong> ou <strong>Recusar</strong>. Depois toque em <strong>Enviar respostas</strong> no rodapé.</p>
+
+    <section class="cl-cartao" aria-labelledby="processo-titulo">
+      <h2 class="cl-secao" id="processo-titulo">Processo</h2>
+      <dl class="cl-dados">
+        <div><dt>Número</dt><dd id="p-numero"></dd></div>
+        <div><dt>Órgão</dt><dd id="p-orgao"></dd></div>
+        <div><dt>Modalidade</dt><dd id="p-modalidade"></dd></div>
+        <div><dt>Data da sessão</dt><dd id="p-sessao"></dd></div>
+        <div class="cl-dados-largo"><dt>Objeto</dt><dd id="p-objeto"></dd></div>
+      </dl>
+      <p class="cl-meta"><span id="p-edital"></span><span id="validade" class="cl-chip cl-chip-info"></span></p>
+    </section>
+
+    <section class="cl-aviso cl-aviso-atencao" id="aviso-mudou" role="status" hidden>
+      <p id="aviso-mudou-texto"></p>
+    </section>
+
+    <!-- Aviso de itens sem valor (20/11/2026): aguarda aprovação. -->
+    <section class="cl-aviso cl-aviso-atencao" id="aviso-sem-valor" role="status" hidden>
+      <p>Alguns itens ainda estão sem valor. Se tiver dúvida, fale com quem enviou o link antes de aprovar.</p>
+    </section>
+
+    <section aria-labelledby="itens-titulo">
+      <h2 class="cl-secao" id="itens-titulo">Itens</h2>
+      <p class="cl-meta" id="paginacao-texto"></p>
+      <div class="cl-quadro" tabindex="0" role="region" aria-labelledby="itens-titulo">
+        <table class="cl-tabela" id="tabela">
+          <thead><tr id="cabecalho"></tr></thead>
+          <tbody id="itens"></tbody>
+        </table>
+      </div>
+      <nav class="cl-paginas" id="paginas" aria-label="Páginas de itens" hidden>
+        <button type="button" id="pag-anterior">Página anterior</button>
+        <span id="pag-atual"></span>
+        <button type="button" id="pag-proxima">Próxima página</button>
+      </nav>
+    </section>
+  </div>
+
+  <section class="cl-cartao cl-confirmacao" id="confirmacao" hidden aria-labelledby="confirmacao-titulo">
+    <h1 class="cl-titulo" id="confirmacao-titulo" tabindex="-1">Respostas enviadas</h1>
+    <p class="cl-apoio" id="confirmacao-texto"></p>
+    <button type="button" id="voltar-itens">Voltar aos itens</button>
+  </section>
+
+  <section class="cl-cartao" id="historico" hidden aria-labelledby="historico-titulo">
+    <h2 class="cl-secao" id="historico-titulo">Seu histórico</h2>
+    <p class="cl-meta" id="historico-vazio">Você ainda não enviou respostas por este link.</p>
+    <ul class="cl-historico" id="historico-lista"></ul>
+  </section>
+</main>
+
+<footer class="cl-barra" id="barra" hidden>
+  <div class="cl-barra-dentro">
+    <p class="cl-progresso" id="progresso" aria-live="polite"></p>
+    <p class="cl-barra-msg" id="barra-msg" aria-live="assertive"></p>
+    <div class="cl-barra-acoes">
+      <button type="button" id="aprovar-todos">Aprovar todos os pendentes</button>
+      <button type="button" class="cl-primario" id="enviar">Enviar respostas</button>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

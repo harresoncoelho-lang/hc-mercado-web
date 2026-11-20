@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Homologação local — Identificação da empresa</title>
+<script src="/qa-vendor/supabase.js"></script><script src="/supabase-config.js"></script>
+<script src="/defesa-licitante.js"></script><script src="/empresa-identificacao-ui.js"></script><script src="/defesa-ui.js"></script>
+<style>body{font:16px system-ui;margin:24px;color:#193342;background:#f4f7f9}main{max-width:900px;margin:auto}button,input,select,textarea{font:inherit;padding:10px;margin:5px 0}button{cursor:pointer;border:1px solid #648393;border-radius:8px;background:white;color:#153b50}input:not([type=checkbox]),textarea,select{display:block;box-sizing:border-box;width:100%}label{display:block;margin-top:12px}details{padding:16px;background:white;border:1px solid #cad7df;border-radius:12px;margin:12px 0}summary{cursor:pointer;font-weight:700}dialog{width:min(760px,90vw);max-height:85vh;overflow:auto;border:1px solid #7893a0;border-radius:16px;padding:24px}dialog::backdrop{background:#1238}button:disabled{opacity:.5;cursor:default}.defesa-acoes{display:flex;gap:12px}.defesa-status{color:#684300}.defesa-botao-destaque{background:#175c70;color:white}</style></head>
+<body><main><h1>Identificação da empresa — teste local</h1><p>Ambiente de homologação. Edital e minuta fictícios; não há análise de IA nem envio de documentos. Faça login local antes de abrir esta página.</p>
+<label for="empresa">ID da empresa de testes</label><input id="empresa" autocomplete="off"><button id="abrir">Abrir Central de testes</button><p id="status" role="status"></p><div id="central"></div></main>
+<script>
+const cliente=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let geracao=0;
+document.getElementById('empresa').value=new URLSearchParams(location.search).get('empresaId')||'';
+document.getElementById('abrir').onclick=async()=>{
+ const atual=++geracao, status=document.getElementById('status'), host=document.getElementById('central');
+ try {
+  host._defesa?.fechar();host._defesa=null;host.replaceChildren();
+  const {data,error}=await cliente.auth.getSession();if(error||!data.session)throw new Error('Entre primeiro em /login.html com a conta local de testes.');
+  const empresaId=document.getElementById('empresa').value.trim();if(!empresaId)throw new Error('Informe a empresa de testes.');
+  const solicitar=async pedido=>{if(atual!==geracao)throw new Error('O contexto mudou.');const {data:d}=await cliente.auth.getSession();const r=await fetch('/api/empresa-identificacao',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${d.session.access_token}`},body:JSON.stringify({...pedido,empresaId})});const v=await r.json();if(atual!==geracao)throw new Error('O contexto mudou.');if(!r.ok)throw new Error(v.erro||'Falha local.');return v;};
+  DefesaUI.renderizar(host,{usuarioId:data.session.user.id,empresaId,edital:{numeroControlePNCP:'HOMOLOGACAO-FICTICIA',orgao:'Órgão fictício de homologação'},estrutura:{hashFonte:'fonte-ficticia-local',possiveisQuestionamentos:['Ponto fictício para testar os dados da empresa.']},storage:sessionStorage,identificacaoEmpresa:solicitar,exportar:async()=>{throw new Error('Exportação bloqueada nesta página de testes.');}});
+  host.querySelector('button[aria-controls="defesa-dialogo"]').click();
+  const texto=host.querySelector('#defesa-minuta-texto');texto.value='Pedido de esclarecimento — TESTE FICTÍCIO\n\nDestinatário e identificação da interessada: [preencher e conferir]\n\nCorpo fictício para verificar a aplicação da identificação. Não protocolar.';host.querySelector('#defesa-editor').hidden=false;
+  status.textContent='Central original carregada com sessão e banco locais. IA e exportação bloqueadas.';
+ }catch(e){status.textContent=e.message;}
+};
+</script></body></html>

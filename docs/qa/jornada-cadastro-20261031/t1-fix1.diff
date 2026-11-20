@@ -1,0 +1,64 @@
+--- antes-fix1/kit-documentos-ui.js
++++ kit-documentos-ui.js
+@@ -217,12 +217,15 @@
+     el('[data-lista]').addEventListener('click', e => { const b = e.target.closest('[data-abrir]'); if (b) pedirTroca(() => void abrir(b.dataset.abrir)); });
+     el('[data-recarregar]').addEventListener('click', () => pedirTroca(() => void abrir(peca.id)));
+     el('[data-listar]').addEventListener('click', () => void (dados && !cadastroAberto ? listar() : consultar()));
+-    el('[data-cadastro]').addEventListener('click', e => {
++    function invalidarParaCadastro(e) {
+       if (!vivo(controle.geracao) || ocupado) { e.preventDefault(); return; }
+       cadastroAberto = true; controle.alterar(); limparPrevia('Cadastro aberto em outra aba. Consulte novamente os dados antes de preparar a prévia.');
+       estado = alterado ? (peca.versao ? 'Alterações não salvas' : 'Novo · não salvo') : 'Salvo · pendente de revisão';
+       aviso('Seu rascunho continua aqui. Ao voltar, use Atualizar lista para consultar a identificação e preparar uma nova prévia.'); atualizar();
+-    });
++    }
++    el('[data-cadastro]').addEventListener('click', invalidarParaCadastro);
++    el('[data-cadastro]').addEventListener('auxclick', e => { if (e.button === 1) invalidarParaCadastro(e); });
++    el('[data-cadastro]').addEventListener('contextmenu', invalidarParaCadastro);
+     el('[data-cancelar-troca]').addEventListener('click', () => { trocaPendente = null; el('[data-descarte]').hidden = true; form.elements[peca.tipo === 'declaracao' ? 'titulo' : 'validade'].focus(); });
+     el('[data-descartar]').addEventListener('click', () => { const continuar = trocaPendente; trocaPendente = null; el('[data-descarte]').hidden = true; continuar?.(); });
+     async function consultar() {
+--- antes-fix1/docs/qa/jornada-cadastro-20261031/t1-navegador.cjs
++++ docs/qa/jornada-cadastro-20261031/t1-navegador.cjs
+@@ -101,7 +101,9 @@
+       await p.goto(origem + `/processos.html?empresa=inexistente&processo=${processos[0].id}`);
+       await p.locator('#aviso').getByText(/empresa do link não está disponível/i).waitFor(); assert.equal(await p.locator('#empresa-atual').inputValue(), '');
+     });
+-    await caso('atalho invalida revisão pronta e reconsulta conserva proposta', async (p, contexto) => {
++    for (const abertura of ['clique', 'meio', 'menu']) await caso(`atalho invalida revisão pronta e reconsulta conserva proposta: ${abertura}`, async (p, contexto) => {
++      let consultas = 0;
++      p.on('request', r => { if (r.url().endsWith('/api/kit-documentos') && r.postDataJSON()?.acao === 'consultar') consultas++; });
+       await p.goto(origem + `/processos.html?empresa=${empresas[0].id}&processo=${processos[0].id}`);
+       await p.locator('[data-contexto]').filter({ hasText: empresas[0].razao_social }).waitFor();
+       await p.getByRole('button', { name: 'Nova proposta', exact: true }).click();
+@@ -112,11 +114,19 @@
+       await p.getByRole('button', { name: 'Preparar prévia', exact: true }).click();
+       await p.waitForFunction(() => !document.querySelector('[data-revisado]').disabled); await p.locator('[data-revisado]').check();
+       await p.waitForFunction(() => !document.querySelector('[data-exportar]').disabled);
+-      const [cadastroPage] = await Promise.all([contexto.waitForEvent('page'), p.getByRole('link', { name: 'Conferir dados da empresa (nova aba)' }).click()]);
+-      await esperarEmpresa(cadastroPage, 0);
++      const atalho = p.getByRole('link', { name: 'Conferir dados da empresa (nova aba)' });
++      if (abertura === 'menu') {
++        await atalho.click({ button: 'right' }); await p.keyboard.press('Escape');
++        assert.equal(contexto.pages().length, 1, 'menu cancelado não navega, mas invalida conservadoramente');
++      } else {
++        const [cadastroPage] = await Promise.all([contexto.waitForEvent('page'), atalho.click({ button: abertura === 'meio' ? 'middle' : 'left' })]);
++        await esperarEmpresa(cadastroPage, 0); assert.equal(await cadastroPage.evaluate(() => window.opener), null);
++      }
+       assert.equal(await p.locator('[data-exportar]').isDisabled(), true); assert.equal(await p.locator('[data-revisado]').isChecked(), false);
+       assert.equal(await p.locator('[data-preparar]').isDisabled(), true);
++      assert.equal(consultas, 1);
+       await p.getByRole('button', { name: 'Atualizar lista', exact: true }).click(); await p.waitForFunction(() => !document.querySelector('[data-preparar]').disabled);
++      assert.equal(consultas, 2, 'atualizar deve reconsultar a identificação depois de qualquer abertura');
+       assert.equal(await p.locator('[data-item]').first().isChecked(), true);
+       assert.equal(await p.getByLabel('Unidade manual deste item').inputValue(), 'pacote');
+       assert.equal(await p.getByLabel('Validade da proposta', { exact: true }).inputValue(), '60 dias');
+@@ -139,7 +149,7 @@
+     });
+     assert.deepEqual(erros, []); assert.deepEqual(externas, []); assert.deepEqual(falhas, []);
+   } finally {
+-    fs.writeFileSync(path.join(__dirname, 't1-navegador-resultados.json'), JSON.stringify({ resultados, falhas, erros, externas }, null, 2));
++    fs.writeFileSync(path.join(__dirname, process.env.T1_CASO ? 't1-navegador-focal-resultados.json' : 't1-navegador-resultados.json'), JSON.stringify({ resultados, falhas, erros, externas }, null, 2));
+     await browser.close(); servidor.closeAllConnections(); await new Promise(r => servidor.close(r));
+   }
+ }

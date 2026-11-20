@@ -1,0 +1,15 @@
+{
+  "observadoEmUtc": "2026-11-01T17:53:24Z",
+  "origem": "Lista de projetos da organização no Supabase, pela interface autenticada do navegador interno",
+  "modo": "Somente leitura",
+  "organizacao": "hyxscgmivndnpqijsoav",
+  "planoExibido": "PRO",
+  "projetosListados": ["LICITAPLENA", "Radar SICAF"],
+  "destinoHomologacaoLicitaPlenaIdentificado": false,
+  "limites": [
+    "A lista desta organização não prova ausência de ambientes em outras organizações ou provedores.",
+    "Branches não foram reconsultadas nesta retomada; a observação de ausência de branches é de 31/10.",
+    "Não foi aberto ou usado o projeto Radar SICAF.",
+    "Nenhum projeto, branch, recurso pago, credencial, restauração ou alteração de configuração foi criado."
+  ]
+}

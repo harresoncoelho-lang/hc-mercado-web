@@ -1,0 +1,237 @@
+--- v1/restauracao/restore.py
++++ v2/restauracao/restore.py
+@@ -15,7 +15,7 @@
+ BASELINE_SHA = "43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0"
+ MANIFEST_SHA = "0ef9542dc690dda39184e4dd9e23cef6ebc4bc1b4bb300e89d183e2c6a864994"
+ DB = "licitaplena_restore"
+-START = """initdb -D /qa/data -U supabase_admin --auth-local=trust --auth-host=reject --locale-provider=icu --icu-locale=en_US.UTF-8 --encoding=UTF8 --no-instructions > /qa/initdb.log 2>&1
++START = """initdb -D /qa/data -U supabase_admin --auth-local=trust --auth-host=reject --locale-provider=icu --icu-locale=en_US.UTF-8 --encoding=UTF8 --no-instructions > /qa/initdb.log 2>&1 || { cat /qa/initdb.log >&2; exit 1; }
+ exec postgres -D /qa/data -c listen_addresses='' -c unix_socket_directories=/qa -c shared_preload_libraries='' -c logging_collector=off"""
+ NEW_FILES = {".github/workflows/restauracao.yml", "restauracao/restore.py", "restauracao/test_restore.py", "restauracao/README.md", "restauracao/baseline.json"}
+ 
+@@ -123,6 +123,46 @@
+         raise ValueError("container_isolation")
+ 
+ 
++def run_captured(args, output, data=None, filename=None, check=True, timeout=120, limit=None, failure_filename="command-failure.txt"):
++    def preserve(name, stdout, stderr, timed_out=False):
++        stdout = stdout.encode() if isinstance(stdout, str) else stdout or b""
++        stderr = stderr.encode() if isinstance(stderr, str) else stderr or b""
++        saved_stdout = stdout[-limit:] if limit else stdout
++        saved_stderr = stderr[-limit:] if limit else stderr
++        (output / name).write_bytes(saved_stdout)
++        if saved_stderr:
++            (output / (name + ".stderr")).write_bytes(saved_stderr)
++        if timed_out or limit:
++            (output / (name + ".capture.json")).write_text(json.dumps({"partial_timeout": timed_out,
++                "timeout_seconds": timeout, "stdout_bytes_observed": len(stdout), "stderr_bytes_observed": len(stderr),
++                "stdout_bytes_saved": len(saved_stdout), "stderr_bytes_saved": len(saved_stderr), "tail_limit_bytes": limit}))
++    try:
++        result = subprocess.run(args, input=data.encode() if data is not None else None,
++                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
++    except subprocess.TimeoutExpired as error:
++        preserve(filename or failure_filename, error.stdout, error.stderr, timed_out=True)
++        raise
++    if filename or (check and result.returncode):
++        preserve(filename or failure_filename, result.stdout, result.stderr)
++    if check and result.returncode:
++        raise ValueError("subprocess_exit")
++    return result
++
++
++def capture_diagnostics(container, output):
++    captures = ["docker", "initdb"]
++    commands = [["docker", "logs", "--tail", "100", container],
++                ["docker", "exec", container, "/bin/sh", "-c", "if test -f /qa/initdb.log; then tail -c 65536 /qa/initdb.log; fi"]]
++    results = {}
++    for name, args in zip(captures, commands):
++        try:
++            result = run_captured(args, output, filename=f"diagnostic-{name}.txt", check=False, timeout=10, limit=65536)
++            results[name] = {"exit_code": result.returncode, "tail_limit_bytes_per_stream": 65536}
++        except Exception as error:
++            results[name] = {"error": type(error).__name__, "tail_limit_bytes_per_stream": 65536}
++    return results
++
++
+ GLOBALS_SQL = """SELECT json_build_object(
+ 'roles',(SELECT json_agg(to_jsonb(r)-'oid'-'rolpassword') FROM pg_roles r),
+ 'memberships',(SELECT json_agg(json_build_object('role',pg_get_userbyid(m.roleid),'member',pg_get_userbyid(m.member),'grantor',pg_get_userbyid(m.grantor),'admin',m.admin_option,'inherit',m.inherit_option,'set',m.set_option)) FROM pg_auth_members m),
+@@ -167,15 +207,7 @@
+         (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+ 
+     def command(args, data=None, filename=None, check=True, timeout=120):
+-        result = subprocess.run(args, input=data.encode() if data is not None else None,
+-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+-        if filename:
+-            (output / filename).write_bytes(result.stdout)
+-            if result.stderr:
+-                (output / (filename + ".stderr")).write_bytes(result.stderr)
+-        if check and result.returncode:
+-            raise ValueError("subprocess_exit")
+-        return result
++        return run_captured(args, output, data, filename, check, timeout, failure_filename=f"failure-{report['phase']}.txt")
+ 
+     def sql(query, db=DB, user="supabase_admin"):
+         nonlocal sql_counter
+@@ -186,14 +218,22 @@
+     try:
+         save()
+         command(["docker", "pull", "--platform", "linux/amd64", IMAGE])
++        report["phase"] = "container_create"
++        save()
+         container = command(create_command((ROOT / "input").resolve())).stdout.decode().strip()
+         if not re.fullmatch(r"[0-9a-f]{64}", container):
+             container = None
+             raise ValueError("container_identity")
++        report["phase"] = "container_isolation"
++        save()
+         inspect = json.loads(command(["docker", "inspect", container]).stdout)[0]
+         verify_container(inspect, (ROOT / "input").resolve())
+         report["isolation"] = {"network": "none", "root_read_only": True, "input_read_only": True, "writable_ephemeral_tmpfs": ["/qa", "/tmp"], "ports": []}
++        report["phase"] = "server_start"
++        save()
+         command(["docker", "start", container])
++        report["phase"] = "server_readiness"
++        save()
+         for _ in range(60):
+             ready = command(["docker", "exec", container, "pg_isready", "-h", "/qa", "-U", "supabase_admin", "-d", "postgres"], check=False)
+             if ready.returncode == 0:
+@@ -257,6 +297,8 @@
+         raise
+     finally:
+         if container:
++            # initdb failure is echoed before exit because a stopped container loses its tmpfs.
++            report["diagnostics"] = capture_diagnostics(container, output)
+             try:
+                 result = command(["docker", "rm", "--force", container], check=False)
+                 report["container_removed"] = result.returncode == 0
+--- v1/restauracao/test_restore.py
++++ v2/restauracao/test_restore.py
+@@ -1,6 +1,9 @@
+ import copy
+ import json
+ from pathlib import Path
++import subprocess
++import tempfile
++from types import SimpleNamespace
+ import unittest
+ from unittest.mock import patch
+ 
+@@ -68,6 +71,40 @@
+         reordered["table"]["acl"] = reordered["table"]["acl"].replace("authenticated=r/", "authenticated=arwdDxt/")
+         self.assertNotEqual(r.normalize_kit(baseline), r.normalize_kit(reordered))
+ 
++    def test_timeout_preserves_partial_stdout_and_stderr(self):
++        error = subprocess.TimeoutExpired(["fixture"], 2, output=b"partial stdout", stderr=b"partial stderr")
++        with tempfile.TemporaryDirectory() as directory, patch.object(r.subprocess, "run", side_effect=error):
++            output = Path(directory)
++            with self.assertRaises(subprocess.TimeoutExpired):
++                r.run_captured(["fixture"], output, timeout=2, failure_filename="failure-server_start.txt")
++            self.assertEqual((output / "failure-server_start.txt").read_bytes(), b"partial stdout")
++            self.assertEqual((output / "failure-server_start.txt.stderr").read_bytes(), b"partial stderr")
++            proof = json.loads((output / "failure-server_start.txt.capture.json").read_text())
++            self.assertTrue(proof["partial_timeout"])
++            self.assertEqual(proof["timeout_seconds"], 2)
++
++    def test_stopped_container_keeps_initdb_error_in_bounded_docker_log(self):
++        results = [SimpleNamespace(returncode=0, stdout=b"x" * 70000, stderr=b"initdb failed"),
++                   SimpleNamespace(returncode=1, stdout=b"", stderr=b"container is not running")]
++        with tempfile.TemporaryDirectory() as directory, patch.object(r.subprocess, "run", side_effect=results) as run:
++            output = Path(directory)
++            evidence = r.capture_diagnostics("a" * 64, output)
++            self.assertEqual((output / "diagnostic-docker.txt").stat().st_size, 65536)
++            self.assertEqual((output / "diagnostic-docker.txt.stderr").read_bytes(), b"initdb failed")
++            self.assertEqual(evidence["initdb"]["exit_code"], 1)
++            self.assertEqual(run.call_args_list[0].args[0][:4], ["docker", "logs", "--tail", "100"])
++            self.assertIn("|| { cat /qa/initdb.log >&2; exit 1; }", r.START)
++
++    def test_diagnostic_timeout_keeps_partial_output_and_continues(self):
++        results = [subprocess.TimeoutExpired(["docker"], 10, output=b"available log", stderr=b""),
++                   SimpleNamespace(returncode=0, stdout=b"initialization detail", stderr=b"")]
++        with tempfile.TemporaryDirectory() as directory, patch.object(r.subprocess, "run", side_effect=results):
++            output = Path(directory)
++            evidence = r.capture_diagnostics("a" * 64, output)
++            self.assertEqual(evidence["docker"]["error"], "TimeoutExpired")
++            self.assertEqual((output / "diagnostic-docker.txt").read_bytes(), b"available log")
++            self.assertEqual((output / "diagnostic-initdb.txt").read_bytes(), b"initialization detail")
++
+ 
+ if __name__ == "__main__":
+     unittest.main()
+--- v1/restauracao/README.md
++++ v2/restauracao/README.md
+@@ -1,37 +1,39 @@
+-# Restauração lógica fictícia — candidato para revisão
++# RestauraÃ§Ã£o lÃ³gica fictÃ­cia â€” candidato para revisÃ£o
+ 
+-Preparado em 01/11/2026; **nenhum SQL, servidor, Docker local ou job desta restauração foi executado na preparação**. O inventário remoto anterior foi aprovado no run `41339162377`, commit `c08feeabe25ff3d726e9373b4d1a92147a99885f`: origem, pg_dump e cliente 17.11; 812 entradas selecionadas de 817 entradas totais do cabeçalho.
++Preparado em 01/11/2026; **nenhum SQL, servidor, Docker local ou job desta restauraÃ§Ã£o foi executado na preparaÃ§Ã£o**. O inventÃ¡rio remoto anterior foi aprovado no run `41339162377`, commit `c08feeabe25ff3d726e9373b4d1a92147a99885f`: origem, pg_dump e cliente 17.11; 812 entradas selecionadas de 817 entradas totais do cabeÃ§alho.
+ 
+-## Escopo mínimo e origem
++## Escopo mÃ­nimo e origem
+ 
+-Usar o mesmo dump fictício de 505.274 bytes e SHA256 `30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c`. O snapshot anterior à correção de ACL foi normalizado em `baseline.json`: 40 tabelas (30 public, 10 Storage), 29 roles sem senhas, 21 memberships, 12 default ACLs e os objetos do kit. SHA256 do snapshot original: `f7a111357f7db4af3e849c8ffdba69e6e63ef409cee98c403e2ff70b87b95419`. OIDs foram traduzidos por nomes; namespaces vêm do TOC, mais o namespace public predefinido 2200. Ordem de ACL não altera sua semântica e é normalizada; privilégios/grantors não são retirados.
++Usar o mesmo dump fictÃ­cio de 505.274 bytes e SHA256 `30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c`. O snapshot anterior Ã  correÃ§Ã£o de ACL foi normalizado em `baseline.json`: 40 tabelas (30 public, 10 Storage), 29 roles sem senhas, 21 memberships, 12 default ACLs e os objetos do kit. SHA256 do snapshot original: `f7a111357f7db4af3e849c8ffdba69e6e63ef409cee98c403e2ff70b87b95419`. OIDs foram traduzidos por nomes; namespaces vÃªm do TOC, mais o namespace public predefinido 2200. Ordem de ACL nÃ£o altera sua semÃ¢ntica e Ã© normalizada; privilÃ©gios/grantors nÃ£o sÃ£o retirados.
+ 
+-O dump declara pg_trgm. As referências a pg_cron/pg_net são corpos de funções de concessão; não há criação dessas extensões nem event triggers anexados, FDWs, publicações ou assinaturas no TOC. A baseline do papel authenticator exige bibliotecas reais `supautils, safeupdate`, motivo para não usar a imagem vanilla e não criar stubs. Funções existentes do dump permanecem exatamente como estavam, inclusive código de suporte de extensões não ativadas.
++O dump declara pg_trgm. As referÃªncias a pg_cron/pg_net sÃ£o corpos de funÃ§Ãµes de concessÃ£o; nÃ£o hÃ¡ criaÃ§Ã£o dessas extensÃµes nem event triggers anexados, FDWs, publicaÃ§Ãµes ou assinaturas no TOC. A baseline do papel authenticator exige bibliotecas reais `supautils, safeupdate`, motivo para nÃ£o usar a imagem vanilla e nÃ£o criar stubs. FunÃ§Ãµes existentes do dump permanecem exatamente como estavam, inclusive cÃ³digo de suporte de extensÃµes nÃ£o ativadas.
+ 
+-Imagem derivada da **mesma tag do Compose fictício**: `public.ecr.aws/supabase/postgres:17.11.0.004`, fixada no manifesto linux/amd64 `sha256:e85bc10ac5b141223b289e1e8dc8d448cf3df92501917149db0366b9c5aaf053`; config OCI `sha256:c4be96218454e68421a29c712e1a83c7a9fe186208c725d8bb2ebb474e2042f2`. Metadados públicos consultados sem baixar layers: 29 camadas, 367.717.338 bytes comprimidos, sem VOLUME declarado. O digest atual não foi demonstrado como idêntico ao image ID local histórico; compatibilidade é verificada pelo servidor, bibliotecas, restore e comparações. A versão 17.11 corresponde ao próprio dump fictício; não é afirmação sobre produção.
++Imagem derivada da **mesma tag do Compose fictÃ­cio**: `public.ecr.aws/supabase/postgres:17.11.0.004`, fixada no manifesto linux/amd64 `sha256:e85bc10ac5b141223b289e1e8dc8d448cf3df92501917149db0366b9c5aaf053`; config OCI `sha256:c4be96218454e68421a29c712e1a83c7a9fe186208c725d8bb2ebb474e2042f2`. Metadados pÃºblicos consultados sem baixar layers: 29 camadas, 367.717.338 bytes comprimidos, sem VOLUME declarado. O digest atual nÃ£o foi demonstrado como idÃªntico ao image ID local histÃ³rico; compatibilidade Ã© verificada pelo servidor, bibliotecas, restore e comparaÃ§Ãµes. A versÃ£o 17.11 corresponde ao prÃ³prio dump fictÃ­cio; nÃ£o Ã© afirmaÃ§Ã£o sobre produÃ§Ã£o.
+ 
+-## Execução remota proposta
++## ExecuÃ§Ã£o remota proposta
+ 
+-O workflow novo é manual, privado, com timeout de dez minutos e a mesma concorrência exclusiva do inventário. Não roda no push e não publica site. Adiciona ao repositório existente apenas `.github/workflows/restauracao.yml` e quatro arquivos em `restauracao/`; conserva os seis arquivos do inventário, seus hashes e o dump. Uploader e disparo ficam para a coordenação após revisão do candidato, saldo e bloqueio de cobrança adicional. Nenhuma credencial nova, login, serviço pago ou serviço HTTP é exigido.
++O workflow novo Ã© manual, privado, com timeout de dez minutos e a mesma concorrÃªncia exclusiva do inventÃ¡rio. NÃ£o roda no push e nÃ£o publica site. Adiciona ao repositÃ³rio existente apenas `.github/workflows/restauracao.yml` e quatro arquivos em `restauracao/`; conserva os seis arquivos do inventÃ¡rio, seus hashes e o dump. Uploader e disparo ficam para a coordenaÃ§Ã£o apÃ³s revisÃ£o do candidato, saldo e bloqueio de cobranÃ§a adicional. Nenhuma credencial nova, login, serviÃ§o pago ou serviÃ§o HTTP Ã© exigido.
+ 
+-O container substitui o entrypoint da imagem. Portanto não executa automaticamente as migrações Supabase ou o bootstrap da imagem. Inicia `initdb` vazio como usuário Linux postgres, com superuser SQL supabase_admin, e usa apenas Unix socket em `/qa`. Rede `none`, nenhuma porta, root filesystem somente leitura, capacidades removidas, input somente leitura e tmpfs efêmeros em `/qa` e `/tmp`. Não há volume persistente. Host authentication é rejeitada; local trust vale somente dentro desse container isolado, sem senha de origem. As bibliotecas são as da imagem real. Os defaults globais da distribuição não são tratados como backup da configuração original.
++O container substitui o entrypoint da imagem. Portanto nÃ£o executa automaticamente as migraÃ§Ãµes Supabase ou o bootstrap da imagem. Inicia `initdb` vazio como usuÃ¡rio Linux postgres, com superuser SQL supabase_admin, e usa apenas Unix socket em `/qa`. Rede `none`, nenhuma porta, root filesystem somente leitura, capacidades removidas, input somente leitura e tmpfs efÃªmeros em `/qa` e `/tmp`. NÃ£o hÃ¡ volume persistente. Host authentication Ã© rejeitada; local trust vale somente dentro desse container isolado, sem senha de origem. As bibliotecas sÃ£o as da imagem real. Os defaults globais da distribuiÃ§Ã£o nÃ£o sÃ£o tratados como backup da configuraÃ§Ã£o original.
+ 
+-O preflight exige servidor 17.11 (mesma versão da origem comprovada), pg_trgm disponível e arquivos das duas bibliotecas. Prepara roles/atributos/config/memberships da baseline, sem passwords, e cria banco vazio `licitaplena_restore`. O role postgres conserva NOSUPERUSER; supabase_admin conserva SUPERUSER. O dump é restaurado uma vez, com `--exit-on-error --single-transaction`, sem `--clean`, `--no-owner`, `--no-acl`, lista filtrada ou correção posterior.
++O preflight exige servidor 17.11 (mesma versÃ£o da origem comprovada), pg_trgm disponÃ­vel e arquivos das duas bibliotecas. Prepara roles/atributos/config/memberships da baseline, sem passwords, e cria banco vazio `licitaplena_restore`. O role postgres conserva NOSUPERUSER; supabase_admin conserva SUPERUSER. O dump Ã© restaurado uma vez, com `--exit-on-error --single-transaction`, sem `--clean`, `--no-owner`, `--no-acl`, lista filtrada ou correÃ§Ã£o posterior.
+ 
+ Depois compara:
+ 
+-- Esquema extraído do próprio dump versus pg_dump do destino: seções por identidade/owner, conservando SQL, ACLs, comentários e corpos de funções. Normaliza somente ordem das seções e comandos aleatórios `\\restrict`/`\\unrestrict` do cliente. Divergência interrompe para diagnóstico, sem ampliar filtros automaticamente.
+-- Contagens e o mesmo fingerprint MD5 de linhas JSONB ordenadas nas 40 tabelas, usando a receita original. SHA256 verifica o arquivo fonte; MD5 aqui reproduz o detector de alterações da baseline.
+-- Atributos e configurações de 29 roles, 21 memberships com grantor/flags e 12 default ACLs, por nomes.
+-- Owner, RLS e ACL do kit **antes da correção**, incluindo EXECUTE de service_role no trigger. Não aplica o ajuste aprovado posterior durante a prova de recuperação.
+-- Nova conexão local como authenticator, para comprovar que suas bibliotecas configuradas realmente carregam. Isso não é homologação de Auth HTTP.
++- Esquema extraÃ­do do prÃ³prio dump versus pg_dump do destino: seÃ§Ãµes por identidade/owner, conservando SQL, ACLs, comentÃ¡rios e corpos de funÃ§Ãµes. Normaliza somente ordem das seÃ§Ãµes e comandos aleatÃ³rios `\\restrict`/`\\unrestrict` do cliente. DivergÃªncia interrompe para diagnÃ³stico, sem ampliar filtros automaticamente.
++- Contagens e o mesmo fingerprint MD5 de linhas JSONB ordenadas nas 40 tabelas, usando a receita original. SHA256 verifica o arquivo fonte; MD5 aqui reproduz o detector de alteraÃ§Ãµes da baseline.
++- Atributos e configuraÃ§Ãµes de 29 roles, 21 memberships com grantor/flags e 12 default ACLs, por nomes.
++- Owner, RLS e ACL do kit **antes da correÃ§Ã£o**, incluindo EXECUTE de service_role no trigger. NÃ£o aplica o ajuste aprovado posterior durante a prova de recuperaÃ§Ã£o.
++- Nova conexÃ£o local como authenticator, para comprovar que suas bibliotecas configuradas realmente carregam. Isso nÃ£o Ã© homologaÃ§Ã£o de Auth HTTP.
+ 
+-Relatórios, schemas e resultados são artefatos privados por um dia. O log público do job não recebe SQL ou resultados de tabelas; stderr de falhas pode permanecer no artefato privado para revisão. Não há impressão de senha/token. O container é removido no finally; falha na remoção impede declarar sucesso. Timeout global/encerramento abrupto pode impedir finally/upload; o runner hospedado continua efêmero, e a coordenação deve verificar o término real do job.
++RelatÃ³rios, schemas e resultados sÃ£o artefatos privados por um dia. O log pÃºblico do job nÃ£o recebe SQL ou resultados de tabelas; stderr de falhas pode permanecer no artefato privado para revisÃ£o. NÃ£o hÃ¡ impressÃ£o de senha/token. O container Ã© removido no finally; falha na remoÃ§Ã£o impede declarar sucesso. Timeout global/encerramento abrupto pode impedir finally/upload; o runner hospedado continua efÃªmero, e a coordenaÃ§Ã£o deve verificar o tÃ©rmino real do job.
++
++Antes da remoÃ§Ã£o, captura privadamente as Ãºltimas 100 linhas do log Docker e o final de `/qa/initdb.log`, limitando cada stream salvo a 65.536 bytes. Se initdb falhar, seu log Ã© emitido no stderr do container antes de sair, pois o tmpfs nÃ£o persiste apÃ³s a parada. Timeouts de subprocesso preservam stdout/stderr parciais com identificaÃ§Ã£o explÃ­cita de captura incompleta. O relatÃ³rio distingue criaÃ§Ã£o, inspeÃ§Ã£o de isolamento, inÃ­cio e prontidÃ£o do servidor. Esses diagnÃ³sticos nÃ£o alteram opÃ§Ãµes de isolamento, restauraÃ§Ã£o ou comparaÃ§Ã£o.
+ 
+ ## Limites que permanecem
+ 
+-Os dados das 27 tabelas Auth presentes no TOC não têm baseline completa de contagens/hashes; são restaurados pelo dump, mas não certificados pela comparação das 40 tabelas. Senhas de roles não são copiadas. Não há serviços GoTrue/PostgREST/Storage HTTP, login comercial, SMTP, API ou teste de aplicação nesta rodada.
++Os dados das 27 tabelas Auth presentes no TOC nÃ£o tÃªm baseline completa de contagens/hashes; sÃ£o restaurados pelo dump, mas nÃ£o certificados pela comparaÃ§Ã£o das 40 tabelas. O valor da sequÃªncia Auth `refresh_tokens_id_seq` tambÃ©m nÃ£o tem comparaÃ§Ã£o com baseline; sua definiÃ§Ã£o estrutural participa do comparador de esquema, seu valor nÃ£o. Senhas de roles nÃ£o sÃ£o copiadas. NÃ£o hÃ¡ serviÃ§os GoTrue/PostgREST/Storage HTTP, login comercial, SMTP, API ou teste de aplicaÃ§Ã£o nesta rodada.
+ 
+-Há cinco registros antigos de storage.objects e um bucket; os bytes correspondentes não acompanham o dump. Sua restauração continua pendente. Nenhum dos PDFs reais de produção será enviado. Configuração completa de cluster, collation original, versões históricas de cada biblioteca, backups físicos e RPO/RTO de produção não são certificados por este ensaio. O resultado poderá provar somente restauração e comparação do recorte fictício declarado; não libera produção nem equivale ao SaaS completo homologado.
++HÃ¡ cinco registros antigos de storage.objects e um bucket; os bytes correspondentes nÃ£o acompanham o dump. Sua restauraÃ§Ã£o continua pendente. Nenhum dos PDFs reais de produÃ§Ã£o serÃ¡ enviado. ConfiguraÃ§Ã£o completa de cluster, collation original, versÃµes histÃ³ricas de cada biblioteca, backups fÃ­sicos e RPO/RTO de produÃ§Ã£o nÃ£o sÃ£o certificados por este ensaio. O resultado poderÃ¡ provar somente restauraÃ§Ã£o e comparaÃ§Ã£o do recorte fictÃ­cio declarado; nÃ£o libera produÃ§Ã£o nem equivale ao SaaS completo homologado.
+ 
+-Fontes públicas: [Dockerfile da tag usada](https://github.com/supabase/postgres/blob/17.11.0.004/Dockerfile-17), [pg_restore PostgreSQL 17](https://www.postgresql.org/docs/17/app-pgrestore.html). Inventário e snapshot anteriores são preservados sem alteração.
++Fontes pÃºblicas: [Dockerfile da tag usada](https://github.com/supabase/postgres/blob/17.11.0.004/Dockerfile-17), [pg_restore PostgreSQL 17](https://www.postgresql.org/docs/17/app-pgrestore.html). InventÃ¡rio e snapshot anteriores sÃ£o preservados sem alteraÃ§Ã£o.
+--- v1/enviar-restauracao-privada.ps1
++++ v2/enviar-restauracao-privada.ps1
+@@ -15,10 +15,10 @@
+     'package-manifest.json' = '0ef9542dc690dda39184e4dd9e23cef6ebc4bc1b4bb300e89d183e2c6a864994'
+     'input/ficticio.dump' = '30456520f2b52f3e72ed79f57a7c3fea9f51b688ecd1753b504309393f47144c'
+     '.github/workflows/restauracao.yml' = '2b2e01c82652e4f5ea868ee688946a42c3c31800621d21605f570f093baef08f'
+-    'restauracao/restore.py' = 'fdcba16657de03b7189866c47cd7398d22ae4bd9a04a0e10c9eec979a985321b'
+-    'restauracao/test_restore.py' = '86b0d42e33c2a12c2b6c3ac07ce1e465dee833517ef67dc02b5371f9612359dd'
++    'restauracao/restore.py' = '61c63c53a6ba71dfbd2139ab7d5aaecb4474fd0cd0ccb43700b1c6906510678f'
++    'restauracao/test_restore.py' = 'acc22af0b0912a04dcafdb0d5d1abded2711dbb3987f70174bf02122a830daad'
+     'restauracao/baseline.json' = '43b87aceb61497dd9f1f28ac8538d7d4e93752f8415c60ea47f3100dca0485e0'
+-    'restauracao/README.md' = '395e37600028e2cc501ed0b9045ccf89e5bbb59c032342928204ce63291722cd'
++    'restauracao/README.md' = 'a0da1b7fe7dee75e8ed1832976eb6816f3e8496ee19149d47423fe1738b3f964'
+ }
+ $payloads = @('restauracao/restore.py','restauracao/test_restore.py','restauracao/baseline.json','restauracao/README.md')
+ $inventoryFiles = @('.github/workflows/inventario.yml','inventory.py','test_inventory.py','README.md','input/ficticio.dump')

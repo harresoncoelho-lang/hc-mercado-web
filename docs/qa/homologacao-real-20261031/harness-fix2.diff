@@ -1,0 +1,144 @@
+diff --git "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix2\\homologar-kit-real-local.cjs" "b/docs\\qa\\homologar-kit-real-local.cjs"
+index c3bf259..671b959 100644
+--- "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix2\\homologar-kit-real-local.cjs"
++++ "b/docs\\qa\\homologar-kit-real-local.cjs"
+@@ -11,6 +11,7 @@ assert(Number.isInteger(httpPort) && httpPort >= 1024 && httpPort <= 65535, 'Por
+ const base = `http://127.0.0.1:${httpPort}`;
+ const users = [], orgs = [], objects = [], results = [], secrets = [], documentos = [];
+ let evidencias, ui, baseline;
++const registrarFixture = (tipo, id) => { assert(/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(id)); fs.appendFileSync(path.join(evidencias, 'fixtures.jsonl'), JSON.stringify({ tipo, id, data: new Date().toISOString() }) + '\n'); };
+ const sanear = e => secrets.reduce((s, valor) => s.replaceAll(valor, '[privado]'), String(e?.message || e)).replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[JWT]');
+ const sql = s => execFileSync('docker', ['exec', 'licitaplena-qa-real-db-1', 'psql', '-U', 'supabase_admin', '-d', 'licitaplena_qa_ui_v2', '-X', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-c', s], { encoding: 'utf8' }).trim();
+ function escopoLimpeza(org) {
+@@ -33,6 +34,7 @@ async function makeUser() {
+   secrets.push(email, password);
+   const user = expect(await req('/auth/v1/admin/users', c.service, 'POST', { email, password, email_confirm: true }), 200, 'Auth criar');
+   users.push(user.id);
++  registrarFixture('usuario', user.id);
+   const userFixture = { id: user.id, email, password };
+   await loginUser(userFixture);
+   sql(`update public.clientes set status='aprovado' where id='${user.id}'`);
+@@ -73,11 +75,13 @@ async function persistente({ owner, other, operator, reader, ea, eb, pa, pb, ia,
+   const salvar = (user, empresa, processo, id, versao, dados) => api(user, empresa, processo, 'salvar', { documentoId: id, versaoEsperada: versao, ...dados });
+   const ref = (id, versao) => ({ documentoId: id, versaoEsperada: versao });
+   const a = expect(await salvar(operator, ea, pa, da, 0, declaracao), 200, 'Salvar A').documento;
++  registrarFixture('peca', da);
+   assert.equal(a.versao, 1); assert.equal(a.criadoPor, operator.id); assert.equal(a.empresaId, ea);
+   assert.equal(expect(await salvar(operator, ea, pa, da, 0, declaracao), 200, 'Criacao idempotente').documento.id, da);
+   expect(await salvar(owner, ea, pa, da, 0, declaracao), 409, 'Outra autoria nao recupera criacao');
+   expect(await salvar(operator, ea, pa, da, 0, { ...declaracao, declaracao: { ...declaracao.declaracao, titulo: 'Intencao divergente' } }), 409, 'Intencao divergente');
+   expect(await salvar(owner, eb, pb, db, 0, declaracao), 200, 'Salvar B');
++  registrarFixture('peca', db);
+   assert.deepEqual(expect(await api(operator, ea, pa, 'listar'), 200, 'Listar A').documentos.map(d => d.id), [da]);
+   assert.deepEqual(expect(await api(owner, eb, pb, 'listar'), 200, 'Listar B').documentos.map(d => d.id), [db]);
+   expect(await api(owner, eb, pb, 'abrir', { documentoId: da }), 404, 'ID cruzado');
+@@ -125,6 +129,7 @@ async function persistente({ owner, other, operator, reader, ea, eb, pa, pb, ia,
+   assert.equal(reopened.versao, 3); assert.deepEqual(reopened.dados, winner.dados);
+   const proposta = { tipo: 'proposta', proposta: { itemIds: [ia, ib], unidades: { [ia]: 'un', [ib]: 'un' }, validade: '60 dias', prazoEntrega: '10 dias', pagamento: '30 dias' } };
+   expect(await salvar(operator, ea, pa, dp, 0, proposta), 200, 'Salvar proposta');
++  registrarFixture('peca', dp);
+   const p = expect(await api(operator, ea, pa, 'preparar', ref(dp, 1)), 200, 'Preparar proposta salva');
+   assert(p.previa.texto.includes('Total da proposta: R$ 3,71'));
+   const pr = { ...ref(dp, 1), revisado: true, revisaoHash: p.revisaoHash };
+@@ -150,6 +155,7 @@ async function main() {
+   evidencias = path.join(__dirname, 'homologacao-real-20261031', execucao);
+   fs.mkdirSync(evidencias, { recursive: true });
+   fs.writeFileSync(path.join(evidencias, 'execucao-iniciada.json'), JSON.stringify({ data: new Date().toISOString(), base }), { flag: 'wx' });
++  fs.writeFileSync(path.join(evidencias, 'fixtures.jsonl'), '', { flag: 'wx' });
+   let ok = false;
+   let failure;
+   try {
+@@ -167,6 +173,7 @@ async function main() {
+       insert into public.operacao_membros(organizacao_id,usuario_id,papel,empresa_id) values('${oa}','${owner.id}','gestor',null),('${ob}','${other.id}','gestor',null),('${oa}','${operator.id}','operador','${ea}'),('${oa}','${reader.id}','leitura','${ea}');
+       insert into public.operacao_processos(id,organizacao_id,empresa_id,numero,orgao,objeto) values('${pa}','${oa}','${ea}','PE QA-001','Orgao Ficticio QA','Materiais ficticios'),('${pb}','${oa}','${eb}','PE QA-002','Orgao Ficticio Beta','Materiais ficticios');
+       insert into public.operacao_itens_resultado(id,organizacao_id,processo_id,tipo,identificador,descricao,quantidade,valor_unitario_proposta) values('${ia}','${oa}','${pa}','item','1','Item decimal QA',0.125,0.12),('${ib}','${oa}','${pa}','item','2','Item inteiro QA',3,1.23),('${ic}','${oa}','${pb}','item','1','Item exclusivo Beta',1,10.00),('${idExcluido}','${oa}','${pa}','item','3','Item valido excluido QA',1,999.00);`);
++    for (const org of orgs) registrarFixture('organizacao', org);
+     expect(await req('/rest/v1/rpc/identificacao_empresa_habilitada', owner.token, 'POST', {}), 200, 'Gate HTTP');
+     assert.equal((await req('/rest/v1/rpc/identificacao_empresa_habilitada', owner.token, 'POST', {})).data, true);
+     const pending = expect(await api(owner, ea, pa, 'consultar'), 200, 'Consulta sem identificacao');
+@@ -219,6 +226,7 @@ async function main() {
+     const pdf = fs.readFileSync(path.join(__dirname, 'fixtures/identificacao-cartao-ficticio.pdf'));
+     const uploaded = expect(await identity(operator, ea, 'anexar', { tipo: 'cartao_cnpj', nome: 'cartao-kit-qa.pdf', conteudoBase64: pdf.toString('base64') }), 200, 'Upload real');
+     const doc = uploaded.documento; objects.push(doc.arquivo_caminho);
++    registrarFixture('documento-origem', doc.id);
+     const ext = expect(await identity(operator, ea, 'extrair', { documentoId: doc.id }), 200, 'Extrair PDF real');
+     const confirmed = { ...data }, proveniencia = [];
+     for (const campo of ['endereco', 'representante', 'cargo']) { const e = ext.evidencias.find(e => e.campo === campo); assert(e); confirmed[campo] = e.valor; proveniencia.push({ documentoId: doc.id, hash: ext.hash, campos: [campo], pagina: e.pagina, trecho: e.trecho }); }
+@@ -240,8 +248,13 @@ async function main() {
+     assert.equal(expect(await api(operator, ea, pa, 'abrir', { documentoId: saved.da }), 200, 'Fonte invalida revisao salva').revisaoVigente, false);
+     results.push('Storage privado real: download permitido por escopo, leitor nao sobrescreve, hash da fonte invalida DOCX');
+     expect(await req(storagePath, operator.token, 'PUT', pdf, { 'Content-Type': 'application/pdf' }), 200, 'Restaurar fonte da fixture para UI');
++    assert.equal(expect(await api(operator, ea, pa, 'consultar'), 200, 'Cadastro apos restaurar fonte').identificacao.status, 'pendente');
++    expect(await api(operator, ea, pa, 'preparar', { documentoId: saved.da, versaoEsperada: 3 }), 422, 'Restaurar bytes nao reconfirma cadastro');
++    expect(await identity(operator, ea, 'confirmar', { revisado: true, razaoSocial: 'Alfa Ficticia Homologacao', cnpj: '11222333000181', dados: confirmed, proveniencia }), 200, 'Reconfirmar fonte restaurada para UI');
++    assert.equal(expect(await api(operator, ea, pa, 'consultar'), 200, 'Cadastro reconfirmado').identificacao.status, 'confirmado');
++    results.push('Restaurar bytes conserva bloqueio; reconfirmacao explicita da origem libera nova preparacao');
+     const { verificarUIReal } = require('./homologacao-real-20261031/verificar-ui-real.cjs');
+-    ui = await verificarUIReal({ base, evidencias, owner, empresas: [{ id: ea, nome: 'Alfa Ficticia Homologacao', cnpj: '11222333000181', processoId: pa }, { id: eb, nome: 'Beta Ficticia Homologacao', cnpj: '11222333000262', processoId: pb }], itemIds: [ia, ib], sanear });
++    ui = await verificarUIReal({ base, evidencias, owner, empresas: [{ id: ea, nome: 'Alfa Ficticia Homologacao', cnpj: '11222333000181', processoId: pa }, { id: eb, nome: 'Beta Ficticia Homologacao', cnpj: '11222333000262', processoId: pb }], itemIds: [ia, ib], sanear, registrarFixture });
+     results.push(...ui.resultados);
+     ok = true;
+   } catch (e) {
+diff --git "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix2\\verificar-ui-real.cjs" "b/docs\\qa\\homologacao-real-20261031\\verificar-ui-real.cjs"
+index 5ff34d0..68763cc 100644
+--- "a/C:\\Users\\harre\\AppData\\Local\\LicitaPlena\\homologacao-real-baseline-20261031\\fix2\\verificar-ui-real.cjs"
++++ "b/docs\\qa\\homologacao-real-20261031\\verificar-ui-real.cjs"
+@@ -4,7 +4,12 @@ const assert = require('node:assert/strict');
+ const fs = require('node:fs'), path = require('node:path');
+ const mammoth = require('mammoth');
+ 
+-async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, sanear }) {
++async function esperarAcao(espera, executar) {
++  const [resultado] = await Promise.all([espera, Promise.resolve().then(executar)]);
++  return resultado;
++}
++
++async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, sanear, registrarFixture }) {
+   assert.equal(new URL(base).hostname, '127.0.0.1');
+   const browser = await chromium.launch({ channel: 'msedge', headless: true });
+   const contexto = await browser.newContext({ viewport: { width: 1280, height: 950 }, acceptDownloads: true });
+@@ -33,8 +38,7 @@ async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, san
+     await p.waitForFunction(() => document.getElementById('d-kit-documentos')?.getAttribute('aria-busy') === 'false');
+   }
+   async function acao(p, nome, executar, status = 200) {
+-    const resposta = p.waitForResponse(r => new URL(r.url()).pathname === '/api/kit-documentos' && r.request().postDataJSON()?.acao === nome);
+-    await executar(); const r = await resposta;
++    const r = await esperarAcao(p.waitForResponse(r => new URL(r.url()).pathname === '/api/kit-documentos' && r.request().postDataJSON()?.acao === nome), executar);
+     assert.equal(r.status(), status, 'UI ' + nome); const data = await r.json();
+     await p.waitForFunction(() => document.getElementById('d-kit-documentos')?.getAttribute('aria-busy') === 'false');
+     return data;
+@@ -57,10 +61,9 @@ async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, san
+     assert(await p.locator('[data-exportar]').isEnabled());
+   }
+   async function baixar(p, nome, empresa, textoEsperado) {
+-    const download = p.waitForEvent('download');
+-    await acao(p, 'exportar', () => p.locator('[data-exportar]').click());
++    const download = await esperarAcao(p.waitForEvent('download'), () => acao(p, 'exportar', () => p.locator('[data-exportar]').click()));
+     const destino = path.join(evidencias, nome); assert(!fs.existsSync(destino));
+-    await (await download).saveAs(destino);
++    await download.saveAs(destino);
+     const buffer = fs.readFileSync(destino); assert.equal(buffer.subarray(0, 2).toString(), 'PK');
+     const texto = (await mammoth.extractRawText({ buffer })).value;
+     assert(texto.includes(empresa.nome)); assert(texto.includes(textoEsperado));
+@@ -116,6 +119,7 @@ async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, san
+     await acao(p, 'consultar', () => p.getByRole('button', { name: 'Atualizar lista', exact: true }).click());
+     assert.equal(await p.getByLabel('Título da declaração', { exact: true }).inputValue(), 'Declaração UI real');
+     const declaration = (await salvar(p)).documento; documentos.push(declaration.id);
++    registrarFixture('peca', declaration.id);
+     assert.equal(declaration.versao, 1);
+     await p.reload(); await kitPronto(p, empresas[0]); await abrir(p, declaration.id);
+     assert.equal(await p.getByLabel('Título da declaração', { exact: true }).inputValue(), 'Declaração UI real');
+@@ -146,6 +150,7 @@ async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, san
+     assert.equal(await p.getByRole('checkbox', { name: /Item valido excluido QA/ }).isChecked(), false);
+     for (const [label, value] of [['Validade da proposta', '60 dias'], ['Prazo de entrega', '12 dias'], ['Condições de pagamento', '30 dias']]) await p.getByLabel(label, { exact: true }).fill(value);
+     const proposal = (await salvar(p)).documento; documentos.push(proposal.id);
++    registrarFixture('peca', proposal.id);
+     await revisar(p); const textoProposta = await baixar(p, 'ui-proposta-real.docx', empresas[0], 'Total da proposta: R$ 7,04');
+     for (const descricao of ['Item decimal QA', 'Item inteiro QA']) assert(textoProposta.includes(descricao), 'Item selecionado no DOCX da UI');
+     assert(!textoProposta.includes('Item valido excluido QA'), 'Item valido nao selecionado ausente do DOCX da UI');
+@@ -173,4 +178,4 @@ async function verificarUIReal({ base, evidencias, owner, empresas, itemIds, san
+   if (failure) throw new Error('UI real / ' + etapa + ': ' + sanear(failure));
+   return { resultados, documentos };
+ }
+-module.exports = { verificarUIReal };
++module.exports = { verificarUIReal, esperarAcao };

@@ -1,0 +1,7 @@
+{
+  "comando": "node docs/qa/retomada-kit-cnpj-20261030/verificar-kit-documentos.cjs",
+  "copiaExataDe": "docs/qa/verificar-kit-documentos.cjs",
+  "inicioUtc": "2026-10-30T22:49:07.6891872+00:00",
+  "fimUtc": "2026-10-30T22:49:10.3897409+00:00",
+  "exitCode": 0
+}

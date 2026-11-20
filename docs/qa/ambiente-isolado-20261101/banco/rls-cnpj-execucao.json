@@ -1,0 +1,18 @@
+{
+  "projeto": "luguscapasskcsficckf",
+  "arquivo": "07-ensaiar-rls-cnpj-com-rollback.sql",
+  "sqlSha256": "8363e05287cc2ff78778f30977099f205e52d96889cffae26eb3a6f389d76379",
+  "editorIntegralConferido": true,
+  "resultado": {
+    "casos": 15,
+    "limite": "Claims SQL fictícias; sem JWT, login, API, exportação ou arquivo Storage",
+    "resultado": "RLS_CNPJ_SQL_ROLLBACK_OK",
+    "papel_final": "postgres",
+    "catalogo_md5": "830899ecee2a58d23beec619b4963fed",
+    "observado_em": "2026-11-01T19:07:06.709882+00:00",
+    "usuarios_auth": 0,
+    "objetos_storage": 0,
+    "tabelas_publicas_vazias": 21
+  },
+  "observacao": "Editor exibiu a última consulta após execução integral e rollback; sem erro de SQL."
+}

@@ -1,0 +1,8 @@
+[
+  "DEFAULT PRIVILEGES FOR FUNCTIONS | DEFAULT ACL | auth | supabase_auth_admin",
+  "DEFAULT PRIVILEGES FOR FUNCTIONS | DEFAULT ACL | public | supabase_admin",
+  "DEFAULT PRIVILEGES FOR SEQUENCES | DEFAULT ACL | auth | supabase_auth_admin",
+  "DEFAULT PRIVILEGES FOR SEQUENCES | DEFAULT ACL | public | supabase_admin",
+  "DEFAULT PRIVILEGES FOR TABLES | DEFAULT ACL | auth | supabase_auth_admin",
+  "DEFAULT PRIVILEGES FOR TABLES | DEFAULT ACL | public | supabase_admin"
+]

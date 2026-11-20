@@ -1,0 +1,209 @@
+{
+  "capturedUtc": "2026-10-31T02:48:18.629873+00:00",
+  "scope": "Public GET only; no cookies, Authorization, login, browser execution or production writes. Response bodies not persisted.",
+  "requests": [
+    {
+      "path": "/",
+      "status": 200,
+      "finalUrl": "https://licitaplena.com.br/",
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "x-frame-options": "DENY",
+        "cache-control": "no-cache",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br https://*.hcaptcha.com; frame-src 'self' about: https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "server": "cloudflare",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a52f56fd4faccb2c-GIG"
+      },
+      "bytes": 22220,
+      "sha256": "27bb3686804ef575a2cdb9c50d70d69579159b68a833ff2db5507000881bc48e",
+      "html": true,
+      "markers": {
+        "kit-documentos-ui.js": false,
+        "kit-documentos.css": false,
+        "operacao-identificacao.js": false,
+        "operacao-identificacao.css": false,
+        "empresa-identificacao-ui.js": false,
+        "data-kit-documentos": false,
+        "Dados da empresa": false,
+        "Identificação empresarial": false
+      }
+    },
+    {
+      "path": "/operacao",
+      "status": 200,
+      "finalUrl": "https://licitaplena.com.br/operacao",
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "x-frame-options": "DENY",
+        "cache-control": "no-cache",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br https://*.hcaptcha.com; frame-src 'self' about: https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "server": "cloudflare",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a52f56ffdaf3ca77-GIG"
+      },
+      "bytes": 31380,
+      "sha256": "4df793704d1446ec16f4186de1126062ce66fa6d14e243410b00bf43b53974cb",
+      "html": true,
+      "markers": {
+        "kit-documentos-ui.js": false,
+        "kit-documentos.css": false,
+        "operacao-identificacao.js": false,
+        "operacao-identificacao.css": false,
+        "empresa-identificacao-ui.js": false,
+        "data-kit-documentos": false,
+        "Dados da empresa": false,
+        "Identificação empresarial": false
+      }
+    },
+    {
+      "path": "/processos",
+      "status": 200,
+      "finalUrl": "https://licitaplena.com.br/processos",
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "x-frame-options": "DENY",
+        "cache-control": "no-cache",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br https://*.hcaptcha.com; frame-src 'self' about: https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "server": "cloudflare",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a52f57019d19ff94-GIG"
+      },
+      "bytes": 54847,
+      "sha256": "bb041f904f0cba99236ce4d1c1407a135b297ec3a60749ea9c379b4fc08051c5",
+      "html": true,
+      "markers": {
+        "kit-documentos-ui.js": false,
+        "kit-documentos.css": false,
+        "operacao-identificacao.js": false,
+        "operacao-identificacao.css": false,
+        "empresa-identificacao-ui.js": false,
+        "data-kit-documentos": false,
+        "Dados da empresa": false,
+        "Identificação empresarial": false
+      }
+    },
+    {
+      "path": "/api/kit-documentos",
+      "status": 404,
+      "finalUrl": "https://licitaplena.com.br/api/kit-documentos",
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "36",
+        "server": "cloudflare",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a52f5704c9f8e111-GIG"
+      },
+      "bytes": 36,
+      "sha256": "4b0ee826bf784411f63cdd4a00acbc593a8b11ddc382c2ffd4dd57a903a4da67",
+      "html": false,
+      "markers": {
+        "kit-documentos-ui.js": false,
+        "kit-documentos.css": false,
+        "operacao-identificacao.js": false,
+        "operacao-identificacao.css": false,
+        "empresa-identificacao-ui.js": false,
+        "data-kit-documentos": false,
+        "Dados da empresa": false,
+        "Identificação empresarial": false
+      },
+      "jsonKeys": [
+        "erro"
+      ],
+      "erro": "Função não encontrada."
+    },
+    {
+      "path": "/api/empresa-identificacao",
+      "status": 404,
+      "finalUrl": "https://licitaplena.com.br/api/empresa-identificacao",
+      "headers": {
+        "content-type": "application/json",
+        "content-length": "36",
+        "server": "cloudflare",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a52f57088fd9df4f-GIG"
+      },
+      "bytes": 36,
+      "sha256": "4b0ee826bf784411f63cdd4a00acbc593a8b11ddc382c2ffd4dd57a903a4da67",
+      "html": false,
+      "markers": {
+        "kit-documentos-ui.js": false,
+        "kit-documentos.css": false,
+        "operacao-identificacao.js": false,
+        "operacao-identificacao.css": false,
+        "empresa-identificacao-ui.js": false,
+        "data-kit-documentos": false,
+        "Dados da empresa": false,
+        "Identificação empresarial": false
+      },
+      "jsonKeys": [
+        "erro"
+      ],
+      "erro": "Função não encontrada."
+    },
+    {
+      "path": "/kit-documentos-ui.js",
+      "status": 200,
+      "finalUrl": "https://licitaplena.com.br/kit-documentos-ui.js",
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "x-frame-options": "DENY",
+        "cache-control": "max-age=14400",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br https://*.hcaptcha.com; frame-src 'self' about: https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "server": "cloudflare",
+        "cf-cache-status": "MISS",
+        "cf-ray": "a52f570a1cbe28e7-GIG"
+      },
+      "bytes": 22220,
+      "sha256": "27bb3686804ef575a2cdb9c50d70d69579159b68a833ff2db5507000881bc48e",
+      "html": true,
+      "markers": {
+        "kit-documentos-ui.js": false,
+        "kit-documentos.css": false,
+        "operacao-identificacao.js": false,
+        "operacao-identificacao.css": false,
+        "empresa-identificacao-ui.js": false,
+        "data-kit-documentos": false,
+        "Dados da empresa": false,
+        "Identificação empresarial": false
+      }
+    },
+    {
+      "path": "/operacao-identificacao.js",
+      "status": 200,
+      "finalUrl": "https://licitaplena.com.br/operacao-identificacao.js",
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "x-frame-options": "DENY",
+        "cache-control": "max-age=14400",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.hcaptcha.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://lsqjamqvmrcyrvowndiu.supabase.co https://brasilapi.com.br https://servicodados.ibge.gov.br https://*.hcaptcha.com; frame-src 'self' about: https://*.hcaptcha.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "server": "cloudflare",
+        "cf-cache-status": "MISS",
+        "cf-ray": "a52f570bec6ddf4f-GIG"
+      },
+      "bytes": 22220,
+      "sha256": "27bb3686804ef575a2cdb9c50d70d69579159b68a833ff2db5507000881bc48e",
+      "html": true,
+      "markers": {
+        "kit-documentos-ui.js": false,
+        "kit-documentos.css": false,
+        "operacao-identificacao.js": false,
+        "operacao-identificacao.css": false,
+        "empresa-identificacao-ui.js": false,
+        "data-kit-documentos": false,
+        "Dados da empresa": false,
+        "Identificação empresarial": false
+      }
+    }
+  ]
+}
